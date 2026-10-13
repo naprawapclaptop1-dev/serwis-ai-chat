@@ -1,0 +1,13 @@
+{
+  "app": "NAPRAWA PC HARDWARE TEST PRO",
+  "channel": "stable",
+  "version": "4.3.38",
+  "release_ready": false,
+  "filename": null,
+  "download_url": null,
+  "sha256": null,
+  "size": 0,
+  "minimum_supported_version": "4.3.38",
+  "notes": "Globalny kanal HTTPS aktywny. Nie opublikowano jeszcze instalatora wydania stable. Administrator publikuje nowe wydanie skryptem PUBLISH_GLOBAL_UPDATE.ps1.",
+  "published_at": "2026-10-13T00:00:00Z"
+}
