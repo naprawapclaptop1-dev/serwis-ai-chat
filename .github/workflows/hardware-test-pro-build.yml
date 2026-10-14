@@ -22,6 +22,8 @@ jobs:
     env:
       APP_VERSION: "4.3.44"
       SETUP_FILENAME: "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.44.exe"
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -60,15 +62,25 @@ jobs:
       - name: Syntax and built-in tests
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
           Set-Location "${{ github.workspace }}\hardware-test-pro"
-          python -m py_compile ".\NaprawaPC_Hardware_Test_PRO.pyw"
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-core
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-deep
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-update
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-launcher
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-antivirus
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-themes
-          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-update-flow
+          $program = ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          python -m py_compile $program
+          if ($LASTEXITCODE -ne 0) { throw "Python syntax check failed with code $LASTEXITCODE" }
+          $checks = @(
+            "--selftest-core",
+            "--selftest-deep",
+            "--selftest-update",
+            "--selftest-launcher",
+            "--selftest-antivirus",
+            "--selftest-themes",
+            "--selftest-update-flow"
+          )
+          foreach ($check in $checks) {
+            Write-Host "RUNNING SELFTEST: $check"
+            python $program $check
+            if ($LASTEXITCODE -ne 0) { throw "Self-test $check failed with exit code $LASTEXITCODE" }
+          }
 
       - name: Build application EXE
         shell: pwsh

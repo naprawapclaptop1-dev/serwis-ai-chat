@@ -1,6 +1,8 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 cd /d "%~dp0"
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
 title NAPRAWA PC HARDWARE TEST PRO 4.3.44 GLOBAL UPDATE BUILD
 set "LOG=%~dp0BUILD_4_3_44.log"
 set "PY="
