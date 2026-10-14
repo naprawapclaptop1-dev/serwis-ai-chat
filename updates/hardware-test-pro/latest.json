@@ -5,9 +5,9 @@
   "release_ready": true,
   "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.41.exe",
   "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.41/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.41.exe",
-  "sha256": "15c5183928c7149b0535e03152ec8011215fc7c2f5759e3f706935cfe2f60106",
-  "size": 102532360,
+  "sha256": "41bee32b64b2653749cebce61d5c807daeec66e145b74886fc946048f6860242",
+  "size": 102531669,
   "minimum_supported_version": "4.3.39",
   "notes": "Wydanie 4.3.41: test wzorców RAM, weryfikacja tekstur VRAM przez OpenGL i aktualizator globalny HTTPS. Instalator Windows x64.",
-  "published_at": "2026-10-14T18:00:35.553Z"
+  "published_at": "2026-10-14T18:28:29.344Z"
 }
