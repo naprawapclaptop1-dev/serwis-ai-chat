@@ -1,13 +1,13 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.38",
+  "version": "4.3.40",
   "release_ready": false,
   "filename": null,
   "download_url": null,
   "sha256": null,
   "size": 0,
-  "minimum_supported_version": "4.3.38",
-  "notes": "Globalny kanal HTTPS aktywny. Nie opublikowano jeszcze instalatora wydania stable. Administrator publikuje nowe wydanie skryptem PUBLISH_GLOBAL_UPDATE.ps1.",
-  "published_at": "2026-10-13T00:00:00Z"
+  "minimum_supported_version": "4.3.40",
+  "notes": "Wydanie 4.3.40 ma wlasny pelny test wzorcow RAM. Manifest publiczny jest aktualny, ale instalator nie zostal jeszcze opublikowany. Publikacja nastapi po zbudowaniu Setup.exe na Windows przez wlasciciela projektu.",
+  "published_at": "2026-10-14T12:17:08.924Z"
 }
