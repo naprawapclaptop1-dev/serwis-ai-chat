@@ -56,7 +56,6 @@ jobs:
         run: |
           Set-Location "${{ github.workspace }}\hardware-test-pro"
           & ".\PREPARE_RELEASE.ps1"
-          if ($LASTEXITCODE -ne 0) { throw "PREPARE_RELEASE.ps1 failed." }
 
       - name: Install Python dependencies
         shell: pwsh
