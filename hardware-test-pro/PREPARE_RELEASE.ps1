@@ -133,6 +133,20 @@ def _u443_init_hook(self,*args,**kwargs):
     except Exception: pass
 AppV43.__init__=_u443_init_hook
 
+# Dashboard controls can be recreated on resize; rebind hover glow on each re-creation.
+def _u443_wrap_hover_refresh(original):
+    def _wrapped(self,*args,**kwargs):
+        result=original(self,*args,**kwargs)
+        _u443_schedule_hover(self)
+        return result
+    _wrapped._u443_hover_wrapper=True
+    return _wrapped
+
+for _u443_method_name in ("_install_dashboard_controls","_v4321_bind_canvas_router","_v4323_bind_canvas_router","_v4325_install_dashboard_controls"):
+    _u443_method=getattr(AppV43,_u443_method_name,None)
+    if callable(_u443_method) and not getattr(_u443_method,"_u443_hover_wrapper",False):
+        setattr(AppV43,_u443_method_name,_u443_wrap_hover_refresh(_u443_method))
+
 def _u443_selftest_themes():
     assert len(THEMES)>=125,len(THEMES)
     assert all(i in THEMES for i in range(1,126))
