@@ -115,7 +115,22 @@ jobs:
           Copy-Item -LiteralPath $env:SYSTEM_REPAIR_SOURCE_ZIP -Destination $stage -Force
           $bundle = Join-Path $env:RUNNER_TEMP "NAPRAWA-PC-SYSTEM-REPAIR-PRO-ALL-IN-ONE-5.6.15.zip"
           Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $bundle -CompressionLevel Optimal
-          if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 50MB) { throw "All-in-One ZIP was not created or is incomplete." }
+          if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 1MB) { throw "All-in-One ZIP was not created or is suspiciously small." }
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [System.IO.Compression.ZipFile]::OpenRead($bundle)
+          try {
+            $names = @($archive.Entries | ForEach-Object { $_.FullName })
+            $required = @(
+              "NAPRAWA-PC-SYSTEM-REPAIR-PRO-Setup-5.6.15.exe",
+              "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe",
+              "README.md",
+              "CHANGELOG_5.6.15_STATIC_RESOURCE_STARTUP_FIX.txt",
+              "SystemRepairPro-5.6.15-source.zip"
+            )
+            foreach ($name in $required) {
+              if ($names -notcontains $name) { throw "Missing $name inside All-in-One ZIP." }
+            }
+          } finally { $archive.Dispose() }
           $hash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           "SYSTEM_REPAIR_BUNDLE=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "SYSTEM_REPAIR_BUNDLE_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
