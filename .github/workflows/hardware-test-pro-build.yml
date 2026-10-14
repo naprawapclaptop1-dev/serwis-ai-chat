@@ -47,7 +47,121 @@ jobs:
             @{ Prefix = "app_ico"; Output = "app.ico" }
           )
           foreach ($item in $items) {
-            $parts = @(Get-ChildItem -LiteralPath $assets -Filter "$($item.Prefix).*\.b64.txt" | Sort-Object {
+            $parts = @(Get-ChildItem -LiteralPath $assets -Filter "$($item.Prefix).*" | Where-Object { $_.Name -match '\.\d+\.b64\.txt
+              [int]([regex]::Match($_.Name, '\.(\d+)\.b64\.txt$').Groups[1].Value)
+            })
+            if ($parts.Count -eq 0) { throw "Brak zasobów: $($item.Prefix)" }
+            $joined = (($parts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }) -join "")
+            [IO.File]::WriteAllBytes((Join-Path (Get-Location) $item.Output), [Convert]::FromBase64String($joined))
+          }
+          if (!(Test-Path ".\NaprawaPC_Hardware_Test_PRO.pyw") -or !(Test-Path ".\ui_reference.png") -or !(Test-Path ".\app_icon.png") -or !(Test-Path ".\app.ico")) {
+            throw "Odtworzenie źródeł lub zasobów nie powiodło się."
+          }
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller psutil pillow numpy pygame-ce PyOpenGL sounddevice opencv-python
+
+      - name: Syntax and built-in self tests
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          python -m py_compile ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-core
+          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-deep
+          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-update
+
+      - name: Build single Windows EXE
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          if (Test-Path ".\build") { Remove-Item ".\build" -Recurse -Force }
+          if (Test-Path ".\dist") { Remove-Item ".\dist" -Recurse -Force }
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe")) { throw "PyInstaller nie utworzył pliku EXE." }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Build and verify installer
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          $iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue).Source
+          $programFilesX86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+          $programFiles = [Environment]::GetEnvironmentVariable("ProgramFiles")
+          if (!$iscc -and (Test-Path "$programFilesX86\Inno Setup 6\ISCC.exe")) { $iscc = "$programFilesX86\Inno Setup 6\ISCC.exe" }
+          if (!$iscc -and (Test-Path "$programFiles\Inno Setup 6\ISCC.exe")) { $iscc = "$programFiles\Inno Setup 6\ISCC.exe" }
+          if (!$iscc) { throw "Nie znaleziono ISCC.exe po instalacji Inno Setup." }
+          $dist = (Resolve-Path ".\dist").Path
+          & $iscc "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$dist" "/O$dist" ".\SUITE_SETUP.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Kompilacja Inno Setup nie powiodła się." }
+          $installer = Join-Path $dist $env:SETUP_FILENAME
+          if (!(Test-Path $installer)) { throw "Nie ma końcowego instalatora $($env:SETUP_FILENAME)." }
+          if ((Get-Item $installer).Length -lt 1MB) { throw "Instalator jest podejrzanie mały; publikacja przerwana." }
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          $size = (Get-Item -LiteralPath $installer).Length
+          "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Compress-Archive -Path @(".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe", ".\README_PL.txt", ".\app.ico") -DestinationPath (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.41.zip") -Force
+
+      - name: Publish GitHub release assets
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: hardware-test-pro-v4.3.41
+          target_commitish: main
+          name: "NAPRAWA PC HARDWARE TEST PRO 4.3.41"
+          body: |
+            Wydanie Windows x64 utworzone w automatycznym procesie budowania.
+            Publikacja nastąpiła po testach źródła, utworzeniu EXE i zweryfikowaniu instalatora Setup.exe.
+          files: |
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.41.exe
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.41.zip
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish verified global-update manifest
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          INSTALLER_SHA256: ${{ env.INSTALLER_SHA256 }}
+          INSTALLER_SIZE: ${{ env.INSTALLER_SIZE }}
+          SETUP_FILENAME: ${{ env.SETUP_FILENAME }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = "updates/hardware-test-pro/latest.json";
+            const branch = "main";
+            const old = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
+            const manifest = {
+              app: "NAPRAWA PC HARDWARE TEST PRO",
+              channel: "stable",
+              version: process.env.APP_VERSION,
+              release_ready: true,
+              filename: process.env.SETUP_FILENAME,
+              download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + process.env.APP_VERSION + "/" + process.env.SETUP_FILENAME,
+              sha256: process.env.INSTALLER_SHA256,
+              size: Number(process.env.INSTALLER_SIZE),
+              minimum_supported_version: "4.3.39",
+              notes: "Wydanie 4.3.41: własny test wzorców RAM, weryfikacja tekstur VRAM przez OpenGL i aktualizator globalny HTTPS. Instalator Windows x64 zbudowany automatycznie.",
+              published_at: new Date().toISOString()
+            };
+            await github.rest.repos.createOrUpdateFileContents({
+              owner, repo, path, branch,
+              message: "Publish verified Hardware Test PRO " + process.env.APP_VERSION + " update",
+              sha: old.data.sha,
+              content: Buffer.from(JSON.stringify(manifest, null, 2) + "\n", "utf8").toString("base64")
+            });
+ } | Sort-Object {
               [int]([regex]::Match($_.Name, '\.(\d+)\.b64\.txt$').Groups[1].Value)
             })
             if ($parts.Count -eq 0) { throw "Brak zasobów: $($item.Prefix)" }
