@@ -1,0 +1,41 @@
+AKTUALIZACJA GLOBALNA — INTERNET, BEZ WPISYWANIA LINKÓW
+=======================================================
+
+Projekt zawiera globalny aktualizator HTTPS z adresem manifestu wbudowanym w program.
+Użytkownik końcowy nie wpisuje adresu i nie musi znajdować się w tej samej sieci.
+
+Wydanie 4.3.42 jest przygotowane w źródłach, ale ten ZIP nie zawiera skompilowanego
+instalatora Windows. Publiczny manifest pozostaje z release_ready=false aż do momentu,
+gdy właściciel projektu zbuduje i opublikuje rzeczywisty plik Setup.exe. To zabezpiecza
+przed próbą pobrania nieistniejącego instalatora.
+
+PIERWSZE WDROŻENIE (KOMPUTER SERWISOWY)
+---------------------------------------
+1. Rozpakuj cały projekt na Windows 10/11 x64.
+2. Uruchom BUILD_WINDOWS.bat. Zbuduje EXE, instalator i wersję portable.
+3. Na komputerze, który publikuje wydania, skonfiguruj GitHub CLI i wykonaj raz:
+   gh auth login
+4. Uruchom ponownie BUILD_WINDOWS.bat. Jeśli gh jest zalogowane i ma uprawnienia do
+   publicznego repozytorium naprawapclaptop1-dev/serwis-ai-chat, skrypt sam wywoła
+   PUBLISH_GLOBAL_UPDATE.ps1 i opublikuje instalator oraz manifest. Jeśli publikowanie
+   nie powiedzie się, log BUILD_4_3_42.log pokaże błąd, a komenda ręczna jest wyświetlana
+   w oknie CMD.
+5. Zainstaluj 4.3.42 na komputerach klientów raz. Wersje 4.3.38 i starsze nie zawierają
+   globalnego aktualizatora, więc pierwszą instalację trzeba wykonać ręcznie.
+
+KOLEJNE WYDANIA
+---------------
+Na komputerze serwisowym w kopii projektu uruchom:
+   .\BUMP_VERSION.ps1 -Version "4.3.42"
+Następnie uruchom BUILD_WINDOWS.bat. Po zbudowaniu, przy aktywnym `gh auth login`,
+instalator zostanie opublikowany automatycznie. Komputery z wcześniejszą wersją wybiorą
+USTAWIENIA → SPRAWDŹ AKTUALIZACJE GLOBALNE; plik będzie pobrany przez HTTPS, a SHA-256
+zostanie zweryfikowany przed pytaniem o uruchomienie.
+
+BEZPIECZEŃSTWO / OGRANICZENIA
+----------------------------
+• Klienci nie potrzebują konta GitHub ani tokena.
+• Token GitHub pozostaje wyłącznie w konfiguracji GitHub CLI właściciela; nie jest wpisywany
+  do kodu, manifestu, EXE ani instalatora.
+• Bez gotowego i opublikowanego Setup.exe globalny kanał nie ma pliku do pobrania.
+• Test transferu pomiędzy dwoma fizycznymi komputerami należy wykonać po pierwszej publikacji.

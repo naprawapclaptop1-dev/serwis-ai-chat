@@ -1,0 +1,23 @@
+RAPORT WALIDACJI ŹRÓDEŁ — WERSJA 4.3.42
+========================================
+Wykonane lokalnie w środowisku testowym:
+[OK] Składnia Python (py_compile).
+[OK] Test CPU — faktyczne jednostki pracy.
+[OK] Test RAM — wszystkie 26 wzorców wygenerowane i sprawdzone; pełny test programowego bufora 64 MB.
+[OK] Test pliku dyskowego w środowisku testowym.
+[OK] Test pomocniczy globalnego aktualizatora — walidacja wersji, URL HTTPS i SHA-256.
+[OK] Integralność ZIP.
+
+NIEPOTWIERDZONE bez Windows i fizycznych urządzeń:
+[NIE WYKONANO] Kompilacja PyInstaller/Inno Setup na Windows.
+[NIE WYKONANO] Test rzeczywistego GPU/VRAM — wymaga sterownika OpenGL i fizycznej karty.
+[NIE WYKONANO] Aktualizacja instalatora na innym komputerze po publicznym opublikowaniu Setup.exe.
+[NIE WYKONANO] Pełny test fizycznych komórek RAM/VRAM, klawiatury, myszki, kamery i audio.
+
+Test RAM to bufor aplikacji; test VRAM to round-trip tekstur OpenGL, a nie pełne badanie każdej komórki.
+Manifest globalny jest dostępny, lecz aktualizacja wymaga opublikowanego przez właściciela instalatora.
+
+WERSJA 4.3.42 — POPRAWKA UAC AKTUALIZATORA
+----------------------------------------
+Nowa ścieżka uruchomienia instalatora korzysta z Windows ShellExecuteW z czasownikiem runas,
+a nie z subprocess.Popen/CreateProcess. Dodano test regresyjny kodów błędu ShellExecute.

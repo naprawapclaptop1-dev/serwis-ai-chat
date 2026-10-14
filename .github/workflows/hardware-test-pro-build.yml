@@ -1,4 +1,4 @@
-name: Hardware Test PRO — Windows build and verified release
+name: Hardware Test PRO — Windows build and UAC-safe updater release
 
 on:
   push:
@@ -20,8 +20,8 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 90
     env:
-      APP_VERSION: "4.3.41"
-      SETUP_FILENAME: "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.41.exe"
+      APP_VERSION: "4.3.42"
+      SETUP_FILENAME: "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.42.exe"
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -65,13 +65,14 @@ jobs:
           python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-core
           python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-deep
           python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-update
+          python ".\NaprawaPC_Hardware_Test_PRO.pyw" --selftest-launcher
 
       - name: Build application EXE
         shell: pwsh
         run: |
           Set-Location "${{ github.workspace }}\hardware-test-pro"
-          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
-          if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe")) { throw "PyInstaller did not create the EXE." }
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.42" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.42.exe")) { throw "PyInstaller did not create the EXE." }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -96,9 +97,9 @@ jobs:
           $size = (Get-Item -LiteralPath $installer).Length
           "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.41.zip"
+          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.42.zip"
           if (Test-Path $bundle) { Remove-Item $bundle -Force }
-          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe"), ".\README_PL.txt", ".\app.ico") -DestinationPath $bundle -CompressionLevel Optimal
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.42.exe"), ".\README_PL.txt", ".\app.ico") -DestinationPath $bundle -CompressionLevel Optimal
           if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
           $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           $bundleSize = (Get-Item -LiteralPath $bundle).Length
@@ -109,14 +110,14 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: hardware-test-pro-v4.3.41
+          tag_name: hardware-test-pro-v4.3.42
           target_commitish: main
-          name: "NAPRAWA PC HARDWARE TEST PRO 4.3.41"
+          name: "NAPRAWA PC HARDWARE TEST PRO 4.3.42"
           body: |
             Wydanie Windows x64. Instalator został zbudowany po testach źródeł i sprawdzeniu pliku Setup.exe.
           files: |
-            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.41.exe
-            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.41.zip
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.42.exe
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.42.zip
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
@@ -135,7 +136,7 @@ jobs:
               tag: tag
             });
             for (const asset of release.assets) {
-              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.41.zip") {
+              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.42.zip") {
                 await github.rest.repos.deleteReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -170,7 +171,7 @@ jobs:
               sha256: process.env.INSTALLER_SHA256,
               size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie 4.3.41: test wzorców RAM, weryfikacja tekstur VRAM przez OpenGL i aktualizator globalny HTTPS. Instalator Windows x64.",
+              notes: "Wydanie 4.3.42: test wzorców RAM, weryfikacja tekstur VRAM przez OpenGL oraz poprawione uruchamianie instalatora aktualizacji przez Windows ShellExecute/UAC. Instalator Windows x64.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({

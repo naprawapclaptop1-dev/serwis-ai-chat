@@ -1,0 +1,12 @@
+NAPRAWA PC HARDWARE TEST PRO 4.3.42 — JEDNA APLIKACJA
+
+CPU: etapowe obciążenie i wykres próbek zegara.
+RAM: 26 pełnych wzorców w przydzielonym buforze, zapis/weryfikacja każdego bajtu, błąd z offsetem.
+GPU: benchmark OpenGL/FPS, wykrywanie kart, telemetria zegarów/VRAM gdy dostępna.
+VRAM: osobny test tekstur OpenGL 32/64/128/256 MB, 6 wzorców, odczyt zwrotny i porównanie każdego bajtu.
+DYSKI: odczyt/zapis pliku testowego, SMART kiedy udostępniony.
+MATRYCA: 20 wzorców/kolorów/gradientów/siatki/ruch i dane EDID.
+KLAWIATURA, MYSZ, KAMERA, MIKROFON, GŁOŚNIKI: testy wejść, podglądu i próbki, z wymaganym potwierdzeniem użytkownika tam, gdzie nie da się automatyzować oceny.
+BEZPIECZEŃSTWO, USB, SIEĆ, raporty i naprawa Windows w tym samym oknie.
+Aktualizacja: stały publiczny kanał HTTPS; klient nie podaje linku. Publikacja wydania wymaga
+zbudowania Setup.exe na Windows i uruchomienia PUBLISH_GLOBAL_UPDATE.ps1 przez właściciela.

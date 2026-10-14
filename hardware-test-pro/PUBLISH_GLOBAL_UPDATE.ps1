@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory=$true)][string]$Version,
     [Parameter(Mandatory=$true)][string]$InstallerPath,
-    [string]$Notes = "NAPRAWA PC HARDWARE TEST PRO update."
+    [string]$Notes = "NAPRAWA PC HARDWARE TEST PRO 4.3.42 — global updater UAC launch fix."
 )
 $ErrorActionPreference = "Stop"
 $Repository = "naprawapclaptop1-dev/serwis-ai-chat"

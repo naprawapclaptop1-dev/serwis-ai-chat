@@ -1,0 +1,3 @@
+db0845c393821cba86e3996d3f9eaddbd91fbbbb29a86d63164e78b1bbe89a29  ui_reference.png
+05c6b3c3b07308ff5f260ca63ab8384adbadefacd9848ac6ec740ee312fa573b  app_icon.png
+23b42a9f3971edf70647d4b5aea8f066a70d298dcf322fbf9d975fb162ad8230  app.ico

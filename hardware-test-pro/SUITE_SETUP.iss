@@ -1,11 +1,11 @@
 #ifndef AppVersion
-  #define AppVersion "4.3.41"
+  #define AppVersion "4.3.42"
 #endif
 #ifndef SourceDir
   #define SourceDir "dist"
 #endif
 #define AppName "NAPRAWA PC HARDWARE TEST PRO"
-#define ExeName "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe"
+#define ExeName "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.42.exe"
 
 [Setup]
 AppId={{BC4F6B0C-0B6A-43FD-91E8-68FE0D2B9512}

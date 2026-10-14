@@ -1,0 +1,13 @@
+{
+  "app": "NAPRAWA PC HARDWARE TEST PRO",
+  "channel": "stable",
+  "version": "4.3.42",
+  "release_ready": false,
+  "filename": null,
+  "download_url": null,
+  "sha256": null,
+  "size": 0,
+  "minimum_supported_version": "4.3.39",
+  "notes": "Globalny kanał HTTPS jest dostępny. Instalator 4.3.42 nie został jeszcze zbudowany/opublikowany; wykonaj BUILD_WINDOWS.bat i PUBLISH_GLOBAL_UPDATE.ps1 na Windows.",
+  "published_at": null
+}
