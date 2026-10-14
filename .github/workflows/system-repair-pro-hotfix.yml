@@ -1,10 +1,10 @@
-name: System Repair PRO 5.6.15 — WPF startup hotfix
+name: System Repair PRO 5.6.16 — installer elevation hotfix
 
 on:
   push:
     branches: [main]
     paths:
-      - "system-repair-pro-hotfix-5.6.15/chunks/**"
+      - "system-repair-pro-hotfix-5.6.16/chunks/**"
       - ".github/workflows/system-repair-pro-hotfix.yml"
   workflow_dispatch:
 
@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: system-repair-pro-hotfix-5-6-15
+  group: system-repair-pro-hotfix-5-6-16
   cancel-in-progress: false
 
 jobs:
@@ -31,16 +31,16 @@ jobs:
       - name: Restore source ZIP from repository segments
         shell: pwsh
         run: |
-          $chunkDir = Join-Path $env:GITHUB_WORKSPACE "system-repair-pro-hotfix-5.6.15\chunks"
+          $chunkDir = Join-Path $env:GITHUB_WORKSPACE "system-repair-pro-hotfix-5.6.16\chunks"
           $parts = @(Get-ChildItem -LiteralPath $chunkDir -Filter "part_*.txt" | Sort-Object { [int]([regex]::Match($_.Name, 'part_(\d+)\.txt$').Groups[1].Value) })
           if ($parts.Count -ne 18) { throw "Expected 18 source archive chunks, found $($parts.Count)." }
           $encoded = (($parts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }) -join "")
-          $sourceZip = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.15-source.zip"
+          $sourceZip = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-source.zip"
           [IO.File]::WriteAllBytes($sourceZip, [Convert]::FromBase64String($encoded))
-          $extractDir = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.15-source"
+          $extractDir = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-source"
           Expand-Archive -LiteralPath $sourceZip -DestinationPath $extractDir -Force
-          $source = Join-Path $extractDir "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.15_STATIC_RESOURCE_STARTUP_FIX"
-          $project = Join-Path $source "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.15_STATIC_RESOURCE_STARTUP_FIX.csproj"
+          $source = Join-Path $extractDir "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX"
+          $project = Join-Path $source "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.csproj"
           if (!(Test-Path $project)) { throw "Patched project file missing from source ZIP." }
           "SYSTEM_REPAIR_SOURCE=$source" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "SYSTEM_REPAIR_SOURCE_ZIP=$sourceZip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -49,8 +49,8 @@ jobs:
         shell: pwsh
         run: |
           $source = $env:SYSTEM_REPAIR_SOURCE
-          $project = Join-Path $source "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.15_STATIC_RESOURCE_STARTUP_FIX.csproj"
-          $publish = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.15-publish"
+          $project = Join-Path $source "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.csproj"
+          $publish = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-publish"
           dotnet publish $project -c Release -r win-x64 --self-contained true -o $publish -p:DebugType=None
           if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed." }
           $exe = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
@@ -91,11 +91,11 @@ jobs:
           if (!$iscc) { throw "ISCC.exe not found." }
           $source = $env:SYSTEM_REPAIR_SOURCE
           $publish = $env:SYSTEM_REPAIR_PUBLISH
-          $installerDir = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.15-installer"
+          $installerDir = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-installer"
           New-Item -ItemType Directory -Path $installerDir -Force | Out-Null
-          & $iscc "/DAppVersion=5.6.15" "/DSourceDir=$publish" "/O$installerDir" (Join-Path $source "setup.iss")
+          & $iscc "/DAppVersion=5.6.16" "/DSourceDir=$publish" "/O$installerDir" (Join-Path $source "setup.iss")
           if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
-          $installer = Join-Path $installerDir "NAPRAWA-PC-SYSTEM-REPAIR-PRO-Setup-5.6.15.exe"
+          $installer = Join-Path $installerDir "NAPRAWA-PC-SYSTEM-REPAIR-PRO-Setup-5.6.16.exe"
           if (!(Test-Path $installer)) { throw "Installer was not created." }
           if ((Get-Item $installer).Length -lt 1MB) { throw "Installer is suspiciously small." }
           "SYSTEM_REPAIR_INSTALLER=$installer" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -106,14 +106,14 @@ jobs:
           $source = $env:SYSTEM_REPAIR_SOURCE
           $publish = $env:SYSTEM_REPAIR_PUBLISH
           $installer = $env:SYSTEM_REPAIR_INSTALLER
-          $stage = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.15-AllInOne"
+          $stage = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-AllInOne"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
           Copy-Item -LiteralPath $installer -Destination $stage -Force
           Copy-Item -LiteralPath (Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe") -Destination $stage -Force
           Copy-Item -LiteralPath (Join-Path $source "README.md") -Destination $stage -Force
-          Copy-Item -LiteralPath (Join-Path $source "CHANGELOG_5.6.15_STATIC_RESOURCE_STARTUP_FIX.txt") -Destination $stage -Force
+          Copy-Item -LiteralPath (Join-Path $source "CHANGELOG_5.6.16_SETUP_ELEVATION_FIX.txt") -Destination $stage -Force
           Copy-Item -LiteralPath $env:SYSTEM_REPAIR_SOURCE_ZIP -Destination $stage -Force
-          $bundle = Join-Path $env:RUNNER_TEMP "NAPRAWA-PC-SYSTEM-REPAIR-PRO-ALL-IN-ONE-5.6.15.zip"
+          $bundle = Join-Path $env:RUNNER_TEMP "NAPRAWA-PC-SYSTEM-REPAIR-PRO-ALL-IN-ONE-5.6.16.zip"
           Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $bundle -CompressionLevel Optimal
           if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 1MB) { throw "All-in-One ZIP was not created or is suspiciously small." }
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -121,11 +121,11 @@ jobs:
           try {
             $names = @($archive.Entries | ForEach-Object { $_.FullName })
             $required = @(
-              "NAPRAWA-PC-SYSTEM-REPAIR-PRO-Setup-5.6.15.exe",
+              "NAPRAWA-PC-SYSTEM-REPAIR-PRO-Setup-5.6.16.exe",
               "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe",
               "README.md",
-              "CHANGELOG_5.6.15_STATIC_RESOURCE_STARTUP_FIX.txt",
-              "SystemRepairPro-5.6.15-source.zip"
+              "CHANGELOG_5.6.16_SETUP_ELEVATION_FIX.txt",
+              "SystemRepairPro-5.6.16-source.zip"
             )
             foreach ($name in $required) {
               if ($names -notcontains $name) { throw "Missing $name inside All-in-One ZIP." }
@@ -138,11 +138,11 @@ jobs:
       - name: Publish one download ZIP
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: system-repair-pro-v5.6.15
+          tag_name: system-repair-pro-v5.6.16
           target_commitish: main
-          name: "NAPRAWA PC SYSTEM REPAIR PRO 5.6.15 — STARTUP HOTFIX"
+          name: "NAPRAWA PC SYSTEM REPAIR PRO 5.6.16 — SETUP ELEVATION HOTFIX"
           body: |
-            Jedna paczka All-in-One: instalator Setup.exe, wersja przenośna EXE, instrukcja i poprawione źródła.
+            Jedna paczka All-in-One: instalator, program przenośny, instrukcja i źródła. Poprawiono uruchamianie aplikacji administratora po instalacji, wykorzystując ShellExecute zamiast CreateProcess, który zwraca błąd Windows 740. Zachowano poprawkę startu WPF/XAML.
             Przed publikacją przeprowadzono kompilację Windows x64 oraz próbę załadowania XAML zasobów aplikacji.
           files: ${{ env.SYSTEM_REPAIR_BUNDLE }}
           fail_on_unmatched_files: true
