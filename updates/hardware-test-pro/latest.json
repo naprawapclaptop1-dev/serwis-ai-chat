@@ -1,13 +1,13 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.44",
+  "version": "4.3.45",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.44.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.44/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.44.exe",
-  "sha256": "bd1e491a1545d8d1c85915a5298c6bfa88249da56e9f1a911f175865f533cc7a",
-  "size": 102556259,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.45.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.45/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.45.exe",
+  "sha256": "37e386b6e3e43bd53459f1c15d8b75adb7d385baea12d2e26c7ed22b41d02c6d",
+  "size": 102558443,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.44: 125 skórek graficznych (115 nowych), diagnostyka antywirusów i GPU/VRAM, postęp pobierania oraz uruchomienie instalatora z UAC i zamykanie poprzedniej wersji. Instalator Windows x64.",
-  "published_at": "2026-10-14T23:23:30.037Z"
+  "notes": "Wydanie 4.3.45: 125 skórek, podświetlanie ikon oraz aktualna diagnostyka sprzętu. Instalator Windows x64.",
+  "published_at": "2026-10-14T23:48:47.970Z"
 }
