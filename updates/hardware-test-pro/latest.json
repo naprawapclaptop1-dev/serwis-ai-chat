@@ -1,13 +1,13 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.40",
+  "version": "4.3.41",
   "release_ready": false,
   "filename": null,
   "download_url": null,
   "sha256": null,
   "size": 0,
-  "minimum_supported_version": "4.3.40",
-  "notes": "Wydanie 4.3.40 ma wlasny pelny test wzorcow RAM. Manifest publiczny jest aktualny, ale instalator nie zostal jeszcze opublikowany. Publikacja nastapi po zbudowaniu Setup.exe na Windows przez wlasciciela projektu.",
-  "published_at": "2026-10-14T12:17:08.924Z"
+  "minimum_supported_version": "4.3.39",
+  "notes": "Wydanie 4.3.41: rozszerzone wzorce RAM i własny test pamięci tekstur VRAM przez OpenGL. Źródła są przygotowane, ale instalator Windows nie został jeszcze opublikowany. Właściciel musi zbudować Setup.exe przez BUILD_WINDOWS.bat na Windows; skrypt publikuje wydanie po poprawnym logowaniu GitHub CLI.",
+  "published_at": "2026-10-14T14:19:46.981Z"
 }
