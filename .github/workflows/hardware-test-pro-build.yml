@@ -12,7 +12,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: hardware-test-pro-global-release
+  group: hardware-test-pro-global-release-v4-3-44
   cancel-in-progress: true
 
 jobs:
