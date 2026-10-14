@@ -1,73 +1,26 @@
-NAPRAWA PC — HARDWARE TEST PRO 4.3.42
-=====================================
-JEDNA APLIKACJA. Nie instaluje drugiego programu serwisowego.
+NAPRAWA PC HARDWARE TEST PRO 4.3.44
+===================================
 
-NOWOŚCI 4.3.42
---------------
-• Własny test RAM: 26 pełnych przebiegów obejmujących wartości stałe, naprzemienne bajty
-  55/AA, wzorzec adresowy 32-bit, chodzące bity 1/0 oraz sekwencję pseudolosową.
-  Program zapisuje i sprawdza każdy bajt przydzielonego bufora, pokazuje postęp i offset błędu.
-• GPU/VRAM: osobny test pamięci tekstur OpenGL. Przydziela 32–256 MB tekstur w sterowniku,
-  zapisuje 6 wzorców, odczytuje tekstury i porównuje wszystkie bajty. Wyniki zapisywane są
-  w historii i raporcie. Nie jest to pełny test każdej fizycznej komórki VRAM.
-• Telemetria GPU: nie ufa już bezwarunkowo 32-bitowemu polu Win32_VideoController.AdapterRAM,
-  które na kartach z ponad 4 GB potrafi błędnie pokazywać około 4 GB. W takim wypadku pokazuje
-  N/D, dopóki licznik sterownika nie poda wiarygodnej pojemności.
-• Globalny aktualizator HTTPS bez pola URL.
-• Poprawione uruchamianie pobranego instalatora: Windows ShellExecute z czasownikiem UAC `runas`; usunięto ścieżkę CreateProcess/subprocess.Popen, która mogła zwracać błąd 740. Właściciel publikuje instalator przez skrypt
-  PUBLISH_GLOBAL_UPDATE.ps1; klienci nie muszą być w tej samej sieci.
+WERSJA 4.3.44 — 125 SKÓREK + GLOBALNY AKTUALIZATOR
+- 125 skórek graficznych w jednym programie: 10 dotychczasowych i 115 nowych motywów.
+- Wyszukiwarka skórek, podgląd wektorowy dashboardu, zastosowanie całej palety i zapamiętywanie wyboru.
+- Skórki różnią się pełną paletą UI: tło, panele, karty, akcenty, statusy oraz grafika pulpitu.
+- Aktualizator globalny HTTPS pokazuje postęp pobierania, sprawdza rozmiar, SHA-256 i nagłówek PE, a następnie uruchamia instalator przez ShellExecuteW z żądaniem UAC.
+- Instalator ma zamknąć starsze procesy aplikacji przed zastąpieniem wersji i usunąć poprzednie pliki EXE z katalogu instalacji.
+- Utrzymano rozszerzone wykrywanie antywirusów, diagnostykę GPU, rozszerzony test VRAM i testy RAM.
 
-Zawartość
---------
-• CPU — obciążenie etapami, historia próbek zegara i raport.
-• GPU — renderer OpenGL, FPS sceny, dostępna telemetria zegarów/VRAM oraz osobny test pamięci tekstur.
-• RAM — własny programowy test 26 wzorców bufora.
-• SSD/HDD — plik testowy odczytu/zapisu oraz SMART, gdy kontroler udostępnia dane.
-• Matryca — 20 wzorców kolorów, gradienty, siatki, pasy, ruch/smużenie i EDID.
-• Klawiatura i mysz — rejestracja rzeczywistych wejść zgłaszanych przez Windows.
-• Kamera — podgląd; mikrofon — analiza próbki w RAM; głośniki — ton testowy i potwierdzenie słyszalności.
-• Sieć, USB, bezpieczeństwo oraz narzędzia naprawy Windows w tym samym oknie.
-• Raporty, historia wyników i aktualizator globalny.
-• Hotfix 4.3.42: uruchamianie pobranego instalatora przez Windows ShellExecuteW z UAC „runas”, naprawiające ścieżkę powodującą błąd 740.
+BUDOWANIE
+1. Rozpakuj całą paczkę do folderu.
+2. Uruchom SELFTEST_THEMES_UPDATE.bat.
+3. Uruchom BUILD_WINDOWS.bat na Windows 10/11 x64. Kompilacja wymaga Python 3 x64 oraz Inno Setup 6/7; skrypt pobiera wymagane biblioteki Python.
+4. Instalator i EXE są zapisywane w folderze dist.
+5. Aby opublikować wydanie w globalnym kanale z komputera serwisowego, skonfiguruj GitHub CLI (gh auth login), następnie zbuduj i opublikuj instalator. Manifest aktualizacji musi wskazywać rzeczywisty plik Setup.exe i jego SHA-256.
 
-WAŻNE OGRANICZENIA DIAGNOSTYKI
-------------------------------
-RAM: program testuje przydzielony bufor swojego procesu. Działając wewnątrz Windows nie
-może przejąć pamięci używanej przez jądro i inne procesy, więc wynik nie gwarantuje sprawdzenia
-każdej komórki fizycznej RAM.
+AKTUALIZACJE Z INNEGO KOMPUTERA
+- Drugi komputer nie pobiera kodu źródłowego; pobiera opublikowany instalator z manifestu latest.json przez HTTPS.
+- Wersja może być pokazana jako dostępna dopiero wtedy, gdy wydanie i instalator są prawidłowo opublikowane. Jeśli manifest wskazuje starą wersję, najpierw trzeba opublikować nowy instalator.
+- Podczas instalacji Windows może wyświetlić UAC. Nie odrzucaj monitu, jeśli chcesz kontynuować aktualizację.
 
-VRAM: OpenGL sprawdza pamięć tekstur dostępną przez sterownik i porównuje dane odczytane z GPU.
-Sterownik może zarządzać pamięcią lub stronicować zasoby; nie jest to test całej pamięci GPU.
-Nieudana alokacja/nieobsługiwane OpenGL nie oznacza automatycznie uszkodzonej karty.
-
-DANE PRODUCENTA: jeśli sterownik nie udostępnia zegarów, temperatury, ECC lub pojemności VRAM,
-program pokazuje N/D, a nie zmyśloną wartość. FPS to wynik danej sceny, nie gwarantowane maksimum
-każdej gry. Matryca pokazuje wzorce; martwe piksele trzeba obejrzeć wzrokowo. Test audio wymaga
-odsłuchu; kamera wymaga potwierdzenia ostrości.
-
-BUDOWANIE WINDOWS
------------------
-Wymagania: Windows 10/11 x64, Python 3 x64, Internet do pobrania bibliotek oraz Inno Setup 6/7.
-1. Rozpakuj cały ZIP do folderu.
-2. Uruchom BUILD_WINDOWS.bat.
-3. Pliki znajdziesz w DIST:
-   • NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.42.exe
-   • NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.42.exe
-   • NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE.zip
-4. Szczegóły kompilacji są zapisywane w BUILD_4_3_42.log.
-
-AKTUALIZACJA GLOBALNA
----------------------
-Aplikacja sprawdza publiczny manifest HTTPS wbudowany w program. Użytkownik nie wpisuje adresu.
-Wersje 4.3.38 i starsze trzeba raz ręcznie uaktualnić do wydania z globalnym updaterem.
-
-Aby opublikować rzeczywistą aktualizację (komputer serwisowy, nie laptop klienta):
-1. Zbuduj instalator przez BUILD_WINDOWS.bat.
-2. Na komputerze serwisowym skonfiguruj GitHub CLI i wykonaj jednorazowo `gh auth login`.
-3. Dla tego wydania uruchom:
-   .\PUBLISH_GLOBAL_UPDATE.ps1 -Version "4.3.42" -InstallerPath ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.42.exe"
-4. Skrypt umieści instalator w publicznym wydaniu i ustawi latest.json z rozmiarem oraz SHA-256.
-Po publikacji komputery na całym świecie pobierają wydanie przez HTTPS, nie przez LAN.
-
-Bez zbudowanego i opublikowanego instalatora latest.json może odpowiadać, ale nie będzie dostępna
-aktualizacja do pobrania. Nie wbudowano tokenów ani haseł do aplikacji.
+TESTY I GRANICE
+- SELFTEST_THEMES_UPDATE.bat sprawdza liczbę i unikalność skórek, logikę updatera oraz test nazw antywirusów.
+- Zestaw wymaga testów końcowych na prawdziwym Windows. Pomiary GPU/VRAM zależą od sterownika i dostępnej pamięci i nie gwarantują sprawdzenia każdej fizycznej komórki VRAM.

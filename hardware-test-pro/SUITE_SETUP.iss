@@ -1,11 +1,11 @@
 #ifndef AppVersion
-  #define AppVersion "4.3.42"
+  #define AppVersion "4.3.44"
 #endif
 #ifndef SourceDir
   #define SourceDir "dist"
 #endif
 #define AppName "NAPRAWA PC HARDWARE TEST PRO"
-#define ExeName "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.42.exe"
+#define ExeName "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.44.exe"
 
 [Setup]
 AppId={{BC4F6B0C-0B6A-43FD-91E8-68FE0D2B9512}
@@ -34,6 +34,10 @@ Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Utworz ikone programu na pulpicie"; GroupDescription: "Dodatkowe ikony:"; Flags: unchecked
 
+[InstallDelete]
+; After terminating the old app, remove previous versioned executables before copying the current one.
+Type: files; Name: "{app}\NAPRAWA-PC-HARDWARE-TEST-PRO-*.exe"
+
 [Files]
 Source: "{#SourceDir}\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README_PL.txt"; DestDir: "{app}"; Flags: ignoreversion
@@ -44,3 +48,20 @@ Name: "{autodesktop}\NAPRAWA PC HARDWARE TEST PRO"; Filename: "{app}\{#ExeName}"
 
 [Run]
 Filename: "{app}\{#ExeName}"; Description: "Uruchom NAPRAWA PC HARDWARE TEST PRO"; Flags: postinstall nowait skipifsilent
+
+
+[Code]
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ResultCode: Integer;
+begin
+  Result := '';
+  { The executable has a versioned filename, so restart-manager matching alone does not catch older versions. }
+  if FileExists(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe')) then
+  begin
+    Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      '-NoProfile -ExecutionPolicy Bypass -Command "Get-Process | Where-Object { $_.ProcessName -match ''^NAPRAWA-PC-HARDWARE-TEST-PRO(-[0-9.]+)?$'' } | Stop-Process -Force -ErrorAction SilentlyContinue"',
+      '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+    Sleep(600);
+  end;
+end;

@@ -1,13 +1,13 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.42",
+  "version": "4.3.44",
   "release_ready": false,
   "filename": null,
   "download_url": null,
   "sha256": null,
   "size": 0,
   "minimum_supported_version": "4.3.39",
-  "notes": "Globalny kanał HTTPS jest dostępny. Instalator 4.3.42 nie został jeszcze zbudowany/opublikowany; wykonaj BUILD_WINDOWS.bat i PUBLISH_GLOBAL_UPDATE.ps1 na Windows.",
+  "notes": "125 skórek graficznych (115 nowych), aktualizator z postępem, weryfikacją SHA-256 i instalatorem zamykającym starszą wersję. Manifest zostaje oznaczony release_ready=true dopiero po zbudowaniu i opublikowaniu instalatora.",
   "published_at": null
 }
