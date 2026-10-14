@@ -5,9 +5,9 @@
   "release_ready": true,
   "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.44.exe",
   "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.44/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.44.exe",
-  "sha256": "27f00c44844d3c12e10ee002efd715399856ca514cb9cb7cbb43a15b8e9f4ecb",
-  "size": 102554609,
+  "sha256": "bd1e491a1545d8d1c85915a5298c6bfa88249da56e9f1a911f175865f533cc7a",
+  "size": 102556259,
   "minimum_supported_version": "4.3.39",
   "notes": "Wydanie 4.3.44: 125 skórek graficznych (115 nowych), diagnostyka antywirusów i GPU/VRAM, postęp pobierania oraz uruchomienie instalatora z UAC i zamykanie poprzedniej wersji. Instalator Windows x64.",
-  "published_at": "2026-10-14T23:16:18.662Z"
+  "published_at": "2026-10-14T23:23:30.037Z"
 }
