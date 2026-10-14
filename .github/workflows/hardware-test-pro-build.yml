@@ -96,7 +96,14 @@ jobs:
           $size = (Get-Item -LiteralPath $installer).Length
           "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Compress-Archive -Path @(".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe", ".\README_PL.txt", ".\app.ico") -DestinationPath (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.41.zip") -Force
+          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.41.zip"
+          if (Test-Path $bundle) { Remove-Item $bundle -Force }
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-4.3.41.exe"), ".\README_PL.txt", ".\app.ico") -DestinationPath $bundle -CompressionLevel Optimal
+          if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
+          $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          $bundleSize = (Get-Item -LiteralPath $bundle).Length
+          "BUNDLE_SHA256=$bundleHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "BUNDLE_SIZE=$bundleSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Publish release assets
         if: github.ref == 'refs/heads/main'
@@ -109,12 +116,33 @@ jobs:
             Wydanie Windows x64. Instalator został zbudowany po testach źródeł i sprawdzeniu pliku Setup.exe.
           files: |
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.41.exe
-            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.41.zip
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.41.zip
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove obsolete separate portable ZIP from release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = "hardware-test-pro-v" + process.env.APP_VERSION;
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: tag
+            });
+            for (const asset of release.assets) {
+              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-4.3.41.zip") {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
+            }
 
       - name: Publish update manifest only after successful release
         if: github.ref == 'refs/heads/main'
