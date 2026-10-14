@@ -50,7 +50,7 @@ jobs:
           }
           if (!(Test-Path ".\NaprawaPC_Hardware_Test_PRO.pyw") -or !(Test-Path ".\ui_reference.png") -or !(Test-Path ".\app_icon.png") -or !(Test-Path ".\app.ico")) { throw "Source/artwork restoration failed." }
 
-      - name: Prepare version, themes and icon hover effects
+      - name: Prepare version, 125 themes and icon hover effects
         id: prepare
         shell: pwsh
         run: |
@@ -91,8 +91,8 @@ jobs:
         shell: pwsh
         run: |
           Set-Location "${{ github.workspace }}\hardware-test-pro"
---name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION"
-if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"))
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")) { throw "PyInstaller did not create the EXE." }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -120,9 +120,9 @@ if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"))
           "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "size=$size" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-$bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
+          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
           if (Test-Path $bundle) { Remove-Item $bundle -Force }
-(Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\app.ico") -DestinationPath $bundle -CompressionLevel Optimal
           if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
           $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           $bundleSize = (Get-Item -LiteralPath $bundle).Length
@@ -159,7 +159,7 @@ $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERS
               tag: tag
             });
             for (const asset of release.assets) {
-              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-" + process.env.APP_VERSION + ".zip")
+              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-" + process.env.APP_VERSION + ".zip") {
                 await github.rest.repos.deleteReleaseAsset({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -194,7 +194,7 @@ $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERS
               sha256: process.env.INSTALLER_SHA256,
               size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": automatyczne wydanie aktualnego kodu, 125 skórek, efekty podświetlania ikon oraz aktualna diagnostyka sprzętu. Instalator Windows x64."
+              notes: "Wydanie " + version + ": 125 skórek, podświetlanie ikon oraz aktualna diagnostyka sprzętu. Instalator Windows x64.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
