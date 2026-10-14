@@ -177,6 +177,7 @@ $setup=[regex]::Replace($setup,'(?m)^(\s*#define ExeName\s+"NAPRAWA-PC-HARDWARE-
 $nl=[Environment]::NewLine
 [IO.File]::AppendAllText($env:GITHUB_ENV,("APP_VERSION=$next"+$nl+"SETUP_FILENAME=$setupName"+$nl),[Text.UTF8Encoding]::new($false))
 [IO.File]::AppendAllText($env:GITHUB_OUTPUT,("app_version=$next"+$nl+"setup_filename=$setupName"+$nl),[Text.UTF8Encoding]::new($false))
+Write-Host "AUTO_RELEASE_VERSION=$next"
 Write-Host "NEXT_VERSION=$next"
 Write-Host "THEMES=125 (115 added)"
 Write-Host "HOVER_GLOW=patched"
