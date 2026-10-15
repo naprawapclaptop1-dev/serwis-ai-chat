@@ -1195,6 +1195,7 @@ import urllib.request as _u56_request
 import urllib.error as _u56_urlerror
 import webbrowser as _u56_webbrowser
 import statistics as _u56_statistics
+from datetime import timezone as _u56_timezone
 import subprocess as _u56_subprocess
 import re as _u56_re
 import os as _u56_os
@@ -1489,8 +1490,8 @@ def _u56_check_global_update(self, silent=True, *args, **kwargs):
                 raw = marker.read_text(encoding="utf-8", errors="replace").strip().replace("Z", "+00:00")
                 until = datetime.fromisoformat(raw)
                 if until.tzinfo is None:
-                    until = until.replace(tzinfo=timezone.utc)
-                if until > datetime.now(timezone.utc):
+                    until = until.replace(tzinfo=_u56_timezone.utc)
+                if until > datetime.now(_u56_timezone.utc):
                     note = "Automatyczna aktualizacja wstrzymana po przywróceniu poprzedniej wersji do {0:%Y-%m-%d %H:%M} UTC. Możesz ręcznie sprawdzić aktualizacje.".format(until)
                     try: self._u39_set_update_status(note)
                     except Exception: pass
