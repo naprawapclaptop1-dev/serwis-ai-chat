@@ -154,7 +154,7 @@ jobs:
           if (!(Test-Path $csc)) { throw "Nie znaleziono kompilatora .NET Framework C# (csc.exe): $csc" }
           $bootstrapName = "NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-$env:APP_VERSION.exe"
           $bootstrapPath = Join-Path (Resolve-Path ".\dist").Path $bootstrapName
-          & $csc /nologo /target:winexe /optimize+ /codepage:65001 "/out:$bootstrapPath" "/win32manifest:$(Join-Path (Get-Location) 'update-bootstrap\app.manifest')" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll ".\update-bootstrap\Program.cs" $configPath
+          & $csc /nologo /target:winexe /optimize+ /codepage:65001 "/out:$bootstrapPath" "/win32manifest:$(Join-Path (Get-Location) 'update-bootstrap\app.manifest')" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/resource:.\ui_reference.png,DiagnosticArtwork" ".\update-bootstrap\Program.cs" $configPath
           if ($LASTEXITCODE -ne 0) { throw "Kompilacja pomocnika aktualizacji nie powiodła się: $LASTEXITCODE" }
           if (!(Test-Path $bootstrapPath) -or (Get-Item $bootstrapPath).Length -lt 10KB) { throw "Plik pomocnika aktualizacji jest nieprawidłowy lub niekompletny." }
           $bootstrapHead = [IO.File]::ReadAllBytes($bootstrapPath)
