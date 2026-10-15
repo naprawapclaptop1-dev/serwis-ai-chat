@@ -827,6 +827,363 @@ $main = '(?m)^if __name__ == "__main__":'
         return $hover + [Environment]::NewLine + $m.Value
     },1)
 }
+# _U55_INTEGRATED_SERVICE_REPAIR_CENTER — add service and Windows repair workspace to the existing Hardware Test PRO UI.
+if (!$src.Contains("# _U55_INTEGRATED_SERVICE_REPAIR_CENTER")) {
+$integration = @'
+# _U55_INTEGRATED_SERVICE_REPAIR_CENTER
+import base64 as _u55_base64
+import hashlib as _u55_hashlib
+import hmac as _u55_hmac
+import json as _u55_json
+import uuid as _u55_uuid
+from tkinter import simpledialog as _u55_simpledialog
+try:
+    from cryptography.fernet import Fernet as _u55_Fernet
+    from cryptography.hazmat.primitives import hashes as _u55_hashes
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as _u55_PBKDF2HMAC
+except Exception:
+    _u55_Fernet = _u55_hashes = _u55_PBKDF2HMAC = None
+
+# Only a salted PBKDF2 verifier is embedded. The password is never stored in clear text.
+_U55_AUTH_SALT_HEX = "ed3d25b1b698c7a0f6aacf6c26be9010"
+_U55_AUTH_VERIFIER_HEX = "6d7bb55afdd8df9fccbaffe909b27a427654a54686afd7f87494709c159094d7"
+_U55_STORE_SALT_HEX = "4ba031ee5be9863b484ba928153aab0e"
+_U55_PBKDF2_ITERATIONS = 600000
+
+def _u55_ticket_path():
+    root = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "NaprawaPC" / "PrivateServiceData"
+    return root / "zgloszenia.npcdata"
+
+def _u55_verify_service_password(password):
+    actual = _u55_hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), bytes.fromhex(_U55_AUTH_SALT_HEX), _U55_PBKDF2_ITERATIONS, dklen=32)
+    return _u55_hmac.compare_digest(actual, bytes.fromhex(_U55_AUTH_VERIFIER_HEX))
+
+def _u55_derive_service_key(password):
+    if _u55_Fernet is None or _u55_PBKDF2HMAC is None or _u55_hashes is None:
+        raise RuntimeError("Brakuje modułu szyfrowania cryptography. Zbuduj aplikację ponownie z pełnymi zależnościami.")
+    kdf = _u55_PBKDF2HMAC(algorithm=_u55_hashes.SHA256(), length=32, salt=bytes.fromhex(_U55_STORE_SALT_HEX), iterations=_U55_PBKDF2_ITERATIONS)
+    return _u55_base64.urlsafe_b64encode(kdf.derive(str(password).encode("utf-8")))
+
+def _u55_load_tickets(self):
+    key = getattr(self, "_u55_service_key", None)
+    if not key:
+        raise PermissionError("Panel zgłoszeń jest zablokowany.")
+    path = _u55_ticket_path()
+    if not path.exists():
+        return []
+    try:
+        raw = _u55_Fernet(key).decrypt(path.read_bytes())
+        value = _u55_json.loads(raw.decode("utf-8"))
+        return value if isinstance(value, list) else []
+    except Exception as exc:
+        raise RuntimeError("Nie można odszyfrować pliku zgłoszeń. Hasło może być nieprawidłowe albo plik został uszkodzony.") from exc
+
+def _u55_save_tickets(self, items):
+    key = getattr(self, "_u55_service_key", None)
+    if not key:
+        raise PermissionError("Panel zgłoszeń jest zablokowany.")
+    path = _u55_ticket_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encrypted = _u55_Fernet(key).encrypt(_u55_json.dumps(items, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+    temp = path.with_name(path.name + "." + _u55_uuid.uuid4().hex + ".tmp")
+    try:
+        with open(temp, "xb") as stream:
+            stream.write(encrypted)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp, path)
+    finally:
+        try:
+            temp.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+def _u55_render_private_tickets(self, parent):
+    for child in parent.winfo_children():
+        child.destroy()
+    t = self.colors()
+    key = getattr(self, "_u55_service_key", None)
+    if not key:
+        panel = self.panel(parent); panel.pack(fill="x", padx=12, pady=12)
+        tk.Label(panel, text="PRYWATNE ZGŁOSZENIA SERWISOWE", bg=t["panel"], fg=t["accent"], font=self.fnt(13,"bold")).pack(anchor="w", padx=14, pady=(14,4))
+        tk.Label(panel, text="Panel jest zabezpieczony hasłem. Zgłoszenia są szyfrowane lokalnie i nie są wysyłane do Internetu.", bg=t["panel"], fg=t["fg"], wraplength=1050, justify="left", font=self.fnt(9)).pack(anchor="w", padx=14, pady=4)
+        tk.Label(panel, text="Dane są przechowywane w profilu bieżącego użytkownika Windows.", bg=t["panel"], fg=t["muted"], font=self.fnt(8)).pack(anchor="w", padx=14, pady=4)
+        self.make_button(panel, "ODBLOKUJ PANEL ZGŁOSZEŃ", lambda:_u55_unlock_service_tickets(self, parent), "accent", side="left", ipady=8)
+        return
+    try:
+        items = _u55_load_tickets(self)
+    except Exception as exc:
+        messagebox.showerror("Prywatne zgłoszenia", str(exc), parent=self)
+        self._u55_service_key = None
+        _u55_render_private_tickets(self, parent)
+        return
+    t = self.colors()
+    top = tk.Frame(parent, bg=t["bg"]); top.pack(fill="x", padx=8, pady=(8,2))
+    tk.Label(top, text="PRYWATNE ZGŁOSZENIA SERWISOWE", bg=t["bg"], fg=t["accent"], font=self.fnt(12,"bold")).pack(side="left", anchor="w")
+    self.make_button(top, "WYLOGUJ", lambda:_u55_logout_service_tickets(self, parent), "card", side="right", ipady=5)
+    form = self.panel(parent); form.pack(fill="x", padx=8, pady=5)
+    labels = ("Tytuł zgłoszenia", "Klient", "Komputer / laptop", "Kontakt")
+    vars_ = []
+    row = tk.Frame(form, bg=t["panel"]); row.pack(fill="x", padx=8, pady=5)
+    for label in labels:
+        cell = tk.Frame(row, bg=t["panel"]); cell.pack(side="left", fill="x", expand=True, padx=4)
+        tk.Label(cell, text=label, bg=t["panel"], fg=t["muted"], font=self.fnt(8)).pack(anchor="w")
+        var = tk.StringVar(value="")
+        tk.Entry(cell, textvariable=var, bg=t["card"], fg=t["fg"], insertbackground=t["fg"], relief="flat", font=self.fnt(9)).pack(fill="x", ipady=6)
+        vars_.append(var)
+    tk.Label(form, text="Opis usterki / ustaleń", bg=t["panel"], fg=t["muted"], font=self.fnt(8)).pack(anchor="w", padx=12, pady=(4,1))
+    desc = tk.Text(form, height=3, bg=t["card"], fg=t["fg"], insertbackground=t["fg"], relief="flat", font=self.fnt(9), wrap="word")
+    desc.pack(fill="x", padx=12, pady=(0,6))
+    table_wrap = self.panel(parent); table_wrap.pack(fill="both", expand=True, padx=8, pady=5)
+    columns = ("created", "title", "device", "customer", "status")
+    tree = ttk.Treeview(table_wrap, columns=columns, show="headings", height=8)
+    for col, title, width in (("created","Data",145),("title","Zgłoszenie",270),("device","Urządzenie",230),("customer","Klient",180),("status","Status",150)):
+        tree.heading(col, text=title); tree.column(col, width=width, anchor="w")
+    scroll = ttk.Scrollbar(table_wrap, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scroll.set)
+    tree.pack(side="left", fill="both", expand=True, padx=(6,0), pady=6); scroll.pack(side="right", fill="y", padx=(0,6), pady=6)
+    self._u55_ticket_tree = tree
+    def refresh():
+        tree.delete(*tree.get_children())
+        for item in reversed(_u55_load_tickets(self)):
+            tree.insert("", "end", iid=str(item.get("id","")), values=(item.get("created",""),item.get("title",""),item.get("device",""),item.get("customer",""),item.get("status","Nowe")))
+    def save_ticket():
+        title = vars_[0].get().strip()
+        device = vars_[2].get().strip()
+        description = desc.get("1.0","end").strip()
+        if not title or not device or not description:
+            messagebox.showwarning("Zgłoszenie", "Uzupełnij tytuł, urządzenie oraz opis usterki.", parent=self); return
+        all_items = _u55_load_tickets(self)
+        all_items.insert(0, {"id":_u55_uuid.uuid4().hex,"created":datetime.now().strftime("%Y-%m-%d %H:%M"),"title":title,"customer":vars_[1].get().strip(),"device":device,"contact":vars_[3].get().strip(),"description":description,"status":"Nowe"})
+        _u55_save_tickets(self, all_items)
+        for var in vars_: var.set("")
+        desc.delete("1.0","end"); refresh()
+        self.queue_log("SERWIS ULTIMATE: zapisano prywatne zgłoszenie (szyfrowane).")
+    def change_status():
+        selected = tree.selection()
+        if not selected: return
+        items = _u55_load_tickets(self)
+        target = next((item for item in items if str(item.get("id")) == str(selected[0])), None)
+        if not target: return
+        choice = _u55_simpledialog.askstring("Status zgłoszenia", "Podaj nowy status (Nowe / W toku / Oczekuje / Zakończone):", initialvalue=target.get("status","Nowe"), parent=self)
+        allowed = {"Nowe","W toku","Oczekuje","Zakończone"}
+        if choice is None: return
+        choice = choice.strip().title()
+        if choice not in allowed:
+            messagebox.showwarning("Status", "Dostępne statusy: Nowe, W toku, Oczekuje, Zakończone.", parent=self); return
+        target["status"] = choice
+        _u55_save_tickets(self, items); refresh()
+    def delete_ticket():
+        selected = tree.selection()
+        if not selected: return
+        if not messagebox.askyesno("Usuń zgłoszenie", "Usunąć wybrane prywatne zgłoszenie?", parent=self): return
+        all_items = [item for item in _u55_load_tickets(self) if str(item.get("id")) != str(selected[0])]
+        _u55_save_tickets(self, all_items); refresh()
+    actions = tk.Frame(form, bg=t["panel"]); actions.pack(fill="x", padx=8, pady=4)
+    self.make_button(actions, "ZAPISZ ZGŁOSZENIE", save_ticket, "accent", side="left", ipady=5)
+    self.make_button(actions, "ZMIEN STATUS", change_status, "card", side="left", ipady=5)
+    self.make_button(actions, "USUŃ ZGŁOSZENIE", delete_ticket, "bad", side="left", ipady=5)
+    refresh()
+
+def _u55_unlock_service_tickets(self, parent):
+    password = _u55_simpledialog.askstring("Autoryzacja serwisanta", "Podaj hasło do prywatnych zgłoszeń:", show="*", parent=self)
+    if password is None:
+        return
+    if not _u55_verify_service_password(password):
+        messagebox.showerror("Autoryzacja", "Nieprawidłowe hasło.", parent=self)
+        self.queue_log("SERWIS ULTIMATE: odmowa dostępu do prywatnych zgłoszeń.")
+        return
+    try:
+        self._u55_service_key = _u55_derive_service_key(password)
+    except Exception as exc:
+        messagebox.showerror("Szyfrowanie zgłoszeń", str(exc), parent=self); return
+    _u55_render_private_tickets(self, parent)
+    self.queue_log("SERWIS ULTIMATE: odblokowano prywatne zgłoszenia.")
+
+def _u55_logout_service_tickets(self, parent):
+    self._u55_service_key = None
+    _u55_render_private_tickets(self, parent)
+    self.queue_log("SERWIS ULTIMATE: wylogowano z prywatnych zgłoszeń.")
+
+def _u55_run_repair(self, label, exe, args=(), timeout=3600):
+    def job():
+        if not is_windows():
+            self.queue_log(f"{label}: ta operacja jest dostępna tylko w Windows."); return
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "_", str(label))[:48] or "naprawa"
+        roots = [Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "NaprawaPC" / "RepairReports", Path(tempfile.gettempdir()) / "NaprawaPC" / "RepairReports"]
+        report_root = None
+        for candidate in roots:
+            try:
+                candidate.mkdir(parents=True, exist_ok=True)
+                probe = candidate / ("probe-" + _u55_uuid.uuid4().hex + ".tmp")
+                with open(probe, "xb") as stream: stream.write(b"ok")
+                probe.unlink()
+                report_root = candidate
+                break
+            except Exception:
+                try: probe.unlink(missing_ok=True)
+                except Exception: pass
+        if report_root is None:
+            self.queue_log(f"{label}: brak zapisywalnego folderu raportów."); return
+        token = datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + _u55_uuid.uuid4().hex[:6]
+        report = report_root / f"{token}-{safe}.log"
+        if not is_admin():
+            script = report_root / f"{token}-{safe}.ps1"
+            status = report_root / f"{token}-{safe}.status"
+            stdout = report_root / f"{token}-{safe}.out.txt"
+            stderr = report_root / f"{token}-{safe}.err.txt"
+            def q(value): return "'" + str(value).replace("'","''") + "'"
+            arr = ",".join(q(x) for x in list(args))
+            script_text = (
+                "$ErrorActionPreference='Stop'\n"
+                f"$exe={q(exe)}\n$args=@({arr})\n"
+                f"$stdout={q(stdout)}\n$stderr={q(stderr)}\n$status={q(status)}\n$report={q(report)}\n"
+                "try { $p=Start-Process -FilePath $exe -ArgumentList $args -PassThru -Wait -RedirectStandardOutput $stdout -RedirectStandardError $stderr; "
+                "$out='';$err='';if(Test-Path -LiteralPath $stdout){$out=Get-Content -LiteralPath $stdout -Raw};if(Test-Path -LiteralPath $stderr){$err=Get-Content -LiteralPath $stderr -Raw}; "
+                "('NARZĘDZIE='+$exe+[Environment]::NewLine+'ARGUMENTY='+($args -join ' ')+[Environment]::NewLine+'KOD='+$p.ExitCode+[Environment]::NewLine+$out+[Environment]::NewLine+$err) | Set-Content -LiteralPath $report -Encoding UTF8; "
+                "('DONE='+$p.ExitCode) | Set-Content -LiteralPath $status -Encoding UTF8 } "
+                "catch { ('ERROR='+$_.Exception.Message) | Set-Content -LiteralPath $report -Encoding UTF8; 'DONE=1' | Set-Content -LiteralPath $status -Encoding UTF8; exit 1 }\n"
+            )
+            script.write_text(script_text, encoding="utf-8-sig")
+            powershell = Path(os.environ.get("WINDIR",r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+            if not powershell.is_file():
+                self.queue_log(f"{label}: nie znaleziono Windows PowerShell."); return
+            try:
+                import ctypes as _u55_ctypes
+                result = _u55_ctypes.windll.shell32.ShellExecuteW(None,"runas",str(powershell),f'-NoProfile -ExecutionPolicy Bypass -File "{script}"',str(report_root),0)
+                if int(result or 0) <= 32:
+                    self.queue_log(f"{label}: nie uruchomiono podwyższonego procesu (ShellExecuteW={result}); być może anulowano UAC."); return
+            except Exception as exc:
+                self.queue_log(f"{label}: nie udało się wyświetlić UAC: {type(exc).__name__}: {exc}"); return
+            deadline = time.monotonic() + max(30, int(timeout))
+            while time.monotonic() < deadline and not status.exists():
+                time.sleep(0.75)
+            if not status.exists():
+                self.queue_log(f"{label}: przekroczono limit czasu. Raport: {report}")
+                return
+            try: status_text = status.read_text(encoding="utf-8",errors="replace").strip()
+            except Exception: status_text = "DONE=?"
+            try: output = report.read_text(encoding="utf-8",errors="replace")[-12000:]
+            except Exception: output = status_text
+            self.queue_log(f"{label}: zakończono ({status_text}). Raport: {report}")
+            self.queue_log(output or "Narzędzie nie zwróciło tekstowego wyniku.")
+        else:
+            self.queue_log(f"{label}: START")
+            out, err, rc = run_process([str(exe)] + list(args), timeout)
+            output = (out or "") + ("\n" + err if err else "")
+            try: report.write_text(f"NARZĘDZIE={exe}\nARGUMENTY={' '.join(args)}\nKOD={rc}\n\n{output}",encoding="utf-8",errors="replace")
+            except Exception: pass
+            self.queue_log(f"{label}: kod {rc}. Raport: {report}")
+            self.queue_log(output[-12000:] if output else "Narzędzie nie zwróciło tekstowego wyniku.")
+        self.queue_action(lambda:self._u39_set_update_status("Gotowe — zakończono: "+label) if hasattr(self,"_u39_set_update_status") else None)
+    try:
+        self.worker(job)
+    except Exception as exc:
+        messagebox.showerror("Naprawa Windows", f"{label}: {type(exc).__name__}: {exc}", parent=self)
+
+def _u55_open_windows_tool(self, target):
+    try:
+        if str(target).startswith(("ms-settings:","windowsdefender:")):
+            os.startfile(target)
+        else:
+            subprocess.Popen(str(target), shell=True, creationflags=getattr(subprocess,"CREATE_NO_WINDOW",0))
+        self.queue_log("Narzędzie systemowe: " + str(target))
+    except Exception as exc:
+        messagebox.showerror("Narzędzia Windows", f"Nie udało się uruchomić {target}: {exc}", parent=self)
+
+def _u55_show_service_center(self):
+    self.current_view = "SERVICE_CENTER"
+    self.clear()
+    t = self.colors()
+    self.header_title.config(text="CENTRUM SERWISU ULTIMATE + SYSTEM REPAIR PRO")
+    top = self.panel(self.content); top.pack(fill="x", padx=10, pady=(8,6))
+    tk.Label(top, text="NAPRAWA PC — CENTRUM SERWISU I NAPRAW", bg=t["panel"], fg=t["accent"], font=self.fnt(14,"bold")).pack(anchor="w", padx=14, pady=(10,3))
+    tk.Label(top, text="Diagnostyka sprzętu, narzędzia Windows i prywatne zgłoszenia serwisowe. Zgłoszenia są szyfrowane lokalnie.", bg=t["panel"], fg=t["muted"], font=self.fnt(9), wraplength=1250, justify="left").pack(anchor="w", padx=14, pady=(0,8))
+    notebook = ttk.Notebook(self.content)
+    notebook.pack(fill="both", expand=True, padx=10, pady=(0,8))
+    service = tk.Frame(notebook, bg=t["bg"])
+    repair = tk.Frame(notebook, bg=t["bg"])
+    tickets = tk.Frame(notebook, bg=t["bg"])
+    tools = tk.Frame(notebook, bg=t["bg"])
+    notebook.add(service, text="SERWIS ULTIMATE")
+    notebook.add(repair, text="SYSTEM REPAIR PRO")
+    notebook.add(tickets, text="ZGŁOSZENIA PRYWATNE")
+    notebook.add(tools, text="NARZĘDZIA SERWISOWE")
+    def add_row(parent):
+        row = tk.Frame(parent, bg=t["bg"]); row.pack(fill="x", padx=12, pady=4); return row
+    def add_btn(row, caption, action, kind="accent"):
+        self.make_button(row, caption, action, kind, side="left", ipady=6)
+    sp = self.panel(service); sp.pack(fill="x", padx=10, pady=8)
+    tk.Label(sp, text="SZYBKIE TESTY I DIAGNOSTYKA", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
+    for labels in [
+        [("CPU / PROCESOR",lambda:self.show_module("CPU")),("GPU / VRAM",lambda:self.show_module("GPU")),("RAM",lambda:self.show_module("RAM")),("SSD / HDD",lambda:self.show_module("DYSK"))],
+        [("MATRYCA",lambda:self.show_module("EKRAN")),("BATERIA",self.show_battery),("BEZPIECZEŃSTWO",lambda:self.show_module("SECURITY")),("PEŁNY RAPORT",self.show_report)],
+        [("ODŚWIEŻ SPRZĘT",self.refresh_hardware_async),("PEŁNA DIAGNOSTYKA",self.full_test),("RAPORT BATERII",lambda:_u55_run_repair(self,"Raport baterii","powercfg.exe",["/batteryreport","/output",str(_u55_ticket_path().parent/"battery-report.html")],120))]
+    ]:
+        row=add_row(sp)
+        for caption,action in labels: add_btn(row,caption,action)
+    rp = self.panel(repair); rp.pack(fill="x", padx=10, pady=8)
+    tk.Label(rp, text="NAPRAWA SYSTEMU WINDOWS — OPERACJE MOGĄ WYŚWIETLIĆ MONIT UAC", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
+    repair_rows = [
+        [("SFC /SCANNOW",lambda:_u55_run_repair(self,"SFC","sfc.exe",["/scannow"])),("DISM /CHECKHEALTH",lambda:_u55_run_repair(self,"DISM CheckHealth","DISM.exe",["/Online","/Cleanup-Image","/CheckHealth"])),("DISM /SCANHEALTH",lambda:_u55_run_repair(self,"DISM ScanHealth","DISM.exe",["/Online","/Cleanup-Image","/ScanHealth"]))],
+        [("DISM /RESTOREHEALTH",lambda:_u55_run_repair(self,"DISM RestoreHealth","DISM.exe",["/Online","/Cleanup-Image","/RestoreHealth"],5400)),("CHKDSK /SCAN",lambda:_u55_run_repair(self,"CHKDSK","chkdsk.exe",[os.environ.get("SystemDrive","C:"),"/scan"],1800)),("ODŚWIEŻ DNS",lambda:_u55_run_repair(self,"Flush DNS","ipconfig.exe",["/flushdns"],120))],
+        [("RESET WINSOCK",lambda:_u55_run_repair(self,"Winsock reset","netsh.exe",["winsock","reset"],120)),("RAPORT BATERII",lambda:_u55_run_repair(self,"Raport baterii","powercfg.exe",["/batteryreport","/output",str(_u55_ticket_path().parent/"battery-report.html")],120)),("WINDOWS UPDATE",lambda:_u55_open_windows_tool(self,"ms-settings:windowsupdate"))],
+        [("ZABEZPIECZENIA WINDOWS",lambda:_u55_open_windows_tool(self,"windowsdefender:")),("PODGLĄD ZDARZEŃ",lambda:_u55_open_windows_tool(self,"eventvwr.msc")),("MONITOR NIEZAWODNOŚCI",lambda:_u55_open_windows_tool(self,"perfmon /rel"))],
+    ]
+    for specs in repair_rows:
+        row=add_row(rp)
+        for caption,action in specs: add_btn(row,caption,action,"card" if "UPDATE" in caption or "ZABEZPIECZENIA" in caption else "accent")
+    tp = self.panel(tools); tp.pack(fill="x", padx=10, pady=8)
+    tk.Label(tp, text="DIAGNOSTYKA I NARZĘDZIA SYSTEMOWE", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
+    for specs in [
+        [("MENEDŻER URZĄDZEŃ","devmgmt.msc"),("ZARZĄDZANIE DYSKAMI","diskmgmt.msc"),("USŁUGI WINDOWS","services.msc")],
+        [("INFORMACJE O SYSTEMIE","msinfo32.exe"),("MONITOR ZASOBÓW","resmon.exe"),("MENEDŻER ZADAŃ","taskmgr.exe")],
+        [("HARMONOGRAM ZADAŃ","taskschd.msc"),("OCZYSZCZANIE DYSKU","cleanmgr.exe"),("MONITOR WYDAJNOŚCI","perfmon.exe")],
+    ]:
+        row=add_row(tp)
+        for caption,target in specs: add_btn(row,caption,lambda target=target:_u55_open_windows_tool(self,target),"card")
+    _u55_render_private_tickets(self, tickets)
+    back = tk.Frame(self.content, bg=t["bg"]); back.pack(fill="x", padx=10, pady=(0,8))
+    self.make_button(back, "← POWRÓT DO PULPITU", self.show_dashboard, "card", side="left", ipady=6)
+
+AppV43.show_service_center = _u55_show_service_center
+
+def _u55_selftest_service_center():
+    assert callable(AppV43.show_service_center)
+    assert callable(_u55_verify_service_password) and callable(_u55_derive_service_key)
+    assert len(bytes.fromhex(_U55_AUTH_SALT_HEX)) == 16
+    assert len(bytes.fromhex(_U55_AUTH_VERIFIER_HEX)) == 32
+    assert len(bytes.fromhex(_U55_STORE_SALT_HEX)) == 16
+    assert _U55_PBKDF2_ITERATIONS >= 600000
+    assert _u55_Fernet is not None and _u55_PBKDF2HMAC is not None, "cryptography must be installed in the build environment"
+    key = _u55_derive_service_key("service-center-selftest-only")
+    token = _u55_Fernet(key).encrypt(b'{"selftest":true}')
+    assert _u55_Fernet(key).decrypt(token) == b'{"selftest":true}'
+    assert _u55_ticket_path().name == "zgloszenia.npcdata"
+    assert "_U55_INTEGRATED_SERVICE_REPAIR_CENTER" in globals() or callable(AppV43.show_service_center)
+    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: service UI, private tickets encryption, PBKDF2 verifier, repair tooling")
+if __name__ == "__main__" and "--selftest-service-center" in sys.argv:
+    try:
+        _u55_selftest_service_center()
+        raise SystemExit(0)
+    except Exception as _u55_exc:
+        print("SERVICE_REPAIR_CENTER_SELFTEST_FAILED:", type(_u55_exc).__name__, str(_u55_exc))
+        raise SystemExit(1)
+'@
+$hubButton = '        self.make_button(p,"← PULPIT",self.show_dashboard,"card",side="left",ipady=8)'
+if (!$src.Contains($hubButton)) { throw "Nie znaleziono przycisku pulpitu w show_tests_hub; integracja przerwana bez zapisania źródła." }
+if (!$src.Contains('self.make_button(p,"CENTRUM SERWISU / NAPRAWA PRO",self.show_service_center,"accent",side="left",ipady=8)')) {
+    $src = $src.Replace($hubButton, $hubButton + [Environment]::NewLine + '        self.make_button(p,"CENTRUM SERWISU / NAPRAWA PRO",self.show_service_center,"accent",side="left",ipady=8)')
+}
+$mainPattern = '(?m)^if __name__ == "__main__":'
+if ($src -notmatch $mainPattern) { throw "Nie znaleziono punktu wejścia aplikacji do dołączenia centrum serwisu." }
+$src = [regex]::Replace($src,$mainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $integration + [Environment]::NewLine + $m.Value
+},1)
+}
+if (!$src.Contains("_U55_INTEGRATED_SERVICE_REPAIR_CENTER") -or !$src.Contains("SERVICE_REPAIR_CENTER_SELFTEST_OK") -or !$src.Contains("self.show_service_center")) { throw "Integracja Serwis Ultimate / System Repair PRO nie została prawidłowo dołączona." }
+
 if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW")) { throw "Theme/hover patch verification failed." }
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
