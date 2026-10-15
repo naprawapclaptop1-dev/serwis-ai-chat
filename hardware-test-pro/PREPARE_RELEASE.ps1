@@ -185,6 +185,7 @@ def _u443_selftest_themes():
 def _u443_selftest_dispatch(flag):
     if flag=="--selftest-themes":
         _u443_selftest_themes()
+        _u445_selftest_skins()
     elif flag=="--selftest-antivirus":
         result=_u37_get_defender_status() if "_u37_get_defender_status" in globals() else _v4326_get_defender_status()
         assert isinstance(result,dict) and "DetectionAvailable" in result
@@ -202,7 +203,486 @@ if __name__=="__main__" and any(f in sys.argv for f in ("--selftest-themes","--s
         if _f in sys.argv: _u443_selftest_dispatch(_f)
     raise SystemExit(0)
 '@
-    $main = '(?m)^if __name__ == "__main__":'
+    $skin = @'
+# _U445_REAL_SKIN_SYSTEM — structural skins + universal hover, not palettes alone
+_U445_STYLE_PROFILES = (
+    {"name":"NEON HUD", "panel_relief":"flat", "panel_bd":0, "panel_edge":2, "button_relief":"flat", "button_bd":0, "sidebar_width":244, "font":"Segoe UI", "design":"hud"},
+    {"name":"GLASS PRO", "panel_relief":"groove", "panel_bd":1, "panel_edge":1, "button_relief":"raised", "button_bd":1, "sidebar_width":230, "font":"Segoe UI", "design":"glass"},
+    {"name":"MATRIX TERMINAL", "panel_relief":"ridge", "panel_bd":2, "panel_edge":1, "button_relief":"groove", "button_bd":2, "sidebar_width":252, "font":"Consolas", "design":"matrix"},
+    {"name":"ICE STUDIO", "panel_relief":"flat", "panel_bd":0, "panel_edge":1, "button_relief":"flat", "button_bd":0, "sidebar_width":220, "font":"Segoe UI", "design":"ice"},
+    {"name":"TITANIUM", "panel_relief":"raised", "panel_bd":2, "panel_edge":1, "button_relief":"raised", "button_bd":2, "sidebar_width":260, "font":"Arial", "design":"titanium"},
+    {"name":"RETRO CRT", "panel_relief":"groove", "panel_bd":2, "panel_edge":1, "button_relief":"groove", "button_bd":2, "sidebar_width":248, "font":"Consolas", "design":"crt"},
+    {"name":"CARBON FIBER", "panel_relief":"ridge", "panel_bd":1, "panel_edge":2, "button_relief":"raised", "button_bd":1, "sidebar_width":236, "font":"Segoe UI", "design":"carbon"},
+    {"name":"SOLAR FLARE", "panel_relief":"flat", "panel_bd":0, "panel_edge":2, "button_relief":"raised", "button_bd":1, "sidebar_width":258, "font":"Arial", "design":"solar"},
+    {"name":"ULTRAVIOLET", "panel_relief":"groove", "panel_bd":1, "panel_edge":2, "button_relief":"groove", "button_bd":1, "sidebar_width":242, "font":"Segoe UI", "design":"ultraviolet"},
+    {"name":"MINIMAL LIGHT", "panel_relief":"flat", "panel_bd":0, "panel_edge":0, "button_relief":"flat", "button_bd":0, "sidebar_width":218, "font":"Segoe UI", "design":"minimal"},
+    {"name":"INDUSTRIAL", "panel_relief":"raised", "panel_bd":3, "panel_edge":1, "button_relief":"raised", "button_bd":3, "sidebar_width":266, "font":"Arial", "design":"industrial"},
+    {"name":"BLUEPRINT", "panel_relief":"ridge", "panel_bd":1, "panel_edge":1, "button_relief":"ridge", "button_bd":1, "sidebar_width":238, "font":"Consolas", "design":"blueprint"},
+)
+
+for _u445_tid, _u445_theme in THEMES.items():
+    _u445_sid = (int(_u445_tid) - 1) % len(_U445_STYLE_PROFILES)
+    _u445_profile = _U445_STYLE_PROFILES[_u445_sid]
+    _u445_theme["_skin_id"] = _u445_sid
+    _u445_theme["_skin_style"] = _u445_profile["name"]
+    for _u445_key in ("panel_relief","panel_bd","panel_edge","button_relief","button_bd","sidebar_width","font","design"):
+        _u445_theme["_skin_" + _u445_key] = _u445_profile[_u445_key]
+    if not str(_u445_theme.get("name","")).endswith(" • " + _u445_profile["name"]):
+        _u445_theme["name"] = str(_u445_theme.get("name","SKÓRKA")) + " • " + _u445_profile["name"]
+
+def _u445_panel(self, parent, bg=None, accent=True):
+    t = self.colors()
+    color = bg or t["panel"]
+    edge = t["accent"] if accent else color
+    return tk.Frame(parent, bg=color, bd=int(t.get("_skin_panel_bd",1)),
+                    relief=t.get("_skin_panel_relief","flat"),
+                    highlightbackground=edge, highlightcolor=t.get("accent2",edge),
+                    highlightthickness=int(t.get("_skin_panel_edge",1)))
+
+def _u445_make_button(self, parent, text, command, kind="card", side=None, fill=None, ipady=8):
+    t = self.colors()
+    bg = t["card"] if kind=="card" else t["accent"] if kind=="accent" else t["good"] if kind=="good" else t["bad"] if kind=="bad" else t["panel"]
+    fg = "#ffffff" if kind in ("accent","good","bad") else t["fg"]
+    sid = int(t.get("_skin_id",0))
+    btn = tk.Button(parent, text=text, command=command, relief=t.get("_skin_button_relief","flat"),
+                    bd=int(t.get("_skin_button_bd",0)), bg=bg, fg=fg,
+                    activebackground=t["accent2"], activeforeground="#ffffff",
+                    highlightthickness=int(t.get("_skin_panel_edge",1)),
+                    highlightbackground=t["accent"], highlightcolor=t["accent2"],
+                    font=self.fnt(9,"bold"), cursor="hand2", padx=(4 + sid%3), pady=1)
+    opts={}
+    if side: opts["side"]=side
+    if fill: opts["fill"]=fill
+    btn.pack(ipady=ipady,padx=4,pady=3,**opts)
+    return btn
+
+def _u445_fnt(self, size, weight="normal"):
+    t=self.colors()
+    family=str(t.get("_skin_font","Segoe UI"))
+    key=("_U445_FONT",family,int(size),str(weight))
+    if not hasattr(self,"fonts"): self.fonts={}
+    if key not in self.fonts:
+        self.fonts[key]=tkfont.Font(family=family,size=int(size),weight=str(weight))
+    return self.fonts[key]
+
+def _u445_button_enter(event):
+    w=event.widget
+    try:
+        top=w.winfo_toplevel()
+        t=top.colors() if callable(getattr(top,"colors",None)) else THEMES.get(8,{})
+        if str(w.cget("state"))=="disabled": return
+        if isinstance(w,ttk.Button):
+            if not hasattr(w,"_u445_old_style"): w._u445_old_style=w.cget("style")
+            sid=int(t.get("_skin_id",0))
+            style_name=f"U445Hover{sid}.TButton"
+            style=ttk.Style(top)
+            style.configure(style_name,background=t.get("accent2","#55d8ff"),foreground="#ffffff",
+                            bordercolor=t.get("accent","#1aa7ff"),relief="raised")
+            style.map(style_name,background=[("active",t.get("accent2","#55d8ff")),("pressed",t.get("accent","#1aa7ff"))],
+                      foreground=[("active","#ffffff")])
+            w.configure(style=style_name)
+            return
+        if not hasattr(w,"_u445_old_options"):
+            saved={}
+            for k in ("bg","fg","activebackground","activeforeground","relief","bd","highlightthickness","highlightbackground","highlightcolor"):
+                try: saved[k]=w.cget(k)
+                except Exception: pass
+            w._u445_old_options=saved
+        options={"bg":t.get("accent2","#55d8ff"),"fg":"#ffffff",
+                 "activebackground":t.get("accent","#1aa7ff"),"activeforeground":"#ffffff",
+                 "relief":"raised","bd":max(1,int(t.get("_skin_button_bd",1))),
+                 "highlightthickness":2,"highlightbackground":t.get("accent","#1aa7ff"),
+                 "highlightcolor":t.get("accent2","#55d8ff")}
+        w.configure(**{k:v for k,v in options.items() if k in getattr(w,"keys",lambda:[])()})
+    except Exception:
+        pass
+
+def _u445_button_leave(event):
+    w=event.widget
+    try:
+        if isinstance(w,ttk.Button):
+            if hasattr(w,"_u445_old_style"): w.configure(style=w._u445_old_style)
+            return
+        for k,v in getattr(w,"_u445_old_options",{}).items():
+            try: w.configure(**{k:v})
+            except Exception: pass
+    except Exception:
+        pass
+
+def _u445_icon_enter(event):
+    w=event.widget
+    try:
+        text=str(w.cget("text") or "").strip()
+        cursor=str(w.cget("cursor") or "")
+        looks_like_icon=(len(text)<=5 and any(ord(ch)>127 for ch in text))
+        if not (looks_like_icon or cursor in ("hand","hand2")): return
+        if not hasattr(w,"_u445_icon_old"):
+            w._u445_icon_old={"fg":w.cget("fg"),"bg":w.cget("bg")}
+        top=w.winfo_toplevel()
+        t=top.colors() if callable(getattr(top,"colors",None)) else THEMES.get(8,{})
+        w.configure(fg=t.get("accent2","#55d8ff"))
+        if cursor in ("hand","hand2"): w.configure(bg=t.get("accent","#1aa7ff"))
+    except Exception:
+        pass
+
+def _u445_icon_leave(event):
+    w=event.widget
+    try:
+        old=getattr(w,"_u445_icon_old",None)
+        if old: w.configure(**old)
+    except Exception:
+        pass
+
+def _u445_bind_widget_tree(root, app):
+    try: children=root.winfo_children()
+    except Exception: return
+    for w in children:
+        try:
+            if isinstance(w,(tk.Button,ttk.Button)) and not getattr(w,"_u445_direct_hover",False):
+                w.bind("<Enter>",_u445_button_enter,add="+")
+                w.bind("<Leave>",_u445_button_leave,add="+")
+                w._u445_direct_hover=True
+            elif isinstance(w,tk.Label) and not getattr(w,"_u445_icon_hover",False):
+                w.bind("<Enter>",_u445_icon_enter,add="+")
+                w.bind("<Leave>",_u445_icon_leave,add="+")
+                w._u445_icon_hover=True
+        except Exception: pass
+        _u445_bind_widget_tree(w,app)
+
+def _u445_install_hover_classes(self):
+    if getattr(self,"_u445_class_bind_installed",False): return
+    self._u445_class_bind_installed=True
+    try:
+        self.bind_class("Button","<Enter>",_u445_button_enter,add="+")
+        self.bind_class("Button","<Leave>",_u445_button_leave,add="+")
+        self.bind_class("TButton","<Enter>",_u445_button_enter,add="+")
+        self.bind_class("TButton","<Leave>",_u445_button_leave,add="+")
+        self.bind_class("Label","<Enter>",_u445_icon_enter,add="+")
+        self.bind_class("Label","<Leave>",_u445_icon_leave,add="+")
+    except Exception: pass
+    try: self.after(180,lambda:_u445_bind_widget_tree(self,self))
+    except Exception: pass
+
+def _u445_skin_frame(self, *args, **kwargs):
+    result=_U445_BASE_BUILD_SHELL(self,*args,**kwargs)
+    t=self.colors()
+    try:
+        if hasattr(self,"sidebar"):
+            self.sidebar.configure(bg=t["panel"],width=int(t.get("_skin_sidebar_width",244)))
+            self.sidebar.pack_propagate(False)
+            self.sidebar.configure(highlightbackground=t.get("accent","#1aa7ff"),
+                                   highlightthickness=max(0,int(t.get("_skin_panel_edge",1))))
+        if hasattr(self,"main"): self.main.configure(bg=t["bg"])
+        if hasattr(self,"header"):
+            self.header.configure(bg=t["panel"],relief=t.get("_skin_panel_relief","flat"),
+                                  bd=int(t.get("_skin_panel_bd",0)),
+                                  highlightbackground=t.get("accent","#1aa7ff"),
+                                  highlightthickness=max(0,int(t.get("_skin_panel_edge",1))))
+        if hasattr(self,"content"): self.content.configure(bg=t["bg"])
+    except Exception: pass
+    try: self.after_idle(lambda:_u445_bind_widget_tree(self,self))
+    except Exception: pass
+    return result
+
+def _u445_dashboard_specs(app):
+    try:
+        fn=globals().get("_v4319_dashboard_control_specs")
+        specs=fn(app) if callable(fn) else []
+        return [(str(s[0]),tuple(s[1])) for s in specs if len(s)>=2 and len(s[1])==4]
+    except Exception:
+        return [
+            ("PULPIT",(12,8,258,40)),("CPU",(12,142,242,180)),("GPU",(12,181,242,219)),
+            ("RAM",(12,220,242,257)),("DYSK",(12,258,242,294)),("MATRYCA",(12,295,242,332)),
+            ("START_TESTU",(875,861,1233,902)),("USTAWIENIA",(760,43,875,73)),
+            ("ODSWIEZ",(1442,87,1556,126))
+        ]
+
+def _u445_draw_dashboard_skin(app):
+    c=getattr(app,"dash_canvas",None)
+    try:
+        if c is None or not c.winfo_exists(): return
+        w=max(1,c.winfo_width()); h=max(1,c.winfo_height())
+        t=app.colors(); sid=int(t.get("_skin_id",0)); design=t.get("_skin_design","hud")
+        sx=w/1586.0; sy=h/960.0
+        c.delete("_u445_skin")
+        accent=t.get("accent","#1aa7ff"); accent2=t.get("accent2","#55d8ff")
+        muted=t.get("muted","#93a9bd"); panel=t.get("panel","#0b1c30")
+        def xy(x,y): return (x*sx,y*sy)
+        def line(x1,y1,x2,y2,col=None,width=1,dash=None):
+            args=[x1*sx,y1*sy,x2*sx,y2*sy]
+            kw={"fill":col or accent,"width":width,"tags":"_u445_skin"}
+            if dash: kw["dash"]=dash
+            c.create_line(*args,**kw)
+        def rect(x0,y0,x1,y1,col=None,width=1,dash=None):
+            kw={"outline":col or accent,"width":width,"tags":"_u445_skin"}
+            if dash: kw["dash"]=dash
+            c.create_rectangle(x0*sx,y0*sy,x1*sx,y1*sy,**kw)
+        def oval(x0,y0,x1,y1,col=None,width=1):
+            c.create_oval(x0*sx,y0*sy,x1*sx,y1*sy,outline=col or accent,width=width,tags="_u445_skin")
+        regions=((265,78,963,218),(973,78,1568,218),(255,220,1568,290),
+                 (255,300,1568,515),(255,520,1568,655),(255,660,1568,912))
+        # Distinct visual grammar per skin: the same dashboard data gets a different UI shell.
+        if design=="hud":
+            rect(2,2,1584,958,accent,2)
+            for x0,y0,x1,y1 in regions:
+                for x,y,dx,dy in ((x0,y0,1,1),(x1,y0,-1,1),(x0,y1,1,-1),(x1,y1,-1,-1)):
+                    line(x,y,x+dx*24,y,accent2,2); line(x,y,x,y+dy*17,accent2,2)
+            line(0,40,1586,40,accent2,2)
+        elif design=="glass":
+            rect(2,2,1584,958,accent2,1)
+            for x0,y0,x1,y1 in regions:
+                rect(x0,y0,x1,y1,accent2,1)
+                rect(x0+4,y0+4,x1-4,y1-4,accent,1)
+            for x in (18,30,42,54): oval(x,12,x+5,17,accent2,1)
+        elif design=="matrix":
+            line(2,2,2,958,accent,3); line(10,40,1576,40,accent2,1)
+            for y in range(48,960,24): line(2,y,22,y,accent,1)
+            for x in range(24,230,18): line(x,78,x,918,panel,1)
+            for i in range(12): line(268+i*12,42,272+i*12,42+((i*13)%22),accent,1)
+        elif design=="ice":
+            rect(3,3,1583,957,accent2,1)
+            for x0,y0,x1,y1 in regions:
+                c.create_polygon(x0*sx,(y0+7)*sy,(x0+7)*sx,y0*sy,(x1-7)*sx,y0*sy,(x1-1)*sx,(y0+7)*sy,
+                                 x1*sx,(y1-7)*sy,(x1-7)*sx,y1*sy,(x0+7)*sx,y1*sy,x0*sx,(y1-7)*sy,
+                                 fill="",outline=accent2,width=1,tags="_u445_skin")
+            for x,y in ((34,32),(1545,30),(34,936),(1545,936)):
+                line(x-8,y,x+8,y,accent2,1); line(x,y-8,x,y+8,accent2,1)
+        elif design=="titanium":
+            rect(2,2,1584,958,muted,2)
+            for x0,y0,x1,y1 in regions:
+                line(x0,y0,x0+17,y0,accent2,2); line(x0,y0,x0,y0+17,muted,2)
+                line(x1-17,y1,x1,y1,accent2,2); line(x1,y1-17,x1,y1,muted,2)
+            line(0,42,1586,42,muted,2); line(0,45,1586,45,accent,1)
+        elif design=="crt":
+            rect(3,3,1583,957,accent,1)
+            for y in range(4,960,8): line(0,y,1586,y,panel,1)
+            for x0,y0,x1,y1 in regions: rect(x0,y0,x1,y1,accent,1)
+            rect(4,4,1582,37,accent2,1)
+        elif design=="carbon":
+            rect(2,2,1584,958,accent,2)
+            for n in range(20): line(n*12,3,n*12+25,38,panel,2)
+            for n in range(20): line(1340+n*12,922,1365+n*12,958,panel,2)
+            for x0,y0,x1,y1 in regions: rect(x0,y0,x1,y1,accent,1)
+        elif design=="solar":
+            rect(2,2,1584,958,accent,2)
+            for n in range(1,10):
+                line(2,2,2+n*18,2,accent2,1); line(1584,958,1584-n*18,958,accent2,1)
+            oval(1400,80,1570,250,accent2,2); oval(1410,90,1560,240,accent,1)
+            for x0,y0,x1,y1 in regions: rect(x0,y0,x1,y1,accent,1)
+        elif design=="ultraviolet":
+            rect(2,2,1584,958,accent2,1)
+            for radius in (18,27,36):
+                oval(1520-radius,125-radius,1520+radius,125+radius,accent,1)
+            for x0,y0,x1,y1 in regions: rect(x0,y0,x1,y1,accent2,1,dash=(4,3))
+        elif design=="minimal":
+            line(0,40,1586,40,accent,1); line(256,40,256,960,muted,1)
+            for y in (218,290,515,655,912): line(255,y,1586,y,accent,1)
+            line(4,4,1582,4,muted,1)
+        elif design=="industrial":
+            rect(3,3,1583,957,muted,2)
+            for x0,y0,x1,y1 in regions:
+                rect(x0,y0,x1,y1,accent,2)
+                for x,y in ((x0+7,y0+7),(x1-7,y0+7),(x0+7,y1-7),(x1-7,y1-7)):
+                    oval(x-2,y-2,x+2,y+2,muted,1)
+            line(0,40,1586,40,accent,2)
+        else: # blueprint
+            rect(2,2,1584,958,accent2,1)
+            for x in range(8,1586,40): line(x,2,x,38,panel,1)
+            for y in range(8,960,40): line(2,y,25,y,accent,1)
+            for x0,y0,x1,y1 in regions:
+                rect(x0,y0,x1,y1,accent2,1,dash=(2,3))
+                for x in range(int(x0+12),int(x1-8),80): line(x,y0,x,y0+5,accent,1)
+        # Re-paint active hover last so the highlight survives each dashboard refresh.
+        hover=getattr(app,"_u445_hover_rect",None)
+        if hover:
+            x0,y0,x1,y1=hover
+            for pad,col,width in ((4,accent,3),(1,accent2,2)):
+                rect(x0-pad,y0-pad,x1+pad,y1+pad,col,width)
+            line(x0+5,y0+3,min(x0+34,x1-3),y0+3,accent2,2)
+    except Exception as exc:
+        try: app.append_log("Skin overlay: "+str(exc))
+        except Exception: pass
+
+def _u445_dashboard_motion(app,event):
+    c=getattr(app,"dash_canvas",None)
+    try:
+        if c is None or event.widget is not c: return
+        sx=max(1,c.winfo_width())/1586.0; sy=max(1,c.winfo_height())/960.0
+        x=float(event.x)/sx; y=float(event.y)/sy
+        found=None
+        for key,rect in _u445_dashboard_specs(app):
+            x0,y0,x1,y1=rect
+            if x0<=x<=x1 and y0<=y<=y1:
+                found=(key,rect); break
+        new_key=found[0] if found else None
+        if new_key==getattr(app,"_u445_hover_key",None): return
+        app._u445_hover_key=new_key
+        app._u445_hover_rect=found[1] if found else None
+        _u445_draw_dashboard_skin(app)
+    except Exception: pass
+
+def _u445_dashboard_leave(app,event=None):
+    try:
+        app._u445_hover_key=None; app._u445_hover_rect=None
+        _u445_draw_dashboard_skin(app)
+    except Exception: pass
+
+def _u445_bind_dashboard_hover(app):
+    c=getattr(app,"dash_canvas",None)
+    try:
+        if c is None or not c.winfo_exists() or getattr(c,"_u445_hover_bound",False): return
+        c.bind("<Motion>",lambda e,a=app:_u445_dashboard_motion(a,e),add="+")
+        c.bind("<Leave>",lambda e,a=app:_u445_dashboard_leave(a,e),add="+")
+        c._u445_hover_bound=True
+    except Exception: pass
+
+def _u445_draw_ref(self,*args,**kwargs):
+    result=_U445_BASE_DRAW_REF(self,*args,**kwargs)
+    _u445_bind_dashboard_hover(self)
+    _u445_draw_dashboard_skin(self)
+    return result
+
+def _u445_build_theme_preview(self,canvas,theme_id=None):
+    idx=int(theme_id or getattr(self,"theme_id",8))
+    t=THEMES.get(idx,THEMES[8]); design=t.get("_skin_design","hud"); sid=int(t.get("_skin_id",0))
+    canvas.delete("all")
+    w=max(620,canvas.winfo_width() or 900); h=max(300,canvas.winfo_height() or 370)
+    bg=t["bg"]; panel=t["panel"]; card=t["card"]; edge=t["accent"]; edge2=t["accent2"]; fg=t["fg"]
+    def box(x0,y0,x1,y1,fill,outline=edge,width=1,relief="normal"):
+        if relief=="cut":
+            canvas.create_polygon(x0+7,y0,x1,y0,x1,y1-7,x1-7,y1,x0,y1,x0,y0+7,fill=fill,outline=outline,width=width)
+        elif relief=="rounded":
+            canvas.create_polygon(x0+8,y0,x1-8,y0,x1,y0+8,x1,y1-8,x1-8,y1,x0+8,y1,x0,y1-8,x0,y0+8,fill=fill,outline=outline,width=width,smooth=True)
+        else:
+            canvas.create_rectangle(x0,y0,x1,y1,fill=fill,outline=outline,width=width)
+    box(5,5,w-5,h-5,bg,edge,2,"cut" if design in ("titanium","blueprint") else "normal")
+    box(12,12,w-12,43,panel,edge2,1,"cut" if design in ("titanium","industrial") else "normal")
+    titlefont=self.fnt(10,"bold")
+    canvas.create_text(24,28,text="NAPRAWA PC  /  HARDWARE TEST PRO",anchor="w",fill=edge2,font=titlefont)
+    canvas.create_text(w-20,28,text=f"{idx:03d}/125  •  {t['_skin_style']}",anchor="e",fill=t["good"],font=self.fnt(8,"bold"))
+    if design in ("matrix","crt","blueprint"):
+        for y in range(48,h-8,9 if design=="crt" else 18):
+            canvas.create_line(10,y,w-10,y,fill=card,width=1,dash=(2,3) if design=="blueprint" else ())
+    left_w=int(w*(.23 if design in ("glass","ice","minimal") else .20))
+    if design in ("glass","blueprint"):
+        # Top command rail instead of the standard left rail.
+        for i,label in enumerate(("PULPIT","TESTY","RAPORTY","NAPRAWA","USTAWIENIA")):
+            x=20+i*min(112,(w-40)/5)
+            box(x,53,x+min(102,(w-60)/5),77,card,edge2,1,"rounded")
+            canvas.create_text(x+8,65,text=label,anchor="w",fill=fg,font=self.fnt(7,"bold"))
+        nav_y=87
+    else:
+        box(14,53,left_w,h-14,panel,edge,1,"cut" if design in ("titanium","industrial") else "normal")
+        canvas.create_text(24,66,text=t["name"][:29],anchor="w",fill=edge2,font=self.fnt(8,"bold"))
+        for i,label in enumerate(("⌂ PULPIT","◉ CPU / PROCESOR","◆ GPU / GRAFIKA","▦ RAM / PAMIĘĆ","▤ SSD / HDD","▣ MATRYCA","⬡ BEZPIECZEŃSTWO")):
+            y=92+i*28
+            if i==0: box(20,y-9,left_w-7,y+10,card,edge2,1,"rounded" if design in ("ice","glass") else "normal")
+            canvas.create_text(25,y,text=label,anchor="w",fill=edge2 if i==0 else fg,font=self.fnt(7,"bold" if i==0 else "normal"))
+        nav_y=53
+    x0=left_w+25 if design not in ("glass","blueprint") else 18
+    x1=w-15
+    hero_top=nav_y+32; hero_bottom=min(h*.53,nav_y+170)
+    box(x0,hero_top,x1,hero_bottom,panel,edge,2,"rounded" if design in ("glass","ice","ultraviolet") else "cut" if design in ("titanium","industrial") else "normal")
+    canvas.create_text(x0+12,hero_top+13,text="PULPIT DIAGNOSTYKI",anchor="w",fill=edge2,font=self.fnt(9,"bold"))
+    # Different skin families change display layout, not only color.
+    if design in ("matrix","crt","blueprint"):
+        for i,label in enumerate(("CPU LOAD","GPU ENGINE","RAM MAP","STORAGE I/O")):
+            y=hero_top+36+i*20
+            canvas.create_text(x0+16,y,text="> "+label,anchor="w",fill=edge2,font=self.fnt(7,"bold"))
+            canvas.create_line(x0+140,y,x1-15,y,fill=card,width=1)
+            canvas.create_line(x0+142,y+2,x0+142+(x1-x0-170)*(.22+(i%3)*.17),y+2,fill=edge,width=3)
+    elif design in ("minimal","ice"):
+        for i,label in enumerate(("CPU","GPU","RAM")):
+            xx=x0+20+i*(x1-x0-40)/3
+            canvas.create_oval(xx,hero_top+38,xx+56,hero_top+94,outline=edge,width=3)
+            canvas.create_text(xx+28,hero_top+64,text=f"{42+i*13}%",fill=t["good"],font=self.fnt(8,"bold"))
+            canvas.create_text(xx+28,hero_top+104,text=label,fill=fg,font=self.fnt(8,"bold"))
+    else:
+        cx=x0+int((x1-x0)*.32); cy=hero_top+int((hero_bottom-hero_top)*.59)
+        canvas.create_oval(cx-39,cy-39,cx+39,cy+39,outline=card,width=7)
+        canvas.create_arc(cx-39,cy-39,cx+39,cy+39,start=80,extent=-290,style="arc",outline=t["good"],width=6)
+        canvas.create_text(cx,cy,text="98%",fill=t["good"],font=self.fnt(16,"bold"))
+        gx=x0+int((x1-x0)*.49)
+        canvas.create_polygon(gx,hero_top+50,gx+95,hero_top+27,gx+160,hero_top+51,gx+82,hero_top+74,fill=card,outline=edge,width=2)
+        canvas.create_rectangle(gx+48,hero_top+42,gx+93,hero_top+58,fill=bg,outline=edge2,width=1)
+    metric_y=hero_bottom+9
+    gap=7; metrics=4
+    mw=(x1-x0-gap*(metrics-1))/metrics
+    for i,label in enumerate(("CPU","GPU","RAM","SSD / HDD")):
+        ax=x0+i*(mw+gap); bx=ax+mw
+        shape="rounded" if design in ("glass","ice","ultraviolet") else "cut" if design in ("titanium","industrial","blueprint") else "normal"
+        box(ax,metric_y,bx,metric_y+66,card,edge,1,shape)
+        canvas.create_text(ax+8,metric_y+12,text=label,anchor="w",fill=edge2,font=self.fnt(7,"bold"))
+        value=(42,68,25,12)[i]
+        canvas.create_text(bx-8,metric_y+13,text=f"{value}%",anchor="e",fill=t["good"],font=self.fnt(8,"bold"))
+        for j in range(8):
+            x=ax+8+j*(mw-16)/8
+            yy=metric_y+52-(math.sin(j*.8+i)*.22+.4)*(metric_y+52-(metric_y+24))
+            canvas.create_line(x,yy,x+max(1,(mw-20)/9),yy-3,fill=edge2,width=2)
+    chart_y=metric_y+76
+    box(x0,chart_y,x1,h-14,bg,edge,1,"cut" if design in ("titanium","industrial","blueprint") else "normal")
+    canvas.create_text(x0+10,chart_y+12,text="WYKRESY • TEMPERATURY • OBCIĄŻENIE • TĘTNO SYSTEMU",anchor="w",fill=edge,font=self.fnt(7,"bold"))
+    for k in range(1,4):
+        yy=chart_y+18+(h-chart_y-38)*k/4
+        canvas.create_line(x0+8,yy,x1-8,yy,fill=card,width=1,dash=(2,3))
+    pts=[]
+    for k in range(65):
+        xx=x0+10+k*(x1-x0-20)/64
+        yy=h-27-(math.sin(k*.22)*.16+math.sin(k*.53)*.05+.45)*(h-chart_y-35)
+        pts.extend((xx,yy))
+    canvas.create_line(*pts,fill=edge2,width=2,smooth=True)
+    if design in ("industrial","titanium"):
+        for x,y in ((x0+5,hero_top+5),(x1-5,hero_top+5),(x0+5,h-20),(x1-5,h-20)):
+            canvas.create_oval(x-2,y-2,x+2,y+2,fill=muted,outline=edge)
+    elif design=="solar":
+        for i in range(1,7): canvas.create_line(0,0,i*14,0,fill=edge2,width=2)
+    elif design=="ultraviolet":
+        for r in (12,20,28): canvas.create_oval(x1-r-5,hero_top+18-r,x1-r-5+2*r,hero_top+18+r,outline=edge2,width=1)
+
+# Attach style tokens after the legacy 4.3.44 theme table has finished loading.
+for _u445_tid,_u445_theme in THEMES.items():
+    _u445_theme.setdefault("_skin_design",_u445_THEME_DESIGN if "_u445_THEME_DESIGN" in globals() else _U445_STYLE_PROFILES[_u445_theme["_skin_id"]]["design"])
+
+AppV43.panel=_u445_panel
+AppV43.make_button=_u445_make_button
+AppV43.fnt=_u445_fnt
+_U445_BASE_BUILD_SHELL=AppV43._build_shell
+AppV43._build_shell=_u445_skin_frame
+_U445_BASE_CLEAR=AppV43.clear
+def _u445_clear(self,*args,**kwargs):
+    result=_U445_BASE_CLEAR(self,*args,**kwargs)
+    try: self.after_idle(lambda:_u445_bind_widget_tree(self,self))
+    except Exception: pass
+    return result
+AppV43.clear=_u445_clear
+_U445_BASE_DRAW_REF=AppV43._draw_ref
+AppV43._draw_ref=_u445_draw_ref
+_u44_draw_theme_preview=_u445_build_theme_preview
+AppV43.draw_theme_preview=lambda self,canvas:_u445_build_theme_preview(self,canvas)
+_U445_BASE_INIT=AppV43.__init__
+def _u445_init(self,*args,**kwargs):
+    _U445_BASE_INIT(self,*args,**kwargs)
+    _u445_install_hover_classes(self)
+    try: self.after(300,lambda:_u445_bind_dashboard_hover(self))
+    except Exception: pass
+AppV43.__init__=_u445_init
+
+def _u445_selftest_skins():
+    assert len(THEMES)==125, f"Expected 125 themes, got {len(THEMES)}"
+    assert len({_u445_theme.get("_skin_design") for _u445_theme in THEMES.values()})>=10
+    assert all("_skin_style" in t and "_skin_panel_relief" in t and "_skin_button_relief" in t and "_skin_font" in t for t in THEMES.values())
+    assert len({t["name"] for t in THEMES.values()})==125
+    assert AppV43.panel is _u445_panel and AppV43.make_button is _u445_make_button
+    assert callable(_u445_button_enter) and callable(_u445_button_leave) and callable(_u445_dashboard_motion)
+    assert callable(_u445_draw_dashboard_skin) and callable(_u445_build_theme_preview)
+    print("REAL_SKIN_SELFTEST_OK: 125 named themes, 12 structural layouts, varied panels/buttons/fonts/sidebars")
+    print("HOVER_SELFTEST_OK: Tk buttons, ttk buttons, icon labels and dashboard hit areas")
+
+'@
+$dispatchMarker = 'if __name__=="__main__" and any(f in sys.argv for f in ("--selftest-themes", "--selftest-antivirus", "--selftest-update-flow", "--selftest-launcher")):'
+if (!$hover.Contains($dispatchMarker)) { throw "Nie znaleziono punktu wejścia testów dla nowej warstwy skórek." }
+$hover = $hover.Replace($dispatchMarker, $skin + [Environment]::NewLine + $dispatchMarker)
+$main = '(?m)^if __name__ == "__main__":'
     if ($src -notmatch $main) { throw "Cannot find app entry point to install hover effects." }
     $src = [regex]::Replace($src,$main,[System.Text.RegularExpressions.MatchEvaluator]{
         param($m)
