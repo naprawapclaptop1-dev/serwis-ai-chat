@@ -1,17 +1,17 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.54",
+  "version": "4.3.55",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.54.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.54/NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.54.exe",
-  "sha256": "5e347700e66b88e5719913bf71e66a72b9b86c4d11bc4703ab4db1eee5f8b07c",
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.55.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.55/NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.55.exe",
+  "sha256": "8a1d556b265461c4cff00b09a49e0806c1f0022b218724d9c78f817cd2e29dd4",
   "size": 1847296,
-  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.54.exe",
-  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.54/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.54.exe",
-  "installer_sha256": "9ce586dae764164053e7b307bde45578aa6640956ead5c0029a457ade82daf2a",
-  "installer_size": 102583567,
+  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.55.exe",
+  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.55/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.55.exe",
+  "installer_sha256": "3b83fd86b923df688a118f0eaf0324b9f9020786d64621b1d313202d6b001871",
+  "installer_size": 108052711,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.54: zgodny ze starszymi wersjami pomocnik aktualizacji, weryfikacja SHA-256 i widoczny postęp instalacji. Windows x64.",
-  "published_at": "2026-10-15T10:12:45.644Z"
+  "notes": "Wydanie 4.3.55: zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+  "published_at": "2026-10-15T17:30:20.426Z"
 }
