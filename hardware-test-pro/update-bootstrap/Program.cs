@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Reflection;
 
 namespace NaprawaPC.UpdateBootstrap
 {
@@ -40,6 +41,7 @@ namespace NaprawaPC.UpdateBootstrap
         private readonly Label _status;
         private readonly Label _details;
         private readonly ProgressBar _progress;
+        private readonly PictureBox _artwork;
         private WebClient _client;
         private string _directory;
         private string _tempSetup;
@@ -66,12 +68,33 @@ namespace NaprawaPC.UpdateBootstrap
             _title = new Label();
             _title.Left = 22;
             _title.Top = 18;
-            _title.Width = 560;
+            _title.Width = 455;
             _title.Height = 32;
-            _title.Font = new Font("Segoe UI", 13F, FontStyle.Bold);
+            _title.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             _title.ForeColor = Color.FromArgb(45, 196, 255);
             _title.Text = "Aktualizacja NAPRAWA PC HARDWARE TEST PRO";
             Controls.Add(_title);
+
+            _artwork = new PictureBox();
+            _artwork.Left = 485;
+            _artwork.Top = 8;
+            _artwork.Width = 100;
+            _artwork.Height = 54;
+            _artwork.SizeMode = PictureBoxSizeMode.Zoom;
+            _artwork.BackColor = Color.FromArgb(7, 17, 31);
+            try
+            {
+                using (Stream imageStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("DiagnosticArtwork"))
+                {
+                    if (imageStream != null)
+                    {
+                        using (Image loaded = Image.FromStream(imageStream))
+                            _artwork.Image = new Bitmap(loaded);
+                    }
+                }
+            }
+            catch { }
+            Controls.Add(_artwork);
 
             _status = new Label();
             _status.Left = 24;
