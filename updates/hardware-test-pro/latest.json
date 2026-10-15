@@ -1,13 +1,13 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.50",
+  "version": "4.3.51",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.50.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.50/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.50.exe",
-  "sha256": "a25980406c449075d7b0fb33793a51ebb0dc1d1a7d92e2a945e2d0d27388925f",
-  "size": 102580809,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.51.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.51/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.51.exe",
+  "sha256": "4c131a90151882468f56987438264413ab549ba7079e3752a96b12b4e0495300",
+  "size": 102581995,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.50: 125 skórek, podświetlanie ikon oraz aktualna diagnostyka sprzętu. Instalator Windows x64.",
-  "published_at": "2026-10-15T08:06:40.994Z"
+  "notes": "Wydanie 4.3.51: 125 skórek, podświetlanie ikon oraz aktualna diagnostyka sprzętu. Instalator Windows x64.",
+  "published_at": "2026-10-15T08:24:54.843Z"
 }
