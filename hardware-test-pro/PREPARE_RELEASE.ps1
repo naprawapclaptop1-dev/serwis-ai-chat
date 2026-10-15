@@ -510,7 +510,82 @@ if __name__=="__main__" and any(f in sys.argv for f in ("--selftest-themes","--s
         if _f in sys.argv: _u443_selftest_dispatch(_f)
     raise SystemExit(0)
 '@
-    $main = '(?m)^if __name__ == "__main__":'
+    $canvasHover = @'
+# _U443_CANVAS_HOVER — dashboard is image-backed, so highlight clickable hit rectangles.
+def _u443_draw_dashboard_canvas_hover(app):
+    try:
+        canvas=getattr(app,"dash_canvas",None)
+        if canvas is None or not canvas.winfo_exists(): return
+        canvas.delete("_u443_canvas_hover")
+        rect=getattr(app,"_u443_canvas_hover_rect",None)
+        if not rect: return
+        t=app.colors(); sx=max(1,canvas.winfo_width())/1586.0; sy=max(1,canvas.winfo_height())/960.0
+        x0,y0,x1,y1=rect
+        for pad,col,width in ((4,t.get("accent","#1aa7ff"),3),(1,t.get("accent2","#55d8ff"),2)):
+            canvas.create_rectangle((x0-pad)*sx,(y0-pad)*sy,(x1+pad)*sx,(y1+pad)*sy,
+                                    outline=col,width=width,tags="_u443_canvas_hover")
+        canvas.create_line((x0+5)*sx,(y0+3)*sy,min(x0+34,x1-3)*sx,(y0+3)*sy,
+                           fill="#ffffff",width=2,tags="_u443_canvas_hover")
+    except Exception: pass
+
+def _u443_dashboard_canvas_motion(app,event):
+    try:
+        canvas=getattr(app,"dash_canvas",None)
+        if canvas is None or event.widget is not canvas: return
+        if getattr(app,"current_view","dashboard")!="dashboard": return
+        sx=max(1,canvas.winfo_width())/1586.0; sy=max(1,canvas.winfo_height())/960.0
+        x=float(event.x)/sx; y=float(event.y)/sy
+        hit=None
+        specs_fn=globals().get("_v4319_dashboard_control_specs")
+        specs=specs_fn(app) if callable(specs_fn) else []
+        for spec in specs or []:
+            if len(spec)<2 or len(spec[1])!=4: continue
+            key,rect=spec[0],spec[1]
+            x0,y0,x1,y1=rect
+            if x0<=x<=x1 and y0<=y<=y1:
+                hit=(str(key),tuple(rect)); break
+        if hit is None:
+            fallback=(
+                ("PULPIT",(12,8,258,40)),("CPU",(12,142,242,180)),("GPU",(12,181,242,219)),
+                ("RAM",(12,220,242,257)),("DYSK",(12,258,242,294)),("MATRYCA",(12,295,242,332)),
+                ("ODSWIEZ",(1442,87,1556,126)),("START_TESTU",(875,861,1233,902)),
+                ("USTAWIENIA",(760,43,875,73)),("RAPORT",(1125,922,1350,959))
+            )
+            for key,rect in fallback:
+                x0,y0,x1,y1=rect
+                if x0<=x<=x1 and y0<=y<=y1:
+                    hit=(key,rect); break
+        key=hit[0] if hit else None
+        if key==getattr(app,"_u443_canvas_hover_key",None): return
+        app._u443_canvas_hover_key=key
+        app._u443_canvas_hover_rect=hit[1] if hit else None
+        _u443_draw_dashboard_canvas_hover(app)
+    except Exception: pass
+
+def _u443_dashboard_canvas_leave(app,event=None):
+    try:
+        app._u443_canvas_hover_key=None
+        app._u443_canvas_hover_rect=None
+        _u443_draw_dashboard_canvas_hover(app)
+    except Exception: pass
+
+def _u443_bind_dashboard_canvas_hover(app):
+    try:
+        canvas=getattr(app,"dash_canvas",None)
+        if canvas is None or not canvas.winfo_exists() or getattr(canvas,"_u443_canvas_hover_bound",False): return
+        canvas.bind("<Motion>",lambda e,a=app:_u443_dashboard_canvas_motion(a,e),add="+")
+        canvas.bind("<Leave>",lambda e,a=app:_u443_dashboard_canvas_leave(a,e),add="+")
+        canvas._u443_canvas_hover_bound=True
+        _u443_draw_dashboard_canvas_hover(app)
+    except Exception: pass
+
+'@
+$canvasHoverMarker = '_U443_ORIG_INSTALL_DASHBOARD = AppV43._install_dashboard_controls'
+if (!$hover.Contains($canvasHoverMarker)) { throw "Nie znaleziono punktu podłączenia podświetlania pulpitu." }
+$hover = $hover.Replace($canvasHoverMarker, $canvasHover + [Environment]::NewLine + $canvasHoverMarker)
+$hover = $hover.Replace('lambda: (_u443_bind_dashboard_button_hover(self),_u443_bind_hover_glow(self,self))','lambda: (_u443_bind_dashboard_button_hover(self),_u443_bind_dashboard_canvas_hover(self),_u443_bind_hover_glow(self,self))')
+$hover = $hover.Replace('    assert callable(_u443_bind_dashboard_button_hover)','    assert callable(_u443_bind_dashboard_button_hover)' + [Environment]::NewLine + '    assert callable(_u443_bind_dashboard_canvas_hover) and callable(_u443_dashboard_canvas_motion)')
+$main = '(?m)^if __name__ == "__main__":'
     if ($src -notmatch $main) { throw "Cannot find app entry point to install hover effects." }
     $src = [regex]::Replace($src,$main,[System.Text.RegularExpressions.MatchEvaluator]{
         param($m)
