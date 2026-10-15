@@ -26,7 +26,50 @@ def _u44_confirm_downloaded(self, path, version):
             raise FileNotFoundError(f"Nie znaleziono instalatora: {installer}")
         if installer.suffix.lower() != ".exe":
             raise ValueError("Pobrany plik nie jest instalatorem EXE.")
-        parameters = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
+        safe_version = re.sub(r"[^0-9A-Za-z._-]", "_", str(version or "update"))
+        update_dir = installer.parent
+        ps_path = Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+        if os.name == "nt" and not ps_path.is_file():
+            raise FileNotFoundError(f"Nie znaleziono Windows PowerShell: {ps_path}")
+        script_path = update_dir / f"launch-update-{safe_version}.ps1"
+        log_path = update_dir / f"installer-{safe_version}.log"
+        status_path = update_dir / f"installer-{safe_version}-status.txt"
+        quoted_installer = str(installer).replace("'", "''")
+        quoted_log = str(log_path).replace("'", "''")
+        quoted_status = str(status_path).replace("'", "''")
+        script_template = r"""$ErrorActionPreference = 'Stop'
+$installer = '__INSTALLER__'
+$logPath = '__LOG__'
+$statusPath = '__STATUS__'
+try {
+    if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
+        throw "Nie znaleziono pobranego instalatora: $installer"
+    }
+    $arguments = @('/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', ('/LOG="' + $logPath + '"'))
+    $process = Start-Process -FilePath $installer -ArgumentList $arguments -PassThru -Wait
+    $result = "EXIT_CODE=$($process.ExitCode)" + [Environment]::NewLine + "INSTALLER=$installer" + [Environment]::NewLine + "LOG=$logPath"
+    $result | Set-Content -LiteralPath $statusPath -Encoding UTF8
+    if ($process.ExitCode -ne 0) {
+        throw "Instalator zakończył pracę z kodem $($process.ExitCode). Log: $logPath"
+    }
+} catch {
+    $message = $_.Exception.Message
+    ("ERROR=" + $message + [Environment]::NewLine + "INSTALLER=" + $installer + [Environment]::NewLine + "LOG=" + $logPath) |
+        Set-Content -LiteralPath $statusPath -Encoding UTF8
+    try {
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show(
+            ($message + [Environment]::NewLine + [Environment]::NewLine + "Raport: " + $statusPath),
+            'NAPRAWA PC - Aktualizacja',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error
+        ) | Out-Null
+    } catch {}
+    exit 1
+}
+"""
+        script = script_template.replace("__INSTALLER__", quoted_installer).replace("__LOG__", quoted_log).replace("__STATUS__", quoted_status)
+        script_path.write_text(script, encoding="utf-8-sig")
         if os.name == "nt":
             import ctypes as _u46_ctypes
             from ctypes import wintypes as _u46_wintypes
@@ -38,42 +81,41 @@ def _u44_confirm_downloaded(self, path, version):
                 _u46_wintypes.LPCWSTR, _u46_ctypes.c_int
             ]
             _u46_execute.restype = _u46_ctypes.c_void_p
-            _u46_rc = _u46_execute(
-                None, "runas", str(installer), parameters, str(installer.parent), 1
-            )
-            if int(_u46_rc or 0) <= 32:
+            parameters = f'-NoProfile -ExecutionPolicy Bypass -File "{script_path}"'
+            result = _u46_execute(None, "runas", str(ps_path), parameters, str(update_dir), 1)
+            result_code = int(result or 0)
+            if result_code <= 32:
                 raise OSError(
-                    f"Windows nie uruchomił instalatora (ShellExecuteW={int(_u46_rc or 0)}). "
-                    "Sprawdź monit UAC i uprawnienia administratora."
+                    f"Windows nie uruchomił pomocnika aktualizacji (ShellExecuteW={result_code}). "
+                    "Sprawdź, czy monit UAC nie został anulowany."
                 )
         else:
-            subprocess.Popen([str(installer), *parameters.split()], cwd=str(installer.parent))
+            subprocess.Popen([str(installer), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"], cwd=str(update_dir))
         try:
             self.append_log(
-                f"Aktualizator globalny: uruchomiono automatyczną instalację {version}; "
-                "SHA-256 i rozmiar pliku zostały wcześniej zweryfikowane."
+                f"Aktualizator: uruchomiono pomocnika instalacji wersji {version}. "
+                f"Raport: {status_path}; log instalatora: {log_path}"
             )
         except Exception:
             pass
         try:
             self._u39_set_update_status(
-                f"Instalator {version} uruchomiony. Potwierdź monit UAC; "
-                "instalacja zakończy się automatycznie, a nowa wersja zostanie uruchomiona."
+                f"Uruchomiono aktualizację {version}. Potwierdź UAC i poczekaj na pasek instalacji. "
+                f"Raport błędu, jeśli wystąpi: {status_path}"
             )
         except Exception:
             pass
-        # Close the updater so the installer can safely replace its EXE.
-        try:
-            self.after(900, self.close_app)
-        except Exception:
-            try: self.after(900, self.destroy)
-            except Exception: pass
+        # Do not close the app before UAC is accepted. Setup closes the old app itself.
     except Exception as exc:
-        msg = f"Nie udało się uruchomić automatycznej instalacji: {type(exc).__name__}: {exc}"
-        try: self._u39_set_update_status(msg)
-        except Exception: pass
-        try: self.append_log("Aktualizator globalny: " + msg)
-        except Exception: pass
+        msg = f"Nie udało się uruchomić aktualizacji: {type(exc).__name__}: {exc}"
+        try:
+            self._u39_set_update_status(msg)
+        except Exception:
+            pass
+        try:
+            self.append_log("Aktualizator globalny: " + msg)
+        except Exception:
+            pass
         messagebox.showerror("Aktualizacja globalna", msg)
 '@
 $confirmPattern = '(?s)def _u44_confirm_downloaded\(self, path, version\):.*?(?=\r?\nAppV43\._u44_set_progress = _u44_set_progress)'
@@ -86,8 +128,10 @@ $src = [regex]::Replace($src, $confirmPattern, [System.Text.RegularExpressions.M
 $oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names'
 if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
 $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
-'    assert any("/VERYSILENT" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
-'    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names'
+'    assert any("Start-Process" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert any("installer-" in str(x) and "-status.txt" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
+'    assert "close_app" not in _u44_confirm_downloaded.__code__.co_names'
 $src = $src.Replace($oldLauncherSelfTest, $newLauncherSelfTest)
 
 
