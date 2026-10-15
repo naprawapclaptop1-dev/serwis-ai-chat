@@ -149,7 +149,7 @@ def _u44_download_global_update(self, data):
     import urllib.request as _u47_request
     version = str(data.get("version") or "update")
     filename = str(data.get("filename") or "")
-    if not _u47_re.fullmatch(r"[A-Za-z0-9._-]+\\.exe", filename, _u47_re.I):
+    if not _u47_re.fullmatch(r"[A-Za-z0-9._-]+\.exe", filename, _u47_re.I):
         raise ValueError("Nieprawidlowa nazwa pliku aktualizacji.")
     url = str(data.get("download_url") or "")
     parsed = _u47_urlparse.urlparse(url)
@@ -185,7 +185,10 @@ def _u44_download_global_update(self, data):
             except Exception:
                 pass
     if root is None:
-        raise PermissionError("Brak dostepnego folderu do zapisu aktualizacji. " + " | ".join(errors))
+        msg = "Brak dostepnego folderu do zapisu aktualizacji. " + " | ".join(errors)
+        self.queue_action(lambda m=msg: self._u39_set_update_status(m))
+        self.queue_action(lambda m=msg: messagebox.showerror("Aktualizacja globalna", m))
+        return
 
     # Unique names prevent stale/locked .download files from blocking the next update.
     dest = root / (Path(filename).stem + "-" + token + ".exe")
