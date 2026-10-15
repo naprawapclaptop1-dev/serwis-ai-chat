@@ -16,6 +16,81 @@ $last = $vm[$vm.Count-1]
 $newLine = 'VERSION = "' + $next + ' ' + $last.Groups["d"].Value + '"'
 $src = $src.Substring(0,$last.Index) + $newLine + $src.Substring($last.Index+$last.Length)
 
+# Make global updates install automatically after SHA-256 and PE verification.
+# Keep one UAC prompt, run Inno Setup unattended, then close the older application.
+$confirmPatch = @'
+def _u44_confirm_downloaded(self, path, version):
+    try:
+        installer = Path(path).resolve(strict=True)
+        if not installer.is_file():
+            raise FileNotFoundError(f"Nie znaleziono instalatora: {installer}")
+        if installer.suffix.lower() != ".exe":
+            raise ValueError("Pobrany plik nie jest instalatorem EXE.")
+        parameters = "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
+        if os.name == "nt":
+            import ctypes as _u46_ctypes
+            from ctypes import wintypes as _u46_wintypes
+            _u46_shell = _u46_ctypes.WinDLL("shell32", use_last_error=True)
+            _u46_execute = _u46_shell.ShellExecuteW
+            _u46_execute.argtypes = [
+                _u46_wintypes.HWND, _u46_wintypes.LPCWSTR,
+                _u46_wintypes.LPCWSTR, _u46_wintypes.LPCWSTR,
+                _u46_wintypes.LPCWSTR, _u46_ctypes.c_int
+            ]
+            _u46_execute.restype = _u46_ctypes.c_void_p
+            _u46_rc = _u46_execute(
+                None, "runas", str(installer), parameters, str(installer.parent), 1
+            )
+            if int(_u46_rc or 0) <= 32:
+                raise OSError(
+                    f"Windows nie uruchomił instalatora (ShellExecuteW={int(_u46_rc or 0)}). "
+                    "Sprawdź monit UAC i uprawnienia administratora."
+                )
+        else:
+            subprocess.Popen([str(installer), *parameters.split()], cwd=str(installer.parent))
+        try:
+            self.append_log(
+                f"Aktualizator globalny: uruchomiono automatyczną instalację {version}; "
+                "SHA-256 i rozmiar pliku zostały wcześniej zweryfikowane."
+            )
+        except Exception:
+            pass
+        try:
+            self._u39_set_update_status(
+                f"Instalator {version} uruchomiony. Potwierdź monit UAC; "
+                "instalacja zakończy się automatycznie, a nowa wersja zostanie uruchomiona."
+            )
+        except Exception:
+            pass
+        # Close the updater so the installer can safely replace its EXE.
+        try:
+            self.after(900, self.close_app)
+        except Exception:
+            try: self.after(900, self.destroy)
+            except Exception: pass
+    except Exception as exc:
+        msg = f"Nie udało się uruchomić automatycznej instalacji: {type(exc).__name__}: {exc}"
+        try: self._u39_set_update_status(msg)
+        except Exception: pass
+        try: self.append_log("Aktualizator globalny: " + msg)
+        except Exception: pass
+        messagebox.showerror("Aktualizacja globalna", msg)
+'@
+$confirmPattern = '(?s)def _u44_confirm_downloaded\(self, path, version\):.*?(?=\r?\nAppV43\._u44_set_progress = _u44_set_progress)'
+$confirmMatches = [regex]::Matches($src, $confirmPattern)
+if ($confirmMatches.Count -ne 1) { throw "Oczekiwano dokładnie jednej funkcji _u44_confirm_downloaded; znaleziono $($confirmMatches.Count)." }
+$src = [regex]::Replace($src, $confirmPattern, [System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $confirmPatch.TrimEnd()
+}, 1)
+$oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names'
+if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
+$newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
+'    assert any("/VERYSILENT" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names'
+$src = $src.Replace($oldLauncherSelfTest, $newLauncherSelfTest)
+
+
 if (!$src.Contains("# _U443_THEME_PACK")) {
 $theme = @'
 # _U443_THEME_PACK — 115 additional selectable palettes
@@ -598,6 +673,10 @@ if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW
 $setup=[IO.File]::ReadAllText($setupPath,[Text.Encoding]::UTF8)
 $setup=[regex]::Replace($setup,'(?m)^(\s*#define AppVersion\s+")\d+\.\d+\.\d+(".*)$',[System.Text.RegularExpressions.MatchEvaluator]{param($m) $m.Groups[1].Value+$next+$m.Groups[2].Value},1)
 $setup=[regex]::Replace($setup,'(?m)^(\s*#define ExeName\s+"NAPRAWA-PC-HARDWARE-TEST-PRO-)\d+\.\d+\.\d+(\.exe".*)$', [System.Text.RegularExpressions.MatchEvaluator]{param($m) $m.Groups[1].Value+$next+$m.Groups[2].Value},1)
+$oldRunFlags = 'Flags: postinstall nowait skipifsilent'
+if (!$setup.Contains($oldRunFlags)) { throw "Nie znaleziono wpisu uruchamiania programu po instalacji." }
+$setup = $setup.Replace($oldRunFlags, 'Flags: nowait runasoriginaluser')
+if ($setup.Contains('postinstall nowait skipifsilent')) { throw "Instalator nadal pomija ponowne uruchomienie w trybie cichym." }
 [IO.File]::WriteAllText($setupPath,$setup,[Text.UTF8Encoding]::new($false))
 $nl=[Environment]::NewLine
 [IO.File]::AppendAllText($env:GITHUB_ENV,("APP_VERSION=$next"+$nl+"SETUP_FILENAME=$setupName"+$nl),[Text.UTF8Encoding]::new($false))
