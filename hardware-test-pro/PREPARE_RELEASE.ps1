@@ -987,9 +987,12 @@ def _u445_selftest_skins():
     print("HOVER_SELFTEST_OK: Tk buttons, ttk buttons, icon labels and dashboard hit areas")
 
 '@
-$dispatchMarker = 'if __name__=="__main__" and any(f in sys.argv for f in ("--selftest-themes", "--selftest-antivirus", "--selftest-update-flow", "--selftest-launcher")):'
-if (!$hover.Contains($dispatchMarker)) { throw "Nie znaleziono punktu wejścia testów dla nowej warstwy skórek." }
-$hover = $hover.Replace($dispatchMarker, $skin + [Environment]::NewLine + $dispatchMarker)
+$dispatchPattern = '(?m)^if __name__=="__main__" and any\(f in sys\.argv for f in \(.*--selftest-themes.*\)\):'
+if ($hover -notmatch $dispatchPattern) { throw "Nie znaleziono punktu wejścia testów dla nowej warstwy skórek." }
+$hover = [regex]::Replace($hover, $dispatchPattern, [System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $skin + [Environment]::NewLine + $m.Value
+}, 1)
 $main = '(?m)^if __name__ == "__main__":'
     if ($src -notmatch $main) { throw "Cannot find app entry point to install hover effects." }
     $src = [regex]::Replace($src,$main,[System.Text.RegularExpressions.MatchEvaluator]{
