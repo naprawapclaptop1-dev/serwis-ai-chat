@@ -243,7 +243,7 @@ def _u44_download_global_update(self, data):
         self.queue_action(lambda m=msg: self._u39_set_update_status(m))
         self.queue_action(lambda m=msg: messagebox.showerror("Aktualizacja globalna", m))
 '@
-$downloadPattern = '(?s)def _u44_download_global_update\(self, data\):.*?(?=\r?\nAppV43\._u44_set_progress = _u44_set_progress)'
+$downloadPattern = '(?s)def _u44_download_global_update\(self, data\):.*?(?=\r?\ndef _u44_confirm_downloaded\(self, path, version\):)'
 $downloadMatches = [regex]::Matches($src, $downloadPattern)
 if ($downloadMatches.Count -ne 1) { throw "Oczekiwano jednej funkcji pobierania _u44_download_global_update; znaleziono $($downloadMatches.Count)." }
 $src = [regex]::Replace($src, $downloadPattern, [System.Text.RegularExpressions.MatchEvaluator]{
