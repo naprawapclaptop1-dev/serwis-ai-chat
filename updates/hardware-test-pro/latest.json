@@ -1,17 +1,17 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.52",
+  "version": "4.3.53",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.52.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.52/NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.52.exe",
-  "sha256": "d0a93f8d37401d46fb2aabfe47f7e41a8f7a8632b8e9fdd38d8b89e30f8a26eb",
-  "size": 15872,
-  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.52.exe",
-  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.52/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.52.exe",
-  "installer_sha256": "ecdacc416dbbd5937e08693005ccc4b7ee9191be9bff2ff1a24e0d5cb5356618",
-  "installer_size": 102581660,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.53.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.53/NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-4.3.53.exe",
+  "sha256": "807439014c718d1a9b2dbc06eac962c56ffdc3b59e3ca3b2f336fde02b065d53",
+  "size": 1846784,
+  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.53.exe",
+  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.53/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.53.exe",
+  "installer_sha256": "202a1343c89db41b56ee45305ead23072ead664d0e518f0bc4375b2d6e52eeec",
+  "installer_size": 102580924,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.52: zgodny ze starszymi wersjami pomocnik aktualizacji, weryfikacja SHA-256 i widoczny postęp instalacji. Windows x64.",
-  "published_at": "2026-10-15T08:38:19.366Z"
+  "notes": "Wydanie 4.3.53: zgodny ze starszymi wersjami pomocnik aktualizacji, weryfikacja SHA-256 i widoczny postęp instalacji. Windows x64.",
+  "published_at": "2026-10-15T08:43:45.107Z"
 }
