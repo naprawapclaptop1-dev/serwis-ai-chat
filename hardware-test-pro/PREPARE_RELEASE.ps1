@@ -966,12 +966,12 @@ def _u55_render_private_tickets(self, parent):
         target = next((item for item in items if str(item.get("id")) == str(selected[0])), None)
         if not target: return
         choice = _u55_simpledialog.askstring("Status zgłoszenia", "Podaj nowy status (Nowe / W toku / Oczekuje / Zakończone):", initialvalue=target.get("status","Nowe"), parent=self)
-        allowed = {"Nowe","W toku","Oczekuje","Zakończone"}
         if choice is None: return
-        choice = choice.strip().title()
-        if choice not in allowed:
+        status_map = {"nowe":"Nowe","w toku":"W toku","oczekuje":"Oczekuje","zakończone":"Zakończone","zakonczone":"Zakończone"}
+        normalized = choice.strip().casefold()
+        if normalized not in status_map:
             messagebox.showwarning("Status", "Dostępne statusy: Nowe, W toku, Oczekuje, Zakończone.", parent=self); return
-        target["status"] = choice
+        target["status"] = status_map[normalized]
         _u55_save_tickets(self, items); refresh()
     def delete_ticket():
         selected = tree.selection()
@@ -1036,11 +1036,11 @@ def _u55_run_repair(self, label, exe, args=(), timeout=3600):
             arr = ",".join(q(x) for x in list(args))
             script_text = (
                 "$ErrorActionPreference='Stop'\n"
-                f"$exe={q(exe)}\n$args=@({arr})\n"
+                f"$exe={q(exe)}\n$procArgs=@({arr})\n"
                 f"$stdout={q(stdout)}\n$stderr={q(stderr)}\n$status={q(status)}\n$report={q(report)}\n"
-                "try { $p=Start-Process -FilePath $exe -ArgumentList $args -PassThru -Wait -RedirectStandardOutput $stdout -RedirectStandardError $stderr; "
+                "try { $p=Start-Process -FilePath $exe -ArgumentList $procArgs -PassThru -Wait -RedirectStandardOutput $stdout -RedirectStandardError $stderr; "
                 "$out='';$err='';if(Test-Path -LiteralPath $stdout){$out=Get-Content -LiteralPath $stdout -Raw};if(Test-Path -LiteralPath $stderr){$err=Get-Content -LiteralPath $stderr -Raw}; "
-                "('NARZĘDZIE='+$exe+[Environment]::NewLine+'ARGUMENTY='+($args -join ' ')+[Environment]::NewLine+'KOD='+$p.ExitCode+[Environment]::NewLine+$out+[Environment]::NewLine+$err) | Set-Content -LiteralPath $report -Encoding UTF8; "
+                "('NARZĘDZIE='+$exe+[Environment]::NewLine+'ARGUMENTY='+($procArgs -join ' ')+[Environment]::NewLine+'KOD='+$p.ExitCode+[Environment]::NewLine+$out+[Environment]::NewLine+$err) | Set-Content -LiteralPath $report -Encoding UTF8; "
                 "('DONE='+$p.ExitCode) | Set-Content -LiteralPath $status -Encoding UTF8 } "
                 "catch { ('ERROR='+$_.Exception.Message) | Set-Content -LiteralPath $report -Encoding UTF8; 'DONE=1' | Set-Content -LiteralPath $status -Encoding UTF8; exit 1 }\n"
             )
@@ -1118,7 +1118,7 @@ def _u55_show_service_center(self):
     for labels in [
         [("CPU / PROCESOR",lambda:self.show_module("CPU")),("GPU / VRAM",lambda:self.show_module("GPU")),("RAM",lambda:self.show_module("RAM")),("SSD / HDD",lambda:self.show_module("DYSK"))],
         [("MATRYCA",lambda:self.show_module("EKRAN")),("BATERIA",self.show_battery),("BEZPIECZEŃSTWO",lambda:self.show_module("SECURITY")),("PEŁNY RAPORT",self.show_report)],
-        [("ODŚWIEŻ SPRZĘT",self.refresh_hardware_async),("PEŁNA DIAGNOSTYKA",self.full_test),("RAPORT BATERII",lambda:_u55_run_repair(self,"Raport baterii","powercfg.exe",["/batteryreport","/output",str(_u55_ticket_path().parent/"battery-report.html")],120))]
+        [("ODŚWIEŻ SPRZĘT",self.refresh_hardware_async),("PEŁNA DIAGNOSTYKA",self.full_test),("RAPORT BATERII",lambda:_u55_run_repair(self,"Raport baterii","powercfg.exe",["/batteryreport","/output",str((Path(os.environ.get("LOCALAPPDATA") or Path.home())/"NaprawaPC"/"RepairReports")/"battery-report.html")],120))]
     ]:
         row=add_row(sp)
         for caption,action in labels: add_btn(row,caption,action)
@@ -1186,6 +1186,27 @@ if (!$src.Contains("_U55_INTEGRATED_SERVICE_REPAIR_CENTER") -or !$src.Contains("
 
 if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW")) { throw "Theme/hover patch verification failed." }
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
+
+# Keep the user-facing documentation aligned with the generated build.
+$readmePath = Join-Path $PSScriptRoot "README_PL.txt"
+if (Test-Path -LiteralPath $readmePath) {
+    $readme = [IO.File]::ReadAllText($readmePath,[Text.Encoding]::UTF8)
+    if (!$readme.Contains("CENTRUM SERWISU ULTIMATE + SYSTEM REPAIR PRO")) {
+        $readme += @"
+
+CENTRUM SERWISU ULTIMATE + SYSTEM REPAIR PRO
+-------------------------------------------
+W wersji budowanej z aktualnego źródła dostępna jest dodatkowa sekcja CENTRUM SERWISU / NAPRAWA PRO w ekranie TESTY:
+- zakładki Serwis Ultimate, System Repair PRO, Zgłoszenia prywatne i Narzędzia serwisowe;
+- prywatne zgłoszenia z weryfikacją PBKDF2 i szyfrowaniem danych lokalnych;
+- SFC, DISM, CHKDSK, odświeżanie DNS, reset Winsock, raport baterii oraz skróty do narzędzi Windows;
+- automatyczny aktualizator z próbą zapisu w lokalnym folderze aktualizacji i bezpiecznym folderze TEMP, nazwami tymczasowymi i kontrolą SHA-256.
+Zgłoszenia nie są wysyłane do Internetu. Operacje wymagające administratora wyświetlają monit UAC.
+"@
+        [IO.File]::WriteAllText($readmePath,$readme,[Text.UTF8Encoding]::new($false))
+    }
+}
+
 
 $setup=[IO.File]::ReadAllText($setupPath,[Text.Encoding]::UTF8)
 $setup=[regex]::Replace($setup,'(?m)^(\s*#define AppVersion\s+")\d+\.\d+\.\d+(".*)$',[System.Text.RegularExpressions.MatchEvaluator]{param($m) $m.Groups[1].Value+$next+$m.Groups[2].Value},1)
