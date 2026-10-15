@@ -137,20 +137,12 @@ namespace NaprawaPC.UpdateBootstrap
                     !String.Equals(Path.GetFileName(uri.AbsolutePath), BuildConfig.SetupFilename, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Adres instalatora nie odpowiada zweryfikowanemu plikowi HTTPS GitHub.");
 
-                _directory = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "NaprawaPC", "Updates");
-                Directory.CreateDirectory(_directory);
-                _setupPath = Path.Combine(_directory, BuildConfig.SetupFilename);
-                _tempSetup = _setupPath + ".bootstrap-download";
-                _logPath = Path.Combine(_directory, "installer-" + BuildConfig.AppVersion + ".log");
-
-                if (File.Exists(_setupPath) && IsValidSetup(_setupPath))
-                {
-                    StartInstall();
-                    return;
-                }
-                try { if (File.Exists(_tempSetup)) File.Delete(_tempSetup); } catch { }
+                _directory = FindWritableDirectory();
+                string token = Guid.NewGuid().ToString("N");
+                string setupStem = Path.GetFileNameWithoutExtension(BuildConfig.SetupFilename);
+                _setupPath = Path.Combine(_directory, setupStem + "-" + token + ".exe");
+                _tempSetup = _setupPath + ".download";
+                _logPath = Path.Combine(_directory, "installer-" + BuildConfig.AppVersion + "-" + token + ".log");
 
                 _status.Text = "Pobieranie pelnego instalatora...";
                 _details.Text = "Wersja " + BuildConfig.AppVersion + ". Nie zamykaj tego okna.";
@@ -208,6 +200,39 @@ namespace NaprawaPC.UpdateBootstrap
                     _client = null;
                 }
             }
+        }
+
+        private string FindWritableDirectory()
+        {
+            string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            string[] candidates = new string[]
+            {
+                Path.Combine(local, "NaprawaPC", "Updates"),
+                Path.Combine(Path.GetTempPath(), "NaprawaPC", "Updates")
+            };
+            Exception lastError = null;
+            foreach (string candidate in candidates)
+            {
+                string probe = Path.Combine(candidate, ".write-test-" + Guid.NewGuid().ToString("N") + ".tmp");
+                try
+                {
+                    Directory.CreateDirectory(candidate);
+                    using (FileStream stream = new FileStream(probe, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                    {
+                        byte[] test = Encoding.ASCII.GetBytes("ok");
+                        stream.Write(test, 0, test.Length);
+                    }
+                    File.Delete(probe);
+                    return candidate;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    try { if (File.Exists(probe)) File.Delete(probe); } catch { }
+                }
+            }
+            throw new UnauthorizedAccessException(
+                "Brak mozliwosci zapisu w folderze aktualizacji i folderze tymczasowym Windows.", lastError);
         }
 
         private bool IsValidSetup(string path)
