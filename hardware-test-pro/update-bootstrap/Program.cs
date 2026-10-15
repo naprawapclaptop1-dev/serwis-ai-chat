@@ -161,6 +161,9 @@ namespace NaprawaPC.UpdateBootstrap
             {
                 if (e.Cancelled) throw new IOException("Pobieranie zostalo anulowane.");
                 if (e.Error != null) throw e.Error;
+                _status.Text = "Weryfikacja SHA-256 i rozmiaru instalatora...";
+                _details.Text = "Sprawdzanie podpisanej sumy kontrolnej pobranego pliku.";
+                Application.DoEvents();
                 if (!IsValidSetup(_tempSetup))
                     throw new InvalidDataException("Rozmiar lub suma SHA-256 instalatora nie zgadza sie z podpisanym manifestem.");
 
