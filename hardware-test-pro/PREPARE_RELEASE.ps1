@@ -1184,6 +1184,358 @@ $src = [regex]::Replace($src,$mainPattern,[System.Text.RegularExpressions.MatchE
 }
 if (!$src.Contains("_U55_INTEGRATED_SERVICE_REPAIR_CENTER") -or !$src.Contains("SERVICE_REPAIR_CENTER_SELFTEST_OK") -or !$src.Contains("self.show_service_center")) { throw "Integracja Serwis Ultimate / System Repair PRO nie została prawidłowo dołączona." }
 
+
+# _U56_NETWORK_ROUTER_AND_ROLLBACK — add native internet speed and router diagnostic panel to the same app.
+if (!$src.Contains("# _U56_NETWORK_ROUTER_AND_ROLLBACK")) {
+$networkIntegration = @'
+# _U56_NETWORK_ROUTER_AND_ROLLBACK — live speed test + cautious local router check
+import socket as _u56_socket
+import ipaddress as _u56_ipaddress
+import urllib.request as _u56_request
+import urllib.error as _u56_urlerror
+import webbrowser as _u56_webbrowser
+import statistics as _u56_statistics
+import subprocess as _u56_subprocess
+import re as _u56_re
+import os as _u56_os
+import time as _u56_time
+import json as _u56_json
+
+_U56_ROUTER_PORTS = (
+    (21, "FTP", "medium"),
+    (22, "SSH", "review"),
+    (23, "TELNET", "high"),
+    (80, "HTTP / panel", "review"),
+    (443, "HTTPS / panel", "info"),
+    (8080, "HTTP alternatywny / panel", "review"),
+    (8443, "HTTPS alternatywny / panel", "info"),
+    (7547, "TR-069 / zarządzanie ISP", "review"),
+)
+
+def _u56_mbps(byte_count, seconds):
+    return (float(byte_count) * 8.0 / max(float(seconds), 0.001)) / 1000000.0
+
+def _u56_open_network_request(url, data=None, timeout=20, headers=None):
+    default_headers = {
+        "User-Agent": "NAPRAWA-PC-HARDWARE-TEST-PRO-NetworkDiagnostics/1.0",
+        "Cache-Control": "no-cache",
+    }
+    if headers:
+        default_headers.update(headers)
+    req = _u56_request.Request(url, data=data, headers=default_headers, method="POST" if data is not None else "GET")
+    return _u56_request.urlopen(req, timeout=timeout)
+
+def _u56_do_speedtest():
+    results = ["TEST ŁĄCZA INTERNETOWEGO — Cloudflare; pomiar orientacyjny."]
+    pings = []
+    for attempt in range(3):
+        started = _u56_time.perf_counter()
+        try:
+            with _u56_open_network_request("https://speed.cloudflare.com/cdn-cgi/trace", timeout=12) as response:
+                response.read(4096)
+            pings.append((_u56_time.perf_counter() - started) * 1000.0)
+        except Exception as exc:
+            results.append("Opóźnienie: próba {0}/3 nieudana ({1}: {2})".format(attempt + 1, type(exc).__name__, exc))
+    if pings:
+        results.append("Opóźnienie HTTPS: średnio {0:.1f} ms; min. {1:.1f} ms; jitter (max-min) {2:.1f} ms.".format(
+            _u56_statistics.mean(pings), min(pings), max(pings) - min(pings)))
+    else:
+        results.append("Opóźnienie HTTPS: brak wyniku — sprawdź Internet, DNS lub filtrację HTTPS.")
+
+    download_bytes = 12 * 1024 * 1024
+    started = _u56_time.perf_counter()
+    actual_download = 0
+    try:
+        url = "https://speed.cloudflare.com/__down?bytes={0}&nocache={1}".format(download_bytes, int(_u56_time.time()))
+        with _u56_open_network_request(url, timeout=45) as response:
+            while True:
+                chunk = response.read(256 * 1024)
+                if not chunk:
+                    break
+                actual_download += len(chunk)
+        elapsed = _u56_time.perf_counter() - started
+        results.append("Pobieranie: {0:.2f} Mb/s ({1:.1f} MB w {2:.2f} s).".format(
+            _u56_mbps(actual_download, elapsed), actual_download / 1048576.0, elapsed))
+    except Exception as exc:
+        results.append("Pobieranie: błąd ({0}: {1}).".format(type(exc).__name__, exc))
+
+    upload_bytes = 4 * 1024 * 1024
+    try:
+        payload = _u56_os.urandom(upload_bytes)
+        started = _u56_time.perf_counter()
+        with _u56_open_network_request(
+            "https://speed.cloudflare.com/__up",
+            data=payload,
+            timeout=45,
+            headers={"Content-Type": "application/octet-stream", "Content-Length": str(len(payload))}
+        ) as response:
+            response.read(4096)
+            status = getattr(response, "status", 200)
+        elapsed = _u56_time.perf_counter() - started
+        if status < 200 or status >= 300:
+            raise RuntimeError("serwer zwrócił HTTP {0}".format(status))
+        results.append("Wysyłanie: {0:.2f} Mb/s ({1:.1f} MB w {2:.2f} s).".format(
+            _u56_mbps(len(payload), elapsed), len(payload) / 1048576.0, elapsed))
+    except Exception as exc:
+        results.append("Wysyłanie: błąd ({0}: {1}).".format(type(exc).__name__, exc))
+    results.append("Wynik zależy od obciążenia łącza, Wi-Fi, VPN, limitów operatora i odpowiedzi serwera testowego.")
+    return results
+
+def _u56_default_gateway():
+    if _u56_os.name != "nt":
+        return None
+    powershell = _u56_os.path.join(_u56_os.environ.get("WINDIR", r"C:\Windows"),
+                                  "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    script = "$r=Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1; if($r){$r.NextHop}"
+    if _u56_os.path.isfile(powershell):
+        try:
+            proc = _u56_subprocess.run(
+                [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+                capture_output=True, text=True, timeout=10,
+                creationflags=getattr(_u56_subprocess, "CREATE_NO_WINDOW", 0),
+                errors="replace"
+            )
+            candidate = (proc.stdout or "").strip().splitlines()
+            if candidate:
+                addr = str(_u56_ipaddress.ip_address(candidate[0].strip()))
+                if isinstance(_u56_ipaddress.ip_address(addr), _u56_ipaddress.IPv4Address):
+                    return addr
+        except Exception:
+            pass
+    try:
+        proc = _u56_subprocess.run(
+            ["route.exe", "print", "-4"], capture_output=True, text=True,
+            timeout=8, creationflags=getattr(_u56_subprocess, "CREATE_NO_WINDOW", 0), errors="replace"
+        )
+        for line in (proc.stdout or "").splitlines():
+            cols = line.split()
+            if len(cols) >= 4 and cols[0] == "0.0.0.0" and cols[1] == "0.0.0.0":
+                addr = str(_u56_ipaddress.ip_address(cols[2]))
+                if isinstance(_u56_ipaddress.ip_address(addr), _u56_ipaddress.IPv4Address):
+                    return addr
+    except Exception:
+        pass
+    return None
+
+def _u56_firewall_status():
+    if _u56_os.name != "nt":
+        return ["Stan Zapory Windows: test wymaga systemu Windows."]
+    powershell = _u56_os.path.join(_u56_os.environ.get("WINDIR", r"C:\Windows"),
+                                  "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    if not _u56_os.path.isfile(powershell):
+        return ["Nie znaleziono Windows PowerShell — nie udało się odczytać stanu Zapory Windows."]
+    script = "Get-NetFirewallProfile | ForEach-Object { '{0}={1}' -f $_.Name,$_.Enabled }; Get-NetConnectionProfile | Select-Object -First 1 -ExpandProperty NetworkCategory"
+    try:
+        proc = _u56_subprocess.run(
+            [powershell, "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True, text=True, timeout=12,
+            creationflags=getattr(_u56_subprocess, "CREATE_NO_WINDOW", 0), errors="replace"
+        )
+        lines = [x.strip() for x in (proc.stdout or "").splitlines() if x.strip()]
+        result = []
+        for line in lines:
+            if "=" in line and line.split("=", 1)[1].strip().lower() in ("false", "0"):
+                result.append("OSTRZEŻENIE: wyłączona Zapora Windows — " + line.split("=", 1)[0] + ".")
+            elif "=" in line:
+                result.append("Zapora Windows: " + line + ".")
+            elif line.lower() in ("public", "private", "domainauthenticated"):
+                result.append("Profil sieci Windows: " + line + ".")
+        if proc.returncode != 0:
+            result.append("PowerShell zwrócił kod {0}: {1}".format(proc.returncode, (proc.stderr or "").strip()[:500]))
+        if not result:
+            result.append("Nie udało się odczytać profili Zapory Windows.")
+        return result
+    except Exception as exc:
+        return ["Błąd odczytu Zapory Windows: {0}: {1}".format(type(exc).__name__, exc)]
+
+def _u56_do_router_check():
+    results = ["KONTROLA ROUTERA — wyłącznie bezpieczny, lokalny odczyt. Bez logowania, zmian ustawień i prób haseł."]
+    results.extend(_u56_firewall_status())
+    gateway = _u56_default_gateway()
+    if not gateway:
+        results.append("Nie udało się ustalić bramy IPv4. Podłącz komputer do sieci i ponów test.")
+        results.append("Ograniczenia: ten test nie potwierdza ekspozycji portów od strony Internetu ani bezpieczeństwa Wi-Fi, hasła administratora czy aktualności firmware.")
+        return results
+    results.append("Domyślna brama/router: {0}".format(gateway))
+    opened = []
+    for port, name, severity in _U56_ROUTER_PORTS:
+        try:
+            with _u56_socket.create_connection((gateway, port), timeout=0.55):
+                opened.append((port, name, severity))
+        except (OSError, TimeoutError):
+            pass
+        except Exception:
+            pass
+    if opened:
+        results.append("Porty TCP odpowiadające w sieci lokalnej:")
+        for port, name, severity in opened:
+            results.append("  • {0}/TCP — {1}.".format(port, name))
+            if severity == "high":
+                results.append("    WYSOKIE RYZYKO: Telnet jest dostępny w LAN. Wyłącz go w routerze, jeśli nie jest niezbędny.")
+            elif severity == "medium":
+                results.append("    UWAGA: sprawdź, czy FTP jest potrzebny; preferuj bezpieczne zarządzanie.")
+            elif severity == "review":
+                results.append("    DO WERYFIKACJI: upewnij się, że zarządzanie jest ograniczone do zaufanej sieci i używa szyfrowania.")
+        results.append("Otwarty port nie oznacza automatycznie, że jest dostępny z Internetu.")
+    else:
+        results.append("Nie wykryto odpowiedzi na sprawdzanych typowych portach TCP routera. To nie jest dowód pełnego bezpieczeństwa.")
+    results.append("Do ręcznej kontroli: aktualizacja firmware, unikalne hasło administratora, WPA2-AES/WPA3, wyłączenie WPS i zdalnego zarządzania z Internetu oraz weryfikacja przekierowań portów.")
+    results.append("Skan ogranicza się do 8 typowych portów bramy LAN; nie zmienia konfiguracji ani nie sprawdza innych urządzeń.")
+    return results
+
+def _u56_clear_network_output(self):
+    widget = getattr(self, "_u56_network_text", None)
+    try:
+        if widget is not None and widget.winfo_exists():
+            widget.configure(state="normal")
+            widget.delete("1.0", "end")
+            widget.configure(state="disabled")
+    except Exception:
+        pass
+
+def _u56_append_network_output(self, message):
+    def apply():
+        widget = getattr(self, "_u56_network_text", None)
+        try:
+            if widget is not None and widget.winfo_exists():
+                widget.configure(state="normal")
+                widget.insert("end", str(message) + "\n")
+                widget.see("end")
+                widget.configure(state="disabled")
+        except Exception:
+            pass
+    try:
+        self.queue_action(apply)
+    except Exception:
+        try:
+            self.after(0, apply)
+        except Exception:
+            pass
+
+def _u56_start_network_job(self, label, callback):
+    _u56_clear_network_output(self)
+    _u56_append_network_output(self, label + " — rozpoczęto. Wyniki pojawią się poniżej.")
+    def job():
+        try:
+            results = callback()
+            for line in results:
+                _u56_append_network_output(self, line)
+                try: self.queue_log(line)
+                except Exception: pass
+        except Exception as exc:
+            message = "BŁĄD {0}: {1}: {2}".format(label, type(exc).__name__, exc)
+            _u56_append_network_output(self, message)
+            try: self.queue_log(message)
+            except Exception: pass
+    try:
+        self.worker(job)
+    except Exception as exc:
+        _u56_append_network_output(self, "Nie udało się uruchomić testu: {0}: {1}".format(type(exc).__name__, exc))
+
+def _u56_open_router_page(self):
+    gateway = _u56_default_gateway()
+    if not gateway:
+        messagebox.showwarning("Panel routera", "Nie udało się ustalić domyślnej bramy routera.", parent=self)
+        return
+    try:
+        _u56_webbrowser.open("http://" + gateway, new=2)
+        _u56_append_network_output(self, "Otwarto lokalny adres panelu routera: http://{0} — jeśli nie odpowiada, sprawdź adres HTTPS w instrukcji routera.".format(gateway))
+    except Exception as exc:
+        messagebox.showerror("Panel routera", "Nie udało się otworzyć panelu: " + str(exc), parent=self)
+
+def _u56_render_network_panel(self, parent):
+    t = self.colors()
+    top = self.panel(parent); top.pack(fill="x", padx=10, pady=(10,6))
+    tk.Label(top, text="TEST INTERNETU I BEZPIECZEŃSTWA ROUTERA", bg=t["panel"], fg=t["accent"], font=self.fnt(12,"bold")).pack(anchor="w", padx=12, pady=(10,4))
+    tk.Label(top, text="Pomiar obejmuje opóźnienie, jitter oraz transfer pobierania i wysyłania. Skan sprawdza tylko wybrane porty bramy w sieci lokalnej; nie loguje się do routera ani nie zmienia ustawień.", bg=t["panel"], fg=t["muted"], wraplength=1250, justify="left", font=self.fnt(9)).pack(anchor="w", padx=12, pady=(0,8))
+    row = tk.Frame(top, bg=t["panel"]); row.pack(fill="x", padx=10, pady=(0,10))
+    self.make_button(row, "URUCHOM SPEED TEST", lambda:_u56_start_network_job(self, "SPEED TEST", _u56_do_speedtest), "accent", side="left", ipady=7)
+    self.make_button(row, "SPRAWDŹ ROUTER I ZAPORĘ", lambda:_u56_start_network_job(self, "KONTROLA ROUTERA", _u56_do_router_check), "card", side="left", ipady=7)
+    self.make_button(row, "OTWÓRZ PANEL ROUTERA", lambda:_u56_open_router_page(self), "card", side="left", ipady=7)
+    output_panel = self.panel(parent); output_panel.pack(fill="both", expand=True, padx=10, pady=(0,10))
+    text_wrap = tk.Frame(output_panel, bg=t["panel"]); text_wrap.pack(fill="both", expand=True, padx=8, pady=8)
+    output = tk.Text(text_wrap, height=18, wrap="word", bg=t["card"], fg=t["fg"], insertbackground=t["fg"], relief="flat", font=self.fnt(9), state="disabled")
+    scroll = ttk.Scrollbar(text_wrap, orient="vertical", command=output.yview)
+    output.configure(yscrollcommand=scroll.set)
+    output.pack(side="left", fill="both", expand=True); scroll.pack(side="right", fill="y")
+    self._u56_network_text = output
+    output.configure(state="normal")
+    output.insert("end", "Wybierz test. Raport będzie widoczny tutaj i w dzienniku aplikacji.\n")
+    output.configure(state="disabled")
+
+_U56_ORIG_SHOW_SERVICE_CENTER = AppV43.show_service_center
+def _u56_show_service_center(self):
+    result = _U56_ORIG_SHOW_SERVICE_CENTER(self)
+    try:
+        host = self.content
+        notebook = next((item for item in host.winfo_children() if isinstance(item, ttk.Notebook)), None)
+        if notebook is not None:
+            page = tk.Frame(notebook, bg=self.colors()["bg"])
+            notebook.add(page, text="INTERNET / ROUTER")
+            _u56_render_network_panel(self, page)
+    except Exception as exc:
+        try: self.queue_log("INTERNET / ROUTER: nie udało się utworzyć panelu: {0}: {1}".format(type(exc).__name__, exc))
+        except Exception: pass
+    return result
+AppV43.show_service_center = _u56_show_service_center
+
+# After a rollback, pause only the automatic update check for 24 hours. A manual update check still works.
+_U56_ORIG_UPDATE_CHECK = getattr(AppV43, "_u39_check_global_update", None)
+def _u56_check_global_update(self, silent=True, *args, **kwargs):
+    try:
+        if silent:
+            marker = Path(_u56_os.environ.get("LOCALAPPDATA") or Path.home()) / "NaprawaPC" / "Updates" / "rollback_hold_until.txt"
+            if marker.is_file():
+                raw = marker.read_text(encoding="utf-8", errors="replace").strip().replace("Z", "+00:00")
+                until = datetime.fromisoformat(raw)
+                if until.tzinfo is None:
+                    until = until.replace(tzinfo=timezone.utc)
+                if until > datetime.now(timezone.utc):
+                    note = "Automatyczna aktualizacja wstrzymana po przywróceniu poprzedniej wersji do {0:%Y-%m-%d %H:%M} UTC. Możesz ręcznie sprawdzić aktualizacje.".format(until)
+                    try: self._u39_set_update_status(note)
+                    except Exception: pass
+                    try: self.queue_log(note)
+                    except Exception: pass
+                    return
+                marker.unlink(missing_ok=True)
+    except Exception:
+        pass
+    if callable(_U56_ORIG_UPDATE_CHECK):
+        return _U56_ORIG_UPDATE_CHECK(self, silent, *args, **kwargs)
+    return None
+if callable(_U56_ORIG_UPDATE_CHECK):
+    AppV43._u39_check_global_update = _u56_check_global_update
+
+def _u56_selftest_network():
+    assert len(_U56_ROUTER_PORTS) == 8
+    assert len(set(x[0] for x in _U56_ROUTER_PORTS)) == 8
+    assert _u56_mbps(1000000, 1) == 8.0
+    assert callable(_u56_do_speedtest) and callable(_u56_do_router_check)
+    assert callable(AppV43.show_service_center) and callable(_u56_render_network_panel)
+    assert "rollback_hold_until.txt" in _u56_check_global_update.__code__.co_consts
+    print("[OK] speed-test download/upload/latency helpers")
+    print("[OK] local router port and Windows Firewall diagnostic")
+    print("[OK] network panel integrated into service center")
+    print("[OK] automatic updates pause temporarily after rollback")
+    print("NETWORK_ROUTER_SELFTEST_OK")
+
+if __name__ == "__main__" and "--selftest-network" in sys.argv:
+    try:
+        _u56_selftest_network()
+        raise SystemExit(0)
+    except Exception as _u56_exc:
+        print("NETWORK_ROUTER_SELFTEST_FAILED:", type(_u56_exc).__name__, str(_u56_exc))
+        raise SystemExit(1)
+'@
+    $networkMain = '(?m)^if __name__ == "__main__":'
+    if ($src -notmatch $networkMain) { throw "Nie znaleziono punktu wejścia dla modułu Internet/Router." }
+    $src = [regex]::Replace($src,$networkMain,[System.Text.RegularExpressions.MatchEvaluator]{
+        param($m)
+        return $networkIntegration + [Environment]::NewLine + $m.Value
+    },1)
+}
+if (!$src.Contains("# _U56_NETWORK_ROUTER_AND_ROLLBACK") -or !$src.Contains("NETWORK_ROUTER_SELFTEST_OK")) { throw "Nie udało się dołączyć testu Internetu i routera." }
+
 if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW")) { throw "Theme/hover patch verification failed." }
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
