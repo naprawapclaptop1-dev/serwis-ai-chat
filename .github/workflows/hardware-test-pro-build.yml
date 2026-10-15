@@ -156,7 +156,9 @@ jobs:
           $bootstrapPath = Join-Path (Resolve-Path ".\dist").Path $bootstrapName
           & $csc /nologo /target:winexe /optimize+ /codepage:65001 "/out:$bootstrapPath" "/win32manifest:$(Join-Path (Get-Location) 'update-bootstrap\app.manifest')" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll ".\update-bootstrap\Program.cs" $configPath
           if ($LASTEXITCODE -ne 0) { throw "Kompilacja pomocnika aktualizacji nie powiodła się: $LASTEXITCODE" }
-          if (!(Test-Path $bootstrapPath) -or (Get-Item $bootstrapPath).Length -lt 100KB) { throw "Plik pomocnika aktualizacji jest nieprawidłowy lub niekompletny." }
+          if (!(Test-Path $bootstrapPath) -or (Get-Item $bootstrapPath).Length -lt 10KB) { throw "Plik pomocnika aktualizacji jest nieprawidłowy lub niekompletny." }
+          $bootstrapHead = [IO.File]::ReadAllBytes($bootstrapPath)
+          if ($bootstrapHead.Length -lt 2 -or $bootstrapHead[0] -ne 0x4D -or $bootstrapHead[1] -ne 0x5A) { throw "Pomocnik aktualizacji nie jest prawidłowym plikiem PE." }
           $bootstrapHash = (Get-FileHash -LiteralPath $bootstrapPath -Algorithm SHA256).Hash.ToLowerInvariant()
           $bootstrapSize = (Get-Item -LiteralPath $bootstrapPath).Length
           "BOOTSTRAP_FILENAME=$bootstrapName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
