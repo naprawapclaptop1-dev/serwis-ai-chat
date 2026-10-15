@@ -5,7 +5,7 @@ WERSJA 4.3.44 — 125 SKÓREK + GLOBALNY AKTUALIZATOR
 - 125 skórek graficznych w jednym programie: 10 dotychczasowych i 115 nowych motywów.
 - Wyszukiwarka skórek, podgląd wektorowy dashboardu, zastosowanie całej palety i zapamiętywanie wyboru.
 - Skórki różnią się pełną paletą UI: tło, panele, karty, akcenty, statusy oraz grafika pulpitu.
-- Aktualizator globalny HTTPS pokazuje postęp pobierania, sprawdza rozmiar, SHA-256 i nagłówek PE, a następnie uruchamia instalator przez ShellExecuteW z żądaniem UAC.
+- Aktualizator globalny HTTPS sprawdza rozmiar, SHA-256 i nagłówek PE. Wydania zgodne ze starszymi wersjami używają osobnego pomocnika, który weryfikuje właściwy instalator, pokazuje postęp i zapisuje log instalacji.
 - Instalator ma zamknąć starsze procesy aplikacji przed zastąpieniem wersji i usunąć poprzednie pliki EXE z katalogu instalacji.
 - Utrzymano rozszerzone wykrywanie antywirusów, diagnostykę GPU, rozszerzony test VRAM i testy RAM.
 
