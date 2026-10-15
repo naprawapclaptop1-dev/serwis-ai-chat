@@ -23,6 +23,20 @@ import colorsys as _u443_cs
 _U443_PREFIX = ("NEON","DARK","DEEP","ULTRA","FUTURE","CYBER","LASER","ARCTIC","NIGHT","TITAN","QUANTUM","COSMIC","STEALTH","PRO","ELECTRIC","SILK","NOVA","NEXUS","ORBIT","PHOTON","TURBO","HYPER","AURORA")
 _U443_SUFFIX = ("OCEAN BLUE","VIOLET","MATRIX GREEN","BLACK GOLD","CRIMSON")
 _U443_HUES = (0.56,0.76,0.36,0.12,0.99)
+_U443_SKIN_PROFILES = (
+    {"name":"NEON GLASS","panel_relief":"flat","panel_bd":0,"panel_highlight":2,"button_relief":"flat","button_overrelief":"ridge","button_bd":0,"font":"Segoe UI","image":"neon","layout":"sidebar","scanlines":False},
+    {"name":"CARBON LAYER","panel_relief":"groove","panel_bd":2,"panel_highlight":1,"button_relief":"raised","button_overrelief":"ridge","button_bd":1,"font":"Bahnschrift","image":"carbon","layout":"topbar","scanlines":False},
+    {"name":"CYBER ANGULAR","panel_relief":"solid","panel_bd":1,"panel_highlight":2,"button_relief":"flat","button_overrelief":"raised","button_bd":1,"font":"Segoe UI","image":"angular","layout":"grid","scanlines":False},
+    {"name":"MATRIX TERMINAL","panel_relief":"ridge","panel_bd":1,"panel_highlight":1,"button_relief":"raised","button_overrelief":"ridge","button_bd":1,"font":"Consolas","image":"matrix","layout":"terminal","scanlines":True},
+    {"name":"ICE MINIMAL","panel_relief":"flat","panel_bd":0,"panel_highlight":1,"button_relief":"flat","button_overrelief":"raised","button_bd":0,"font":"Segoe UI","image":"ice","layout":"topbar","scanlines":False},
+    {"name":"VIOLET HOLOGRAM","panel_relief":"ridge","panel_bd":2,"panel_highlight":2,"button_relief":"raised","button_overrelief":"ridge","button_bd":1,"font":"Bahnschrift","image":"hologram","layout":"sidebar","scanlines":False},
+    {"name":"RED GAMING","panel_relief":"solid","panel_bd":2,"panel_highlight":2,"button_relief":"raised","button_overrelief":"raised","button_bd":2,"font":"Segoe UI","image":"redline","layout":"grid","scanlines":False},
+    {"name":"AMBER INDUSTRIAL","panel_relief":"groove","panel_bd":2,"panel_highlight":1,"button_relief":"groove","button_overrelief":"raised","button_bd":1,"font":"Consolas","image":"amber","layout":"terminal","scanlines":True},
+    {"name":"STEEL PRO","panel_relief":"ridge","panel_bd":2,"panel_highlight":1,"button_relief":"ridge","button_overrelief":"raised","button_bd":1,"font":"Segoe UI","image":"steel","layout":"topbar","scanlines":False},
+    {"name":"CARBON SCANLINE","panel_relief":"sunken","panel_bd":1,"panel_highlight":1,"button_relief":"raised","button_overrelief":"ridge","button_bd":1,"font":"Consolas","image":"carbon","layout":"terminal","scanlines":True},
+    {"name":"AURORA LAYER","panel_relief":"flat","panel_bd":0,"panel_highlight":3,"button_relief":"flat","button_overrelief":"ridge","button_bd":0,"font":"Bahnschrift","image":"aurora","layout":"sidebar","scanlines":False},
+    {"name":"RETRO HUD","panel_relief":"groove","panel_bd":2,"panel_highlight":1,"button_relief":"raised","button_overrelief":"sunken","button_bd":2,"font":"Consolas","image":"retro","layout":"grid","scanlines":True},
+)
 def _u443_hex(h,l,s):
     rgb = _u443_cs.hls_to_rgb(h % 1.0,l,s)
     return "#" + "".join(f"{round(x*255):02x}" for x in rgb)
@@ -47,7 +61,7 @@ for _u443_tid in range(11,126):
         _u443_accent = _u443_hex(_u443_hue,0.60,0.98)
         _u443_accent2 = _u443_hex(_u443_hue,0.77,0.90)
     THEMES[_u443_tid] = {
-        "name": f"{_U443_PREFIX[_u443_family]} {_U443_SUFFIX[_u443_group]}",
+        "name": f"{_U443_SKIN_PROFILES[_u443_family % len(_U443_SKIN_PROFILES)]['name']} • {_U443_SUFFIX[_u443_group]} • {_u443_tid:03d}",
         "bg": _u443_bg,"panel": _u443_panel,"card": _u443_card,
         "fg": _u443_fg,"muted": _u443_muted,
         "accent": _u443_accent,"accent2": _u443_accent2,
@@ -55,6 +69,20 @@ for _u443_tid in range(11,126):
         "warn": _u443_hex(0.12,0.60,0.86),
         "bad": _u443_hex(0.99,0.59,0.88),
     }
+for _u443_tid, _u443_theme in THEMES.items():
+    _u443_prof = _U443_SKIN_PROFILES[(_u443_tid - 1) % len(_U443_SKIN_PROFILES)]
+    _u443_theme["_skin_family"] = _u443_prof["name"]
+    _u443_theme["_skin_id"] = (_u443_tid - 1) % len(_U443_SKIN_PROFILES)
+    _u443_theme["_panel_relief"] = _u443_prof["panel_relief"]
+    _u443_theme["_panel_bd"] = _u443_prof["panel_bd"]
+    _u443_theme["_panel_highlight"] = _u443_prof["panel_highlight"]
+    _u443_theme["_button_relief"] = _u443_prof["button_relief"]
+    _u443_theme["_button_overrelief"] = _u443_prof["button_overrelief"]
+    _u443_theme["_button_bd"] = _u443_prof["button_bd"]
+    _u443_theme["_font_family"] = _u443_prof["font"]
+    _u443_theme["_image_style"] = _u443_prof["image"]
+    _u443_theme["_skin_layout"] = _u443_prof["layout"]
+    _u443_theme["_scanlines"] = _u443_prof["scanlines"]
 '@
     $pattern = '(?m)^\}\r?\n\r?\nMODULES = \['
     if ($src -notmatch $pattern) { throw "Cannot find base theme palette insertion point." }
