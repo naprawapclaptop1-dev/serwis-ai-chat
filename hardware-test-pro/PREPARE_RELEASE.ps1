@@ -129,7 +129,7 @@ $oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code
 if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
 $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert any("Start-Process" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
-'    assert any("installer-" in str(x) and "-status.txt" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and "-status.txt" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "close_app" not in _u44_confirm_downloaded.__code__.co_names'
 $src = $src.Replace($oldLauncherSelfTest, $newLauncherSelfTest)
