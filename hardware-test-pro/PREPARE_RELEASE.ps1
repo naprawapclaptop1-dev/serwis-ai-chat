@@ -131,9 +131,122 @@ $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code
 '    assert any("Start-Process" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and "-status.txt" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
+'    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "gettempdir" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "xb" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "close_app" not in _u44_confirm_downloaded.__code__.co_names'
 $src = $src.Replace($oldLauncherSelfTest, $newLauncherSelfTest)
 
+
+$downloadPatch = @'
+def _u44_download_global_update(self, data):
+    import uuid as _u47_uuid
+    import tempfile as _u47_tempfile
+    import os as _u47_os
+    import re as _u47_re
+    import hashlib as _u47_hashlib
+    import urllib.parse as _u47_urlparse
+    import urllib.request as _u47_request
+    version = str(data.get("version") or "update")
+    filename = str(data.get("filename") or "")
+    if not _u47_re.fullmatch(r"[A-Za-z0-9._-]+\\.exe", filename, _u47_re.I):
+        raise ValueError("Nieprawidlowa nazwa pliku aktualizacji.")
+    url = str(data.get("download_url") or "")
+    parsed = _u47_urlparse.urlparse(url)
+    if parsed.scheme != "https" or (parsed.hostname or "").lower() != "github.com":
+        raise ValueError("Adres aktualizacji nie jest dozwolonym HTTPS GitHub.")
+    expected_hash = str(data.get("sha256") or "").lower()
+    if not _u47_re.fullmatch(r"[0-9a-f]{64}", expected_hash):
+        raise ValueError("Manifest nie zawiera prawidlowego SHA-256.")
+    expected_size = int(data.get("size") or 0)
+    if expected_size < 1024 * 1024 or expected_size > _U39_MAX_INSTALLER_BYTES:
+        raise ValueError("Rozmiar pomocnika aktualizacji poza dozwolonym zakresem.")
+
+    token = f"{_u47_os.getpid()}-{_u47_uuid.uuid4().hex}"
+    candidates = []
+    local_root = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "NaprawaPC" / "Updates"
+    temp_root = Path(_u47_tempfile.gettempdir()) / "NaprawaPC" / "Updates"
+    candidates.extend([local_root, temp_root])
+    root = None
+    errors = []
+    for candidate in candidates:
+        probe = candidate / (".write-test-" + token + ".tmp")
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            with open(probe, "xb") as probe_file:
+                probe_file.write(b"ok")
+            probe.unlink()
+            root = candidate
+            break
+        except OSError as exc:
+            errors.append(f"{candidate}: {type(exc).__name__}: {exc}")
+            try:
+                probe.unlink(missing_ok=True)
+            except Exception:
+                pass
+    if root is None:
+        raise PermissionError("Brak dostepnego folderu do zapisu aktualizacji. " + " | ".join(errors))
+
+    # Unique names prevent stale/locked .download files from blocking the next update.
+    dest = root / (Path(filename).stem + "-" + token + ".exe")
+    tmp = root / ("." + filename + "-" + token + ".download")
+    self.queue_action(lambda v=version: self._u44_set_progress(0, f"Przygotowuje bezpieczne pobieranie aktualizacji {v}..."))
+    try:
+        req = _u47_request.Request(url, headers={
+            "User-Agent": f"NAPRAWA-PC-HARDWARE-TEST-PRO/{str(VERSION).split()[0]}",
+            "Cache-Control": "no-cache"
+        })
+        hasher = _u47_hashlib.sha256()
+        total = 0
+        last = -1
+        with _u47_request.urlopen(req, timeout=60) as response:
+            final = _u47_urlparse.urlparse(response.geturl())
+            if final.scheme != "https" or (final.hostname or "").lower() not in _U39_ALLOWED_DOWNLOAD_HOSTS:
+                raise ValueError("Przekierowanie pobierania trafiło na niedozwolony adres.")
+            with open(tmp, "xb") as out:
+                while True:
+                    chunk = response.read(512 * 1024)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > expected_size or total > _U39_MAX_INSTALLER_BYTES:
+                        raise ValueError("Pobrany plik przekracza zadeklarowany rozmiar.")
+                    hasher.update(chunk)
+                    out.write(chunk)
+                    p = min(100, int(total * 100 / max(1, expected_size)))
+                    if p >= last + 2 or p == 100:
+                        last = p
+                        msg = f"Pobieranie {version}: {p}% ({total / 1048576:.1f}/{expected_size / 1048576:.1f} MB)"
+                        self.queue_action(lambda p=p, m=msg: self._u44_set_progress(p, m))
+        if total != expected_size:
+            raise ValueError(f"Niepełny plik: pobrano {total} B, manifest podaje {expected_size} B.")
+        actual = hasher.hexdigest()
+        if actual != expected_hash:
+            raise ValueError(f"SHA-256 niezgodne: {actual}; aktualizacja odrzucona.")
+        with open(tmp, "rb") as verified:
+            if verified.read(2) != b"MZ":
+                raise ValueError("Pobrany plik nie jest plikiem wykonywalnym Windows PE.")
+        os.replace(tmp, dest)
+        self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. Plik sprawdzony; uruchamiam pomocnika z: {root}"))
+        self.queue_action(lambda p=str(dest), v=version: self._u44_confirm_downloaded(p, v))
+    except Exception as exc:
+        try:
+            tmp.unlink(missing_ok=True)
+        except Exception:
+            pass
+        msg = f"Blad pobierania aktualizacji: {type(exc).__name__}: {exc}"
+        if isinstance(exc, PermissionError):
+            msg += " Sprawdz historie ochrony Bitdefender/Windows oraz uprawnienia folderu. Program nie wylacza ochrony i nie dodaje wyjatkow."
+        self.queue_action(lambda m=msg: self._u39_set_update_status(m))
+        self.queue_action(lambda m=msg: messagebox.showerror("Aktualizacja globalna", m))
+'@
+$downloadPattern = '(?s)def _u44_download_global_update\(self, data\):.*?(?=\r?\nAppV43\._u44_set_progress = _u44_set_progress)'
+$downloadMatches = [regex]::Matches($src, $downloadPattern)
+if ($downloadMatches.Count -ne 1) { throw "Oczekiwano jednej funkcji pobierania _u44_download_global_update; znaleziono $($downloadMatches.Count)." }
+$src = [regex]::Replace($src, $downloadPattern, [System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $downloadPatch.TrimEnd()
+}, 1)
 
 if (!$src.Contains("# _U443_THEME_PACK")) {
 $theme = @'
