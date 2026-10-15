@@ -110,8 +110,9 @@ namespace NaprawaPC.UpdateBootstrap
             {
                 Uri uri = new Uri(BuildConfig.SetupUrl);
                 if (uri.Scheme != Uri.UriSchemeHttps ||
-                    !String.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("Adres instalatora nie jest dozwolonym adresem HTTPS GitHub.");
+                    !String.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase) ||
+                    !String.Equals(Path.GetFileName(uri.AbsolutePath), BuildConfig.SetupFilename, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Adres instalatora nie odpowiada zweryfikowanemu plikowi HTTPS GitHub.");
 
                 _directory = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
