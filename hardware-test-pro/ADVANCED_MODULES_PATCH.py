@@ -993,6 +993,7 @@ def _u66_open_tests_item(self,key):
       "3D":lambda:self.show_3d_studio(),
       "ALL":lambda:self.start_all_tests_sequential(),
       "CENTRUM":lambda:self.show_service_center(),
+      "SYSTEM_REPAIR":lambda:_u68_launch_system_repair(self),
       "RAPORT":lambda:self.show_report(),
       "WINSAT":lambda:(self.show_module("GPU"),self.run_winsat_d3d()),
       "PIXEL":lambda:(self.show_module("EKRAN"),self._u37_open_screen_test()),
@@ -1008,7 +1009,7 @@ def _u66_show_tests_hub(self):
     t=self.colors()
     self.header_title.config(text="CENTRUM TESTÓW — AUTOMATYCZNE, LIVE I SERWIS")
     banner=self.panel(self.content); banner.pack(fill="x",pady=(0,7))
-    tk.Label(banner,text="TESTY SPRZĘTOWE • SPEED TEST • 20 SCEN 3D • AI CZYTNIK • NAPRAWA WINDOWS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(banner,text="TESTY SPRZĘTOWE • SPEED TEST • 40 SCEN 3D ULTRA/MAX • SYSTEM REPAIR PRO • SERWIS ULTIMATE • AI CZYTNIK",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
     tk.Label(banner,text="„WSZYSTKIE TESTY PO KOLEI” przełącza ekran do aktualnie wykonywanego testu. Wyniki oznaczane są PASS/WARN/FAIL/N/D na podstawie dostępnych pomiarów; brak sensora nie jest zaliczeniem.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
     outer=tk.Frame(self.content,bg=t["bg"]); outer.pack(fill="both",expand=True)
     c=tk.Canvas(outer,bg=t["bg"],highlightthickness=0)
@@ -1025,7 +1026,8 @@ def _u66_show_tests_hub(self):
       ("SPEED TEST INTERNETU","Pomiar prawdziwego download/upload w Mbps oraz opóźnienia HTTP; zapis historii lokalnie.","SPEED"),
       ("3D BENCHMARK STUDIO — 40 SCEN • ULTRA / MAX","40 scen OpenGL. Wybierz 5–300 s na scenę; FPS z prawdziwego renderowania trafia do raportu. Dłuższe profile obciążają GPU dłużej.","3D"),
       ("AI CZYTNIK WIEDZY","Baza offline, wyszukiwanie Internetu, czytanie URL, import plików i zapis źródeł do prywatnej biblioteki.","AI"),
-      ("CENTRUM SERWISU + SYSTEM REPAIR","SFC, DISM, CHKDSK, raport baterii, narzędzia Windows oraz prywatne zgłoszenia.","CENTRUM"),
+      ("CENTRUM SERWISU + SYSTEM REPAIR","SFC, DISM, CHKDSK, narzędzia Windows, prywatne zgłoszenia i naprawy serwisowe.","CENTRUM"),
+      ("PEŁNY SYSTEM REPAIR PRO — APLIKACJA WPF","Uruchamia dołączony, samodzielny program .NET System Repair PRO w katalogu instalacji. Brak osobnej ikony na pulpicie.","SYSTEM_REPAIR"),
       ("CPU — obciążenie i zegary","Rzeczywiste obciążenie etapowe, częstotliwość i wykres próbek.","CPU"),
       ("RAM — wzorce zapisu/odczytu","Bufor RAM z weryfikacją wzorców 00/FF/AA/55; wynik opisuje rozmiar rzeczywiście sprawdzony.","RAM"),
       ("GPU — karta i sterownik","Adaptery, status PnP, telemetria dostawcy i dostępne czujniki.","GPU"),
@@ -1865,12 +1867,47 @@ def _u68_show_game_guide(self):
     self.make_button(row,"← WRÓĆ DO 3D BENCHMARK",self.show_3d_studio,"card",side="left",ipady=5)
     self.make_button(row,"RAPORT",self.show_report,"card",side="left",ipady=5)
 
+def _u68_launch_system_repair(self):
+    """Start the full bundled .NET System Repair PRO companion from the installed product directory."""
+    try:
+        if getattr(sys, "frozen", False):
+            base = Path(sys.executable).resolve().parent
+        else:
+            base = Path(__file__).resolve().parent
+        candidates = [
+            base / "SystemRepair" / "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe",
+            base / "dist" / "SystemRepair" / "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe",
+            Path(getattr(sys, "_MEIPASS", base)) / "SystemRepair" / "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe",
+        ]
+        exe = next((p for p in candidates if p.is_file()), None)
+        if exe is None:
+            messagebox.showerror(
+                "System Repair PRO",
+                "Nie znaleziono dołączonej aplikacji WPF. Sprawdź, czy instalator zawiera katalog SystemRepair."
+            )
+            self.queue_log("System Repair PRO: brak pełnego pliku SystemRepair/NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe.")
+            return
+        proc = _u66_subprocess.Popen([str(exe)], cwd=str(exe.parent))
+        self.queue_log(f"Uruchomiono pełny System Repair PRO: PID={proc.pid}; plik={exe}")
+    except Exception as exc:
+        detail = f"{type(exc).__name__}: {exc}"
+        try:
+            self.queue_log("System Repair PRO: " + detail)
+        except Exception:
+            pass
+        messagebox.showerror("System Repair PRO", detail)
+
+
 def _u66_selftest_advanced():
     assert len(_U66_SCENES)==40, "Studio must have 40 separately named scenes"
     assert len(_U68_GAME_GUIDE)>=30, "Game guide must include at least 30 games"
     assert callable(AppV43.show_module) and callable(AppV43.show_simple_module) and callable(AppV43.show_game_guide)
     assert all(key in _U68_MODULE_SCENES for key in ("CPU","RAM","DYSK","GPU","VRAM"))
     assert callable(_u68_run_module_action) and callable(_u68_start_visualizer)
+    assert callable(_u68_launch_system_repair)
+    assert any(item[2]=="SYSTEM_REPAIR" for item in [
+        ("PEŁNY SYSTEM REPAIR PRO","", "SYSTEM_REPAIR")
+    ])
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
