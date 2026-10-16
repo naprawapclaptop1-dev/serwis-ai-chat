@@ -1075,7 +1075,7 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
         GL.glEnable(GL.GL_DEPTH_TEST); GL.glClearColor(.008,.018,.03,1)
         GL.glViewport(0,0,width,height); GL.glMatrixMode(GL.GL_PROJECTION); GL.glLoadIdentity(); gluPerspective(55,width/height,.1,250); GL.glMatrixMode(GL.GL_MODELVIEW)
         start=_u66_time.perf_counter(); frames=0; running=True; samples=[]; win_frames=0; win_start=start; peak=0.0
-        requested=max(3,min(120,int(seconds)))
+        requested=max(3,min(300,int(seconds)))
         while running and _u66_time.perf_counter()-start < requested:
             for ev in pg.event.get():
                 if ev.type==pg.QUIT or (ev.type==pg.KEYDOWN and ev.key==pg.K_ESCAPE): running=False
@@ -1755,6 +1755,9 @@ def _u68_start_visualizer(self, module, scene_id=None):
     self.worker(job)
 
 def _u68_run_module_action(self, module, action):
+    if getattr(self, "running", False):
+        messagebox.showinfo("Test sprzętu", "Inny test już trwa. Poczekaj na zakończenie lub zatrzymaj go przyciskiem STOP.")
+        return
     aliases = {"DYSKI":"DYSK","SSD":"DYSK","SSD/HDD/NVME":"DYSK","MATRYCA":"EKRAN","DISPLAY":"EKRAN",
                "SIEĆ":"SIEC","WI-FI / LAN":"SIEC","NETWORK":"SIEC","DŹWIĘK / AUDIO":"AUDIO",
                "KLAWIATURA / TOUCHPAD":"KLAWIATURA","USB / URZĄDZENIA":"USB","SYSTEM SECURITY":"SECURITY"}
@@ -1833,7 +1836,7 @@ def _u68_add_module_action_panel(self, key, page_kind="hardware"):
     self.make_button(panel,"BENCHMARK / ULTRA",lambda m=module:_u68_run_module_action(self,m,"bench"),"good",side="left",ipady=4)
     self.make_button(panel,"SYMULATOR 3D",lambda m=module:_u68_run_module_action(self,m,"3d"),"card",side="left",ipady=4)
     if module=="GPU":
-        self.make_button(panel,"SKANUJ VRAM",lambda:_u68_run_module_action(self,"VRAM","scan"),"warn",side="left",ipady=4)
+        self.make_button(panel,"SKANUJ VRAM",lambda:_u68_run_module_action(self,"VRAM","scan"),"accent",side="left",ipady=4)
         self.make_button(panel,"3D VRAM",lambda:_u68_run_module_action(self,"VRAM","3d"),"card",side="left",ipady=4)
 
 def _u68_show_module_wrapped(self, key):
