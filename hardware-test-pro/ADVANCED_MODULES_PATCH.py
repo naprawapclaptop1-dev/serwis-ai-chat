@@ -80,24 +80,24 @@ _U66_SCENES = [
 ("18 — Podwójna geometria", "mixed", 140),
 ("19 — Extreme triangle load", "triangles_extreme", 3500),
 ("20 — Ultimate mixed load", "ultimate", 2400),
-("21 — CPU Core Matrix / wielowątkowość", "grid", 180),
+("21 — CPU Core Matrix / wielowątkowość", "cpu_core_matrix", 180),
 ("22 — CPU Thread Swarm / obciążenie geometrii", "particles", 480),
 ("23 — CPU Pipeline Rings", "rings", 64),
 ("24 — CPU Vector Throughput", "triangles", 3200),
-("25 — RAM Address Matrix", "grid", 240),
+("25 — RAM Address Matrix", "ram_address_matrix", 240),
 ("26 — RAM Bitfield / wzorce", "materials", 350),
 ("27 — RAM Bandwidth Visualizer", "triangles", 5200),
 ("28 — RAM Burst Stress", "ultimate", 700),
-("29 — SSD/NVMe Sequential I/O", "triangles", 3600),
-("30 — SSD Random I/O / kolejki", "particles", 420),
+("29 — SSD/NVMe Sequential I/O", "disk_sequential", 3600),
+("30 — SSD Random I/O / kolejki", "disk_random", 420),
 ("31 — NVMe Queue / PCIe lanes", "rings", 96),
 ("32 — Disk Queue Mesh", "mixed", 550),
-("33 — VRAM Texture Tiles", "gpu", 180),
+("33 — VRAM Texture Tiles", "vram_texture_tiles", 180),
 ("34 — VRAM Fillrate / render target", "triangles_extreme", 8000),
 ("35 — GPU Shader Geometry Stress", "triangles_extreme", 12000),
 ("36 — GPU Tiled Composite", "ultimate", 1400),
-("37 — PCIe / interfejsy wejścia-wyjścia", "mixed", 500),
-("38 — Matryca / Pixel Grid 3D", "grid", 220),
+("37 — PCIe / interfejsy wejścia-wyjścia", "pcie_bus", 500),
+("38 — Matryca / Pixel Grid 3D", "display_pixels", 220),
 ("39 — Chłodzenie / airflow simulation", "waves", 64),
 ("40 — ULTRA MAX Composite Scene", "ultimate", 2800)
 ]
@@ -1086,7 +1086,111 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
             GL.glPolygonMode(GL.GL_FRONT_AND_BACK,GL.GL_LINE if kind=="wire" else GL.GL_FILL)
             GL.glLoadIdentity(); GL.glTranslatef(0,0,-13); GL.glRotatef(elapsed*18,0,1,0); GL.glRotatef(14+_u66_math.sin(elapsed)*7,1,0,0)
             complexity=max(1,min(12000,int(complexity))); base=min(20,complexity)
-            if kind in ("boxes","cubes","grid","materials","room","city","gpu","particles","mixed","ultimate"):
+            if kind=="cpu_core_matrix":
+                _u37_draw_gpu_box(GL,0,0,0,5.4,.22,3.5,(.035,.12,.17))
+                _u37_draw_gpu_box(GL,0,.18,0,3.25,.22,2.3,(.32,.37,.42))
+                core_count=min(64,max(8,complexity//5))
+                for core in range(core_count):
+                    x=(core%8-3.5)*.39
+                    z=(core//8-3)*.34
+                    pulse=.45+.45*(_u66_math.sin(elapsed*2.5+core*.7)+1)/2
+                    _u37_draw_gpu_box(GL,x,.38,z,.31,.12,.25,(.05+pulse*.12,.22+pulse*.65,.28+pulse*.58))
+                for pin in range(18):
+                    _u37_draw_gpu_box(GL,-2.45+pin*.29,-.03,-1.86,.08,.06,.16,(.72,.55,.18))
+                    _u37_draw_gpu_box(GL,-2.45+pin*.29,-.03,1.86,.08,.06,.16,(.72,.55,.18))
+            elif kind=="ram_address_matrix":
+                _u37_draw_gpu_box(GL,0,-.28,0,5.6,.18,3.6,(.025,.22,.13))
+                for module_id in range(4):
+                    x=(module_id-1.5)*1.28
+                    _u37_draw_gpu_box(GL,x,.05,0,.88,.11,3.25,(.035,.14,.1))
+                    _u37_draw_gpu_box(GL,x,.13,0,.62,.09,2.85,(.18,.23,.25))
+                    for chip in range(8):
+                        z=(chip-3.5)*.34
+                        pulse=.35+.5*(_u66_math.sin(elapsed*3+module_id+chip*.8)+1)/2
+                        _u37_draw_gpu_box(GL,x,.23,z,.43,.1,.23,(.04,.24+pulse*.55,.3+pulse*.45))
+                    for pin in range(20):
+                        _u37_draw_gpu_box(GL,x-.4+pin*.042,-.01,1.67,.024,.035,.18,(.8,.64,.24))
+            elif kind=="disk_sequential":
+                GL.glColor3f(.35,.47,.53)
+                for radius in (2.1,1.7,1.3,.9,.52):
+                    GL.glBegin(GL.GL_LINE_LOOP)
+                    for point in range(100):
+                        a=2*_U66_math.pi*point/100
+                        GL.glVertex3f(radius*_U66_math.cos(a),radius*_U66_math.sin(a),.08)
+                    GL.glEnd()
+                _u37_draw_gpu_box(GL,0,.1,0,.55,.16,.55,(.55,.61,.66))
+                GL.glPushMatrix()
+                GL.glRotatef(elapsed*52,0,0,1)
+                _u37_draw_gpu_box(GL,1.22,.16,0,1.65,.12,.16,(.04,.8,.56))
+                GL.glPopMatrix()
+                blocks=min(256,max(48,complexity//10))
+                for block in range(blocks):
+                    a=(block/blocks)*2*_U66_math.pi+elapsed*.7
+                    rad=1.82+(block%3)*.11
+                    col=(.05,.35+.55*((block%9)/9),.28)
+                    _u37_draw_gpu_box(GL,rad*_U66_math.cos(a),.16,rad*_U66_math.sin(a),.075,.08,.075,col)
+            elif kind=="disk_random":
+                GL.glColor3f(.35,.47,.53)
+                for radius in (2.15,1.65,1.15,.62):
+                    GL.glBegin(GL.GL_LINE_LOOP)
+                    for point in range(80):
+                        a=2*_U66_math.pi*point/80
+                        GL.glVertex3f(radius*_U66_math.cos(a),radius*_U66_math.sin(a),.08)
+                    GL.glEnd()
+                _u37_draw_gpu_box(GL,0,.13,0,.52,.16,.52,(.5,.57,.62))
+                points=min(300,max(64,complexity//2))
+                for point in range(points):
+                    a=point*2.399963+elapsed*(.4+(point%5)*.22)
+                    rad=.55+(point%27)/27*1.58
+                    pulse=.35+.6*(_U66_math.sin(elapsed*4+point)+1)/2
+                    _u37_draw_gpu_box(GL,rad*_U66_math.cos(a),.16,rad*_U66_math.sin(a),.065,.07,.065,(.04,.32+pulse*.55,.75))
+            elif kind=="vram_texture_tiles":
+                _u37_draw_gpu_box(GL,0,-.35,0,5.7,.18,3.6,(.025,.18,.13))
+                _u37_draw_gpu_box(GL,0,-.05,0,1.75,.18,1.45,(.32,.37,.42))
+                for mem in range(8):
+                    a=2*_U66_math.pi*mem/8
+                    _u37_draw_gpu_box(GL,2.0*_U66_math.cos(a),.02,1.23*_U66_math.sin(a),.67,.12,.43,(.03,.34,.19))
+                cols=min(12,max(6,complexity//15))
+                for tile in range(cols*6):
+                    x=(tile%cols-(cols-1)/2)*.38
+                    z=(tile//cols-2.5)*.38
+                    wave=.5+.5*_U66_math.sin(elapsed*2+tile*.27)
+                    GL.glPushMatrix()
+                    GL.glTranslatef(x,1.05+wave*.32,z)
+                    GL.glRotatef(elapsed*20+tile*11,0,1,0)
+                    _u37_draw_gpu_box(GL,0,0,0,.28,.12,.28,(.08+wave*.15,.14+wave*.65,.42+wave*.5))
+                    GL.glPopMatrix()
+            elif kind=="pcie_bus":
+                _u37_draw_gpu_box(GL,0,-.35,0,5.8,.18,3.5,(.025,.2,.12))
+                _u37_draw_gpu_box(GL,0,-.12,0,4.4,.12,.32,(.13,.16,.18))
+                for lane in range(10):
+                    z=(lane-4.5)*.25
+                    GL.glColor3f(.05,.43,.74)
+                    GL.glBegin(GL.GL_LINE_STRIP)
+                    for point in range(30):
+                        x=-2.55+point*.175
+                        y=.04+.08*_U66_math.sin(elapsed*4-point*.22+lane)
+                        GL.glVertex3f(x,y,z)
+                    GL.glEnd()
+                    pulse=(elapsed*1.5+lane/10)%1
+                    _u37_draw_gpu_box(GL,-2.4+pulse*4.8,.12,z,.18,.1,.13,(.08,.8,.95))
+                for chip in range(12):
+                    x=(chip%6-2.5)*.72
+                    z=(chip//6-0.5)*1.65
+                    _u37_draw_gpu_box(GL,x,.02,z,.4,.12,.34,(.25,.29,.34))
+            elif kind=="display_pixels":
+                _u37_draw_gpu_box(GL,0,0,0,5.8,.22,3.7,(.16,.18,.22))
+                cols=min(30,max(12,complexity//10)); rows=min(14,max(8,cols*3//5))
+                _u37_draw_gpu_box(GL,0,.17,0,5.25,.12,3.12,(.02,.025,.04))
+                for pixel in range(cols*rows):
+                    x=(pixel%cols-(cols-1)/2)*(.17 if cols>22 else .25)
+                    z=(pixel//cols-(rows-1)/2)*.25
+                    r=((pixel%3)==0)*.85 + .05
+                    g=((pixel%3)==1)*.8 + .04
+                    b=((pixel%3)==2)*.9 + .07
+                    pulse=.25+.65*(_U66_math.sin(elapsed*2+pixel*.12)+1)/2
+                    _u37_draw_gpu_box(GL,x,.29,z,.11,.06,.14,(min(1,r*pulse),min(1,g*pulse),min(1,b*pulse)))
+            elif kind in ("boxes","cubes","grid","materials","room","city","gpu","particles","mixed","ultimate"):
                 n=min(1200,complexity)
                 if kind=="ultimate": n=min(3000,complexity)
                 for i in range(n):
