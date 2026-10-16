@@ -991,7 +991,7 @@ def _u66_open_tests_item(self,key):
       "SPEED":lambda:self.show_speed_test(),
       "LIVE":lambda:self.show_live_monitor(),
       "3D":lambda:self.show_3d_studio(),
-      "ALL":lambda:self.start_all_tests_sequential(),
+      "ALL":lambda:_u68_start_all_tests_sequential(self),
       "CENTRUM":lambda:self.show_service_center(),
       "SYSTEM_REPAIR":lambda:_u68_launch_system_repair(self),
       "RAPORT":lambda:self.show_report(),
@@ -1893,6 +1893,28 @@ def _u68_show_game_guide(self):
     self.make_button(row,"← WRÓĆ DO 3D BENCHMARK",self.show_3d_studio,"card",side="left",ipady=5)
     self.make_button(row,"RAPORT",self.show_report,"card",side="left",ipady=5)
 
+def _u68_start_all_tests_sequential(self):
+    """Use the visible, per-module sequential runner for the main ALL button."""
+    if getattr(self, "running", False):
+        messagebox.showinfo("Wszystkie testy", "Inny test już trwa. Poczekaj albo użyj STOP TEST.")
+        return
+    selected = ["CPU","GPU","RAM","DYSKI","MATRYCA","BATERIA","KLAWIATURA","AUDIO","SIEC","SYSTEM_SECURITY"]
+    stages = len(selected) + 2  # 40-scene GPU suite and USB enumeration are nested stages.
+    estimate = "około 6–12 minut, zależnie od szybkości sprzętu i dysku"
+    prompt = (
+        "Uruchomić WSZYSTKIE TESTY po kolei?\n\n"
+        "Każdy test przełączy ekran na dany moduł i pokaże pomiary/wykresy na żywo. "
+        "GPU uruchomi dodatkowo 40 scen 3D; sieć wykona test download/upload (~24 MB).\n\n"
+        f"Plan: {stages} etapów głównych i podrzędnych; czas: {estimate}. "
+        "Długie profile ULTRA/MAX wybiera się osobno w modułach.\n\n"
+        "Brak czujnika będzie N/D, a nie fikcyjnym PASS. STOP TEST przerwie przebieg."
+    )
+    if not messagebox.askyesno("Wszystkie testy — sekwencja LIVE", prompt):
+        return
+    self._refresh_after_worker_view = None
+    self.worker(lambda: _u67_run_selected_diagnostic(self, selected))
+
+
 def _u68_launch_system_repair(self):
     """Start the full bundled .NET System Repair PRO companion from the installed product directory."""
     try:
@@ -1931,6 +1953,9 @@ def _u66_selftest_advanced():
     assert all(key in _U68_MODULE_SCENES for key in ("CPU","RAM","DYSK","GPU","VRAM"))
     assert callable(_u68_run_module_action) and callable(_u68_start_visualizer)
     assert callable(_u68_launch_system_repair)
+    assert callable(_u68_start_all_tests_sequential)
+    assert AppV43.start_all_tests_sequential is _u68_start_all_tests_sequential
+    assert AppV43.full_test is _u68_start_all_tests_sequential
     assert callable(AppV43.show_service_center)
     assert callable(_u68_show_service_center_wrapped)
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
@@ -1957,8 +1982,8 @@ AppV43.show_speed_test=_u66_show_speed_test
 AppV43.show_live_monitor=_u66_show_live_monitor
 AppV43.show_3d_studio=_u66_show_3d_studio
 AppV43.show_tests_hub=_u66_show_tests_hub
-AppV43.start_all_tests_sequential=_u66_start_all_tests
-AppV43.full_test=_u66_start_all_tests
+AppV43.start_all_tests_sequential=_u68_start_all_tests_sequential
+AppV43.full_test=_u68_start_all_tests_sequential
 AppV43._start_selected_diagnostic=_u67_start_selected_diagnostic
 AppV43._run_selected_diagnostic=_u67_run_selected_diagnostic
 _U68_ORIGINAL_SHOW_MODULE=AppV43.show_module
