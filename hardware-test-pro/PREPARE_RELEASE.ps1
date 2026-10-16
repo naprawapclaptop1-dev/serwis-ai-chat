@@ -28,84 +28,49 @@ def _u44_confirm_downloaded(self, path, version):
             raise ValueError("Pobrany plik nie jest instalatorem EXE.")
         safe_version = re.sub(r"[^0-9A-Za-z._-]", "_", str(version or "update"))
         update_dir = installer.parent
-        ps_path = Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
-        if os.name == "nt" and not ps_path.is_file():
-            raise FileNotFoundError(f"Nie znaleziono Windows PowerShell: {ps_path}")
-        script_path = update_dir / f"launch-update-{safe_version}.ps1"
         log_path = update_dir / f"installer-{safe_version}.log"
-        status_path = update_dir / f"installer-{safe_version}-status.txt"
-        quoted_installer = str(installer).replace("'", "''")
-        quoted_log = str(log_path).replace("'", "''")
-        quoted_status = str(status_path).replace("'", "''")
-        script_template = r"""$ErrorActionPreference = 'Stop'
-$installer = '__INSTALLER__'
-$logPath = '__LOG__'
-$statusPath = '__STATUS__'
-try {
-    if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
-        throw "Nie znaleziono pobranego instalatora: $installer"
-    }
-    $arguments = @('/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', ('/LOG="' + $logPath + '"'))
-    $process = Start-Process -FilePath $installer -ArgumentList $arguments -PassThru -Wait
-    $result = "EXIT_CODE=$($process.ExitCode)" + [Environment]::NewLine + "INSTALLER=$installer" + [Environment]::NewLine + "LOG=$logPath"
-    $result | Set-Content -LiteralPath $statusPath -Encoding UTF8
-    if ($process.ExitCode -ne 0) {
-        throw "Instalator zakończył pracę z kodem $($process.ExitCode). Log: $logPath"
-    }
-} catch {
-    $message = $_.Exception.Message
-    ("ERROR=" + $message + [Environment]::NewLine + "INSTALLER=" + $installer + [Environment]::NewLine + "LOG=" + $logPath) |
-        Set-Content -LiteralPath $statusPath -Encoding UTF8
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        [System.Windows.Forms.MessageBox]::Show(
-            ($message + [Environment]::NewLine + [Environment]::NewLine + "Raport: " + $statusPath),
-            'NAPRAWA PC - Aktualizacja',
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Error
-        ) | Out-Null
-    } catch {}
-    exit 1
-}
-"""
-        script = script_template.replace("__INSTALLER__", quoted_installer).replace("__LOG__", quoted_log).replace("__STATUS__", quoted_status)
-        script_path.write_text(script, encoding="utf-8-sig")
+
+        # Start the verified Inno Setup installer directly with the standard Windows UAC prompt.
+        # No intermediate PowerShell script, ExecutionPolicy bypass, or separate bootstrap EXE.
         if os.name == "nt":
-            import ctypes as _u46_ctypes
-            from ctypes import wintypes as _u46_wintypes
-            _u46_shell = _u46_ctypes.WinDLL("shell32", use_last_error=True)
-            _u46_execute = _u46_shell.ShellExecuteW
-            _u46_execute.argtypes = [
-                _u46_wintypes.HWND, _u46_wintypes.LPCWSTR,
-                _u46_wintypes.LPCWSTR, _u46_wintypes.LPCWSTR,
-                _u46_wintypes.LPCWSTR, _u46_ctypes.c_int
+            import ctypes as _u48_ctypes
+            from ctypes import wintypes as _u48_wintypes
+            _u48_shell = _u48_ctypes.WinDLL("shell32", use_last_error=True)
+            _u48_execute = _u48_shell.ShellExecuteW
+            _u48_execute.argtypes = [
+                _u48_wintypes.HWND, _u48_wintypes.LPCWSTR,
+                _u48_wintypes.LPCWSTR, _u48_wintypes.LPCWSTR,
+                _u48_wintypes.LPCWSTR, _u48_ctypes.c_int
             ]
-            _u46_execute.restype = _u46_ctypes.c_void_p
-            parameters = f'-NoProfile -ExecutionPolicy Bypass -File "{script_path}"'
-            result = _u46_execute(None, "runas", str(ps_path), parameters, str(update_dir), 1)
+            _u48_execute.restype = _u48_ctypes.c_void_p
+            parameters = f'/SILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG="{log_path}"'
+            result = _u48_execute(None, "runas", str(installer), parameters, str(update_dir), 1)
             result_code = int(result or 0)
             if result_code <= 32:
                 raise OSError(
-                    f"Windows nie uruchomił pomocnika aktualizacji (ShellExecuteW={result_code}). "
+                    f"Windows nie uruchomił zweryfikowanego instalatora (ShellExecuteW={result_code}). "
                     "Sprawdź, czy monit UAC nie został anulowany."
                 )
         else:
-            subprocess.Popen([str(installer), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"], cwd=str(update_dir))
+            subprocess.Popen(
+                [str(installer), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"],
+                cwd=str(update_dir)
+            )
+
         try:
             self.append_log(
-                f"Aktualizator: uruchomiono pomocnika instalacji wersji {version}. "
-                f"Raport: {status_path}; log instalatora: {log_path}"
+                f"Aktualizator: przekazano zweryfikowany instalator wersji {version} do Windows. "
+                f"Log Inno Setup: {log_path}"
             )
         except Exception:
             pass
         try:
             self._u39_set_update_status(
-                f"Uruchomiono aktualizację {version}. Potwierdź UAC i poczekaj na pasek instalacji. "
-                f"Raport błędu, jeśli wystąpi: {status_path}"
+                f"Zweryfikowany instalator {version} został uruchomiony przez Windows. "
+                f"Potwierdź monit UAC, jeśli jest widoczny. Log instalatora: {log_path}"
             )
         except Exception:
             pass
-        # Do not close the app before UAC is accepted. Setup closes the old app itself.
     except Exception as exc:
         msg = f"Nie udało się uruchomić aktualizacji: {type(exc).__name__}: {exc}"
         try:
@@ -128,8 +93,11 @@ $src = [regex]::Replace($src, $confirmPattern, [System.Text.RegularExpressions.M
 $oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names'
 if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
 $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
-'    assert any("Start-Process" in str(x) for x in _u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
-'    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and "-status.txt" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "runas" in _u44_confirm_downloaded.__code__.co_consts' + [Environment]::NewLine +
+'    assert "/SILENT" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "ExecutionPolicy Bypass" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "Start-Process" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and ".log" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "gettempdir" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
@@ -160,7 +128,7 @@ def _u44_download_global_update(self, data):
         raise ValueError("Manifest nie zawiera prawidlowego SHA-256.")
     expected_size = int(data.get("size") or 0)
     if expected_size < 1024 * 1024 or expected_size > _U39_MAX_INSTALLER_BYTES:
-        raise ValueError("Rozmiar pomocnika aktualizacji poza dozwolonym zakresem.")
+        raise ValueError("Rozmiar instalatora aktualizacji poza dozwolonym zakresem.")
 
     token = f"{_u47_os.getpid()}-{_u47_uuid.uuid4().hex}"
     candidates = []
@@ -230,7 +198,7 @@ def _u44_download_global_update(self, data):
             if verified.read(2) != b"MZ":
                 raise ValueError("Pobrany plik nie jest plikiem wykonywalnym Windows PE.")
         os.replace(tmp, dest)
-        self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. Plik sprawdzony; uruchamiam pomocnika z: {root}"))
+        self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. SHA-256 i rozmiar poprawne; przekazuję instalator do Windows/UAC. Plik: {p}"))
         self.queue_action(lambda p=str(dest), v=version: self._u44_confirm_downloaded(p, v))
     except Exception as exc:
         try:
