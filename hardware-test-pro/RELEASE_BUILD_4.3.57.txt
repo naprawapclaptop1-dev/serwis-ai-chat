@@ -1,0 +1,4 @@
+Build request recorded 2026-10-16.
+Target version: 4.3.57 (derived from currently published stable 4.3.56 by PREPARE_RELEASE.ps1).
+Required: Windows x64 build, built-in self-tests, installer/asset SHA-256, release assets first, manifest update only after successful release.
+Do not publish the global update manifest unless the workflow confirms the installer and updater bootstrap assets were created and uploaded.
