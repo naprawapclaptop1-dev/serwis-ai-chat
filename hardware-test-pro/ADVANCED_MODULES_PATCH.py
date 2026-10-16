@@ -103,22 +103,37 @@ def _u66_saved_knowledge():
 def _u66_save_knowledge(items):
     path = _u66_store_dir() / "knowledge_base.json"
     current = _u66_saved_knowledge()
-    by_source = {str(x.get("source","")):x for x in current if isinstance(x,dict)}
-    added = 0
+    by_key = {}
+    for item in current:
+        if not isinstance(item, dict):
+            continue
+        source = str(item.get("source", "")).strip()
+        title = str(item.get("title", "Zapisany artykuł")).strip()
+        by_key[(source, title)] = item
+    changed = 0
     for item in items:
-        if not isinstance(item,dict):
+        if not isinstance(item, dict):
             continue
-        text = str(item.get("text","")).strip()[:500000]
-        source = str(item.get("source","")).strip()[:2000]
-        title = str(item.get("title","Zapisany artykuł")).strip()[:500]
-        if not text or len(text) < 40:
+        body = str(item.get("text", "")).strip()[:500000]
+        source = str(item.get("source", "")).strip()[:2000]
+        title = str(item.get("title", "Zapisany artykuł")).strip()[:500]
+        if not body or len(body) < 40:
             continue
-        key = source or (title + ":" + str(len(by_source)))
-        by_source[key] = {"title":title,"tags":str(item.get("tags",""))[:1000],"text":text,"source":source,"saved_at":_U66_datetime.now().isoformat(timespec="seconds")}
-        added += 1
-    values = list(by_source.values())[-300:]
+        key = (source, title)
+        normalized = {
+            "title": title,
+            "tags": str(item.get("tags", ""))[:1000],
+            "text": body,
+            "source": source,
+            "saved_at": _U66_datetime.now().isoformat(timespec="seconds"),
+        }
+        previous = by_key.get(key)
+        if not previous or any(previous.get(k) != normalized.get(k) for k in ("tags", "text", "source", "title")):
+            changed += 1
+        by_key[key] = normalized
+    values = list(by_key.values())[-500:]
     path.write_text(_u66_json.dumps(values, ensure_ascii=False, indent=2), encoding="utf-8")
-    return added, path
+    return changed, path
 
 def _u66_all_knowledge():
     return list(_U66_KNOWLEDGE_SEED) + _u66_saved_knowledge()
@@ -293,6 +308,131 @@ def _u66_read_web_page(url):
         raise RuntimeError("Strona nie udostępniła czytelnej treści. Może wymagać JavaScript, logowania lub blokować automatyczny odczyt.")
     return {"title":title or parsed.hostname,"text":text[:500000],"source":str(url),"tags":"wczytana strona internetowa","saved_at":_U66_datetime.now().isoformat(timespec="seconds")}
 
+_U66_KNOWLEDGE_PACK_URL = "https://raw.githubusercontent.com/naprawapclaptop1-dev/serwis-ai-chat/main/hardware-test-pro/AI_READER_KNOWLEDGE_PL.json"
+_U66_KNOWLEDGE_PACK_FORMAT = "naprawapc-ai-reader-knowledge"
+_U66_KNOWLEDGE_MAX_BYTES = 5 * 1024 * 1024
+_U66_KNOWLEDGE_MAX_ARTICLES = 500
+
+def _u66_sync_knowledge_failed(self, detail, automatic=False):
+    try:
+        self._u66_kb_sync_running = False
+    except Exception:
+        pass
+    message = "Nie udało się pobrać bazy wiedzy online: " + str(detail)[:1200]
+    try:
+        if hasattr(self, "_u66_reader_status") and self._u66_reader_status.winfo_exists():
+            self._u66_reader_status.config(text=message)
+    except Exception:
+        pass
+    try:
+        self.append_log("AI Reader: " + message)
+    except Exception:
+        pass
+    if not automatic:
+        try:
+            messagebox.showerror("Aktualizacja bazy Czytnika AI", message)
+        except Exception:
+            pass
+
+def _u66_sync_knowledge_from_server(self, automatic=False):
+    if getattr(self, "_u66_kb_sync_running", False):
+        return
+    state_path = _u66_store_dir() / "knowledge_sync.json"
+    if automatic:
+        try:
+            state = _u66_json.loads(state_path.read_text(encoding="utf-8"))
+            stamp = _U66_datetime.fromisoformat(str(state.get("last_success", "")))
+            age = (_U66_datetime.now() - stamp).total_seconds()
+            if 0 <= age < 12 * 60 * 60:
+                if hasattr(self, "_u66_reader_status"):
+                    self._u66_reader_status.config(
+                        text=f"Baza lokalna: {len(_U66_KNOWLEDGE_SEED)} tematów wbudowanych + {len(_u66_saved_knowledge())} zapisanych. Ostatnia synchronizacja: {stamp:%Y-%m-%d %H:%M}."
+                    )
+                return
+        except Exception:
+            pass
+    self._u66_kb_sync_running = True
+    try:
+        if hasattr(self, "_u66_reader_status"):
+            self._u66_reader_status.config(text="Pobieranie kuratorowanej bazy wiedzy przez HTTPS…")
+    except Exception:
+        pass
+
+    def job():
+        try:
+            headers = {
+                "User-Agent": "NAPRAWA-PC-HARDWARE-TEST-PRO/AIReader",
+                "Accept": "application/json",
+                "Cache-Control": "no-cache",
+            }
+            request = _u66_request.Request(_U66_KNOWLEDGE_PACK_URL, headers=headers)
+            with _u66_request.urlopen(request, timeout=25) as response:
+                final = _u66_urlparse.urlparse(response.geturl())
+                if final.scheme != "https" or (final.hostname or "").lower() != "raw.githubusercontent.com":
+                    raise ValueError("Adres paczki przekierował poza dozwolony serwer HTTPS GitHub.")
+                raw = response.read(_U66_KNOWLEDGE_MAX_BYTES + 1)
+            if len(raw) > _U66_KNOWLEDGE_MAX_BYTES:
+                raise ValueError("Paczka wiedzy przekracza limit 5 MB.")
+            pack = _u66_json.loads(raw.decode("utf-8"))
+            if not isinstance(pack, dict) or pack.get("format") != _U66_KNOWLEDGE_PACK_FORMAT:
+                raise ValueError("Nieprawidłowy format bazy wiedzy.")
+            version = str(pack.get("version", "")).strip()[:80]
+            articles = pack.get("articles")
+            if not version or not isinstance(articles, list) or not articles or len(articles) > _U66_KNOWLEDGE_MAX_ARTICLES:
+                raise ValueError("Paczka nie zawiera prawidłowej wersji lub listy artykułów.")
+            clean = []
+            for item in articles:
+                if not isinstance(item, dict):
+                    continue
+                title = str(item.get("title", "")).strip()[:300]
+                tags = str(item.get("tags", "")).strip()[:800]
+                body = str(item.get("text", "")).strip()[:30000]
+                source = str(item.get("source", "")).strip()[:1500]
+                parsed = _u66_urlparse.urlparse(source)
+                if not title or len(body) < 60:
+                    continue
+                if parsed.scheme != "https" or not parsed.hostname:
+                    continue
+                # Only import passive text and links; no page or article content is ever executed.
+                clean.append({"title": title, "tags": tags, "text": body, "source": source})
+            if not clean:
+                raise ValueError("W paczce nie znaleziono artykułów ze źródłami HTTPS.")
+            changed, db_path = _u66_save_knowledge(clean)
+            state_path.write_text(
+                _u66_json.dumps({
+                    "version": version,
+                    "articles_received": len(clean),
+                    "last_success": _U66_datetime.now().isoformat(timespec="seconds"),
+                    "database": str(db_path),
+                }, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            def finish():
+                self._u66_kb_sync_running = False
+                saved_count = len(_u66_saved_knowledge())
+                message = f"Baza wiedzy {version}: {len(clean)} artykułów pobranych; {changed} dodanych/zaktualizowanych. Łącznie lokalnie zapisano {saved_count}. Ścieżka: {db_path}"
+                try:
+                    if hasattr(self, "_u66_reader_status") and self._u66_reader_status.winfo_exists():
+                        self._u66_reader_status.config(text=message)
+                except Exception:
+                    pass
+                try:
+                    self.append_log("AI Reader: " + message)
+                except Exception:
+                    pass
+                try:
+                    query = str(getattr(self, "_u66_reader_query", tk.StringVar(value="")).get()).strip()
+                    if query and getattr(self, "current_view", "") == "AI_READER":
+                        _u66_reader_search(self, False)
+                except Exception:
+                    pass
+            self.queue_action(finish)
+        except Exception as exc:
+            detail = f"{type(exc).__name__}: {exc}"
+            self.queue_action(lambda detail=detail, automatic=automatic: _u66_sync_knowledge_failed(self, detail, automatic))
+    _u66_threading.Thread(target=job, name="NaprawaPCAIReaderKnowledgeSync", daemon=True).start()
+
+
 def _u66_show_ai_reader(self):
     self.current_view="AI_READER"
     self.clear()
@@ -316,7 +456,8 @@ def _u66_show_ai_reader(self):
     row3=tk.Frame(self.content,bg=t["bg"]); row3.pack(fill="x",pady=3)
     self.make_button(row3,"ANALIZUJ OSTATNIE TESTY",lambda:_u66_reader_analyze_tests(self),"accent",side="left",ipady=5)
     self.make_button(row3,"OTWÓRZ FOLDER BAZY",lambda:_u66_os.startfile(str(_u66_store_dir())) if _u66_os.name=="nt" else _u66_webbrowser.open("file://"+str(_u66_store_dir())),"card",side="left",ipady=5)
-    self._u66_reader_status=tk.Label(self.content,text=f"Baza wbudowana: {len(_U66_KNOWLEDGE_SEED)} tematów • Zapisane lokalnie: {len(_u66_saved_knowledge())} • Źródła: linki w wynikach",bg=t["bg"],fg=t["muted"],font=self.fnt(8),anchor="w")
+    self.make_button(row3,"AKTUALIZUJ / POBIERZ BAZĘ WIEDZY",lambda:_u66_sync_knowledge_from_server(self,automatic=False),"good",side="left",ipady=5)
+    self._u66_reader_status=tk.Label(self.content,text=f"Baza wbudowana: {len(_U66_KNOWLEDGE_SEED)} tematów • Zapisane lokalnie: {len(_u66_saved_knowledge())} • Pakiet online jest aktualizowany osobno.",bg=t["bg"],fg=t["muted"],font=self.fnt(8),anchor="w")
     self._u66_reader_status.pack(fill="x",padx=4,pady=3)
     outer=tk.Frame(self.content,bg=t["panel"]); outer.pack(fill="both",expand=True,pady=(3,6))
     self._u66_reader_text=tk.Text(outer,wrap="word",bg=t["panel"],fg=t["fg"],insertbackground=t["fg"],font=self.fnt(10),relief="flat",padx=12,pady=10)
@@ -329,6 +470,7 @@ def _u66_show_ai_reader(self):
     self._u66_reader_results=[]
     entry.bind("<Return>",lambda e:_u66_reader_search(self,True))
     self.make_button(self.content,"← POWRÓT DO TESTÓW",self.show_tests_hub,"card",side="left",ipady=5)
+    self.after(120,lambda:_u66_sync_knowledge_from_server(self,automatic=True))
 
 def _u66_reader_render(self,heading,paragraph,items):
     try:
@@ -1210,6 +1352,9 @@ def _u66_selftest_advanced():
     assert len(_U66_SCENES)==20, "Studio must have 20 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
+    assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
+    assert _U66_KNOWLEDGE_PACK_URL.startswith("https://raw.githubusercontent.com/")
+    assert callable(_u66_sync_knowledge_from_server)
     ranked=_u66_rank_knowledge("temperatura CPU GPU",limit=5)
     assert ranked and any("temperatura" in str(x.get("title","")).lower() for x in ranked)
     assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed)
