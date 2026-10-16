@@ -1284,6 +1284,15 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
 if (!$src.Contains("_U66_SCENES") -or !$src.Contains("ADVANCED_MODULES_SELFTEST_OK") -or !$src.Contains("_u66_web_search") -or !$src.Contains("Cloudflare")) {
     throw "Weryfikacja wstawek AI Reader / Speed Test / 3D Studio nie powiodła się."
 }
+if (!$src.Contains('assert len(_U66_SCENES)==40') -or
+    !$src.Contains('AppV43.start_all_tests_sequential=_u68_start_all_tests_sequential') -or
+    !$src.Contains('AppV43.show_module=_u68_show_module_wrapped') -or
+    !$src.Contains('AppV43.show_simple_module=_u68_show_simple_module_wrapped') -or
+    !$src.Contains('AppV43.show_service_center=_u68_show_service_center_wrapped') -or
+    !$src.Contains('def _u68_launch_system_repair(self)') -or
+    !$src.Contains('def _u68_run_module_action(self, module, action)')) {
+    throw "Brak kompletnej integracji: 40 scen 3D, pełna sekwencja testów, skan/benchmark modułów lub System Repair PRO."
+}
 if (($src | Select-String -Pattern 'ADVANCED_MODULES_PATCH' -AllMatches).Matches.Count -gt 0) {
     # The patch source itself is external; only its contents are added to the generated main program.
     throw "Wykryto błędny marker nazwy pliku patcha w źródle aplikacji."
@@ -1302,6 +1311,7 @@ CENTRUM SERWISU ULTIMATE + SYSTEM REPAIR PRO
 -------------------------------------------
 W wersji budowanej z aktualnego źródła dostępna jest dodatkowa sekcja CENTRUM SERWISU / NAPRAWA PRO w ekranie TESTY:
 - zakładki Serwis Ultimate, System Repair PRO, Zgłoszenia prywatne i Narzędzia serwisowe;
+- pełna natywna aplikacja WPF System Repair PRO 5.6.16 jest dołączana do instalatora w podfolderze SystemRepair i uruchamiana z menu programu;
 - prywatne zgłoszenia z weryfikacją PBKDF2 i szyfrowaniem danych lokalnych;
 - SFC, DISM, CHKDSK, odświeżanie DNS, reset Winsock, raport baterii oraz skróty do narzędzi Windows;
 - automatyczny aktualizator z próbą zapisu w lokalnym folderze aktualizacji i bezpiecznym folderze TEMP, nazwami tymczasowymi i kontrolą SHA-256.
@@ -1319,6 +1329,11 @@ $oldRunFlags = 'Flags: postinstall nowait skipifsilent'
 if (!$setup.Contains($oldRunFlags)) { throw "Nie znaleziono wpisu uruchamiania programu po instalacji." }
 $setup = $setup.Replace($oldRunFlags, 'Flags: nowait runasoriginaluser')
 if ($setup.Contains('postinstall nowait skipifsilent')) { throw "Instalator nadal pomija ponowne uruchomienie w trybie cichym." }
+if (!$setup.Contains('Source: "{#SourceDir}\SystemRepair\*"') -or
+    !$setup.Contains('DestDir: "{app}\SystemRepair"') -or
+    !$setup.Contains('recursesubdirs createallsubdirs')) {
+    throw "Instalator nie ma wpisu kopiującego pełny katalog SystemRepair."
+}
 [IO.File]::WriteAllText($setupPath,$setup,[Text.UTF8Encoding]::new($false))
 $nl=[Environment]::NewLine
 [IO.File]::AppendAllText($env:GITHUB_ENV,("APP_VERSION=$next"+$nl+"SETUP_FILENAME=$setupName"+$nl),[Text.UTF8Encoding]::new($false))
