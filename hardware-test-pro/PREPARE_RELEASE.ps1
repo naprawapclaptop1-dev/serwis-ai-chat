@@ -1263,6 +1263,32 @@ $src = [regex]::Replace($src,$mainPattern,[System.Text.RegularExpressions.MatchE
 if (!$src.Contains("_U55_INTEGRATED_SERVICE_REPAIR_CENTER") -or !$src.Contains("SERVICE_REPAIR_CENTER_SELFTEST_OK") -or !$src.Contains("self.show_service_center")) { throw "Integracja Serwis Ultimate / System Repair PRO nie została prawidłowo dołączona." }
 
 if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW")) { throw "Theme/hover patch verification failed." }
+# Advanced diagnostics upgrade: AI reader, live metrics, Cloudflare speed test and sequential 20-scene 3D studio.
+$advancedPatchPath = Join-Path $PSScriptRoot "ADVANCED_MODULES_PATCH.py"
+if (!(Test-Path -LiteralPath $advancedPatchPath)) { throw "Missing advanced feature patch: $advancedPatchPath" }
+$advancedPatch = [IO.File]::ReadAllText($advancedPatchPath,[Text.Encoding]::UTF8)
+$oldGpuDispatch = '            _u37_gpu_benchmark_child(_u37_output, 30)'
+$newGpuDispatch = @'
+            _u66_scene = int(sys.argv[_u37_index + 2]) if _u37_index + 2 < len(sys.argv) else 1
+            _u66_seconds = int(sys.argv[_u37_index + 3]) if _u37_index + 3 < len(sys.argv) else 30
+            _u37_gpu_benchmark_child(_u37_output, _u66_seconds, _u66_scene)
+'@
+if (!$src.Contains($oldGpuDispatch)) { throw "Nie znaleziono punktu wejścia dla scen 3D z parametrem sceny." }
+$src = $src.Replace($oldGpuDispatch,$newGpuDispatch.TrimEnd())
+$advancedMainPattern = '(?m)^if __name__ == "__main__":'
+if ($src -notmatch $advancedMainPattern) { throw "Nie znaleziono głównego punktu wejścia dla modułów zaawansowanych." }
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $advancedPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U66_SCENES") -or !$src.Contains("ADVANCED_MODULES_SELFTEST_OK") -or !$src.Contains("_u66_web_search") -or !$src.Contains("Cloudflare")) {
+    throw "Weryfikacja wstawek AI Reader / Speed Test / 3D Studio nie powiodła się."
+}
+if (($src | Select-String -Pattern 'ADVANCED_MODULES_PATCH' -AllMatches).Matches.Count -gt 0) {
+    # The patch source itself is external; only its contents are added to the generated main program.
+    throw "Wykryto błędny marker nazwy pliku patcha w źródle aplikacji."
+}
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
