@@ -1,5 +1,5 @@
 Request Windows x64 global release build triggered 2026-10-16.
-Expected version: 4.3.58, derived from the verified stable manifest 4.3.57.
-Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, then publish release assets before updating latest.json.
-Global manifest must point to NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-<version>.exe directly.
-Do not create, publish, or reference UpdateBootstrap EXE in the global update channel.
+Expected next version: 4.3.61, derived from verified stable manifest 4.3.60 by PREPARE_RELEASE.ps1.
+Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, publish release assets, then update latest.json only after success.
+Global manifest must point to NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-<version>.exe directly; never create or reference UpdateBootstrap EXE.
+Updater must launch the verified Setup installer with normal Windows UAC and a visible Inno Setup wizard; do not use /SILENT or /SUPPRESSMSGBOXES, so users can see and complete installation and failures are not hidden.
