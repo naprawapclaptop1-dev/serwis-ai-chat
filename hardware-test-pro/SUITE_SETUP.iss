@@ -56,11 +56,11 @@ var
   ResultCode: Integer;
 begin
   Result := '';
-  { The executable has a versioned filename, so restart-manager matching alone does not catch older versions. }
-  if FileExists(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe')) then
+  { Stop only this product's versioned executables; do not spawn PowerShell or bypass its policy. }
+  if FileExists(ExpandConstant('{sys}\taskkill.exe')) then
   begin
-    Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-      '-NoProfile -ExecutionPolicy Bypass -Command "Get-Process | Where-Object { $_.ProcessName -match ''^NAPRAWA-PC-HARDWARE-TEST-PRO(-[0-9.]+)?$'' } | Stop-Process -Force -ErrorAction SilentlyContinue"',
+    Exec(ExpandConstant('{sys}\taskkill.exe'),
+      '/F /T /FI "IMAGENAME eq NAPRAWA-PC-HARDWARE-TEST-PRO-*.exe" /IM *',
       '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
     Sleep(600);
   end;
