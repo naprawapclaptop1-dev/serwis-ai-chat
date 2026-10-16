@@ -1015,7 +1015,7 @@ def _u66_show_tests_hub(self):
     t=self.colors()
     self.header_title.config(text="CENTRUM TESTÓW — AUTOMATYCZNE, LIVE I SERWIS")
     banner=self.panel(self.content); banner.pack(fill="x",pady=(0,7))
-    tk.Label(banner,text="TESTY SPRZĘTOWE • SPEED TEST • 40 SCEN 3D ULTRA/MAX • SYSTEM REPAIR PRO • SERWIS ULTIMATE • AI CZYTNIK",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(banner,text="TESTY SPRZĘTOWE • SPEED TEST • 46 SCEN 3D ULTRA/MAX • SYSTEM REPAIR PRO • SERWIS ULTIMATE • AI CZYTNIK",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
     tk.Label(banner,text="„WSZYSTKIE TESTY PO KOLEI” przełącza ekran do aktualnie wykonywanego testu. Wyniki oznaczane są PASS/WARN/FAIL/N/D na podstawie dostępnych pomiarów; brak sensora nie jest zaliczeniem.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
     outer=tk.Frame(self.content,bg=t["bg"]); outer.pack(fill="both",expand=True)
     c=tk.Canvas(outer,bg=t["bg"],highlightthickness=0)
@@ -1027,10 +1027,10 @@ def _u66_show_tests_hub(self):
     c.configure(yscrollcommand=sb.set)
     c.pack(side="left",fill="both",expand=True); sb.pack(side="right",fill="y")
     items=[
-      ("WSZYSTKIE TESTY PO KOLEI","Przebieg CPU → RAM → GPU/VRAM → 40 scen 3D → SSD/HDD/NVMe → matryca → Speed Test → bezpieczeństwo → bateria/audio/USB. Każdy etap otrzymuje ekran, pomiary i status.","ALL"),
+      ("WSZYSTKIE TESTY PO KOLEI","Przebieg CPU → RAM → GPU/VRAM → 46 scen 3D → SSD/HDD/NVMe → matryca → Speed Test → bezpieczeństwo → bateria/audio/USB. Każdy etap otrzymuje ekran, pomiary i status.","ALL"),
       ("MONITOR LIVE — WSZĘDZIE","CPU/RAM/GPU, zegary, transfer dysku i sieci, temperatury/czujniki z rzeczywistą próbką co sekundę.","LIVE"),
       ("SPEED TEST INTERNETU","Pomiar prawdziwego download/upload w Mbps oraz opóźnienia HTTP; zapis historii lokalnie.","SPEED"),
-      ("3D BENCHMARK STUDIO — 40 SCEN • ULTRA / MAX","40 scen OpenGL. Wybierz 5–300 s na scenę; FPS z prawdziwego renderowania trafia do raportu. Dłuższe profile obciążają GPU dłużej.","3D"),
+      ("3D BENCHMARK STUDIO — 46 SCEN • ULTRA / MAX","46 scen OpenGL. Wybierz 5–300 s na scenę; FPS z prawdziwego renderowania trafia do raportu. Dłuższe profile obciążają GPU dłużej.","3D"),
       ("AI CZYTNIK WIEDZY","Baza offline, wyszukiwanie Internetu, czytanie URL, import plików i zapis źródeł do prywatnej biblioteki.","AI"),
       ("CENTRUM SERWISU + SYSTEM REPAIR","SFC, DISM, CHKDSK, narzędzia Windows, prywatne zgłoszenia i naprawy serwisowe.","CENTRUM"),
       ("PEŁNY SYSTEM REPAIR PRO — APLIKACJA WPF","Uruchamia dołączony, samodzielny program .NET System Repair PRO w katalogu instalacji. Brak osobnej ikony na pulpicie.","SYSTEM_REPAIR"),
@@ -1477,7 +1477,7 @@ def _u66_execute_gpu_scene(self,scene_id,seconds=5):
 
 def _u66_show_3d_studio(self):
     self.current_view="3D_STUDIO"; self.clear(); t=self.colors()
-    self.header_title.config(text="3D BENCHMARK STUDIO — 40 SCEN • ULTRA / MAX")
+    self.header_title.config(text="3D BENCHMARK STUDIO — 46 SCEN • ULTRA / MAX")
     info=self.panel(self.content); info.pack(fill="x",pady=(0,7))
     tk.Label(info,text="RZECZYWISTE RENDEROWANIE OPENGL • ŚREDNI FPS • PEAK 1 s • RENDERER • CZAS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
     tk.Label(info,text="Sceny proceduralne badają różne obciążenia geometrii. Nie są wynikami gier ani porównaniem sprzętu między różnymi API i rozdzielczościami.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
@@ -1498,7 +1498,7 @@ def _u66_show_3d_studio(self):
         self._u66_3d_tree.insert("","end",iid=str(i),values=(sc[0],res.get("state","—"),res.get("average_fps","N/D"),res.get("peak_fps_1s","N/D"),res.get("frames","N/D"),res.get("renderer",res.get("error","—"))))
     row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x")
     self.make_button(row,"▶ URUCHOM WYBRANĄ SCENĘ",lambda:_u66_start_3d_one(self),"accent",side="left",ipady=5)
-    self.make_button(row,"▶ WSZYSTKIE 40 SCEN",lambda:_u66_start_3d_all(self),"good",side="left",ipady=5)
+    self.make_button(row,"▶ WSZYSTKIE 46 SCEN",lambda:_u66_start_3d_all(self),"good",side="left",ipady=5)
     self.make_button(row,"OCENA GIER / USTAWIENIA",lambda:_u68_show_game_guide(self),"card",side="left",ipady=5)
     self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=5)
 
@@ -1519,7 +1519,7 @@ def _u66_start_3d_one(self):
 def _u66_start_3d_all(self):
     try: seconds=int(str(self._u66_scene_seconds.get()).split()[0])
     except Exception: seconds=5
-    if not messagebox.askyesno("40 scen 3D — ULTRA / MAX",f"Uruchomić {len(_U66_SCENES)} scen, każdą przez {seconds} s? Łączny czas renderowania to co najmniej {len(_U66_SCENES)*seconds} sekund. Profile 60/120/300 s są długimi testami obciążeniowymi. ESC zatrzymuje aktywną scenę."):
+    if not messagebox.askyesno("46 scen 3D — ULTRA / MAX",f"Uruchomić {len(_U66_SCENES)} scen, każdą przez {seconds} s? Łączny czas renderowania to co najmniej {len(_U66_SCENES)*seconds} sekund. Profile 60/120/300 s są długimi testami obciążeniowymi. ESC zatrzymuje aktywną scenę."):
         return
     self.worker(lambda:_u66_run_3d_suite(self,seconds))
 
@@ -1563,7 +1563,7 @@ def _u66_start_all_tests(self):
     if getattr(self,"running",False):
         messagebox.showinfo("Testy","Inny test już trwa. Poczekaj, aż się zakończy.")
         return
-    if not messagebox.askyesno("Wszystkie testy po kolei","Pełna sekwencja LIVE uruchamia CPU, RAM, GPU, 40 scen 3D, dysk, matrycę, Internet Speed Test, bezpieczeństwo, baterię i USB/sieć. Przy profilu 5 s na scenę renderowanie zajmie co najmniej 200 sekund, do tego dochodzą pozostałe testy. Test można zatrzymać przyciskiem STOP TEST."):
+    if not messagebox.askyesno("Wszystkie testy po kolei","Pełna sekwencja LIVE uruchamia CPU, RAM, GPU, 40 scen 3D, dysk, matrycę, Internet Speed Test, bezpieczeństwo, baterię i USB/sieć. Przy profilu 5 s na scenę renderowanie zajmie co najmniej 230 sekund, do tego dochodzą pozostałe testy. Test można zatrzymać przyciskiem STOP TEST."):
         return
     self.worker(self._u66_run_all_tests_worker)
 
@@ -1838,7 +1838,7 @@ def _u67_run_selected_diagnostic(self, selected):
     for entry in chosen:
         expanded.append(entry)
         if entry[0] == "GPU":
-            expanded.append(("__3D__", "3D Benchmark Studio — 40 scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
+            expanded.append(("__3D__", "3D Benchmark Studio — 46 scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
         if entry[0] == "SIEC":
             expanded.append(("__USB__", "USB — enumeracja urządzeń", lambda: self.show_simple_module("USB / URZĄDZENIA"), lambda: self._peripheral_test("USB"), ["USB"]))
     started = _U66_datetime.now().isoformat(timespec="seconds")
@@ -1919,7 +1919,7 @@ def _u67_start_selected_diagnostic(self):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz przynajmniej jeden moduł.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 40 scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
+        "CPU": "CPU", "GPU": "GPU + 46 scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
         "MATRYCA": "Matryca / EDID", "BATERIA": "Bateria", "KLAWIATURA": "Klawiatura / touchpad",
         "AUDIO": "Audio", "SIEC": "Internet Speed Test + USB", "SYSTEM_SECURITY": "Windows i bezpieczeństwo"
     }
@@ -1993,7 +1993,7 @@ def _u68_start_visualizer(self, module, scene_id=None):
     scene_id = int(scene_id or _U68_MODULE_SCENES.get(module, 40))
     seconds = _u68_get_profile(self)
     name = _U66_SCENES[scene_id-1][0]
-    self.queue_log(f"WIZUALIZATOR 3D {module}: scena {scene_id}/40 — {name} — {seconds} s; FPS mierzy renderer OpenGL.")
+    self.queue_log(f"WIZUALIZATOR 3D {module}: scena {scene_id}/46 — {name} — {seconds} s; FPS mierzy renderer OpenGL.")
     def job():
         result = _u66_execute_gpu_scene(self, scene_id, seconds)
         self.queue_action(lambda: self.results.__setitem__("MODULE_3D_"+module, result))
@@ -2230,7 +2230,7 @@ def _u68_start_all_tests_sequential(self):
     prompt = (
         "Uruchomić WSZYSTKIE TESTY po kolei?\n\n"
         "Każdy test przełączy ekran na dany moduł i pokaże pomiary/wykresy na żywo. "
-        "GPU uruchomi dodatkowo 40 scen 3D; sieć wykona test download/upload (~24 MB).\n\n"
+        "GPU uruchomi dodatkowo 46 scen 3D; sieć wykona test download/upload (~24 MB).\n\n"
         f"Plan: {stages} etapów głównych i podrzędnych; czas: {estimate}. "
         "Długie profile ULTRA/MAX wybiera się osobno w modułach.\n\n"
         "Brak czujnika będzie N/D, a nie fikcyjnym PASS. STOP TEST przerwie przebieg."
@@ -2273,7 +2273,7 @@ def _u68_launch_system_repair(self):
 
 
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==40, "Studio must have 40 separately named scenes"
+    assert len(_U66_SCENES)==46, "Studio must have 46 separately named scenes"
     assert len(_U68_GAME_GUIDE)>=30, "Game guide must include at least 30 games"
     assert callable(AppV43.show_module) and callable(AppV43.show_simple_module) and callable(AppV43.show_game_guide)
     assert all(key in _U68_MODULE_SCENES for key in ("CPU","RAM","DYSK","GPU","VRAM"))
