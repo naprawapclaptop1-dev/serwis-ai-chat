@@ -95,6 +95,162 @@ jobs:
           python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
           if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")) { throw "PyInstaller did not create the EXE." }
 
+      - name: Set up .NET 10 SDK for the integrated System Repair PRO module
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build and smoke-test full System Repair PRO module
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $repoRoot = $env:GITHUB_WORKSPACE
+          $chunkDir = Join-Path $repoRoot "system-repair-pro-hotfix-5.6.16\chunks"
+          $parts = @(Get-ChildItem -LiteralPath $chunkDir -Filter "part_*.txt" | Sort-Object { [int]([regex]::Match($_.Name, 'part_(\d+)\.txt
+      - name: Compile and verify Setup.exe
+        id: installer
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          $iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue).Source
+          $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+          $pf = [Environment]::GetEnvironmentVariable("ProgramFiles")
+          if (!$iscc -and (Test-Path "$pf86\Inno Setup 6\ISCC.exe")) { $iscc = "$pf86\Inno Setup 6\ISCC.exe" }
+          if (!$iscc -and (Test-Path "$pf\Inno Setup 6\ISCC.exe")) { $iscc = "$pf\Inno Setup 6\ISCC.exe" }
+          if (!$iscc) { throw "ISCC.exe not found." }
+          $dist = (Resolve-Path ".\dist").Path
+          & $iscc "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$dist" "/O$dist" ".\SUITE_SETUP.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+          $installer = Join-Path $dist $env:SETUP_FILENAME
+          if (!(Test-Path $installer) -or (Get-Item $installer).Length -lt 1MB) { throw "Verified Setup.exe is missing or too small." }
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          $size = (Get-Item -LiteralPath $installer).Length
+          "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "size=$size" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
+          if (Test-Path $bundle) { Remove-Item $bundle -Force }
+          if (!(Test-Path (Join-Path $dist "SystemRepair\NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"))) { throw "The full System Repair PRO module was not published into dist." }
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), (Join-Path $dist "SystemRepair"), ".\README_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw") -DestinationPath $bundle -CompressionLevel Optimal
+          if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
+          $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          $bundleSize = (Get-Item -LiteralPath $bundle).Length
+          "BUNDLE_SHA256=$bundleHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "BUNDLE_SIZE=$bundleSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Publish release assets
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: hardware-test-pro-v${{ steps.prepare.outputs.app_version }}
+          target_commitish: main
+          name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
+          body: |
+            Wydanie Windows x64. Testy źródeł przed budową instalatora; zintegrowane centrum serwisu i napraw systemu, testy hardware, 125 skórek oraz poprawka zapisu aktualizacji.
+          files: |
+            hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove obsolete separate portable ZIP from release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.prepare.outputs.app_version }}
+        with:
+          script: |
+            const tag = "hardware-test-pro-v" + process.env.APP_VERSION;
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: tag
+            });
+            for (const asset of release.assets) {
+              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-" + process.env.APP_VERSION + ".zip") {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
+            }
+
+      - name: Publish update manifest only after successful release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.prepare.outputs.app_version }}
+          INSTALLER_SHA256: ${{ steps.installer.outputs.sha256 }}
+          INSTALLER_SIZE: ${{ steps.installer.outputs.size }}
+          SETUP_FILENAME: ${{ steps.prepare.outputs.setup_filename }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = "updates/hardware-test-pro/latest.json";
+            const branch = "main";
+            const old = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
+            const version = process.env.APP_VERSION;
+            const manifest = {
+              app: "NAPRAWA PC HARDWARE TEST PRO",
+              channel: "stable",
+              version: version,
+              release_ready: true,
+              // The stable updater downloads the Setup installer directly; no helper EXE is distributed.
+              filename: process.env.SETUP_FILENAME,
+              download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              sha256: process.env.INSTALLER_SHA256,
+              size: Number(process.env.INSTALLER_SIZE),
+              installer_filename: process.env.SETUP_FILENAME,
+              installer_download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              installer_sha256: process.env.INSTALLER_SHA256,
+              installer_size: Number(process.env.INSTALLER_SIZE),
+              minimum_supported_version: "4.3.39",
+              notes: "Wydanie " + version + ": zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+              published_at: new Date().toISOString()
+            };
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: owner,
+              repo: repo,
+              path: path,
+              branch: branch,
+              message: "Publish verified Hardware Test PRO " + version + " update",
+              sha: old.data.sha,
+              content: Buffer.from(JSON.stringify(manifest, null, 2) + "\n", "utf8").toString("base64")
+            });
+
+).Groups[1].Value) })
+          if ($parts.Count -ne 18) { throw "Expected 18 System Repair PRO source archive chunks; found $($parts.Count)." }
+          $encoded = (($parts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }) -join "")
+          $sourceZip = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-source.zip"
+          [IO.File]::WriteAllBytes($sourceZip, [Convert]::FromBase64String($encoded))
+          $extractDir = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-source"
+          if (Test-Path -LiteralPath $extractDir) { Remove-Item -LiteralPath $extractDir -Recurse -Force }
+          Expand-Archive -LiteralPath $sourceZip -DestinationPath $extractDir -Force
+          $source = Join-Path $extractDir "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX"
+          $project = Join-Path $source "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.csproj"
+          if (!(Test-Path -LiteralPath $project)) { throw "System Repair PRO project file is missing." }
+          $publish = Join-Path $repoRoot "hardware-test-pro\dist\SystemRepair"
+          if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
+          New-Item -ItemType Directory -Path $publish -Force | Out-Null
+          dotnet publish $project -c Release -r win-x64 --self-contained true -o $publish -p:DebugType=None
+          if ($LASTEXITCODE -ne 0) { throw "System Repair PRO self-contained publish failed." }
+          $exe = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
+          if (!(Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) { throw "Published System Repair PRO executable is missing or too small." }
+          $proc = Start-Process -FilePath $exe -ArgumentList "--xaml-smoke" -PassThru -WindowStyle Hidden
+          if (!$proc.WaitForExit(30000)) {
+            try { $proc.Kill() } catch {}
+            throw "System Repair PRO XAML smoke test timed out."
+          }
+          if ($proc.ExitCode -ne 0) { throw "System Repair PRO XAML smoke test failed with exit code $($proc.ExitCode)." }
+          $hash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "SYSTEM_REPAIR_MODULE_OK exe=$exe sha256=$hash"
+
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --yes --no-progress
