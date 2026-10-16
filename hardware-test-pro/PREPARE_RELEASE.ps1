@@ -30,45 +30,88 @@ def _u44_confirm_downloaded(self, path, version):
         update_dir = installer.parent
         log_path = update_dir / f"installer-{safe_version}.log"
 
-        # Start the verified Inno Setup installer directly with the standard Windows UAC prompt.
-        # No intermediate PowerShell script, ExecutionPolicy bypass, or separate bootstrap EXE.
+        # ShellExecuteEx returns Win32 error details and a handle to the actual installer process.
+        # This avoids reporting a successful handoff just because ShellExecuteW returned a value.
         if os.name == "nt":
-            import ctypes as _u48_ctypes
-            from ctypes import wintypes as _u48_wintypes
-            _u48_shell = _u48_ctypes.WinDLL("shell32", use_last_error=True)
-            _u48_execute = _u48_shell.ShellExecuteW
-            _u48_execute.argtypes = [
-                _u48_wintypes.HWND, _u48_wintypes.LPCWSTR,
-                _u48_wintypes.LPCWSTR, _u48_wintypes.LPCWSTR,
-                _u48_wintypes.LPCWSTR, _u48_ctypes.c_int
-            ]
-            _u48_execute.restype = _u48_ctypes.c_void_p
-            # Keep Inno Setup visible so a failed/blocked update cannot look like a successful silent install.
-            parameters = f'/NORESTART /SP- /LOG="{log_path}"'
-            result = _u48_execute(None, "runas", str(installer), parameters, str(update_dir), 1)
-            result_code = int(result or 0)
-            if result_code <= 32:
-                raise OSError(
-                    f"Windows nie uruchomił zweryfikowanego instalatora (ShellExecuteW={result_code}). "
-                    "Sprawdź, czy monit UAC nie został anulowany."
+            import ctypes as _u49_ctypes
+            from ctypes import wintypes as _u49_wintypes
+
+            class _U49_SHELLEXECUTEINFOW(_u49_ctypes.Structure):
+                _fields_ = [
+                    ("cbSize", _u49_wintypes.DWORD),
+                    ("fMask", _u49_wintypes.ULONG),
+                    ("hwnd", _u49_wintypes.HWND),
+                    ("lpVerb", _u49_wintypes.LPCWSTR),
+                    ("lpFile", _u49_wintypes.LPCWSTR),
+                    ("lpParameters", _u49_wintypes.LPCWSTR),
+                    ("lpDirectory", _u49_wintypes.LPCWSTR),
+                    ("nShow", _u49_ctypes.c_int),
+                    ("hInstApp", _u49_wintypes.HINSTANCE),
+                    ("lpIDList", _u49_wintypes.LPVOID),
+                    ("lpClass", _u49_wintypes.LPCWSTR),
+                    ("hkeyClass", _u49_wintypes.HANDLE),
+                    ("dwHotKey", _u49_wintypes.DWORD),
+                    ("hIcon", _u49_wintypes.HANDLE),
+                    ("hProcess", _u49_wintypes.HANDLE),
+                ]
+
+            _u49_shell = _u49_ctypes.WinDLL("shell32", use_last_error=True)
+            _u49_execute = _u49_shell.ShellExecuteExW
+            _u49_execute.argtypes = [_u49_ctypes.POINTER(_U49_SHELLEXECUTEINFOW)]
+            _u49_execute.restype = _u49_wintypes.BOOL
+
+            params = f'/NORESTART /SP- /LOG="{log_path}"'
+            info = _U49_SHELLEXECUTEINFOW()
+            info.cbSize = _u49_ctypes.sizeof(info)
+            info.fMask = 0x00000040  # SEE_MASK_NOCLOSEPROCESS
+            info.hwnd = None
+            info.lpVerb = "runas"
+            info.lpFile = str(installer)
+            info.lpParameters = params
+            info.lpDirectory = str(update_dir)
+            info.nShow = 5  # SW_SHOW
+
+            if not _u49_execute(_u49_ctypes.byref(info)):
+                err = _u49_ctypes.get_last_error()
+                raise OSError(err, _u49_ctypes.FormatError(err).strip(), str(installer))
+            if not info.hProcess:
+                raise RuntimeError(
+                    "Windows accepted ShellExecuteEx, but returned no installer process handle. "
+                    "The installer launch could not be confirmed."
                 )
+
+            _u49_kernel = _u49_ctypes.WinDLL("kernel32", use_last_error=True)
+            _u49_getpid = _u49_kernel.GetProcessId
+            _u49_getpid.argtypes = [_u49_wintypes.HANDLE]
+            _u49_getpid.restype = _u49_wintypes.DWORD
+            pid = int(_u49_getpid(info.hProcess))
+            _u49_kernel.CloseHandle.argtypes = [_u49_wintypes.HANDLE]
+            _u49_kernel.CloseHandle.restype = _u49_wintypes.BOOL
+            _u49_kernel.CloseHandle(info.hProcess)
+            if pid <= 0:
+                raise RuntimeError("The installer process started, but Windows did not return a valid PID.")
         else:
-            subprocess.Popen(
+            proc = subprocess.Popen(
                 [str(installer), "/NORESTART", "/SP-"],
                 cwd=str(update_dir)
             )
+            pid = int(proc.pid)
 
+        details = (
+            f"WINDOWS_LAUNCH_ACCEPTED=1\\nVERSION={version}\\nPID={pid}\\n"
+            f"INSTALLER={installer}\\nLOG={log_path}\\n"
+        )
+        (update_dir / f"installer-{safe_version}-launch.txt").write_text(details, encoding="utf-8")
         try:
             self.append_log(
-                f"Aktualizator: przekazano zweryfikowany instalator wersji {version} do Windows. "
-                f"Log Inno Setup: {log_path}"
+                f"Aktualizator: Windows przyjął uruchomienie instalatora {version}; PID={pid}; log={log_path}"
             )
         except Exception:
             pass
         try:
             self._u39_set_update_status(
-                f"Uruchomiono kreator instalacji wersji {version}. Dokończ kroki w osobnym oknie instalatora. "
-                f"Log instalatora: {log_path}"
+                f"Windows uruchomił proces instalatora {version} (PID {pid}). "
+                f"Jeśli nie widać kreatora/UAC, sprawdź raport: {update_dir / f'installer-{safe_version}-launch.txt'}"
             )
         except Exception:
             pass
@@ -91,10 +134,13 @@ $src = [regex]::Replace($src, $confirmPattern, [System.Text.RegularExpressions.M
     param($m)
     return $confirmPatch.TrimEnd()
 }, 1)
-$oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names'
+$oldLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__code__.co_names'
 if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
 $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "runas" in _u44_confirm_downloaded.__code__.co_consts' + [Environment]::NewLine +
+'    assert "hProcess" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "GetProcessId" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
+'    assert "ShellExecuteW" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "/SILENT" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "/SUPPRESSMSGBOXES" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "/NORESTART" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
