@@ -105,8 +105,36 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $repoRoot = $env:GITHUB_WORKSPACE
-          $chunkDir = Join-Path $repoRoot "system-repair-pro-hotfix-5.6.16\chunks"
-          $parts = @(Get-ChildItem -LiteralPath $chunkDir -Filter "part_*.txt" | Sort-Object { [int]([regex]::Match($_.Name, 'part_(\d+)\.txt
+          $chunkDir = Join-Path $repoRoot "system-repair-pro-hotfix-5.6.16/chunks"
+          $parts = @(Get-ChildItem -LiteralPath $chunkDir -Filter "part_*.txt" | Sort-Object Name)
+          if ($parts.Count -ne 18) { throw "Expected 18 System Repair PRO source archive chunks; found $($parts.Count)." }
+          $encoded = (($parts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }) -join "")
+          $sourceZip = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-source.zip"
+          [IO.File]::WriteAllBytes($sourceZip, [Convert]::FromBase64String($encoded))
+          $extractDir = Join-Path $env:RUNNER_TEMP "SystemRepairPro-5.6.16-source"
+          if (Test-Path -LiteralPath $extractDir) { Remove-Item -LiteralPath $extractDir -Recurse -Force }
+          Expand-Archive -LiteralPath $sourceZip -DestinationPath $extractDir -Force
+          $source = Join-Path $extractDir "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX"
+          $project = Join-Path $source "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.csproj"
+          if (!(Test-Path -LiteralPath $project)) { throw "System Repair PRO project file is missing." }
+          $publish = Join-Path $repoRoot "hardware-test-pro/dist/SystemRepair"
+          if (Test-Path -LiteralPath $publish) { Remove-Item -LiteralPath $publish -Recurse -Force }
+          New-Item -ItemType Directory -Path $publish -Force | Out-Null
+          dotnet publish $project -c Release -r win-x64 --self-contained true -o $publish -p:DebugType=None
+          if ($LASTEXITCODE -ne 0) { throw "System Repair PRO self-contained publish failed." }
+          $icon = Join-Path $source "naprawa-pc.ico"
+          if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination $publish -Force }
+          $exe = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
+          if (!(Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) { throw "Published System Repair PRO executable is missing or too small." }
+          $proc = Start-Process -FilePath $exe -ArgumentList "--xaml-smoke" -PassThru -WindowStyle Hidden
+          if (!$proc.WaitForExit(30000)) {
+            try { $proc.Kill() } catch {}
+            throw "System Repair PRO XAML smoke test timed out."
+          }
+          if ($proc.ExitCode -ne 0) { throw "System Repair PRO XAML smoke test failed with exit code $($proc.ExitCode)." }
+          $hash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          Write-Host "SYSTEM_REPAIR_MODULE_OK exe=$exe sha256=$hash"
+
       - name: Compile and verify Setup.exe
         id: installer
         shell: pwsh
