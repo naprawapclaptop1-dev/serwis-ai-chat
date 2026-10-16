@@ -79,7 +79,8 @@ jobs:
             "--selftest-antivirus",
             "--selftest-themes",
             "--selftest-service-center",
-            "--selftest-update-flow"
+            "--selftest-update-flow",
+            "--selftest-advanced-modules"
           )
           foreach ($check in $checks) {
             Write-Host "RUNNING SELFTEST: $check"
