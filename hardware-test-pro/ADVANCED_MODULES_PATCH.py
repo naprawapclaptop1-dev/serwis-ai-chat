@@ -840,6 +840,12 @@ def _u66_refresh_telemetry(self):
     except Exception:
         pass
     _u66_header_live(self)
+    try:
+        if "_u67_refresh_visible_charts" in globals():
+            _u67_refresh_visible_charts(self)
+    except Exception as exc:
+        try: self.append_log("Aktualizacja wykresów live: " + repr(exc))
+        except Exception: pass
 
 def _u66_show_live_monitor(self):
     self.current_view="LIVE_MONITOR"; self.clear(); t=self.colors()
@@ -1348,6 +1354,325 @@ def _u66_run_all_tests_worker(self):
     self.queue_status("Testy zakończone" if not self._test_should_stop() else "Testy zatrzymane.")
     self.queue_action(self.show_report)
 
+
+# v4.3.71 — route dashboard full diagnostic into per-test live views.
+# This explicitly replaces the legacy RUN_MONITOR-only route.
+def _u67_stage_live_panel(self, index, total, title):
+    try:
+        old = getattr(self, "_u67_stage_panel", None)
+        if old is not None and old.winfo_exists():
+            old.destroy()
+    except Exception:
+        pass
+    t = self.colors()
+    panel = tk.Frame(self.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
+    children = self.content.winfo_children()
+    if children:
+        panel.pack(fill="x", padx=2, pady=(0, 6), before=children[0])
+    else:
+        panel.pack(fill="x", padx=2, pady=(0, 6))
+    self._u67_stage_panel = panel
+    top = tk.Frame(panel, bg=t["panel"])
+    top.pack(fill="x", padx=10, pady=(6, 3))
+    self._u67_stage_title = tk.Label(top, text=f"TEST {index}/{total} — {title}", bg=t["panel"], fg=t["accent"], font=self.fnt(10, "bold"), anchor="w")
+    self._u67_stage_title.pack(side="left", fill="x", expand=True)
+    self.make_button(top, "STOP TEST", self.stop_current_test, "bad", side="right", ipady=3)
+    self._u67_stage_values = {}
+    metrics = tk.Frame(panel, bg=t["panel"])
+    metrics.pack(fill="x", padx=6, pady=(0, 5))
+    metric_specs = [
+        ("CPU", "cpu"), ("RAM", "ram"), ("GPU", "gpu"), ("TEMP CPU", "cpu_temp"),
+        ("TEMP GPU", "gpu_temp"), ("DYSK ODCZYT", "disk_read"), ("DYSK ZAPIS", "disk_write"),
+        ("NET ↓", "net_down"), ("NET ↑", "net_up")
+    ]
+    for i, (label, key) in enumerate(metric_specs):
+        card = tk.Frame(metrics, bg=t["card"], highlightbackground=t["accent2"], highlightthickness=1)
+        card.grid(row=i // 5, column=i % 5, sticky="nsew", padx=2, pady=2)
+        tk.Label(card, text=label, bg=t["card"], fg=t["muted"], font=self.fnt(7, "bold")).pack(padx=5, pady=(3, 0))
+        value = tk.Label(card, text="N/D", bg=t["card"], fg=t["accent"], font=self.fnt(9, "bold"))
+        value.pack(padx=5, pady=(0, 3))
+        self._u67_stage_values[key] = value
+    for col in range(5):
+        metrics.grid_columnconfigure(col, weight=1)
+    graphs = tk.Frame(panel, bg=t["panel"])
+    graphs.pack(fill="x", padx=6, pady=(0, 6))
+    self._u67_stage_chart_hw = tk.Canvas(graphs, height=82, bg=t["card"], highlightthickness=0)
+    self._u67_stage_chart_hw.pack(side="left", fill="both", expand=True, padx=(0, 3))
+    self._u67_stage_chart_io = tk.Canvas(graphs, height=82, bg=t["card"], highlightthickness=0)
+    self._u67_stage_chart_io.pack(side="left", fill="both", expand=True, padx=(3, 0))
+    if not hasattr(self, "_u67_hist"):
+        self._u67_hist = {"cpu": [], "ram": [], "gpu": [], "read": [], "write": [], "down": [], "up": []}
+    self._u67_stage_key = title
+    _u67_refresh_visible_charts(self)
+
+
+def _u67_draw_history_chart(canvas, series, maximum, title, app):
+    if canvas is None or not canvas.winfo_exists():
+        return
+    t = app.colors()
+    canvas.delete("all")
+    w = max(220, canvas.winfo_width() or 500)
+    h = max(70, canvas.winfo_height() or 82)
+    left, right, top, bottom = 32, w - 8, 15, h - 16
+    canvas.create_text(8, 3, text=title, anchor="nw", fill=t["muted"], font=app.fnt(7, "bold"))
+    maxval = max(1.0, float(maximum or 1))
+    for pct in (0, 50, 100):
+        y = bottom - (bottom - top) * pct / 100
+        canvas.create_line(left, y, right, y, fill=t["panel"], width=1)
+    palette = [
+        ("cpu", t["accent"]), ("ram", t["good"]), ("gpu", t["warn"]),
+        ("read", t["accent2"]), ("write", t["good"]), ("down", t["warn"]), ("up", t["accent"])
+    ]
+    for key, color in palette:
+        vals = series.get(key, [])
+        if len(vals) < 2:
+            continue
+        points = []
+        vals = vals[-60:]
+        for i, value in enumerate(vals):
+            x = left + (right - left) * i / max(1, len(vals) - 1)
+            y = bottom - (bottom - top) * max(0, min(maxval, float(value))) / maxval
+            points.extend((x, y))
+        if len(points) >= 4:
+            try:
+                canvas.create_line(*points, fill=color, width=2, smooth=True)
+            except Exception:
+                pass
+    canvas.create_text(left + 4, top + 2, text="ostatnie próbki / 1 s", anchor="nw", fill=t["muted"], font=app.fnt(6))
+
+
+def _u67_refresh_visible_charts(self):
+    vals = getattr(self, "_live_values", {}) or {}
+    cache = getattr(self, "_u66_sensor_cache", {}) or {}
+    gpu = cache.get("gpu", {}) or {}
+    temps = cache.get("temps", {}) or {}
+    def numeric(x):
+        try:
+            v = float(x)
+            return v if _u66_math.isfinite(v) else None
+        except Exception:
+            return None
+    cpu = numeric(vals.get("cpu"))
+    ram = numeric(vals.get("ram"))
+    gpu_load = numeric(gpu.get("gpu_load_percent", getattr(self, "_gpu_util", None)))
+    cpu_temp = numeric(temps.get("cpu_temp_c"))
+    gpu_temp = numeric(gpu.get("temperature_c", temps.get("gpu_temp_c")))
+    acpi_val = None
+    if cpu_temp is None:
+        acpi = temps.get("acpi_zones") or []
+        acpi_val = numeric(acpi[0].get("value")) if acpi else None
+    now = _u66_time.monotonic()
+    try:
+        io = psutil.disk_io_counters() if psutil else None
+    except Exception:
+        io = None
+    read_rate = write_rate = None
+    prev = getattr(self, "_u67_disk_prev", None)
+    if io:
+        if prev:
+            dt = max(0.1, now - prev[2])
+            read_rate = max(0.0, (io.read_bytes - prev[0]) / dt / 1_000_000)
+            write_rate = max(0.0, (io.write_bytes - prev[1]) / dt / 1_000_000)
+        self._u67_disk_prev = (io.read_bytes, io.write_bytes, now)
+    down = numeric(vals.get("recv"))
+    up = numeric(vals.get("sent"))
+    shown = {
+        "cpu": f"{cpu:.1f}%" if cpu is not None else "N/D",
+        "ram": f"{ram:.1f}%" if ram is not None else "N/D",
+        "gpu": f"{gpu_load:.1f}%" if gpu_load is not None else "N/D",
+        "cpu_temp": f"{cpu_temp:.1f} °C" if cpu_temp is not None else (f"ACPI {acpi_val:.1f} °C" if acpi_val is not None else "N/D"),
+        "gpu_temp": f"{gpu_temp:.1f} °C" if gpu_temp is not None else "N/D",
+        "disk_read": f"{read_rate:.2f} MB/s" if read_rate is not None else "N/D",
+        "disk_write": f"{write_rate:.2f} MB/s" if write_rate is not None else "N/D",
+        "net_down": f"{down * 8 / 1_000_000:.2f} Mbps" if down is not None else "N/D",
+        "net_up": f"{up * 8 / 1_000_000:.2f} Mbps" if up is not None else "N/D"
+    }
+    for key, value in shown.items():
+        try:
+            label = getattr(self, "_u67_stage_values", {}).get(key)
+            if label is not None and label.winfo_exists():
+                label.config(text=value)
+        except Exception:
+            pass
+    hist = getattr(self, "_u67_hist", None)
+    if hist is not None:
+        for key, value in (
+            ("cpu", cpu), ("ram", ram), ("gpu", gpu_load), ("read", read_rate), ("write", write_rate),
+            ("down", down * 8 / 1_000_000 if down is not None else None),
+            ("up", up * 8 / 1_000_000 if up is not None else None)
+        ):
+            if value is not None and _u66_math.isfinite(float(value)):
+                hist[key].append(float(value))
+                hist[key] = hist[key][-60:]
+    try:
+        _u67_draw_history_chart(getattr(self, "_u67_stage_chart_hw", None), hist or {}, 100, "CPU / RAM / GPU %", self)
+        io_series = {"read": (hist or {}).get("read", []), "write": (hist or {}).get("write", []), "down": (hist or {}).get("down", []), "up": (hist or {}).get("up", [])}
+        io_vals = io_series["read"] + io_series["write"] + io_series["down"] + io_series["up"]
+        io_max = max([1.0] + io_vals)
+        _u67_draw_history_chart(getattr(self, "_u67_stage_chart_io", None), io_series, io_max, "DYSK MB/s • SIEĆ Mbps", self)
+    except Exception:
+        pass
+    try:
+        if getattr(self, "current_view", "") == "CPU":
+            chart = getattr(self, "cpu_module_chart", None)
+            if chart is not None and chart.winfo_exists():
+                self.draw_sparkline(chart, getattr(self, "_history", {}).get("cpu", []))
+    except Exception:
+        pass
+
+
+def _u67_run_visible_speed_test(self):
+    self._u66_speed_running = True
+    try:
+        result = _u66_measure_speed(self)
+        self.results["SPEED_TEST"] = result
+        def finish():
+            if getattr(self, "current_view", "") == "SPEED_TEST":
+                for key, val in (
+                    ("latency", str(result.get("latency_average_ms", "N/D")) + " ms"),
+                    ("download", str(result.get("download_mbps", "N/D")) + " Mbps"),
+                    ("upload", str(result.get("upload_mbps", "N/D")) + " Mbps"),
+                    ("data", f"{result.get('data_bytes', 0) / 1_000_000:.1f} MB")
+                ):
+                    try: self._u66_speed_values[key].config(text=val)
+                    except Exception: pass
+                _u66_draw_speed_chart(self, result)
+            _u66_set_speed_status(self, f"Speed Test zakończony: download {result.get('download_mbps', 'N/D')} Mbps / upload {result.get('upload_mbps', 'N/D')} Mbps.")
+        _u66_ui_wait(self, finish)
+        return result
+    finally:
+        self._u66_speed_running = False
+
+
+def _u67_test_state(self, result_keys):
+    for key in result_keys:
+        obj = (getattr(self, "results", {}) or {}).get(key)
+        if isinstance(obj, dict) and obj.get("state") in ("good", "warn", "bad", "error"):
+            return obj.get("state"), key
+    return "not_reported", "N/D"
+
+
+def _u67_run_selected_diagnostic(self, selected):
+    order = [
+        ("CPU", "CPU — obciążenie i zegary", lambda: self.show_module("CPU"), lambda: self._cpu_test(20), ["CPU"]),
+        ("GPU", "GPU — karta i sterownik", lambda: self.show_module("GPU"), self._gpu_test, ["GPU"]),
+        ("RAM", "RAM — test wzorców", lambda: self.show_module("RAM"), lambda: self._ram_test(2048), ["RAM"]),
+        ("DYSKI", "SSD/HDD/NVMe — odczyt i zapis", lambda: self.show_module("DYSK"), lambda: self._disk_test(768), ["DYSK"]),
+        ("MATRYCA", "Matryca — EDID i tryby ekranu", lambda: self.show_module("EKRAN"), self._monitor_test, ["EKRAN"]),
+        ("BATERIA", "Bateria / zasilanie", lambda: self.show_battery_or_power(), self._battery_test, ["BATERIA"]),
+        ("KLAWIATURA", "Klawiatura / touchpad", lambda: self.show_simple_module("KLAWIATURA / TOUCHPAD"), lambda: self._peripheral_test("KLAWIATURA"), ["KLAWIATURA", "PERIPHERAL_KLAWIATURA"]),
+        ("AUDIO", "Audio — urządzenia", lambda: self.show_simple_module("DŹWIĘK / AUDIO"), lambda: self._peripheral_test("AUDIO"), ["AUDIO", "PERIPHERAL_AUDIO"]),
+        ("SIEC", "Internet — Speed Test download/upload", lambda: _u66_show_speed_test(self), lambda: _u67_run_visible_speed_test(self), ["SPEED_TEST"]),
+        ("SYSTEM_SECURITY", "Windows / bezpieczeństwo", lambda: self.show_module("SECURITY"), self._selected_system_security_test, ["SECURITY", "SYSTEM"])
+    ]
+    chosen = [entry for entry in order if entry[0] in selected]
+    if not chosen:
+        self.queue_log("PEŁNA DIAGNOSTYKA: brak wybranych testów.")
+        return
+    expanded = []
+    for entry in chosen:
+        expanded.append(entry)
+        if entry[0] == "GPU":
+            expanded.append(("__3D__", "3D Benchmark Studio — 20 scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
+        if entry[0] == "SIEC":
+            expanded.append(("__USB__", "USB — enumeracja urządzeń", lambda: self.show_simple_module("USB / URZĄDZENIA"), lambda: self._peripheral_test("USB"), ["USB"]))
+    started = _U66_datetime.now().isoformat(timespec="seconds")
+    summary = []
+    total = len(expanded)
+    self.queue_log("=== START PEŁNEJ DIAGNOSTYKI LIVE: " + ", ".join(x[0] for x in chosen) + " ===")
+    for num, (key, title, view, fn, result_keys) in enumerate(expanded, 1):
+        if self._test_should_stop():
+            self.queue_log("Diagnostyka: użytkownik zatrzymał przebieg.")
+            break
+        def prepare_view(view=view, num=num, title=title):
+            view()
+            _u67_stage_live_panel(self, num, total, title)
+            try:
+                self.header_status.config(text=f"TEST {num}/{total}", fg=self.colors()["warn"])
+            except Exception:
+                pass
+        _u67_set_suite_status(self, f"TEST {num}/{total}: {title}")
+        _u66_ui_wait(self, prepare_view)
+        if self._test_should_stop():
+            break
+        error = None
+        try:
+            fn()
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            self.queue_log(f"TEST {title}: BŁĄD: {error}")
+        _u66_ui_wait(self, lambda: None)
+        if error:
+            state = "error"
+        else:
+            state, result_key = _u67_test_state(self, result_keys)
+            if state == "not_reported":
+                self.queue_log(f"TEST {title}: brak jednoznacznego wyniku modułu — oznaczono N/D.")
+            elif state == "warn":
+                self.queue_log(f"TEST {title}: OSTRZEŻENIE (dostępne dane ograniczone).")
+            elif state == "bad":
+                self.queue_log(f"TEST {title}: WYKRYTO PROBLEM.")
+            elif state == "good":
+                self.queue_log(f"TEST {title}: PASS dla sprawdzonego zakresu; nie oznacza to pełnego testu całego sprzętu.")
+        summary.append({"stage": title, "state": state, "result_key": result_keys, "error": error, "time": _U66_datetime.now().isoformat(timespec="seconds")})
+        self.queue_log(f"=== ZAKOŃCZONO ETAP {num}/{total}: {title} — {state} ===")
+        _u66_ui_wait(self, lambda: _u67_refresh_visible_charts(self))
+        if self._test_should_stop():
+            break
+        _u66_time.sleep(1.5)
+    failed = any(x.get("state") in ("bad", "error", "warn", "not_reported") for x in summary)
+    report = {
+        "state": "warn" if failed or self._test_should_stop() or len(summary) != total else "completed",
+        "started": started, "finished": _U66_datetime.now().isoformat(timespec="seconds"),
+        "selected": selected, "stages": summary, "completed_stages": len(summary), "total_stages": total
+    }
+    self.results["ALL_TESTS_SEQUENCE"] = report
+    try:
+        folder = _u66_store_dir() / "reports"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / ("full-diagnostic-" + _U66_datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
+        target.write_text(_u66_json.dumps({"suite": report, "results": self.results}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        report["report_path"] = str(target)
+    except Exception as exc:
+        self.queue_log("Nie udało się zapisać raportu pełnej diagnostyki: " + repr(exc))
+    self.queue_log(f"=== KONIEC PEŁNEJ DIAGNOSTYKI: {report['state']} — {len(summary)}/{total} etapów ===")
+    self.queue_action(self.show_report)
+
+
+def _u67_start_selected_diagnostic(self):
+    if getattr(self, "running", False):
+        messagebox.showinfo("Pełna diagnostyka", "Test już trwa. Poczekaj albo użyj STOP TEST.")
+        return
+    opts = getattr(self, "full_test_options", None) or {}
+    selected = [k for k, v in opts.items() if v]
+    if not selected:
+        messagebox.showwarning("Pełna diagnostyka", "Zaznacz przynajmniej jeden moduł.")
+        return
+    labels = {
+        "CPU": "CPU", "GPU": "GPU + 20 scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
+        "MATRYCA": "Matryca / EDID", "BATERIA": "Bateria", "KLAWIATURA": "Klawiatura / touchpad",
+        "AUDIO": "Audio", "SIEC": "Internet Speed Test + USB", "SYSTEM_SECURITY": "Windows i bezpieczeństwo"
+    }
+    names = [labels.get(k, k) for k in selected]
+    if not messagebox.askyesno(
+        "Pełna diagnostyka — sekwencja LIVE",
+        "Uruchomić wybrane testy po kolei? Każdy etap otworzy własny ekran z metrykami i wykresami. "
+        "Brak czujnika będzie oznaczony N/D, a nie PASS. Test sieci przesyła około 24 MB.\n\n"
+        "Kolejność: " + " → ".join(names) + "\n\nESC lub STOP TEST zatrzymuje przebieg."
+    ):
+        return
+    self._refresh_after_worker_view = None
+    self.worker(lambda: _u67_run_selected_diagnostic(self, selected))
+
+
+def _u67_init_with_sensor_poll(self):
+    _U66_ORIGINAL_INIT_FOR_SENSOR(self)
+    try:
+        self.after(1600, lambda: _u66_sensor_poll(self))
+    except Exception:
+        pass
+
+
 def _u66_selftest_advanced():
     assert len(_U66_SCENES)==20, "Studio must have 20 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
@@ -1360,6 +1685,10 @@ def _u66_selftest_advanced():
     assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed)
     assert callable(_u66_scene_child)
     assert callable(_u66_run_all_tests_worker)
+    assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)
+    assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)
+    assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
+    assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps"
     print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, internet speed test, AI reader, 20 OpenGL scenes, sequential test suite")
 
@@ -1372,8 +1701,12 @@ AppV43.show_3d_studio=_u66_show_3d_studio
 AppV43.show_tests_hub=_u66_show_tests_hub
 AppV43.start_all_tests_sequential=_u66_start_all_tests
 AppV43.full_test=_u66_start_all_tests
+AppV43._start_selected_diagnostic=_u67_start_selected_diagnostic
+AppV43._run_selected_diagnostic=_u67_run_selected_diagnostic
 AppV43.run_ai_only=_u66_show_ai_reader
 AppV43.refresh_telemetry=_u66_refresh_telemetry
+_U66_ORIGINAL_INIT_FOR_SENSOR=AppV43.__init__
+AppV43.__init__=_u67_init_with_sensor_poll
 _u37_gpu_benchmark_child=_u66_scene_child
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
