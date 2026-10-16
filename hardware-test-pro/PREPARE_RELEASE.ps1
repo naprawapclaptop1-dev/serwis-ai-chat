@@ -173,6 +173,8 @@ $newLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__co
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_dispatch_confirm_downloaded" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "startfile" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "explorer.exe" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "_u39_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_confirm_downloaded" in _u44_dispatch_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
@@ -291,7 +293,22 @@ def _u44_download_global_update(self, data):
             if verified.read(2) != b"MZ":
                 raise ValueError("Pobrany plik nie jest plikiem wykonywalnym Windows PE.")
         os.replace(tmp, dest)
-        self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. SHA-256 i rozmiar poprawne; przekazuję instalator do Windows/UAC. Plik: {p}"))
+
+        # Emergency fallback: always open the verified update folder in Explorer,
+        # even if UAC or the installer process launch is blocked afterwards.
+        try:
+            _u47_os.startfile(str(root))
+        except Exception as folder_exc:
+            try:
+                self.queue_action(lambda folder=str(root): subprocess.Popen(["explorer.exe", folder]))
+            except Exception:
+                pass
+            try:
+                self.queue_action(lambda err=str(folder_exc): self.append_log("Nie udało się automatycznie otworzyć folderu aktualizacji: " + err))
+            except Exception:
+                pass
+
+        self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. SHA-256 i rozmiar poprawne; otwarto folder: {root}. Instalator: {p}"))
         self.queue_action(lambda p=str(dest), v=version: _u44_dispatch_confirm_downloaded(self, p, v))
     except Exception as exc:
         try:
