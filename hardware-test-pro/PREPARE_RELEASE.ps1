@@ -17,7 +17,7 @@ $newLine = 'VERSION = "' + $next + ' ' + $last.Groups["d"].Value + '"'
 $src = $src.Substring(0,$last.Index) + $newLine + $src.Substring($last.Index+$last.Length)
 
 # Make global updates install automatically after SHA-256 and PE verification.
-# Keep one UAC prompt, run Inno Setup unattended, then close the older application.
+# Keep one UAC prompt and show the Inno Setup wizard so update failures never stay invisible.
 $confirmPatch = @'
 def _u44_confirm_downloaded(self, path, version):
     try:
@@ -43,7 +43,8 @@ def _u44_confirm_downloaded(self, path, version):
                 _u48_wintypes.LPCWSTR, _u48_ctypes.c_int
             ]
             _u48_execute.restype = _u48_ctypes.c_void_p
-            parameters = f'/SILENT /SUPPRESSMSGBOXES /NORESTART /SP- /LOG="{log_path}"'
+            # Keep Inno Setup visible so a failed/blocked update cannot look like a successful silent install.
+            parameters = f'/NORESTART /SP- /LOG="{log_path}"'
             result = _u48_execute(None, "runas", str(installer), parameters, str(update_dir), 1)
             result_code = int(result or 0)
             if result_code <= 32:
@@ -53,7 +54,7 @@ def _u44_confirm_downloaded(self, path, version):
                 )
         else:
             subprocess.Popen(
-                [str(installer), "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-"],
+                [str(installer), "/NORESTART", "/SP-"],
                 cwd=str(update_dir)
             )
 
@@ -66,8 +67,8 @@ def _u44_confirm_downloaded(self, path, version):
             pass
         try:
             self._u39_set_update_status(
-                f"Zweryfikowany instalator {version} został uruchomiony przez Windows. "
-                f"Potwierdź monit UAC, jeśli jest widoczny. Log instalatora: {log_path}"
+                f"Uruchomiono kreator instalacji wersji {version}. Dokończ kroki w osobnym oknie instalatora. "
+                f"Log instalatora: {log_path}"
             )
         except Exception:
             pass
@@ -94,7 +95,9 @@ $oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code
 if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
 $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "runas" in _u44_confirm_downloaded.__code__.co_consts' + [Environment]::NewLine +
-'    assert "/SILENT" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "/SILENT" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "/SUPPRESSMSGBOXES" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
+'    assert "/NORESTART" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "ExecutionPolicy Bypass" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "Start-Process" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and ".log" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
