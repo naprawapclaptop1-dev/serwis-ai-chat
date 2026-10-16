@@ -1121,13 +1121,13 @@ def _u66_start_3d_all(self):
     self.worker(lambda:_u66_run_3d_suite(self,seconds))
 
 def _u66_run_3d_suite(self,seconds=5):
-    self._u66_ui_wait(lambda:_u66_show_3d_studio(self))
+    self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
     results=[]
     for i,sc in enumerate(_U66_SCENES,1):
         if self._test_should_stop(): break
         self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/20 — {sc[0]}")
         r=_u66_execute_gpu_scene(self,i,seconds); results.append(r)
-        self._u66_ui_wait(lambda:_u66_show_3d_studio(self))
+        self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
     good=sum(1 for r in results if r.get("state")=="good")
     report={"state":"good" if good==len(results) and results else "warn","completed":len(results),"good":good,"scenes":results,"time":_U66_datetime.now().isoformat(timespec="seconds")}
     self.results["3D_SUITE"]=report
@@ -1168,7 +1168,7 @@ def _u66_run_all_tests_worker(self):
             fn()
             item={"stage":title,"state":"completed","time":_U66_datetime.now().isoformat(timespec="seconds")}
         except Exception as exc:
-            item={"stage":title,"state":"error","error":f"{type(exc).__name__}: {exc}","time":_U66_datetime.now().isoformat(timespec="seconds)"}
+            item={"stage":title,"state":"error","error":f"{type(exc).__name__}: {exc}","time":_U66_datetime.now().isoformat(timespec="seconds")}
             self.queue_log(f"TEST {title}: błąd {item['error']}")
         summary.append(item)
         _u66_ui_wait(self,lambda:view())
@@ -1215,7 +1215,7 @@ def _u66_selftest_advanced():
     assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed)
     assert callable(_u66_scene_child)
     assert callable(_u66_run_all_tests_worker)
-    assert _u66_format_rate(1_000_000)==8.0 and _u66_format_rate(0)==0.0
+    assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps"
     print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, internet speed test, AI reader, 20 OpenGL scenes, sequential test suite")
 
 # Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
