@@ -5,13 +5,13 @@
   "release_ready": true,
   "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.70.exe",
   "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.70/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.70.exe",
-  "sha256": "646b3de87474df0de0a6f6404c506eb92666063b9c7551528e4b7e759b3b5bcd",
-  "size": 108185574,
+  "sha256": "619115f52ca7ec41688cdc37a135bcd08d4def623011786ad2e6fe03c11d3f7d",
+  "size": 108191839,
   "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.70.exe",
   "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.70/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.70.exe",
-  "installer_sha256": "646b3de87474df0de0a6f6404c506eb92666063b9c7551528e4b7e759b3b5bcd",
-  "installer_size": 108185574,
+  "installer_sha256": "619115f52ca7ec41688cdc37a135bcd08d4def623011786ad2e6fe03c11d3f7d",
+  "installer_size": 108191839,
   "minimum_supported_version": "4.3.39",
   "notes": "Wydanie 4.3.70: zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
-  "published_at": "2026-10-16T22:35:37.977Z"
+  "published_at": "2026-10-16T22:38:52.253Z"
 }
