@@ -1318,7 +1318,7 @@ def _u66_execute_gpu_scene(self,scene_id,seconds=5):
         cmd=[sys.executable,"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds))]
     else:
         cmd=[sys.executable,str(Path(__file__).resolve()),"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds))]
-    _u66_set_suite_status(self,f"SCENA 3D {scene_id}/20 — {_U66_SCENES[scene_id-1][0]} — uruchamianie OpenGL…")
+    _u66_set_suite_status(self,f"SCENA 3D {scene_id}/{len(_U66_SCENES)} — {_U66_SCENES[scene_id-1][0]} — uruchamianie OpenGL…")
     proc=None
     try:
         proc=_u66_subprocess.Popen(cmd,cwd=tempfile.gettempdir(),creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
@@ -1436,7 +1436,7 @@ def _u66_start_all_tests(self):
     if getattr(self,"running",False):
         messagebox.showinfo("Testy","Inny test już trwa. Poczekaj, aż się zakończy.")
         return
-    if not messagebox.askyesno("Wszystkie testy po kolei","Uruchomić pełny przebieg: CPU, RAM, GPU, 20 scen 3D, dysk, matryca, Internet Speed Test, bezpieczeństwo, bateria i urządzenia USB/sieć? Sceny 3D zajmą około 100 sekund, a test sieci zużyje około 23,5 MB. Test można zatrzymać klawiszem ESC."):
+    if not messagebox.askyesno("Wszystkie testy po kolei","Pełna sekwencja LIVE uruchamia CPU, RAM, GPU, 40 scen 3D, dysk, matrycę, Internet Speed Test, bezpieczeństwo, baterię i USB/sieć. Przy profilu 5 s na scenę renderowanie zajmie co najmniej 200 sekund, do tego dochodzą pozostałe testy. Test można zatrzymać przyciskiem STOP TEST."):
         return
     self.worker(self._u66_run_all_tests_worker)
 
@@ -1460,7 +1460,7 @@ def _u66_run_all_tests_worker(self):
     stage(1,total,"CPU — obciążenie i zegary",lambda:self.show_module("CPU"),lambda:self._cpu_test(8))
     stage(2,total,"RAM — wzorce",lambda:self.show_module("RAM"),lambda:self._ram_test(256))
     stage(3,total,"GPU — adapter i sterownik",lambda:self.show_module("GPU"),self._gpu_test)
-    stage(4,total,"3D Benchmark — 20 scen po kolei",lambda:_u66_show_3d_studio(self),lambda:_u66_run_3d_suite(self,5))
+    stage(4,total,"3D Benchmark — 40 scen po kolei",lambda:_u66_show_3d_studio(self),lambda:_u66_run_3d_suite(self,5))
     stage(5,total,"SSD/HDD — odczyt i zapis",lambda:self.show_module("DYSK"),lambda:self._disk_test(128))
     stage(6,total,"Matryca — EDID",lambda:self.show_module("EKRAN"),self._monitor_test)
     def net_job():
