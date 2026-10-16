@@ -148,6 +148,8 @@ $newLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__co
 '    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and ".log" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "_u39_confirm_downloaded" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "_u44_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "gettempdir" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "xb" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "close_app" not in _u44_confirm_downloaded.__code__.co_names'
@@ -264,7 +266,7 @@ def _u44_download_global_update(self, data):
                 raise ValueError("Pobrany plik nie jest plikiem wykonywalnym Windows PE.")
         os.replace(tmp, dest)
         self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. SHA-256 i rozmiar poprawne; przekazuję instalator do Windows/UAC. Plik: {p}"))
-        self.queue_action(lambda p=str(dest), v=version: self._u44_confirm_downloaded(p, v))
+        self.queue_action(lambda p=str(dest), v=version: self._u39_confirm_downloaded(p, v))
     except Exception as exc:
         try:
             tmp.unlink(missing_ok=True)
