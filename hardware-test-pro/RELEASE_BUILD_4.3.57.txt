@@ -1,4 +1,5 @@
-Build request recorded 2026-10-16.
-Target version: 4.3.57 (derived from currently published stable 4.3.56 by PREPARE_RELEASE.ps1).
-Required: Windows x64 build, built-in self-tests, installer/asset SHA-256, release assets first, manifest update only after successful release.
-Do not publish the global update manifest unless the workflow confirms the installer and updater bootstrap assets were created and uploaded.
+Request Windows x64 global release build triggered 2026-10-16.
+Expected version: 4.3.58, derived from the verified stable manifest 4.3.57.
+Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, then publish release assets before updating latest.json.
+Global manifest must point to NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-<version>.exe directly.
+Do not create, publish, or reference UpdateBootstrap EXE in the global update channel.
