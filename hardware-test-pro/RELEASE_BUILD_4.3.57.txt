@@ -1,5 +1,5 @@
 Request Windows x64 global release build triggered 2026-10-16.
-Expected next version: 4.3.61, derived from verified stable manifest 4.3.60 by PREPARE_RELEASE.ps1.
-Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, publish release assets, then update latest.json only after success.
-Global manifest must point to NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-<version>.exe directly; never create or reference UpdateBootstrap EXE.
-Updater must launch the verified Setup installer with normal Windows UAC and a visible Inno Setup wizard; do not use /SILENT or /SUPPRESSMSGBOXES, so users can see and complete installation and failures are not hidden.
+Expected next version: 4.3.64, derived from verified stable manifest 4.3.63.
+Critical fix: after verified download, schedule _u44_dispatch_confirm_downloaded(self, path, version) as a UI queue action; do not invoke self._u39_confirm_downloaded via a fragile alias. Dispatcher must set visible status before invoking _u44_confirm_downloaded directly and surface all exceptions in a message box and log.
+Self-tests must assert the downloader references _u44_dispatch_confirm_downloaded and not _u39_confirm_downloaded, and that the dispatcher references _u44_confirm_downloaded.
+Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, publish release assets, then update latest.json only after success. Manifest points directly to Setup.exe. No UpdateBootstrap, no silent setup flags, no ExecutionPolicy Bypass.
