@@ -79,7 +79,27 @@ _U66_SCENES = [
 ("17 — Sześciany z głębią", "cubes", 90),
 ("18 — Podwójna geometria", "mixed", 140),
 ("19 — Extreme triangle load", "triangles_extreme", 3500),
-("20 — Ultimate mixed load", "ultimate", 2400)
+("20 — Ultimate mixed load", "ultimate", 2400),
+("21 — CPU Core Matrix / wielowątkowość", "grid", 180),
+("22 — CPU Thread Swarm / obciążenie geometrii", "particles", 480),
+("23 — CPU Pipeline Rings", "rings", 64),
+("24 — CPU Vector Throughput", "triangles", 3200),
+("25 — RAM Address Matrix", "grid", 240),
+("26 — RAM Bitfield / wzorce", "materials", 350),
+("27 — RAM Bandwidth Visualizer", "triangles", 5200),
+("28 — RAM Burst Stress", "ultimate", 700),
+("29 — SSD/NVMe Sequential I/O", "triangles", 3600),
+("30 — SSD Random I/O / kolejki", "particles", 420),
+("31 — NVMe Queue / PCIe lanes", "rings", 96),
+("32 — Disk Queue Mesh", "mixed", 550),
+("33 — VRAM Texture Tiles", "gpu", 180),
+("34 — VRAM Fillrate / render target", "triangles_extreme", 8000),
+("35 — GPU Shader Geometry Stress", "triangles_extreme", 12000),
+("36 — GPU Tiled Composite", "ultimate", 1400),
+("37 — PCIe / interfejsy wejścia-wyjścia", "mixed", 500),
+("38 — Matryca / Pixel Grid 3D", "grid", 220),
+("39 — Chłodzenie / airflow simulation", "waves", 64),
+("40 — ULTRA MAX Composite Scene", "ultimate", 2800)
 ]
 
 def _u66_store_dir():
@@ -1000,10 +1020,10 @@ def _u66_show_tests_hub(self):
     c.configure(yscrollcommand=sb.set)
     c.pack(side="left",fill="both",expand=True); sb.pack(side="right",fill="y")
     items=[
-      ("WSZYSTKIE TESTY PO KOLEI","Automatyczny przebieg CPU → RAM → GPU → 20 scen 3D → SSD/HDD → matryca → sieć Speed Test → bezpieczeństwo → bateria/USB. Ekran zmienia się na każdym etapie; około 2–4 minuty.","ALL"),
+      ("WSZYSTKIE TESTY PO KOLEI","Przebieg CPU → RAM → GPU/VRAM → 40 scen 3D → SSD/HDD/NVMe → matryca → Speed Test → bezpieczeństwo → bateria/audio/USB. Każdy etap otrzymuje ekran, pomiary i status.","ALL"),
       ("MONITOR LIVE — WSZĘDZIE","CPU/RAM/GPU, zegary, transfer dysku i sieci, temperatury/czujniki z rzeczywistą próbką co sekundę.","LIVE"),
       ("SPEED TEST INTERNETU","Pomiar prawdziwego download/upload w Mbps oraz opóźnienia HTTP; zapis historii lokalnie.","SPEED"),
-      ("3D BENCHMARK STUDIO — 20 SCEN","20 różnych proceduralnych scen OpenGL; FPS jest mierzony z renderowania, renderer i czas trafiają do raportu.","3D"),
+      ("3D BENCHMARK STUDIO — 40 SCEN • ULTRA / MAX","40 scen OpenGL. Wybierz 5–300 s na scenę; FPS z prawdziwego renderowania trafia do raportu. Dłuższe profile obciążają GPU dłużej.","3D"),
       ("AI CZYTNIK WIEDZY","Baza offline, wyszukiwanie Internetu, czytanie URL, import plików i zapis źródeł do prywatnej biblioteki.","AI"),
       ("CENTRUM SERWISU + SYSTEM REPAIR","SFC, DISM, CHKDSK, raport baterii, narzędzia Windows oraz prywatne zgłoszenia.","CENTRUM"),
       ("CPU — obciążenie i zegary","Rzeczywiste obciążenie etapowe, częstotliwość i wykres próbek.","CPU"),
@@ -1038,7 +1058,7 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
         import pygame as pg
         from OpenGL import GL
         from OpenGL.GLU import gluPerspective
-        sid=max(1,min(20,int(scene_id)))
+        sid=max(1,min(len(_U66_SCENES),int(scene_id)))
         name,kind,complexity=_U66_SCENES[sid-1]
         result.update({"scene_name":name,"test":"OpenGL procedural scene","requested_seconds":seconds,"state":"running"})
         pg.init()
@@ -1063,10 +1083,10 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
             GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT)
             GL.glPolygonMode(GL.GL_FRONT_AND_BACK,GL.GL_LINE if kind=="wire" else GL.GL_FILL)
             GL.glLoadIdentity(); GL.glTranslatef(0,0,-13); GL.glRotatef(elapsed*18,0,1,0); GL.glRotatef(14+_u66_math.sin(elapsed)*7,1,0,0)
-            base=min(20,max(1,int(complexity)))
+            complexity=max(1,min(12000,int(complexity))); base=min(20,complexity)
             if kind in ("boxes","cubes","grid","materials","room","city","gpu","particles","mixed","ultimate"):
-                n=base
-                if kind=="ultimate": n=max(100,base)
+                n=min(1200,complexity)
+                if kind=="ultimate": n=min(3000,complexity)
                 for i in range(n):
                     if kind=="city":
                         x=(i%14-7)*.62; z=(i//14-2)*.7; y=.45+(i*7%13)*.22
@@ -1085,7 +1105,7 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
                         col=((i%7)/7.0,.22+(i%4)*.13,.32+(i%5)*.12)
                         _u37_draw_gpu_box(GL,x+_u66_math.sin(elapsed+i)*.12,y,z,.18+(i%3)*.06,.18+(i%2)*.08,.18+(i%4)*.035,col)
             elif kind in ("triangles","triangles_extreme","mesh"):
-                tri=base*base*4 if kind!="triangles_extreme" else max(500,int(complexity)*4)
+                tri=min(12000,max(500,complexity)) if kind!="triangles_extreme" else min(48000,max(500,int(complexity)*4))
                 GL.glBegin(GL.GL_TRIANGLES)
                 for i in range(tri):
                     a=i*.6180339887+elapsed*.1
@@ -1156,7 +1176,7 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
             GL.glFlush(); pg.display.flip(); frames+=1; win_frames+=1; now=_u66_time.perf_counter()
             if now-win_start>=1:
                 fps=win_frames/(now-win_start); samples.append(round(fps,2)); peak=max(peak,fps); win_frames=0; win_start=now
-                pg.display.set_caption(f"NAPRAWA PC 3D {sid}/20 • {name} • FPS {fps:.1f} • ESC = stop • {renderer[:80]}")
+                pg.display.set_caption(f"NAPRAWA PC 3D {sid}/{len(_U66_SCENES)} • {name} • FPS {fps:.1f} • ESC = stop • {renderer[:80]}")
         elapsed=max(.001,_u66_time.perf_counter()-start)
         result.update({"state":"good" if frames else "warn","renderer":renderer,"opengl_version":version,"frames":frames,"duration_seconds":round(elapsed,2),"average_fps":round(frames/elapsed,2),"peak_fps_1s":round(peak,2),"fps_samples":samples,"workload":kind,"complexity":complexity,"scene_id":sid,"scene_name":name,"stopped_by_user":elapsed<requested-.5})
         pg.display.quit(); pg.quit()
@@ -1224,7 +1244,7 @@ def _u66_execute_gpu_scene(self,scene_id,seconds=5):
 
 def _u66_show_3d_studio(self):
     self.current_view="3D_STUDIO"; self.clear(); t=self.colors()
-    self.header_title.config(text="3D BENCHMARK STUDIO — 20 SCEN")
+    self.header_title.config(text="3D BENCHMARK STUDIO — 40 SCEN • ULTRA / MAX")
     info=self.panel(self.content); info.pack(fill="x",pady=(0,7))
     tk.Label(info,text="RZECZYWISTE RENDEROWANIE OPENGL • ŚREDNI FPS • PEAK 1 s • RENDERER • CZAS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
     tk.Label(info,text="Sceny proceduralne badają różne obciążenia geometrii. Nie są wynikami gier ani porównaniem sprzętu między różnymi API i rozdzielczościami.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
@@ -1232,9 +1252,10 @@ def _u66_show_3d_studio(self):
     names=[f"{i+1:02d} — {sc[0].split('—',1)[-1].strip()}" for i,sc in enumerate(_U66_SCENES)]
     self._u66_scene_var=tk.StringVar(value=names[0])
     ttk.Combobox(options,textvariable=self._u66_scene_var,values=names,state="readonly",width=42).pack(side="left",padx=3,ipady=4)
-    self._u66_scene_seconds=tk.StringVar(value="5 s")
-    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("3 s","5 s","10 s","20 s","30 s","60 s"),state="readonly",width=9).pack(side="left",padx=3,ipady=4)
-    self._u66_3d_status=tk.Label(self.content,text="Gotowy — wybierz scenę albo uruchom wszystkie 20.",bg=t["bg"],fg=t["muted"],font=self.fnt(9,"bold"),anchor="w")
+    self._u66_scene_seconds=tk.StringVar(value="15 s")
+    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("5 s","15 s","30 s","60 s","120 s","300 s"),state="readonly",width=10).pack(side="left",padx=3,ipady=4)
+    tk.Label(options,text="CZAS / PROFIL",bg=t["bg"],fg=t["muted"],font=self.fnt(8,"bold")).pack(side="left",padx=(6,2))
+    self._u66_3d_status=tk.Label(self.content,text="Gotowy — wybierz scenę albo uruchom wszystkie 40. Profil: STANDARD / ULTRA / MAX.",bg=t["bg"],fg=t["muted"],font=self.fnt(9,"bold"),anchor="w")
     self._u66_3d_status.pack(fill="x",padx=4,pady=5)
     table=self.panel(self.content); table.pack(fill="both",expand=True,pady=5)
     cols=("SCENA","STATUS","FPS ŚREDNI","FPS PEAK","KLATKI","RENDERER / UWAGI")
@@ -1244,7 +1265,8 @@ def _u66_show_3d_studio(self):
         self._u66_3d_tree.insert("","end",iid=str(i),values=(sc[0],res.get("state","—"),res.get("average_fps","N/D"),res.get("peak_fps_1s","N/D"),res.get("frames","N/D"),res.get("renderer",res.get("error","—"))))
     row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x")
     self.make_button(row,"▶ URUCHOM WYBRANĄ SCENĘ",lambda:_u66_start_3d_one(self),"accent",side="left",ipady=5)
-    self.make_button(row,"▶ WSZYSTKIE 20 SCEN",lambda:_u66_start_3d_all(self),"good",side="left",ipady=5)
+    self.make_button(row,"▶ WSZYSTKIE 40 SCEN",lambda:_u66_start_3d_all(self),"good",side="left",ipady=5)
+    self.make_button(row,"OCENA GIER / USTAWIENIA",lambda:_u68_show_game_guide(self),"card",side="left",ipady=5)
     self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=5)
 
 def _u66_start_3d_one(self):
@@ -1264,7 +1286,7 @@ def _u66_start_3d_one(self):
 def _u66_start_3d_all(self):
     try: seconds=int(str(self._u66_scene_seconds.get()).split()[0])
     except Exception: seconds=5
-    if not messagebox.askyesno("20 scen 3D",f"Uruchomić 20 scen, każdą przez {seconds} s? Łączny czas renderowania to co najmniej {20*seconds} sekund. ESC zatrzymuje aktywną scenę."):
+    if not messagebox.askyesno("40 scen 3D — ULTRA / MAX",f"Uruchomić {len(_U66_SCENES)} scen, każdą przez {seconds} s? Łączny czas renderowania to co najmniej {len(_U66_SCENES)*seconds} sekund. Profile 60/120/300 s są długimi testami obciążeniowymi. ESC zatrzymuje aktywną scenę."):
         return
     self.worker(lambda:_u66_run_3d_suite(self,seconds))
 
@@ -1273,7 +1295,7 @@ def _u66_run_3d_suite(self,seconds=5):
     results=[]
     for i,sc in enumerate(_U66_SCENES,1):
         if self._test_should_stop(): break
-        self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/20 — {sc[0]}")
+        self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/{len(_U66_SCENES)} — {sc[0]}")
         r=_u66_execute_gpu_scene(self,i,seconds); results.append(r)
         self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
     good=sum(1 for r in results if r.get("state")=="good")
@@ -1283,7 +1305,7 @@ def _u66_run_3d_suite(self,seconds=5):
         folder=_u66_store_dir()/"benchmarks"; folder.mkdir(parents=True,exist_ok=True)
         (folder/("3d-benchmark-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")).write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
     except Exception: pass
-    self.queue_log(f"3D STUDIO: ukończono {len(results)}/20 scen; wyniki prawidłowe: {good}.")
+    self.queue_log(f"3D STUDIO: ukończono {len(results)}/{len(_U66_SCENES)} scen; wyniki prawidłowe: {good}.")
 
 def _u66_ui_wait(self,callback,timeout=10):
     event=_u66_threading.Event()
@@ -1573,7 +1595,7 @@ def _u67_run_selected_diagnostic(self, selected):
     for entry in chosen:
         expanded.append(entry)
         if entry[0] == "GPU":
-            expanded.append(("__3D__", "3D Benchmark Studio — 20 scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
+            expanded.append(("__3D__", "3D Benchmark Studio — 40 scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
         if entry[0] == "SIEC":
             expanded.append(("__USB__", "USB — enumeracja urządzeń", lambda: self.show_simple_module("USB / URZĄDZENIA"), lambda: self._peripheral_test("USB"), ["USB"]))
     started = _U66_datetime.now().isoformat(timespec="seconds")
@@ -1649,7 +1671,7 @@ def _u67_start_selected_diagnostic(self):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz przynajmniej jeden moduł.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 20 scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
+        "CPU": "CPU", "GPU": "GPU + 40 scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
         "MATRYCA": "Matryca / EDID", "BATERIA": "Bateria", "KLAWIATURA": "Klawiatura / touchpad",
         "AUDIO": "Audio", "SIEC": "Internet Speed Test + USB", "SYSTEM_SECURITY": "Windows i bezpieczeństwo"
     }
@@ -1673,8 +1695,182 @@ def _u67_init_with_sensor_poll(self):
         pass
 
 
+
+# v4.3.72 — explicit controls for every module: scan, real benchmark, 3D visualizer.
+_U68_PROFILE_SECONDS = {"SZYBKI 5 s":5, "STANDARD 15 s":15, "ULTRA 60 s":60, "MAX 120 s":120, "EXTREME 300 s":300}
+_U68_MODULE_SCENES = {
+    "CPU":21, "RAM":25, "DYSK":29, "GPU":35, "VRAM":34,
+    "EKRAN":38, "BATERIA":39, "SIEC":37, "AUDIO":37,
+    "KLAWIATURA":37, "USB":37, "SECURITY":40, "SYSTEM":40
+}
+_U68_GAME_GUIDE = [
+    ("Counter-Strike 2","konkurencyjny: niskie/średnie; wyłącz ciężkie efekty","CPU + GPU"),
+    ("Valorant","wysokie/ultra zwykle lekkie; celuj w stabilne FPS","CPU"),
+    ("Fortnite","Performance Mode dla FPS; DX12 medium/high po sprawdzeniu VRAM","GPU/VRAM"),
+    ("Apex Legends","medium/high; ogranicz cienie i efekty","GPU"),
+    ("Call of Duty: Warzone","low/medium, upscaling i tekstury według VRAM","GPU/VRAM"),
+    ("Grand Theft Auto V Legacy","high/very high; ogranicz advanced distance scaling","GPU/CPU"),
+    ("GTA V Enhanced","medium/high, ray tracing off przy słabszym GPU","GPU/VRAM"),
+    ("Forza Horizon 5","high; sprawdź VRAM i stabilność 1% low","GPU"),
+    ("Red Dead Redemption 2","balanced/high; jakość tekstur zależna od VRAM","GPU/VRAM"),
+    ("Cyberpunk 2077","medium/high bez RT; DLSS/FSR/XeSS zależnie od GPU","GPU/VRAM"),
+    ("The Witcher 3 Next-Gen","high bez RT lub medium z RT i upscalingiem","GPU"),
+    ("Elden Ring","high; gra ma limit FPS zależny od wersji","GPU"),
+    ("Hogwarts Legacy","medium, tekstury dopasuj do VRAM; RT off przy słabszym GPU","VRAM"),
+    ("Baldur's Gate 3","high; scena i liczba NPC wpływa na CPU","CPU/GPU"),
+    ("Diablo IV","high; sprawdź VRAM i tekstury","GPU/VRAM"),
+    ("Overwatch 2","high/ultra; profil FPS z naciskiem na CPU","CPU/GPU"),
+    ("Rainbow Six Siege","high; celuj w wysoką płynność","CPU/GPU"),
+    ("PUBG","medium/high; ogranicz cienie i efekty","CPU/GPU"),
+    ("Minecraft Java","shadery osobno; bez shaderów wymagania są dużo niższe","CPU/GPU"),
+    ("Microsoft Flight Simulator","medium, render scale i LOD według CPU/RAM/VRAM","CPU/RAM/GPU"),
+    ("Starfield","low/medium, upscaling; obserwuj VRAM","GPU/VRAM"),
+    ("Alan Wake 2","low/medium z upscalingiem; RT zwykle bardzo wymagający","GPU/VRAM"),
+    ("DOOM Eternal","high/ultra gdy GPU i VRAM pozwalają","GPU/VRAM"),
+    ("EA SPORTS F1","high; obniż odbicia i ray tracing przy spadkach","GPU"),
+    ("Cities: Skylines II","low/medium; mocno zależy od CPU/RAM i rozmiaru miasta","CPU/RAM"),
+    ("Escape from Tarkov","low/medium, obserwuj RAM/VRAM i 1% low","CPU/RAM"),
+    ("Helldivers 2","medium, upscaling i skalowanie renderingu","GPU/CPU"),
+    ("Monster Hunter Wilds","low/medium z upscalingiem; sprawdź aktualne wymagania gry","GPU/VRAM"),
+    ("League of Legends","wysokie zwykle lekkie; monitoruj CPU i stabilność","CPU"),
+    ("Dota 2","high; płynność zależy też od sceny i CPU","CPU/GPU"),
+    ("Roblox","zależnie od konkretnej gry/świata; brak jednej wspólnej oceny","GPU/CPU")
+]
+
+def _u68_get_profile(self):
+    raw = str(getattr(self, "_u68_profile_var", tk.StringVar(value="STANDARD 15 s")).get())
+    return _U68_PROFILE_SECONDS.get(raw, 15)
+
+def _u68_start_visualizer(self, module, scene_id=None):
+    scene_id = int(scene_id or _U68_MODULE_SCENES.get(module, 40))
+    seconds = _u68_get_profile(self)
+    name = _U66_SCENES[scene_id-1][0]
+    self.queue_log(f"WIZUALIZATOR 3D {module}: scena {scene_id}/40 — {name} — {seconds} s; FPS mierzy renderer OpenGL.")
+    def job():
+        result = _u66_execute_gpu_scene(self, scene_id, seconds)
+        self.queue_action(lambda: self.results.__setitem__("MODULE_3D_"+module, result))
+        self.queue_log(f"WIZUALIZATOR 3D {module}: {result.get('state','N/D')} | FPS {result.get('average_fps','N/D')} | {result.get('renderer',result.get('error','N/D'))}")
+    self.worker(job)
+
+def _u68_run_module_action(self, module, action):
+    aliases = {"DYSKI":"DYSK","SSD":"DYSK","SSD/HDD/NVME":"DYSK","MATRYCA":"EKRAN","DISPLAY":"EKRAN",
+               "SIEĆ":"SIEC","WI-FI / LAN":"SIEC","NETWORK":"SIEC","DŹWIĘK / AUDIO":"AUDIO",
+               "KLAWIATURA / TOUCHPAD":"KLAWIATURA","USB / URZĄDZENIA":"USB","SYSTEM SECURITY":"SECURITY"}
+    module = aliases.get(str(module).strip().upper(), str(module).strip().upper())
+    seconds = _u68_get_profile(self)
+    profile = str(getattr(self,"_u68_profile_var",tk.StringVar(value="STANDARD 15 s")).get())
+    if action == "3d":
+        _u68_start_visualizer(self, module)
+        return
+    if module == "SIEC" and action in ("scan","bench"):
+        self.show_speed_test()
+        self.after(100, lambda: _u66_start_speed_test(self))
+        return
+    if module == "VRAM":
+        if callable(getattr(self, "_u41_start_vram_test", None)):
+            self._u41_start_vram_test()
+        else:
+            messagebox.showwarning("Test VRAM", "Moduł testu VRAM nie jest dostępny w tej kompilacji.")
+        return
+    def work():
+        try:
+            if module == "CPU":
+                self._cpu_test(10 if action=="scan" else seconds)
+            elif module == "RAM":
+                amount = {"SZYBKI 5 s":256,"STANDARD 15 s":512,"ULTRA 60 s":1024,"MAX 120 s":1536,"EXTREME 300 s":2048}.get(profile,512)
+                self._ram_test(256 if action=="scan" else amount)
+            elif module == "DYSK":
+                amount = {"SZYBKI 5 s":256,"STANDARD 15 s":512,"ULTRA 60 s":1024,"MAX 120 s":2048,"EXTREME 300 s":4096}.get(profile,512)
+                self._disk_test(256 if action=="scan" else amount)
+            elif module == "GPU":
+                self._gpu_test()
+                if action == "bench":
+                    result = _u66_execute_gpu_scene(self,35,seconds)
+                    self.queue_log(f"GPU benchmark: FPS={result.get('average_fps','N/D')} renderer={result.get('renderer',result.get('error','N/D'))}")
+            elif module == "EKRAN":
+                self._monitor_test()
+            elif module == "BATERIA":
+                self._battery_test()
+            elif module == "SECURITY":
+                self._selected_system_security_test() if action=="bench" else self._security_test()
+            elif module == "AUDIO":
+                self._peripheral_test("AUDIO")
+            elif module == "KLAWIATURA":
+                self._peripheral_test("KLAWIATURA")
+            elif module == "USB":
+                self._peripheral_test("USB")
+            else:
+                self.queue_log(f"Brak niezależnego testu dla modułu {module}.")
+                return
+            self.queue_log(f"{module}: zakończono {'benchmark' if action=='bench' else 'skan'} — profil {seconds} s. Sprawdź raport.")
+        except Exception as exc:
+            detail = f"{type(exc).__name__}: {exc}"
+            self.queue_log(f"{module}: błąd {detail}")
+            self.queue_action(lambda detail=detail,module=module: messagebox.showerror(f"Test {module}", detail))
+    self.worker(work)
+
+def _u68_add_module_action_panel(self, key, page_kind="hardware"):
+    normalized = str(key).strip().upper()
+    aliases = {"DYSKI":"DYSK","SSD":"DYSK","SSD/HDD/NVME":"DYSK","MATRYCA":"EKRAN","DISPLAY":"EKRAN",
+               "SIEĆ":"SIEC","WI-FI / LAN":"SIEC","NETWORK":"SIEC","DŹWIĘK / AUDIO":"AUDIO",
+               "KLAWIATURA / TOUCHPAD":"KLAWIATURA","USB / URZĄDZENIA":"USB","SYSTEM SECURITY":"SECURITY"}
+    module = aliases.get(normalized, normalized)
+    if module not in _U68_MODULE_SCENES:
+        return
+    t = self.colors()
+    panel = tk.Frame(self.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
+    children = self.content.winfo_children()
+    if children:
+        panel.pack(fill="x", padx=3, pady=(0,5), before=children[0])
+    else:
+        panel.pack(fill="x", padx=3, pady=(0,5))
+    tk.Label(panel, text=f"{module} — SKANUJ • BENCHMARK • WIZUALIZATOR 3D", bg=t["panel"], fg=t["accent"], font=self.fnt(9,"bold")).pack(side="left", padx=8, pady=6)
+    self._u68_profile_var = tk.StringVar(value="STANDARD 15 s")
+    ttk.Combobox(panel, textvariable=self._u68_profile_var, values=tuple(_U68_PROFILE_SECONDS.keys()), state="readonly", width=17).pack(side="left", padx=3, pady=4)
+    self.make_button(panel,"SKANUJ",lambda m=module:_u68_run_module_action(self,m,"scan"),"accent",side="left",ipady=4)
+    self.make_button(panel,"BENCHMARK / ULTRA",lambda m=module:_u68_run_module_action(self,m,"bench"),"good",side="left",ipady=4)
+    self.make_button(panel,"SYMULATOR 3D",lambda m=module:_u68_run_module_action(self,m,"3d"),"card",side="left",ipady=4)
+    if module=="GPU":
+        self.make_button(panel,"SKANUJ VRAM",lambda:_u68_run_module_action(self,"VRAM","scan"),"warn",side="left",ipady=4)
+        self.make_button(panel,"3D VRAM",lambda:_u68_run_module_action(self,"VRAM","3d"),"card",side="left",ipady=4)
+
+def _u68_show_module_wrapped(self, key):
+    _U68_ORIGINAL_SHOW_MODULE(self, key)
+    try: _u68_add_module_action_panel(self, key, "hardware")
+    except Exception as exc:
+        try: self.queue_log("Panel testów modułu: "+repr(exc))
+        except Exception: pass
+
+def _u68_show_simple_module_wrapped(self, key):
+    _U68_ORIGINAL_SHOW_SIMPLE_MODULE(self, key)
+    try: _u68_add_module_action_panel(self, key, "simple")
+    except Exception as exc:
+        try: self.queue_log("Panel testów modułu: "+repr(exc))
+        except Exception: pass
+
+def _u68_show_game_guide(self):
+    self.current_view="GAME_GUIDE"
+    self.clear()
+    t=self.colors()
+    self.header_title.config(text="OCENA GIER — USTAWIENIA GRAFIKI / FPS")
+    intro=self.panel(self.content); intro.pack(fill="x",pady=(0,7))
+    tk.Label(intro,text="PROFILE GRAFICZNE — WSKAZÓWKI, NIE ZASTĘPUJĄ BENCHMARKU W SAMEJ GRZE",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=10,pady=(8,3))
+    tk.Label(intro,text="Ten przewodnik nie udaje pomiaru FPS w grach. Rekomendacje są startowym profilem; dokładny dobór wymaga modelu GPU, VRAM, RAM, rozdzielczości i pomiaru konkretnej gry. Zapisz wynik gry/benchmarku i dopiero potem dobieraj ustawienia.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=10,pady=(0,8))
+    outer=self.panel(self.content); outer.pack(fill="both",expand=True,pady=4)
+    cols=("GRA","PUNKT STARTOWY USTAWIEŃ","GŁÓWNY OGRANICZNIK")
+    tree=self.make_tree(outer,cols)
+    for row in _U68_GAME_GUIDE:
+        tree.insert("","end",values=row)
+    row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x",pady=4)
+    self.make_button(row,"← WRÓĆ DO 3D BENCHMARK",self.show_3d_studio,"card",side="left",ipady=5)
+    self.make_button(row,"RAPORT",self.show_report,"card",side="left",ipady=5)
+
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==20, "Studio must have 20 separately named scenes"
+    assert len(_U66_SCENES)==40, "Studio must have 40 separately named scenes"
+    assert len(_U68_GAME_GUIDE)>=30, "Game guide must include at least 30 games"
+    assert callable(AppV43.show_module) and callable(AppV43.show_simple_module) and callable(AppV43.show_game_guide)
+    assert all(key in _U68_MODULE_SCENES for key in ("CPU","RAM","DYSK","GPU","VRAM"))
+    assert callable(_u68_run_module_action) and callable(_u68_start_visualizer)
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
@@ -1703,6 +1899,11 @@ AppV43.start_all_tests_sequential=_u66_start_all_tests
 AppV43.full_test=_u66_start_all_tests
 AppV43._start_selected_diagnostic=_u67_start_selected_diagnostic
 AppV43._run_selected_diagnostic=_u67_run_selected_diagnostic
+_U68_ORIGINAL_SHOW_MODULE=AppV43.show_module
+_U68_ORIGINAL_SHOW_SIMPLE_MODULE=AppV43.show_simple_module
+AppV43.show_module=_u68_show_module_wrapped
+AppV43.show_simple_module=_u68_show_simple_module_wrapped
+AppV43.show_game_guide=_u68_show_game_guide
 AppV43.run_ai_only=_u66_show_ai_reader
 AppV43.refresh_telemetry=_u66_refresh_telemetry
 _U66_ORIGINAL_INIT_FOR_SENSOR=AppV43.__init__
