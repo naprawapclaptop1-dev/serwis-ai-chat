@@ -96,7 +96,10 @@ _U66_SCENES = [
 ("34 — Instancje geometryczne", "cubes", 220),
 ("35 — Podwójna geometria MAX", "mixed", 360),
 ("36 — ULTRA MAX — render mieszany", "ultimate", 720)
-]def _u66_store_dir():
+]
+
+
+def _u66_store_dir():
     root = _u66_os.environ.get("LOCALAPPDATA") or str(Path.home())
     path = Path(root) / "NaprawaPC" / "AIReader"
     path.mkdir(parents=True, exist_ok=True)
