@@ -1694,8 +1694,8 @@ def _u67_run_selected_diagnostic(self, selected):
     order = [
         ("CPU", "CPU — obciążenie i zegary", lambda: self.show_module("CPU"), lambda: self._cpu_test(20), ["CPU"]),
         ("GPU", "GPU — karta i sterownik", lambda: self.show_module("GPU"), self._gpu_test, ["GPU"]),
-        ("RAM", "RAM — test wzorców", lambda: self.show_module("RAM"), lambda: self._ram_test(2048), ["RAM"]),
-        ("DYSKI", "SSD/HDD/NVMe — odczyt i zapis", lambda: self.show_module("DYSK"), lambda: self._disk_test(768), ["DYSK"]),
+        ("RAM", "RAM — wzorce + benchmark pasma", lambda: self.show_module("RAM"), lambda: _u68_safe_ram_test(self,2048,bandwidth=True), ["RAM"]),
+        ("DYSKI", "SSD/HDD/NVMe — odczyt i zapis", lambda: self.show_module("DYSK"), lambda: _u68_safe_disk_test(self,768), ["DYSK"]),
         ("MATRYCA", "Matryca — EDID i tryby ekranu", lambda: self.show_module("EKRAN"), self._monitor_test, ["EKRAN"]),
         ("BATERIA", "Bateria / zasilanie", lambda: self.show_battery_or_power(), self._battery_test, ["BATERIA"]),
         ("KLAWIATURA", "Klawiatura / touchpad", lambda: self.show_simple_module("KLAWIATURA / TOUCHPAD"), lambda: self._peripheral_test("KLAWIATURA"), ["KLAWIATURA", "PERIPHERAL_KLAWIATURA"]),
@@ -1873,6 +1873,83 @@ def _u68_start_visualizer(self, module, scene_id=None):
         self.queue_log(f"WIZUALIZATOR 3D {module}: {result.get('state','N/D')} | FPS {result.get('average_fps','N/D')} | {result.get('renderer',result.get('error','N/D'))}")
     self.worker(job)
 
+def _u68_safe_ram_size_mb(self, requested_mb):
+    requested_mb=max(64,int(requested_mb))
+    try:
+        available_mb=int(psutil.virtual_memory().available/(1024*1024)) if psutil else 512
+    except Exception:
+        available_mb=512
+    # Never reserve more than 20% of currently available physical RAM for our test buffer.
+    cap=max(64,min(4096,int(available_mb*0.20)))
+    actual=min(requested_mb,cap)
+    if actual<requested_mb:
+        self.queue_log(f"RAM: profil ograniczony z {requested_mb} MB do {actual} MB, aby zostawić pamięć dla Windows.")
+    return actual
+
+def _u68_ram_bandwidth_benchmark(self, requested_mb):
+    import ctypes as _u68_ctypes
+    import hashlib as _u68_hashlib
+    size_mb=_u68_safe_ram_size_mb(self,requested_mb)
+    size_bytes=size_mb*1024*1024
+    result={"state":"warn","buffer_mb":size_mb,"read_MBps":"N/D","write_MBps":"N/D"}
+    try:
+        buffer=bytearray(size_bytes)
+        ptr=_u68_ctypes.addressof(_u68_ctypes.c_char.from_buffer(buffer))
+        start=_u66_time.perf_counter()
+        for pattern in (0x00,0xFF,0xAA,0x55):
+            _u68_ctypes.memset(ptr,pattern,size_bytes)
+        write_seconds=max(0.0001,_u66_time.perf_counter()-start)
+        start=_u66_time.perf_counter()
+        digest=_u68_hashlib.sha256(memoryview(buffer)).hexdigest()
+        read_seconds=max(0.0001,_u66_time.perf_counter()-start)
+        stride=max(1,size_bytes//1024)
+        sample_ok=all(value==0x55 for value in buffer[::stride][:1024])
+        result.update({
+            "state":"good" if sample_ok and len(digest)==64 else "bad",
+            "buffer_mb":size_mb,
+            "write_MBps":round((size_mb*4)/write_seconds,2),
+            "read_MBps":round(size_mb/read_seconds,2),
+            "write_seconds":round(write_seconds,4),
+            "read_seconds":round(read_seconds,4),
+            "last_pattern_sample_ok":sample_ok,
+            "sha256":digest,
+            "method":"bytearray + ctypes.memset + SHA-256 read pass"
+        })
+        self.results["RAM_BANDWIDTH_BENCHMARK"]=result
+        self.queue_log(f"RAM BANDWIDTH: bufor={size_mb} MB | zapis efektywny={result['write_MBps']} MB/s (4 przebiegi) | odczyt/hash={result['read_MBps']} MB/s | wzorzec końcowy={'OK' if sample_ok else 'BŁĄD'}.")
+    except Exception as exc:
+        result.update({"state":"warn","error":f"{type(exc).__name__}: {exc}"})
+        self.results["RAM_BANDWIDTH_BENCHMARK"]=result
+        self.queue_log("RAM BANDWIDTH: nie udało się wykonać pomiaru: "+result["error"])
+    return result
+
+def _u68_safe_ram_test(self, requested_mb, bandwidth=False):
+    actual=_u68_safe_ram_size_mb(self,requested_mb)
+    self._ram_test(actual)
+    if bandwidth:
+        _u68_ram_bandwidth_benchmark(self,actual)
+    return actual
+
+def _u68_safe_disk_test(self, requested_mb):
+    requested_mb=max(128,int(requested_mb))
+    try:
+        free_mb=int(psutil.disk_usage(tempfile.gettempdir()).free/(1024*1024)) if psutil else 256
+    except Exception:
+        free_mb=256
+    if free_mb<128:
+        message=f"Test dysku pominięty: folder tymczasowy ma tylko {free_mb} MB wolnego miejsca."
+        self.results["DYSK_SAFE_BENCHMARK"]={"state":"warn","free_mb":free_mb,"error":message}
+        self.queue_log(message)
+        return None
+    cap=max(128,min(4096,int(free_mb*0.10)))
+    actual=min(requested_mb,cap)
+    if actual<requested_mb:
+        self.queue_log(f"DYSK: profil ograniczony z {requested_mb} MB do {actual} MB (10% wolnego miejsca w folderze tymczasowym).")
+    self.results["DYSK_SAFE_BENCHMARK"]={"state":"good","requested_mb":requested_mb,"actual_mb":actual,"free_mb_before_mb":free_mb}
+    self._disk_test(actual)
+    return actual
+
+
 def _u68_run_module_action(self, module, action):
     if getattr(self, "running", False):
         messagebox.showinfo("Test sprzętu", "Inny test już trwa. Poczekaj na zakończenie lub zatrzymaj go przyciskiem STOP.")
@@ -1902,10 +1979,10 @@ def _u68_run_module_action(self, module, action):
                 self._cpu_test(10 if action=="scan" else seconds)
             elif module == "RAM":
                 amount = {"SZYBKI 5 s":256,"STANDARD 15 s":512,"ULTRA 60 s":1024,"MAX 120 s":1536,"EXTREME 300 s":2048}.get(profile,512)
-                self._ram_test(256 if action=="scan" else amount)
+                _u68_safe_ram_test(self,256 if action=="scan" else amount,bandwidth=(action=="bench"))
             elif module == "DYSK":
                 amount = {"SZYBKI 5 s":256,"STANDARD 15 s":512,"ULTRA 60 s":1024,"MAX 120 s":2048,"EXTREME 300 s":4096}.get(profile,512)
-                self._disk_test(256 if action=="scan" else amount)
+                _u68_safe_disk_test(self,256 if action=="scan" else amount)
             elif module == "GPU":
                 self._gpu_test()
                 if action == "bench":
