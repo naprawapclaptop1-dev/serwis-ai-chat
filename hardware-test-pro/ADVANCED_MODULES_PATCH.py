@@ -1510,9 +1510,11 @@ def _u67_stage_live_panel(self, index, total, title):
     self._u67_stage_panel = panel
     top = tk.Frame(panel, bg=t["panel"])
     top.pack(fill="x", padx=10, pady=(6, 3))
-    self._u67_stage_title = tk.Label(top, text=f"TEST {index}/{total} — {title}", bg=t["panel"], fg=t["accent"], font=self.fnt(10, "bold"), anchor="w")
+    header_text = f"TEST {index}/{total} — {title}" if total > 0 else title
+    self._u67_stage_title = tk.Label(top, text=header_text, bg=t["panel"], fg=t["accent"], font=self.fnt(10, "bold"), anchor="w")
     self._u67_stage_title.pack(side="left", fill="x", expand=True)
-    self.make_button(top, "STOP TEST", self.stop_current_test, "bad", side="right", ipady=3)
+    if total > 0:
+        self.make_button(top, "STOP TEST", self.stop_current_test, "bad", side="right", ipady=3)
     self._u67_stage_values = {}
     metrics = tk.Frame(panel, bg=t["panel"])
     metrics.pack(fill="x", padx=6, pady=(0, 5))
@@ -1955,6 +1957,9 @@ def _u68_add_module_action_panel(self, key, page_kind="hardware"):
     if module=="GPU":
         self.make_button(panel,"SKANUJ VRAM",lambda:_u68_run_module_action(self,"VRAM","scan"),"accent",side="left",ipady=4)
         self.make_button(panel,"3D VRAM",lambda:_u68_run_module_action(self,"VRAM","3d"),"card",side="left",ipady=4)
+    self.make_button(panel,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
+    # Every hardware module receives its own continuously refreshed telemetry graphs.
+    _u67_stage_live_panel(self,0,0,f"{module} — MONITOR LIVE")
 
 def _u68_show_module_wrapped(self, key):
     _U68_ORIGINAL_SHOW_MODULE(self, key)
