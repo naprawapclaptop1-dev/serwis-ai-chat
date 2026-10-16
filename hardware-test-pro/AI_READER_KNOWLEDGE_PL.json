@@ -1,0 +1,314 @@
+{
+  "format": "naprawapc-ai-reader-knowledge",
+  "version": "2026.10.17",
+  "language": "pl-PL",
+  "description": "Kuratorowana baza wiedzy diagnostyki PC i laptopów. To nie jest cały Internet; artykuły zawierają skróty robocze i linki do źródeł do dalszej weryfikacji.",
+  "articles": [
+    {
+      "title": "Windows Event Viewer — dzienniki zdarzeń",
+      "tags": "Windows Podgląd zdarzeń Event Viewer błędy system dzienniki Application System",
+      "text": "Podgląd zdarzeń zbiera zdarzenia aplikacji, systemu, sterowników i zabezpieczeń. Przy diagnozie koreluj czas wystąpienia błędu z restartem, zawieszeniem lub awarią programu; zapisuj źródło, identyfikator zdarzenia, poziom, czas i szczegóły. Pojedynczy błąd nie dowodzi sam w sobie awarii podzespołu. Szukaj powtarzających się zdarzeń tuż przed problemem.",
+      "source": "https://learn.microsoft.com/en-us/shows/inside/event-viewer"
+    },
+    {
+      "title": "Monitor niezawodności Windows",
+      "tags": "Windows Reliability Monitor historia niezawodności awarie aplikacji",
+      "text": "Historia niezawodności pomaga zestawić awarie aplikacji, błędy Windows i aktualizacje w osi czasu. Traktuj ją jako indeks do dalszej analizy, a nie samodzielny werdykt. Porównaj datę awarii z dziennikami zdarzeń, wersją sterownika, aktualizacją oraz zmianami sprzętu.",
+      "source": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/performance-overview"
+    },
+    {
+      "title": "Windows Update — diagnostyka nieudanej aktualizacji",
+      "tags": "Windows Update błąd instalacja aktualizacji kod błędu",
+      "text": "Zapisz kod błędu, numer KB, wersję systemu i czas niepowodzenia. Zacznij od wbudowanego narzędzia rozwiązywania problemów, wolnego miejsca i sprawdzenia ponownego uruchomienia. Nie pobieraj przypadkowych DLL ani nie wyłączaj antywirusa. Przed ręczną naprawą zachowaj logi Windows Update.",
+      "source": "https://support.microsoft.com/pl-pl/windows/deployment/updates-lifecycle/troubleshoot-problems-updating-windows"
+    },
+    {
+      "title": "PnPUtil — sprawdzanie urządzeń i sterowników",
+      "tags": "pnputil urządzenia sterowniki Device Manager problem code 10 43",
+      "text": "PnPUtil potrafi wyświetlać urządzenia, sterowniki i urządzenia ze zgłoszonym problemem. W diagnostyce zbieraj identyfikator instancji, nazwę, wersję sterownika i kod problemu. Nie usuwaj sterownika ani pakietu w ciemno; najpierw ustal dokładny identyfikator sprzętu i przygotuj możliwość cofnięcia zmiany.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/install/troubleshooting-device-and-driver-installations"
+    },
+    {
+      "title": "Kody błędów Menedżera urządzeń",
+      "tags": "Windows kod 10 kod 28 kod 43 sterownik urządzenie",
+      "text": "Kod Menedżera urządzeń opisuje stan konfiguracji lub uruchomienia urządzenia, ale nie zawsze wskazuje jedną przyczynę. Przykładowo kod 10 oznacza problem ze стартem urządzenia, a kod 28 brak zainstalowanego sterownika. Sprawdź identyfikator sprzętu, dziennik instalacji, aktualny sterownik i zdarzenia. Nie zamieniaj kodu na automatyczny werdykt „sprzęt uszkodzony”.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/install/device-manager-error-messages"
+    },
+    {
+      "title": "Zarządzanie sterownikami — kolejność diagnozy",
+      "tags": "sterownik driver rollback update Windows GPU sieć audio",
+      "text": "Przed zmianą sterownika zapisz dokładny model urządzenia, identyfikator sprzętu, wersję Windows i obecną wersję sterownika. Preferuj witrynę producenta komputera lub urządzenia, zwłaszcza dla laptopów i chipsetu. Jeśli problem zaczął się zaraz po aktualizacji, rozważ cofnięcie sterownika. Nie instaluj kilku pakietów driver-updater naraz.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/install/"
+    },
+    {
+      "title": "DISM i SFC — bezpieczna kolejność naprawy",
+      "tags": "SFC DISM RestoreHealth ScanHealth Windows naprawa",
+      "text": "SFC weryfikuje chronione pliki systemowe. Gdy magazyn składników jest uszkodzony, uruchom DISM zgodnie z dokumentacją, sprawdź kod wyjścia i log, a następnie ponów SFC. Operacje mogą trwać długo. Nie zgłaszaj sukcesu na podstawie samego zamknięcia okna — liczą się kod zakończenia i komunikat narzędzia.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/repair-a-windows-image"
+    },
+    {
+      "title": "CHKDSK — sprawdzenie woluminu",
+      "tags": "chkdsk /scan /f system plików dysk naprawa",
+      "text": "CHKDSK weryfikuje strukturę systemu plików i metadane woluminu. Opcje naprawcze mogą zmieniać dane systemu plików, wymagać uprawnień administratora lub zaplanowania operacji. Jeśli nośnik wykazuje symptomy fizycznej awarii, najpierw zabezpiecz ważne dane; długie skanowanie oryginału nie zastępuje kopii sektorowej.",
+      "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chkdsk"
+    },
+    {
+      "title": "Get-Counter — odczyt liczników Windows",
+      "tags": "Get-Counter PerfMon performance counters obciążenie CPU GPU RAM",
+      "text": "Get-Counter pobiera wartości z liczników wydajności Windows. Nazwy zestawów i liczników mogą być zlokalizowane i zależeć od systemu. Odczytuj próbki w określonych odstępach i przechowuj znacznik czasu. Jeżeli licznik nie istnieje lub jest zablokowany, pokaż N/D i wyjaśnij źródło zamiast wpisywać 0.",
+      "source": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-counter"
+    },
+    {
+      "title": "Sysinternals Autoruns — autostart",
+      "tags": "Sysinternals Autoruns startup autostart wydajność bezpieczeństwo",
+      "text": "Autoruns pokazuje wiele lokalizacji automatycznego uruchamiania, które są pomijane przez prostą listę folderu Autostart. Sprawdź podpis cyfrowy, ścieżkę, wydawcę i pochodzenie pliku. Brak podpisu nie dowodzi złośliwości; nie wyłączaj elementu krytycznego bez kopii i planu przywrócenia.",
+      "source": "https://learn.microsoft.com/en-us/sysinternals/downloads/autoruns"
+    },
+    {
+      "title": "Process Explorer — procesy i użycie zasobów",
+      "tags": "Process Explorer CPU RAM procesy diagnostyka Windows",
+      "text": "Process Explorer pomaga sprawdzić hierarchię procesów, właściciela, uchwyty, biblioteki i użycie zasobów. Wysokie CPU lub RAM pojedynczego procesu to trop do dalszej diagnozy, a nie automatyczny dowód infekcji. Przed zakończeniem procesu systemowego sprawdź podpis, ścieżkę i zależności.",
+      "source": "https://learn.microsoft.com/en-us/sysinternals/downloads/process-explorer"
+    },
+    {
+      "title": "Powercfg — bateria i zasilanie",
+      "tags": "powercfg batteryreport energy laptop bateria sen zasilanie",
+      "text": "Powercfg generuje raporty baterii, energii i przejść zasilania. Raport batteryreport może zawierać pojemność projektową, pojemność pełnego ładowania i historię użycia, jeśli kontroler je udostępnia. Różnica pojemności wskazuje zużycie przybliżone; brak odczytu nie jest dowodem 0% kondycji.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options"
+    },
+    {
+      "title": "MemTest86 — niezależny test RAM",
+      "tags": "RAM pamięć MemTest86 boot USB błędy pamięci",
+      "text": "Test rozruchowy może zbadać obszary pamięci, których aplikacja w działającym Windows nie może bezpośrednio objąć. Stabilny test wymaga kilku pełnych przebiegów; błąd pamięci należy zapisać razem z konfiguracją, taktowaniem, profilem XMP/EXPO i liczbą przebiegów. Błędy mogą wynikać z modułu, slotu, kontrolera lub ustawień pamięci.",
+      "source": "https://www.memtest.org/"
+    },
+    {
+      "title": "XMP/EXPO — niestabilność pamięci",
+      "tags": "XMP EXPO RAM niestabilność BIOS profile pamięci",
+      "text": "Profile pamięci zwiększające taktowanie mogą zależeć od procesora, płyty głównej, BIOS-u, liczby modułów i ich organizacji. Gdy pojawiają się losowe restarty lub błędy RAM, porównaj stabilność z profilem domyślnym JEDEC. Nie podnoś napięcia automatycznie; zmianę zapisuj i wykonuj wyłącznie świadomie.",
+      "source": "https://www.intel.com/content/www/us/en/support/articles/000094205/processors.html"
+    },
+    {
+      "title": "SMART — interpretacja ostrzeżeń nośnika",
+      "tags": "SMART SSD HDD health failure disk smartctl",
+      "text": "SMART udostępnia atrybuty zależne od rodzaju i firmware nośnika. Zwracaj uwagę na niekorygowalne błędy, błędy nośnika, temperatury i ostrzeżenia NVMe. Wartości i progi nie są identyczne dla wszystkich producentów. W razie ostrzeżeń priorytetem jest kopia danych; sam status „PASSED” nie gwarantuje, że dysk nie ulegnie awarii.",
+      "source": "https://www.smartmontools.org/"
+    },
+    {
+      "title": "smartctl — diagnostyka SATA, SAS i NVMe",
+      "tags": "smartctl smartmontools nvme ssd hdd log",
+      "text": "smartctl odczytuje SMART i logi na wielu urządzeniach ATA/SATA, SCSI/SAS i NVMe. Dostęp zależy od sterownika, uprawnień i mostka USB. Zachowuj surowy raport oraz model i firmware. Brak obsługi atrybutu lub błąd dostępu powinien być oznaczony jako brak danych, a nie brak problemów.",
+      "source": "https://github.com/smartmontools/smartmontools"
+    },
+    {
+      "title": "NVMe — ostrzeżenia i logi zdrowia",
+      "tags": "NVMe health critical warning media errors temperature ssd",
+      "text": "Dysk NVMe może udostępniać ostrzeżenia krytyczne, temperaturę, zapas dostępnej pamięci, procent wykorzystania oraz liczniki błędów. Znaczenie pól zależy od specyfikacji i firmware. Przed wyciągnięciem wniosku zestawiaj health log z symptomami, zdarzeniami systemowymi i kopią danych.",
+      "source": "https://nvmexpress.org/specifications/"
+    },
+    {
+      "title": "TRIM i optymalizacja SSD",
+      "tags": "SSD TRIM Optimize-Volume defrag Windows",
+      "text": "Windows rozróżnia optymalizację woluminów dla różnych typów nośników. SSD nie należy traktować jak HDD i mechanicznie wymuszać częstej defragmentacji. Sprawdź wykryty typ nośnika i konfigurację; nie używaj „optymalizatorów” obiecujących magiczne przyspieszenie lub czyszczenie wolnego miejsca bez pomiaru.",
+      "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/defrag"
+    },
+    {
+      "title": "GPU NVIDIA — telemetria nvidia-smi",
+      "tags": "NVIDIA GPU temperature clock VRAM power utilization nvidia-smi",
+      "text": "NVIDIA System Management Interface może raportować temperaturę, zegary, zużycie VRAM, obciążenie i stan zasilania, ale obsługiwane pola różnią się zależnie od GPU i sterownika. Odczyty pobieraj w krótkich odstępach i zapisuj czas próbki. N/D jest lepsze niż zgadywanie; wyniki z różnych kart porównuj tylko w podobnych warunkach.",
+      "source": "https://docs.nvidia.com/deploy/nvidia-smi/index.html"
+    },
+    {
+      "title": "NVIDIA NVML — API telemetrii GPU",
+      "tags": "NVIDIA NVML GPU sensors telemetry temperature clocks memory fan",
+      "text": "NVML jest programowym interfejsem do monitorowania GPU NVIDIA. Może udostępniać identyfikację urządzenia, wykorzystanie GPU i pamięci, temperaturę, wentylatory, zegary, stan zasilania i liczniki ECC — zależnie od sprzętu. W aplikacji należy obsługiwać brak obsługi funkcji i błędy API bez przedstawiania ich jako prawidłowych zer.",
+      "source": "https://developer.nvidia.com/management-library-nvml"
+    },
+    {
+      "title": "AMD GPU — telemetria i sterownik",
+      "tags": "AMD Radeon GPU temperature clocks fan utilization driver",
+      "text": "Parametry Radeon są zależne od generacji karty, sterownika i narzędzia. Nie zakładaj, że interfejs NVIDIA nvidia-smi zadziała dla AMD. Korzystaj z narzędzi i dokumentacji AMD dla dokładnego modelu; temperatury hotspot, krawędzi i pamięci to różne czujniki i nie powinny być mylone.",
+      "source": "https://www.amd.com/en/support"
+    },
+    {
+      "title": "Intel Graphics — diagnostyka sterownika",
+      "tags": "Intel Arc UHD Iris Xe graphics driver GPU",
+      "text": "Przy problemach grafiki Intel sprawdź dokładny model GPU, generację procesora, wersję Windows, sterownik OEM i dostępne aktualizacje. W laptopach sterowniki producenta urządzenia mogą zawierać integracje energii, przełączania grafiki i panelu. Nie traktuj braku wskaźnika temperatury jako potwierdzenia dobrej temperatury.",
+      "source": "https://www.intel.com/content/www/us/en/support/products/80939/graphics.html"
+    },
+    {
+      "title": "LibreHardwareMonitor — źródła czujników",
+      "tags": "LibreHardwareMonitor CPU GPU motherboard temperature fan clock voltage",
+      "text": "LibreHardwareMonitor odczytuje wiele czujników temperatur, wentylatorów, napięć, obciążenia i zegarów na obsługiwanym sprzęcie. Zakres odczytów zależy od modelu, czujnika, uprawnień i wersji biblioteki. Użycie biblioteki powinno respektować jej licencję MPL-2.0, a raport powinien wskazywać nazwę czujnika i czas odczytu.",
+      "source": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor"
+    },
+    {
+      "title": "Limity temperatur CPU — sprawdzaj model",
+      "tags": "CPU temperature TjMax thermal throttling Intel AMD",
+      "text": "Nie istnieje jeden limit temperatury właściwy dla każdego procesora. Limity, punkty throttlingu i odczyty zależą od konkretnego SKU i platformy. Odczytuj wartości z dokumentacji producenta dla dokładnego modelu. Wysoka temperatura pod obciążeniem interpretowana jest razem z zegarem, mocą, wentylatorami i warunkami otoczenia.",
+      "source": "https://www.intel.com/content/www/us/en/support.html"
+    },
+    {
+      "title": "Test obciążeniowy CPU/GPU — bezpieczeństwo",
+      "tags": "stress test CPU GPU cooling temperature benchmark thermal",
+      "text": "Przed długim obciążeniem upewnij się, że wloty powietrza nie są zasłonięte i sprzęt jest stabilny. Zapewnij przycisk STOP, limit czasu i możliwość przerwania. Nie obiecuj testu „bez ryzyka”; natychmiast przerwij przy nietypowym zapachu, artefaktach, wyłączaniu, alarmie temperatury albo niestabilności. Nie diagnozuj temperatury czujnikiem, którego system nie udostępnia.",
+      "source": "https://www.intel.com/content/www/us/en/support.html"
+    },
+    {
+      "title": "Direct3D — pomiary wydajności grafiki",
+      "tags": "Direct3D graphics benchmark FPS rendering Windows GPU",
+      "text": "Test grafiki powinien rzeczywiście renderować scenę przy użyciu API i sterownika, a nie wyświetlać animację UI. Dla powtarzalności zapisuj scenę, rozdzielczość, wersję API, czas trwania, średni FPS oraz percentyle/klatki, jeśli są mierzone. Jedna scena nie przewiduje wszystkich gier ani obciążeń compute.",
+      "source": "https://learn.microsoft.com/en-us/windows/win32/direct3d"
+    },
+    {
+      "title": "Cloudflare Speed Test — ograniczenia pomiaru",
+      "tags": "Cloudflare speed test internet download upload latency",
+      "text": "Prędkość internetu zależy od rozmiaru przesyłanych danych, serwera testowego, trasy sieciowej, Wi-Fi i obciążenia. Pomiar w aplikacji musi zapisywać rzeczywiste bajty i czas oraz obliczać Mbps z liczby bitów na sekundę. Krótkie testy mogą być zdominowane przez opóźnienie, dłuższe zużywają więcej transferu. Poinformuj użytkownika o spodziewanej ilości danych.",
+      "source": "https://github.com/cloudflare/speedtest"
+    },
+    {
+      "title": "DNS — diagnostyka nazw domenowych",
+      "tags": "DNS internet no connection ipconfig flushdns nslookup",
+      "text": "Gdy adres IP działa, a nazwy domen nie, sprawdź rozwiązywanie DNS, konfigurację adaptera i odpowiedź serwera. ipconfig /flushdns czyści lokalny cache, ale nie naprawi problemu u operatora ani błędnej konfiguracji routera. Zapisuj, jaką nazwę testowano, jaki serwer odpowiedział i kod błędu.",
+      "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/ipconfig"
+    },
+    {
+      "title": "Winsock reset — kiedy używać",
+      "tags": "Winsock reset netsh network socket Windows",
+      "text": "Reset Winsock może pomóc przy problemach z katalogiem sieciowym Windows, lecz może wpłynąć na oprogramowanie sieciowe i zwykle wymaga restartu. Najpierw zbierz adres IP, bramę, DNS, testy rozwiązywania nazw i stan adaptera. Pokaż użytkownikowi dokładne polecenie i potrzebę restartu przed wykonaniem.",
+      "source": "https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/netsh-winsock"
+    },
+    {
+      "title": "Wi-Fi — pasmo, kanał i zakłócenia",
+      "tags": "Wi-Fi 2.4 GHz 5 GHz 6 GHz channel signal interference",
+      "text": "Przepustowość Wi-Fi zależy od pasma, szerokości kanału, sygnału, zakłóceń i możliwości routera/klienta. Testuj w tym samym miejscu i czasie, najlepiej porównując Ethernet. Słaby wynik Wi-Fi nie dowodzi automatycznie winy dostawcy internetu. Zapisuj nazwę adaptera, link speed, pasmo i siłę sygnału, jeśli są dostępne.",
+      "source": "https://support.microsoft.com/windows"
+    },
+    {
+      "title": "UAC i instalatory — widoczny status",
+      "tags": "UAC Windows installer installation permissions update",
+      "text": "Aktualizator powinien weryfikować rozmiar, format i SHA-256 pliku przed uruchomieniem, a instalacja wymagająca uprawnień powinna przejść przez standardowy monit UAC. Pokazuj użytkownikowi wynik uruchomienia i log; nie ukrywaj błędów instalatora w trybie cichym. Nie wyłączaj UAC ani ochrony antywirusowej, aby wymusić instalację.",
+      "source": "https://learn.microsoft.com/en-us/windows/security/application-security/application-control/user-account-control/"
+    },
+    {
+      "title": "SHA-256 — kontrola integralności pliku",
+      "tags": "SHA256 checksum file integrity installer download",
+      "text": "SHA-256 pozwala wykryć zmianę zawartości pliku, gdy porównuje się hash z niezależnie zaufanym manifestem. Sama suma opublikowana obok pobranego pliku na tym samym niezaufanym serwerze nie dowodzi autorstwa. Dla instalatorów sprawdzaj też podpis Authenticode, wydawcę i źródło pobrania.",
+      "source": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/get-filehash"
+    },
+    {
+      "title": "Podpis Authenticode pliku EXE",
+      "tags": "Authenticode signature PowerShell Get-AuthenticodeSignature publisher",
+      "text": "Podpis cyfrowy pomaga sprawdzić tożsamość wydawcy i integralność podpisanego pliku. Na Windows można odczytać status podpisu Authenticode i nazwę podpisującego. Brak podpisu nie stanowi automatycznego dowodu malware, ale przed uruchomieniem instalatora zwiększa potrzebę weryfikacji źródła i reputacji pliku.",
+      "source": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.security/get-authenticodesignature"
+    },
+    {
+      "title": "SBOM — składniki oprogramowania",
+      "tags": "SBOM CycloneDX SPDX dependencies supply chain software security",
+      "text": "SBOM opisuje komponenty, wersje, identyfikatory i relacje zależności użyte w artefakcie. Przy wydaniu aplikacji przechowuj listę zależności i wersji, licencje oraz informacje o źródłach. SBOM wspiera audyt i korelację z bazami luk, ale samo posiadanie SBOM nie oznacza, że produkt jest wolny od podatności.",
+      "source": "https://www.python.org/downloads/metadata/sbom/"
+    },
+    {
+      "title": "Aktualizacje aplikacji — bezpieczny proces",
+      "tags": "software update manifest HTTPS hash release version updater security",
+      "text": "Bezpieczna aktualizacja potrzebuje stabilnego manifestu, numeru wersji, określonej nazwy artefaktu, rozmiaru i SHA-256, obsługi błędów oraz rollbacku lub czytelnej instrukcji odzyskiwania. Nie uruchamiaj pliku częściowo pobranego i nie kasuj poprzedniej wersji przed potwierdzeniem sukcesu nowej. Loguj etap i kod błędu bez sekretów.",
+      "source": "https://www.python.org/downloads/metadata/sbom/"
+    },
+    {
+      "title": "Bitdefender wykrywa plik aktualizacji",
+      "tags": "Bitdefender antivirus quarantine update installer false positive malware",
+      "text": "Jeśli program ochronny zatrzyma instalator lub plik tymczasowy, nie wyłączaj ochrony i nie przywracaj go automatycznie z kwarantanny. Zapisz dokładną nazwę wykrycia, hash pliku, adres pobrania i wersję wydania. Zweryfikuj podpis wydawcy i skontaktuj się z producentem ochrony lub dostawcą pliku w sprawie analizy. Nie zmieniaj nazwy pliku w celu obejścia wykrycia.",
+      "source": "https://www.cisa.gov/secure-our-world"
+    },
+    {
+      "title": "Malware — bezpieczne postępowanie",
+      "tags": "malware antivirus suspicious file incident response security",
+      "text": "Nie uruchamiaj podejrzanego pliku w celu sprawdzenia, czy jest groźny. Zachowaj nazwę wykrycia, hash i logi, przeprowadź skan aktualnym programem ochronnym i używaj oficjalnych narzędzi. Przy podejrzeniu aktywnego incydentu ogranicz połączenia według procedury bezpieczeństwa i zabezpiecz dane; nie usuwaj dowodów bez planu.",
+      "source": "https://www.cisa.gov/secure-our-world"
+    },
+    {
+      "title": "Ochrona przed ransomware i kopie zapasowe",
+      "tags": "ransomware backup offline restore recovery",
+      "text": "Kopie zapasowe powinny być odseparowane od komputera, szyfrowane i okresowo testowane przez próbne odtworzenie. Przy podejrzeniu ransomware nie podłączaj kopii zapasowych do zainfekowanego systemu i nie uruchamiaj losowych deszyfratorów. Zachowaj próbki i notatki o zdarzeniu zgodnie z procedurą bezpieczeństwa.",
+      "source": "https://www.cisa.gov/stopransomware"
+    },
+    {
+      "title": "Odzyskiwanie danych — kolejność działań",
+      "tags": "data recovery HDD SSD failing disk clone image backup",
+      "text": "Gdy nośnik znika, klika, zwalnia albo zgłasza błędy I/O, ogranicz kolejne zapisy i obciążenie. Najpierw zabezpiecz najważniejsze pliki lub wykonaj obraz na innym nośniku; nie zapisuj odzyskanych danych na źródle. Przy ważnych danych i fizycznych oznakach uszkodzenia skieruj nośnik do laboratorium zamiast wielokrotnie testować.",
+      "source": "https://www.cisa.gov/stopransomware"
+    },
+    {
+      "title": "USB — kody urządzeń i zasilanie",
+      "tags": "USB device manager hub power device descriptor",
+      "text": "Problem USB może pochodzić z kabla, portu, huba, zasilania, firmware lub sterownika. Porównaj urządzenie na innym porcie i komputerze, sprawdź Menedżer urządzeń i dzienniki, a w razie potrzeby użyj huba z własnym zasilaniem. Aplikacyjny test wykrycia urządzenia nie mierzy samodzielnie jakości zasilania portu.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/"
+    },
+    {
+      "title": "EDID — dane identyfikacyjne monitora",
+      "tags": "EDID monitor model serial refresh rate display",
+      "text": "EDID zawiera część danych identyfikacyjnych ekranu i obsługiwanych trybów, ale nie diagnozuje wszystkich wad panelu. Informacje mogą być ograniczone przez adaptery, doki i połączenia KVM. Porównaj wykryte parametry z dokumentacją producenta i przeprowadź oddzielny test wizualny pikseli, podświetlenia i artefaktów.",
+      "source": "https://learn.microsoft.com/en-us/windows-hardware/drivers/display/"
+    },
+    {
+      "title": "Martwe piksele i test matrycy",
+      "tags": "dead pixel stuck pixel backlight LCD OLED screen pattern",
+      "text": "Wzorce pełnej czerni, bieli, czerwieni, zieleni, niebieskiego i gradientów pomagają znaleźć niektóre wady obrazu. Aplikacja nie może wiarygodnie rozpoznać wszystkich martwych pikseli bez analizy kamery; wynik wymaga wzrokowego potwierdzenia operatora. Zapisz liczbę i położenie wad oraz unikaj deklaracji OK bez przejścia wzorców.",
+      "source": "https://support.microsoft.com/windows"
+    },
+    {
+      "title": "Zalanie laptopa — pierwsze kroki",
+      "tags": "liquid spill laptop motherboard corrosion data recovery",
+      "text": "Po zalaniu wyłącz urządzenie i odłącz zasilanie, jeśli można to zrobić bez ryzyka. Nie włączaj go do sprawdzenia i nie ogrzewaj suszarką. Płyn i osady mogą powodować korozję również po wyschnięciu. Zabezpiecz dane, udokumentuj zdarzenie i wykonaj diagnostykę serwisową przed ponownym zasileniem.",
+      "source": "https://www.cisa.gov/secure-our-world"
+    },
+    {
+      "title": "Pasta termiczna i układ chłodzenia",
+      "tags": "thermal paste CPU GPU heatsink fan airflow temperature",
+      "text": "Wymiana pasty nie naprawi zatkanego radiatora, uszkodzonego wentylatora, krzywego docisku, problemu z pompą ani błędnych limitów mocy. Przed i po serwisie porównuj temperaturę, zegary, obciążenie i hałas w tej samej scenie oraz podobnej temperaturze otoczenia. Nie stosuj uniwersalnego limitu temperatury dla każdego modelu.",
+      "source": "https://www.intel.com/content/www/us/en/support.html"
+    },
+    {
+      "title": "Wentylatory i tachometry",
+      "tags": "fan RPM tachometer motherboard cooling sensor",
+      "text": "Odczyt RPM może nie być dostępny na wszystkich wentylatorach i płytach. Niektóre regulatory raportują PWM, inne obroty lub brak sensora. Jeśli wartość jest równa zero, zweryfikuj czy urządzenie rzeczywiście stoi, czy tylko nie ma sygnału pomiarowego. Nie reguluj napięcia ani nie ustawiaj krzywej w ciemno.",
+      "source": "https://github.com/LibreHardwareMonitor/LibreHardwareMonitor"
+    },
+    {
+      "title": "Test audio — wejście i wyjście",
+      "tags": "audio microphone speaker loopback level RMS",
+      "text": "Weryfikacja mikrofonu powinna obejmować wybór aktywnego wejścia, próbkę, poziom sygnału i kontrolę prywatności. Test głośników wymaga potwierdzenia słyszalności lub pomiaru loopback, jeśli sterownik go wspiera. Sama obecność urządzenia w Windows nie oznacza, że dźwięk jest prawidłowy.",
+      "source": "https://support.microsoft.com/windows"
+    },
+    {
+      "title": "Kamera — test strumienia i prywatności",
+      "tags": "webcam camera frames FPS privacy device",
+      "text": "Test kamery powinien pokazać faktyczny podgląd, rozdzielczość i obserwowany FPS oraz pozwalać zatrzymać strumień. Zwolnij zasób kamery przy zmianie strony i po zamknięciu programu. Nie zapisuj nagrań ani nie wysyłaj ich do internetu bez jawnej zgody operatora.",
+      "source": "https://support.microsoft.com/windows"
+    },
+    {
+      "title": "Prompt injection w treści internetowej",
+      "tags": "AI Reader RAG prompt injection untrusted web page prompt security",
+      "text": "Treść strony internetowej, PDF-u lub pliku użytkownika jest materiałem do analizy, a nie instrukcją dla aplikacji. Nie pozwalaj importowanym dokumentom uruchamiać poleceń, zmieniać ustawień ani nadpisywać zasad. Oddziel cytowaną treść od poleceń aplikacji, pokazuj źródło i traktuj wyszukiwane fragmenty jako niezaufane.",
+      "source": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/"
+    },
+    {
+      "title": "Ocena wiarygodności źródeł technicznych",
+      "tags": "AI Reader citation authority source vendor manual evidence version date",
+      "text": "Preferuj dokumentację producenta konkretnego urządzenia, oficjalne dokumenty Microsoft/Intel/AMD/NVIDIA oraz dokumentację narzędzia. Sprawdzaj datę, model/wersję, autorstwo i warunki zastosowania. Oddzielaj tekst źródła od wniosku diagnostycznego, podawaj link i poziom pewności. Artykuł na forum traktuj jako wskazówkę, nie jako jedyne potwierdzenie.",
+      "source": "https://learn.microsoft.com/en-us/troubleshoot/"
+    },
+    {
+      "title": "Prywatność raportów diagnostycznych",
+      "tags": "privacy logs serial number hostname email user data diagnostic report",
+      "text": "Raporty mogą zawierać nazwy użytkowników, nazwy komputerów, numer seryjny urządzenia, ścieżki plików i identyfikatory sieci. Przed wysłaniem usuń dane, które nie są potrzebne. AI Reader powinien zapisywać importowane materiały lokalnie, jasno wskazywać ścieżkę bazy i nie wysyłać raportów bez działania użytkownika.",
+      "source": "https://www.cisa.gov/secure-our-world"
+    },
+    {
+      "title": "Interpretacja wyników testu — PASS/WARN/FAIL",
+      "tags": "diagnostics test results PASS WARN FAIL evidence confidence",
+      "text": "PASS oznacza tylko, że konkretny test zakończył się bez wykrytego błędu w określonych warunkach. WARN oznacza brak danych, ograniczenie, przerwanie lub wynik wymagający potwierdzenia. FAIL wymaga realnego błędu pomiaru albo kodu urządzenia. Zapisuj zakres, czas, wersję narzędzia i to, czego test nie sprawdzał; nie uogólniaj jednego testu na cały komputer.",
+      "source": "https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/performance-overview"
+    }
+  ]
+}
