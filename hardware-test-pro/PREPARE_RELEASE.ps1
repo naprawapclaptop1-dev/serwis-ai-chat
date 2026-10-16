@@ -126,6 +126,30 @@ def _u44_confirm_downloaded(self, path, version):
         except Exception:
             pass
         messagebox.showerror("Aktualizacja globalna", msg)
+
+
+def _u44_dispatch_confirm_downloaded(self, path, version):
+    # Called through the UI event queue, but uses module functions directly rather than fragile instance aliases.
+    try:
+        self._u39_set_update_status(f"Uruchamiam zweryfikowany instalator {version} przez Windows/UAC...")
+    except Exception:
+        pass
+    try:
+        _u44_confirm_downloaded(self, path, version)
+    except Exception as exc:
+        msg = f"Nie udało się uruchomić instalatora {version}: {type(exc).__name__}: {exc}"
+        try:
+            self._u39_set_update_status(msg)
+        except Exception:
+            pass
+        try:
+            self.append_log(msg)
+        except Exception:
+            pass
+        try:
+            messagebox.showerror("Aktualizacja globalna — błąd uruchamiania", msg)
+        except Exception:
+            pass
 '@
 $confirmPattern = '(?s)def _u44_confirm_downloaded\(self, path, version\):.*?(?=\r?\nAppV43\._u44_set_progress = _u44_set_progress)'
 $confirmMatches = [regex]::Matches($src, $confirmPattern)
@@ -148,8 +172,10 @@ $newLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__co
 '    assert "installer-" in str(_u44_confirm_downloaded.__code__.co_consts) and ".log" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
-'    assert "_u39_confirm_downloaded" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "_u44_dispatch_confirm_downloaded" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "_u39_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "_u44_confirm_downloaded" in _u44_dispatch_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "gettempdir" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "xb" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "close_app" not in _u44_confirm_downloaded.__code__.co_names'
@@ -266,7 +292,7 @@ def _u44_download_global_update(self, data):
                 raise ValueError("Pobrany plik nie jest plikiem wykonywalnym Windows PE.")
         os.replace(tmp, dest)
         self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. SHA-256 i rozmiar poprawne; przekazuję instalator do Windows/UAC. Plik: {p}"))
-        self.queue_action(lambda p=str(dest), v=version: self._u39_confirm_downloaded(p, v))
+        self.queue_action(lambda p=str(dest), v=version: _u44_dispatch_confirm_downloaded(self, p, v))
     except Exception as exc:
         try:
             tmp.unlink(missing_ok=True)
