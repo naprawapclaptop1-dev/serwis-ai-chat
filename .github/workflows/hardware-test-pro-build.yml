@@ -129,49 +129,6 @@ jobs:
           "BUNDLE_SHA256=$bundleHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "BUNDLE_SIZE=$bundleSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Build legacy-compatible update bootstrap
-        id: bootstrap
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          Set-Location "${{ github.workspace }}\hardware-test-pro"
-          $setupUrl = "https://github.com/${{ github.repository }}/releases/download/hardware-test-pro-v$env:APP_VERSION/$env:SETUP_FILENAME"
-          $configPath = ".\update-bootstrap\BuildConfig.cs"
-          $config = @"
-          namespace NaprawaPC.UpdateBootstrap
-          {
-              internal static class BuildConfig
-              {
-                  public const string AppVersion = "$env:APP_VERSION";
-                  public const string SetupUrl = "$setupUrl";
-                  public const string SetupFilename = "$env:SETUP_FILENAME";
-                  public const string SetupSha256 = "$env:INSTALLER_SHA256";
-                  public const long SetupSize = $env:INSTALLER_SIZE;
-              }
-          }
-          "@
-          [IO.File]::WriteAllText((Join-Path (Get-Location) $configPath), $config, [Text.UTF8Encoding]::new($true))
-          $csc = Join-Path $env:WINDIR "Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-          if (!(Test-Path $csc)) { throw "Nie znaleziono kompilatora .NET Framework C# (csc.exe): $csc" }
-          $bootstrapName = "NAPRAWA-PC-HARDWARE-TEST-PRO-UpdateBootstrap-$env:APP_VERSION.exe"
-          $bootstrapPath = Join-Path (Resolve-Path ".\dist").Path $bootstrapName
-          & $csc /nologo /target:winexe /optimize+ /codepage:65001 "/out:$bootstrapPath" "/win32manifest:$(Join-Path (Get-Location) 'update-bootstrap\app.manifest')" /reference:System.dll /reference:System.Core.dll /reference:System.Windows.Forms.dll /reference:System.Drawing.dll "/resource:.\ui_reference.png,DiagnosticArtwork" ".\update-bootstrap\Program.cs" $configPath
-          if ($LASTEXITCODE -ne 0) { throw "Kompilacja pomocnika aktualizacji nie powiodła się: $LASTEXITCODE" }
-          if (!(Test-Path $bootstrapPath) -or (Get-Item $bootstrapPath).Length -lt 10KB) { throw "Plik pomocnika aktualizacji jest nieprawidłowy lub niekompletny." }
-          $bootstrapHead = [IO.File]::ReadAllBytes($bootstrapPath)
-          if ($bootstrapHead.Length -lt 2 -or $bootstrapHead[0] -ne 0x4D -or $bootstrapHead[1] -ne 0x5A) { throw "Pomocnik aktualizacji nie jest prawidłowym plikiem PE." }
-          $bootstrapHash = (Get-FileHash -LiteralPath $bootstrapPath -Algorithm SHA256).Hash.ToLowerInvariant()
-          $bootstrapSize = (Get-Item -LiteralPath $bootstrapPath).Length
-          "BOOTSTRAP_FILENAME=$bootstrapName" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "BOOTSTRAP_SHA256=$bootstrapHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "BOOTSTRAP_SIZE=$bootstrapSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "bootstrap_filename=$bootstrapName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "sha256=$bootstrapHash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "size=$bootstrapSize" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host "BOOTSTRAP=$bootstrapPath"
-          Write-Host "BOOTSTRAP_SHA256=$bootstrapHash"
-          Write-Host "BOOTSTRAP_SIZE=$bootstrapSize"
-
       - name: Publish release assets
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
@@ -183,7 +140,6 @@ jobs:
             Wydanie Windows x64. Testy źródeł przed budową instalatora; zintegrowane centrum serwisu i napraw systemu, testy hardware, 125 skórek oraz poprawka zapisu aktualizacji.
           files: |
             hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
-            hardware-test-pro/dist/${{ steps.bootstrap.outputs.bootstrap_filename }}
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
           overwrite_files: true
           fail_on_unmatched_files: true
@@ -222,9 +178,6 @@ jobs:
           INSTALLER_SHA256: ${{ steps.installer.outputs.sha256 }}
           INSTALLER_SIZE: ${{ steps.installer.outputs.size }}
           SETUP_FILENAME: ${{ steps.prepare.outputs.setup_filename }}
-          BOOTSTRAP_SHA256: ${{ steps.bootstrap.outputs.sha256 }}
-          BOOTSTRAP_SIZE: ${{ steps.bootstrap.outputs.size }}
-          BOOTSTRAP_FILENAME: ${{ steps.bootstrap.outputs.bootstrap_filename }}
         with:
           script: |
             const owner = context.repo.owner;
@@ -238,8 +191,7 @@ jobs:
               channel: "stable",
               version: version,
               release_ready: true,
-              // Download the signed-off Setup package directly. Do not distribute the separate bootstrap
-              // through the global updater: endpoint scanners have quarantined its .download payload.
+              // The stable updater downloads the Setup installer directly; no helper EXE is distributed.
               filename: process.env.SETUP_FILENAME,
               download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
               sha256: process.env.INSTALLER_SHA256,
