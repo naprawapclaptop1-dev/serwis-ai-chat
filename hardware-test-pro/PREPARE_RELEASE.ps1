@@ -134,12 +134,11 @@ $src = [regex]::Replace($src, $confirmPattern, [System.Text.RegularExpressions.M
     param($m)
     return $confirmPatch.TrimEnd()
 }, 1)
-$oldLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__code__.co_names'
-if (!$src.Contains($oldLauncherSelfTest)) { throw "Nie znaleziono testu uruchamiania instalatora." }
-$newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
+$oldLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code__.co_names'
+$newLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "runas" in _u44_confirm_downloaded.__code__.co_consts' + [Environment]::NewLine +
-'    assert "hProcess" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "GetProcessId" in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
+'    assert "WINDOWS_LAUNCH_ACCEPTED=1" in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "ShellExecuteW" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "/SILENT" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
 '    assert "/SUPPRESSMSGBOXES" not in str(_u44_confirm_downloaded.__code__.co_consts)' + [Environment]::NewLine +
@@ -152,7 +151,24 @@ $newLauncherSelfTest = 'assert "ShellExecuteW" in _u44_confirm_downloaded.__code
 '    assert "gettempdir" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "xb" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "close_app" not in _u44_confirm_downloaded.__code__.co_names'
-$src = $src.Replace($oldLauncherSelfTest, $newLauncherSelfTest)
+if ($src.Contains($oldLauncherSelfTest)) {
+    $src = $src.Replace($oldLauncherSelfTest, $newLauncherSelfTest)
+} elseif (!$src.Contains('assert "ShellExecuteExW" in _u44_confirm_downloaded.__code__.co_names')) {
+    throw "Nie znaleziono ani starego, ani poprawionego testu uruchamiania instalatora."
+} else {
+    # Make patching idempotent when the asset source already contains the new launcher assertion.
+    $assertions = @(
+        '    assert "GetProcessId" in _u44_confirm_downloaded.__code__.co_names',
+        '    assert "WINDOWS_LAUNCH_ACCEPTED=1" in str(_u44_confirm_downloaded.__code__.co_consts)',
+        '    assert "ShellExecuteW" not in _u44_confirm_downloaded.__code__.co_names'
+    )
+    $anchor = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__code__.co_names'
+    foreach ($assertion in $assertions) {
+        if (!$src.Contains($assertion)) {
+            $src = $src.Replace($anchor, $anchor + [Environment]::NewLine + $assertion)
+        }
+    }
+}
 
 
 $downloadPatch = @'
