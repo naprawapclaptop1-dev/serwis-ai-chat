@@ -240,6 +240,8 @@ jobs:
           New-Item -ItemType Directory -Path $publish -Force | Out-Null
           dotnet publish $project -c Release -r win-x64 --self-contained true -o $publish -p:DebugType=None
           if ($LASTEXITCODE -ne 0) { throw "System Repair PRO self-contained publish failed." }
+          $icon = Join-Path $source "naprawa-pc.ico"
+          if (Test-Path -LiteralPath $icon) { Copy-Item -LiteralPath $icon -Destination $publish -Force }
           $exe = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
           if (!(Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) { throw "Published System Repair PRO executable is missing or too small." }
           $proc = Start-Process -FilePath $exe -ArgumentList "--xaml-smoke" -PassThru -WindowStyle Hidden
