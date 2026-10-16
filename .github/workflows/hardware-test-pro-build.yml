@@ -238,10 +238,12 @@ jobs:
               channel: "stable",
               version: version,
               release_ready: true,
-              filename: process.env.BOOTSTRAP_FILENAME,
-              download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.BOOTSTRAP_FILENAME,
-              sha256: process.env.BOOTSTRAP_SHA256,
-              size: Number(process.env.BOOTSTRAP_SIZE),
+              // Download the signed-off Setup package directly. Do not distribute the separate bootstrap
+              // through the global updater: endpoint scanners have quarantined its .download payload.
+              filename: process.env.SETUP_FILENAME,
+              download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              sha256: process.env.INSTALLER_SHA256,
+              size: Number(process.env.INSTALLER_SIZE),
               installer_filename: process.env.SETUP_FILENAME,
               installer_download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
               installer_sha256: process.env.INSTALLER_SHA256,
