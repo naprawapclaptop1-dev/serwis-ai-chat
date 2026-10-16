@@ -40,6 +40,8 @@ Type: files; Name: "{app}\NAPRAWA-PC-HARDWARE-TEST-PRO-*.exe"
 
 [Files]
 Source: "{#SourceDir}\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
+; Full native System Repair PRO module from its self-contained .NET publish output.
+Source: "{#SourceDir}\SystemRepair\*"; DestDir: "{app}\SystemRepair"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "README_PL.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
