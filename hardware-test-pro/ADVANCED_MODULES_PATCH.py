@@ -1853,6 +1853,29 @@ def _u68_show_simple_module_wrapped(self, key):
         try: self.queue_log("Panel testów modułu: "+repr(exc))
         except Exception: pass
 
+def _u68_show_service_center_wrapped(self):
+    _U68_ORIGINAL_SHOW_SERVICE_CENTER(self)
+    try:
+        t = self.colors()
+        row = tk.Frame(self.content, bg=t["bg"])
+        children = self.content.winfo_children()
+        if children:
+            row.pack(fill="x", padx=4, pady=(0,5), before=children[0])
+        else:
+            row.pack(fill="x", padx=4, pady=(0,5))
+        self.make_button(
+            row,
+            "URUCHOM PEŁNY SYSTEM REPAIR PRO (WPF)",
+            lambda: _u68_launch_system_repair(self),
+            "accent",
+            side="left",
+            ipady=5
+        )
+    except Exception as exc:
+        try: self.queue_log("System Repair PRO action button: " + repr(exc))
+        except Exception: pass
+
+
 def _u68_show_game_guide(self):
     self.current_view="GAME_GUIDE"
     self.clear()
@@ -1908,9 +1931,8 @@ def _u66_selftest_advanced():
     assert all(key in _U68_MODULE_SCENES for key in ("CPU","RAM","DYSK","GPU","VRAM"))
     assert callable(_u68_run_module_action) and callable(_u68_start_visualizer)
     assert callable(_u68_launch_system_repair)
-    assert any(item[2]=="SYSTEM_REPAIR" for item in [
-        ("PEŁNY SYSTEM REPAIR PRO","", "SYSTEM_REPAIR")
-    ])
+    assert callable(AppV43.show_service_center)
+    assert callable(_u68_show_service_center_wrapped)
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
@@ -1944,6 +1966,8 @@ _U68_ORIGINAL_SHOW_SIMPLE_MODULE=AppV43.show_simple_module
 AppV43.show_module=_u68_show_module_wrapped
 AppV43.show_simple_module=_u68_show_simple_module_wrapped
 AppV43.show_game_guide=_u68_show_game_guide
+_U68_ORIGINAL_SHOW_SERVICE_CENTER=AppV43.show_service_center
+AppV43.show_service_center=_u68_show_service_center_wrapped
 AppV43.run_ai_only=_u66_show_ai_reader
 AppV43.refresh_telemetry=_u66_refresh_telemetry
 _U66_ORIGINAL_INIT_FOR_SENSOR=AppV43.__init__
