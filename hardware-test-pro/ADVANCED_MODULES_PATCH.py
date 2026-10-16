@@ -1,0 +1,1240 @@
+# NAPRAWA PC HARDWARE TEST PRO — Advanced Knowledge, Live Metrics, Speed Test, 20-scene 3D Studio and Sequential Test Runner.
+# Injected by PREPARE_RELEASE.ps1 before __main__. Real measurements only; unsupported sensors stay N/D.
+import json as _u66_json
+import re as _u66_re
+import os as _u66_os
+import math as _u66_math
+import time as _u66_time
+import uuid as _u66_uuid
+import html as _u66_html
+import webbrowser as _u66_webbrowser
+import urllib.parse as _u66_urlparse
+import urllib.request as _u66_request
+import urllib.error as _u66_urlerror
+import subprocess as _u66_subprocess
+import threading as _u66_threading
+from html.parser import HTMLParser as _U66_HTMLParser
+from datetime import datetime as _U66_datetime
+from tkinter import filedialog as _u66_filedialog
+
+_U66_KNOWLEDGE_SEED = [
+{"title":"CPU obciążenie, taktowanie i throttling","tags":"cpu procesor temperatura taktowanie MHz obciążenie throttling test stress","text":"Test obciążeniowy powinien mierzyć obciążenie, taktowanie, czas i ewentualne ograniczanie częstotliwości. Wartość maksymalna z jednego krótkiego pomiaru nie jest gwarantowanym zegarem turbo. Podczas długiego testu obserwuj temperaturę, zegary, stabilność i błędy. Jeśli program nie ma dostępu do czujnika temperatury, wynik powinien być N/D, a nie wartością zgadywaną.","source":"https://learn.microsoft.com/en-us/windows/win32/perfctrs/about-performance-counters"},
+{"title":"Temperatury CPU, GPU i czujniki sprzętowe","tags":"temperatura cpu gpu sensor czujniki wentylator rpm płyta główna","text":"Temperatury zależą od modelu podzespołu, obciążenia, chłodzenia i czujnika. Windows nie udostępnia uniwersalnego czujnika temperatury rdzeni CPU dla każdego komputera. Odczyty z ACPI mogą oznaczać strefę termiczną, a nie temperaturę rdzenia. W programie pokaż źródło czujnika i czas próbki; gdy sensor nie jest dostępny, pokaż N/D. LibreHardwareMonitor potrafi odczytywać temperatury, obroty, napięcia, obciążenia i zegary na obsługiwanym sprzęcie.","source":"https://github.com/LibreHardwareMonitor/LibreHardwareMonitor"},
+{"title":"Test RAM — wzorce i ograniczenia","tags":"ram pamięć błąd test wzorce 00 FF AA 55 memtest","text":"Wzorce 00, FF, AA, 55 i pseudolosowe pomagają wykrywać część błędów zapisu/odczytu w przydzielonym buforze. Test aplikacyjny nie sprawdza całej fizycznej pamięci i nie zastępuje niezależnego testu rozruchowego. Zapisuj ilość rzeczywiście przetestowanej pamięci, liczbę porównań i błędy; nie oznaczaj całego RAM jako sprawnego tylko dlatego, że mały bufor przeszedł.","source":"https://www.memtest.org/"},
+{"title":"SSD, HDD i pomiar prędkości dysku","tags":"ssd hdd nvme dysk benchmark odczyt zapis MB/s IOPS","text":"Wynik zależy od rozmiaru pliku, cache, zajętości, temperatury, trybu zasilania i rodzaju operacji. Test pliku tymczasowego mierzy konkretną operację w konkretnym miejscu — nie jest pełnym testem powierzchni ani wszystkich IOPS. Używaj pliku testowego ograniczonego rozmiarem, usuwaj go po zakończeniu i nie wykonuj testów niszczących dane bez wyraźnej zgody.","source":"https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chkdsk"},
+{"title":"SMART i diagnostyka nośników","tags":"SMART NVMe SSD HDD błędy wear health dysk","text":"SMART i telemetria nośnika mogą pokazywać błędy odczytu/zapisu, zużycie, temperaturę lub ostrzeżenia producenta. Zestaw dostępnych atrybutów zależy od urządzenia, sterownika i mostka USB. Brak danych SMART nie oznacza zerowej liczby błędów. Przy podejrzeniu awarii najpierw wykonaj kopię danych, a ciężkie skanowanie powierzchni zostaw na zabezpieczonym obrazie lub po kopii.","source":"https://learn.microsoft.com/en-us/windows-hardware/drivers/storage/"},
+{"title":"Odzyskiwanie danych po awarii dysku","tags":"odzyskiwanie dane recovery dysk uszkodzony backup","text":"Przy klikaniu, znikaniu urządzenia, błędach I/O lub ważnych danych ogranicz zapisy na oryginalnym nośniku. Najpierw oceń ryzyko, skopiuj dane lub wykonaj obraz sektorowy na inny dysk. Nie zapisuj odzyskanych plików na tym samym nośniku. Przy fizycznym uszkodzeniu kolejne uruchomienia mogą pogorszyć stan urządzenia.","source":"https://www.cisa.gov/stopransomware"},
+{"title":"Windows SFC — kontrola plików systemowych","tags":"windows sfc scannow naprawa pliki systemowe","text":"SFC /scannow sprawdza chronione pliki systemowe i próbuje naprawić uszkodzenia korzystając ze źródeł lokalnych. Zapisuj kod wyjścia i pełny log. Gdy magazyn składników jest uszkodzony, SFC może nie móc naprawić wszystkiego; wtedy użyj zalecanej procedury DISM, a następnie ponownie SFC.","source":"https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/sfc"},
+{"title":"DISM — magazyn składników Windows","tags":"windows dism restorehealth scanhealth checkhealth naprawa","text":"DISM /Online /Cleanup-Image /CheckHealth wykonuje szybką kontrolę stanu, /ScanHealth skanuje magazyn składników, a /RestoreHealth próbuje naprawy. Naprawa może długo trwać i potrzebować źródeł Windows Update lub wskazanego obrazu. Uruchamiaj polecenia z prawami administratora, zachowuj logi i nie zamykaj procesu tylko dlatego, że procent postępu długo się nie zmienia.","source":"https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/repair-a-windows-image"},
+{"title":"CHKDSK — system plików","tags":"chkdsk dysk skanowanie /scan naprawa","text":"CHKDSK sprawdza logiczną spójność systemu plików. Na woluminie NTFS tryb /scan wykonuje skan online; operacje naprawcze mogą wymagać blokady lub restartu. CHKDSK nie zastępuje kopii zapasowej i nie powinien być pierwszym działaniem przy fizycznie umierającym nośniku z jedyną kopią danych.","source":"https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/chkdsk"},
+{"title":"GPU — obciążenie, VRAM i temperatura","tags":"gpu karta graficzna vram obciążenie temperatura zegar fps","text":"Rozdziel identyfikację adaptera, stan sterownika, obciążenie silników GPU, użycie VRAM, temperaturę i test renderowania. Liczniki różnią się zależnie od sterownika. NVIDIA nvidia-smi może zwracać temperaturę, zegary i pamięć; Windows GPU Performance Counters mogą udostępniać część wykorzystania/pamięci. N/D oznacza brak dostępnego licznika, nie usterkę i nie wynik 0.","source":"https://developer.nvidia.com/system-management-interface"},
+{"title":"Benchmark 3D i interpretacja FPS","tags":"3d benchmark fps OpenGL Direct3D renderowanie GPU wynik","text":"FPS można porównywać tylko dla tej samej sceny, rozdzielczości, ustawień synchronizacji i konfiguracji. Wynik jednej sceny nie przewiduje FPS wszystkich gier. Raportuj renderer, wersję API, rozdzielczość, czas trwania, średni FPS i percentyle, jeśli są mierzone. Test musi faktycznie renderować geometrię przez sterownik — animacja dekoracyjna nie jest benchmarkiem.","source":"https://learn.microsoft.com/en-us/windows/win32/direct3d"},
+{"title":"Windows WinSAT i Direct3D","tags":"winsat d3d direct3d benchmark windows grafika","text":"WinSAT może mierzyć niektóre cechy wydajności Windows, ale nie jest bezpośrednim zamiennikiem współczesnego benchmarku gier. Zachowaj jego wyjście, czas i kod zakończenia. Nie opisuj identyfikacji karty jako wyniku testu wydajności.","source":"https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/winsat"},
+{"title":"Test sieci — download, upload i opóźnienie","tags":"internet speedtest speed test download upload Mbps ping jitter cloudflare","text":"Przepustowość należy mierzyć rzeczywistymi bajtami przesłanymi w czasie, a nie szacować na podstawie stanu interfejsu. Wynik zależy od serwera, trasy, Wi-Fi, obciążenia sieci i limitów ISP. Zapisuj rozmiar transferu, czas, wynik Mbps i status HTTP. Krótki test zużywa dane; nie uruchamiaj wielogigabajtowego transferu bez zgody. Cloudflare Speed Test udostępnia endpointy __down i __up.","source":"https://github.com/cloudflare/speedtest"},
+{"title":"Ping, jitter i utrata pakietów","tags":"ping latency jitter packet loss opóźnienie internet","text":"Ping to czas odpowiedzi, jitter opisuje zmienność opóźnienia, a packet loss odsetek utraconych pakietów. Nie utożsamiaj jednego żądania HTTPS z czystym pingiem ICMP. Do rzetelnej diagnozy zmierz kilka próbek, podaj metodę i liczbę prób, a wyniki porównuj przez Ethernet i Wi-Fi osobno.","source":"https://www.cloudflare.com/learning/performance/glossary/what-is-latency/"},
+{"title":"Wi-Fi kontra Ethernet","tags":"wifi ethernet lan sieć prędkość zasięg kanał","text":"Na wynik Wi-Fi wpływa pasmo, szerokość kanału, zakłócenia, dystans, ściany i możliwości klienta/AP. Porównaj test przy routerze i przez Ethernet. Nie diagnozuj winy operatora wyłącznie na podstawie pojedynczego pomiaru w sieci Wi-Fi.","source":"https://support.microsoft.com/windows"},
+{"title":"Bateria laptopa i raport powercfg","tags":"bateria laptop powercfg batteryreport health cycle capacity","text":"Raport baterii pokazuje m.in. pojemność projektową, pełnego naładowania i historię użytkowania, jeśli kontroler udostępnia dane. Zdrowie wyliczaj tylko wtedy, gdy obie pojemności są wiarygodne. W PC stacjonarnym brak baterii jest stanem N/D, a nie błędem komputera.","source":"https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options"},
+{"title":"EDID i diagnostyka matrycy","tags":"matryca ekran monitor edid dead pixel piksele","text":"EDID identyfikuje część informacji monitora, ale nie wykrywa samodzielnie wszystkich martwych pikseli, smug ani problemów podświetlenia. Do testu pikseli pokazuj pełnoekranowe kolory, gradienty i wzorce; wynik wad pikseli wymaga wzrokowego potwierdzenia człowieka.","source":"https://learn.microsoft.com/en-us/windows-hardware/drivers/display/"},
+{"title":"Menedżer urządzeń i kody błędów","tags":"device manager menedżer urządzeń sterownik code 10 43","text":"Stan PnP i kod błędu urządzenia wskazują problemy z inicjalizacją lub sterownikiem, ale sam kod nie określa zawsze przyczyny. Zapisz nazwę, identyfikator sprzętowy, dostawcę sterownika i kod błędu; zmiany sterowników rób z oficjalnego źródła producenta.","source":"https://learn.microsoft.com/en-us/windows-hardware/drivers/install/device-manager"},
+{"title":"Bezpieczna aktualizacja sterowników i BIOS","tags":"sterowniki driver BIOS UEFI firmware aktualizacja","text":"Dobieraj BIOS/UEFI wyłącznie do dokładnego modelu i rewizji urządzenia. Zapewnij stabilne zasilanie, zapisz klucz BitLocker i przeczytaj oficjalne instrukcje producenta. Nie wykonuj flashowania na podstawie niepotwierdzonego modelu lub pliku bez kontroli podpisu/sumy.","source":"https://support.microsoft.com/windows"},
+{"title":"Ochrona antywirusowa i podejrzany plik","tags":"antywirus malware virus bitdefender defender quarantine trojan","text":"Jeśli program antywirusowy zgłasza wykrycie, nie wyłączaj ochrony i nie przywracaj pliku z kwarantanny, aby wymusić uruchomienie. Sprawdź źródło, podpis cyfrowy, SHA-256 i ocenę dostawcy. Suma SHA-256 potwierdza zgodność pliku, ale sama nie dowodzi, że plik jest bezpieczny.","source":"https://www.cisa.gov/secure-our-world"},
+{"title":"Ransomware i kopie zapasowe","tags":"ransomware backup kopia zapasowa malware","text":"Przy podejrzeniu ransomware odłącz urządzenie od sieci, nie podłączaj kopii zapasowych, które mają być czyste, i nie usuwaj logów. Zabezpiecz dowody oraz zgłoś incydent zgodnie z procedurą. Kopie zapasowe powinny być odseparowane i okresowo testowane przez przywracanie.","source":"https://www.cisa.gov/stopransomware"},
+{"title":"Autostart i wydajność Windows","tags":"autostart startup programy wydajność boot","text":"Lista autostartu może pomóc wykryć niepotrzebne aplikacje, ale nazwa pliku sama nie wystarcza do oznaczenia malware. Oceniaj podpis, ścieżkę, wydawcę i reputację. Przed wyłączeniem zapisuj stan i zapewnij możliwość przywrócenia.","source":"https://learn.microsoft.com/en-us/sysinternals/"},
+{"title":"Windows Performance Counters","tags":"windows liczniki wydajności CPU pamięć dysk GPU telemetry","text":"Liczniki wydajności Windows udostępniają ustandaryzowane próbki CPU, pamięci, dysku i wybranych silników GPU. Nie każdy zestaw liczników istnieje na każdej edycji/systemie/sterowniku. Gdy licznik jest nieobecny, pokaż niedostępność z nazwą metody — nie podstawiaj wartości losowej ani stałej.","source":"https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.diagnostics/get-counter"},
+{"title":"LibreHardwareMonitor — sensory","tags":"LibreHardwareMonitor czujniki temperatury wentylator napięcie CPU GPU","text":"LibreHardwareMonitor udostępnia bibliotekę i aplikację Windows do monitorowania temperatur, obrotów, napięć, obciążenia i zegarów obsługiwanych urządzeń. Dostępność sensorów zależy od sprzętu i sterowników, a niektóre wymagają uprawnień administratora. Zapoznaj się z licencją MPL-2.0 oraz innymi notami licencyjnymi przed dystrybucją biblioteki razem z programem.","source":"https://github.com/LibreHardwareMonitor/LibreHardwareMonitor"},
+{"title":"Diagnostyka wentylatorów i chłodzenia","tags":"wentylator fan rpm cooling chłodzenie termika pasta termiczna","text":"Zmienny hałas, spadek zegarów pod obciążeniem i skoki temperatury mogą wskazywać problem chłodzenia, ale nie są samodzielnym dowodem uszkodzenia. Porównaj odczyty na biegu jałowym i pod kontrolowanym obciążeniem, sprawdź obroty oraz przepływ powietrza. Nie zgaduj obrotów, jeśli płyta ich nie udostępnia.","source":"https://www.intel.com/content/www/us/en/support.html"},
+{"title":"Czyszczenie po zalaniu","tags":"zalanie ciecz laptop serwis czyszczenie korozja","text":"Po zalaniu wyłącz urządzenie i odłącz zasilanie, nie próbuj ponownie uruchamiać mokrej płyty. W serwisie dokumentuj zakres uszkodzeń, odłącz baterię według instrukcji modelu i wykonuj czyszczenie zgodnie z procedurą. Uszkodzenia cieczą wymagają oceny fizycznej; test programowy nie może zagwarantować braku korozji.","source":"https://www.cisa.gov/"},
+{"title":"Test kamery, mikrofonu i głośników","tags":"kamera webcam mikrofon audio speaker dźwięk test","text":"Test kamery powinien pokazać rzeczywisty podgląd oraz rozdzielczość i liczbę klatek. Mikrofon powinien zmierzyć rzeczywiście odebrane próbki i poziom RMS; głośniki wymagają odtworzenia sygnału i często potwierdzenia słuchowego. Brak dostępu, uprawnienia prywatności lub brak urządzenia powinny być opisane jako blokada/N/D, nie zaliczenie testu.","source":"https://support.microsoft.com/windows"},
+{"title":"Test USB i urządzeń Plug and Play","tags":"USB urządzenia PnP test port napięcie","text":"Lista urządzeń PnP potwierdza enumerację urządzenia, ale nie dowodzi poprawności zasilania portu, integralności sygnału ani transferu z pełną szybkością. Do diagnostyki portu użyj znanego sprawnego urządzenia i odpowiedniego miernika; raportuj osobno wykrycie i rzeczywisty transfer.","source":"https://learn.microsoft.com/en-us/windows-hardware/drivers/"},
+{"title":"Wiarygodność testów i raportów","tags":"raport test PASS WARN FAIL wiarygodność dowody","text":"Każdy wynik powinien zawierać nazwę testu, metodę, godzinę, faktyczne dane pomiarowe, czas trwania i ograniczenia. Rozróżniaj PASS, FAIL, WARN i N/D. Sam fakt wykrycia urządzenia nie jest dowodem stabilności, a uruchomienie testu nie oznacza jego zaliczenia.","source":"https://learn.microsoft.com/en-us/windows/win32/perfctrs/about-performance-counters"},
+{"title":"AI Reader — ocena źródeł internetowych","tags":"AI czytnik internet wiedza źródła cytowanie wiarygodność","text":"Wyniki wyszukiwania są punktami wejścia, nie całą wiedzą Internetu. Preferuj dokumentację producenta, Microsoft Learn, normy i repozytoria źródłowe. W odpowiedzi pokazuj link do źródła, datę pobrania i fragment, a wnioski oddziel od cytowanych faktów. Treści zapisane z Internetu powinny być powiązane z URL i możliwe do usunięcia/odświeżenia.","source":"https://learn.microsoft.com/"},
+{"title":"Interpretacja temperatur — bez uniwersalnego limitu","tags":"temperatura limit CPU GPU thermal max temperatura progi","text":"Nie stosuj jednego progu temperatury dla wszystkich procesorów i kart graficznych. Limit zależy od konkretnego modelu i specyfikacji producenta, a czujniki mogą używać różnych nazw (CPU Package, Tctl, GPU Hotspot). Podawaj dokładną nazwę sensora i porównuj z dokumentacją modelu.","source":"https://www.intel.com/content/www/us/en/support.html"},
+{"title":"Pomiar sieci przez Cloudflare Speed Test","tags":"Cloudflare speed.cloudflare.com __down __up download upload","text":"Cloudflare Speed Test wykonuje transfery download i upload przez endpointy __down oraz __up. Własny pomiar aplikacji musi uwzględniać rozmiar faktycznie odebranych/wysłanych bajtów oraz czas. Endpoint może odmówić ruchu w pewnych warunkach; wtedy pokaż błąd połączenia zamiast fałszywego wyniku.","source":"https://github.com/cloudflare/speedtest"},
+{"title":"Zarządzanie energią i tryb wydajności","tags":"zasilanie power plan laptop bateria throttling Windows","text":"Tryb oszczędzania energii może zmieniać zegary i wydajność. Przed benchmarkiem zapisuj plan zasilania, temperaturę otoczenia, ustawienia grafiki oraz czy laptop jest podłączony do zasilacza. Powtarzalne porównanie wymaga tych samych warunków.","source":"https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/powercfg-command-line-options"},
+{"title":"Aktualizacje Windows","tags":"Windows Update aktualizacja poprawki security patch","text":"Aktualizacje Windows mogą wymagać restartu i zmieniać wersję sterowników lub plików systemowych. Przed diagnostyką sprawdź historię aktualizacji, oczekujący restart i kod błędu. Nie usuwaj komponentów systemowych automatycznie bez raportu i możliwości cofnięcia zmiany.","source":"https://support.microsoft.com/windows"},
+{"title":"Diagnostyka pamięci GPU — test VRAM","tags":"VRAM texture allocation upload readback GPU memory error","text":"Test alokacji i odczytu zwrotnego tekstur sprawdza tylko przydzielony obszar pamięci i ścieżkę sterownika/API. Nie jest to pełny test wszystkich fizycznych komórek VRAM. Raportuj żądaną i faktycznie zaalokowaną pamięć, wzorce, liczbę bajtów zweryfikowanych i błędy API.","source":"https://developer.nvidia.com/system-management-interface"},
+{"title":"Windows Device Health i zdarzenia","tags":"event viewer reliability monitor Windows logs błędy system","text":"Podgląd zdarzeń i Monitor niezawodności pomagają skorelować zawieszenia, restarty, awarie sterownika i błędy dysku z czasem wystąpienia. W raporcie zachowuj źródło zdarzenia, Event ID, czas i treść, a nie tylko liczbę zdarzeń.","source":"https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/wevtutil"},
+{"title":"Naprawa aktualizatora i sprawdzanie plików","tags":"SHA256 update manifest installer signature security download","text":"Bezpieczny aktualizator pobiera przez HTTPS, ogranicza hosty i rozmiar, porównuje SHA-256 i sprawdza format PE przed uruchomieniem. Hash potwierdza zgodność z manifestem, ale nie zastępuje podpisu cyfrowego/reputacji antywirusa. Nie obchodź kwarantanny i nie wyłączaj ochrony, aby wymusić uruchomienie.","source":"https://learn.microsoft.com/en-us/windows/security/"},
+{"title":"Narzędzia do diagnozy Windows","tags":"Windows msinfo32 perfmon resmon task manager process performance","text":"MSINFO32 pokazuje sprzęt i konfigurację systemu; PerfMon i Resource Monitor pomagają obserwować wykorzystanie zasobów. Uruchom narzędzie tylko wtedy, gdy użytkownik wybrał tę operację, a raport powinien określać, jakie dane faktycznie odczytano.","source":"https://learn.microsoft.com/en-us/windows/"},
+{"title":"Wiedza producentów CPU/GPU","tags":"Intel AMD NVIDIA support official product specifications","text":"Do oceny dokładnego modelu korzystaj z dokumentacji producenta. Limity temperatury, maksymalne zegary, obsługa funkcji i pamięć różnią się między generacjami, SKU i wersjami BIOS. Jeśli model jest niepewny, nie dopasowuj specyfikacji na podstawie podobnej nazwy.","source":"https://www.intel.com/content/www/us/en/support.html"}
+]
+
+_U66_SCENES = [
+("01 — Geometryczne kostki", "boxes", 12),
+("02 — Gęsta siatka obiektów", "grid", 24),
+("03 — Wireframe stress", "wire", 20),
+("04 — Pole sfer", "spheres", 8),
+("05 — Torusy proceduralne", "torus", 8),
+("06 — Teren trójkątowy", "terrain", 18),
+("07 — Wieżowce / city", "city", 70),
+("08 — Płytka GPU i chłodzenie", "gpu", 8),
+("09 — Ruchome cząstki", "particles", 220),
+("10 — Obracające się pierścienie", "rings", 22),
+("11 — Strumień trójkątów", "triangles", 900),
+("12 — Gęsty mesh", "mesh", 26),
+("13 — Pokój 3D", "room", 28),
+("14 — Planety i orbity", "planets", 9),
+("15 — Fale terenu", "waves", 28),
+("16 — Wiele materiałów / kolorów", "materials", 80),
+("17 — Sześciany z głębią", "cubes", 90),
+("18 — Podwójna geometria", "mixed", 140),
+("19 — Extreme triangle load", "triangles_extreme", 3500),
+("20 — Ultimate mixed load", "ultimate", 2400)
+]
+
+def _u66_store_dir():
+    root = _u66_os.environ.get("LOCALAPPDATA") or str(Path.home())
+    path = Path(root) / "NaprawaPC" / "AIReader"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+def _u66_saved_knowledge():
+    path = _u66_store_dir() / "knowledge_base.json"
+    try:
+        obj = _u66_json.loads(path.read_text(encoding="utf-8"))
+        return obj if isinstance(obj, list) else []
+    except Exception:
+        try:
+            path.write_text(_u66_json.dumps([], ensure_ascii=False, indent=2), encoding="utf-8")
+        except Exception:
+            pass
+        return []
+
+def _u66_save_knowledge(items):
+    path = _u66_store_dir() / "knowledge_base.json"
+    current = _u66_saved_knowledge()
+    by_source = {str(x.get("source","")):x for x in current if isinstance(x,dict)}
+    added = 0
+    for item in items:
+        if not isinstance(item,dict):
+            continue
+        text = str(item.get("text","")).strip()[:500000]
+        source = str(item.get("source","")).strip()[:2000]
+        title = str(item.get("title","Zapisany artykuł")).strip()[:500]
+        if not text or len(text) < 40:
+            continue
+        key = source or (title + ":" + str(len(by_source)))
+        by_source[key] = {"title":title,"tags":str(item.get("tags",""))[:1000],"text":text,"source":source,"saved_at":_U66_datetime.now().isoformat(timespec="seconds")}
+        added += 1
+    values = list(by_source.values())[-300:]
+    path.write_text(_u66_json.dumps(values, ensure_ascii=False, indent=2), encoding="utf-8")
+    return added, path
+
+def _u66_all_knowledge():
+    return list(_U66_KNOWLEDGE_SEED) + _u66_saved_knowledge()
+
+def _u66_rank_knowledge(query, docs=None, limit=8):
+    docs = docs if docs is not None else _u66_all_knowledge()
+    words = [x for x in _u66_re.findall(r"[a-z0-9ąćęłńóśżź]{3,}", str(query).lower()) if x not in {"oraz","który","która","jest","czyli","this","with","from","that","when","where","what","how"}]
+    ranked = []
+    for doc in docs:
+        if not isinstance(doc,dict):
+            continue
+        title = str(doc.get("title",""))
+        tags = str(doc.get("tags",""))
+        body = str(doc.get("text",""))
+        hay = (title + " " + tags + " " + body).lower()
+        score = sum(5 for w in words if w in title.lower()) + sum(3 for w in words if w in tags.lower()) + sum(1 for w in words if w in hay)
+        if not words:
+            score = 1
+        if score:
+            ranked.append((score,doc))
+    ranked.sort(key=lambda x:(x[0],len(str(x[1].get("text","")))),reverse=True)
+    return [dict(x[1],_score=x[0]) for x in ranked[:max(1,limit)]]
+
+class _U66_DDGParser(_U66_HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.items=[]
+        self.mode=None
+        self.current=None
+    def handle_starttag(self, tag, attrs):
+        a=dict(attrs)
+        cls=str(a.get("class","")).split()
+        if tag=="a" and "result__a" in cls:
+            self.current={"title":"","text":"","source":a.get("href",""),"tags":"internet"}
+            self.items.append(self.current)
+            self.mode="title"
+        elif tag in ("a","div") and "result__snippet" in cls:
+            if self.items:
+                self.current=self.items[-1]
+                self.mode="snippet"
+        elif tag=="br" and self.mode=="snippet" and self.current is not None:
+            self.current["text"] += " "
+    def handle_data(self, data):
+        if self.current is not None and self.mode in ("title","snippet"):
+            key="title" if self.mode=="title" else "text"
+            self.current[key] += data
+    def handle_endtag(self, tag):
+        if tag=="a" and self.mode=="title":
+            self.mode=None
+        elif tag=="div" and self.mode=="snippet":
+            self.mode=None
+    def close(self):
+        super().close()
+        for item in self.items:
+            item["title"]=_u66_re.sub(r"\s+"," ",item.get("title","")).strip()
+            item["text"]=_u66_re.sub(r"\s+"," ",item.get("text","")).strip()
+
+def _u66_web_search(query, maximum=8):
+    results=[]
+    headers={"User-Agent":"NAPRAWA-PC-HARDWARE-TEST-PRO/AIReader (desktop diagnostic app)","Accept":"text/html,application/json"}
+    q=_u66_urlparse.quote(str(query)[:240])
+    try:
+        req=_u66_request.Request("https://html.duckduckgo.com/html/?q="+q,headers=headers)
+        with _u66_request.urlopen(req,timeout=12) as response:
+            raw=response.read(2*1024*1024).decode("utf-8","replace")
+        parser=_U66_DDGParser()
+        parser.feed(raw)
+        for item in parser.items:
+            url=str(item.get("source",""))
+            if url.startswith("//"):
+                url="https:"+url
+            parsed=_u66_urlparse.urlparse(url)
+            if parsed.scheme not in ("http","https"):
+                continue
+            params=_u66_urlparse.parse_qs(parsed.query)
+            if "uddg" in params:
+                url=params["uddg"][0]
+            if item.get("title") and url:
+                results.append({"title":item["title"],"text":item.get("text",""),"source":url,"tags":"internet-search"})
+            if len(results)>=maximum:
+                break
+    except Exception as exc:
+        web_error=f"Wyszukiwarka DuckDuckGo: {type(exc).__name__}: {exc}"
+    else:
+        web_error=""
+    if len(results)<3:
+        try:
+            wurl="https://pl.wikipedia.org/w/api.php?action=query&list=search&srsearch="+q+"&format=json&utf8=1&srlimit=5"
+            req=_u66_request.Request(wurl,headers={"User-Agent":"NAPRAWA-PC-HARDWARE-TEST-PRO/AIReader"})
+            with _u66_request.urlopen(req,timeout=10) as response:
+                data=_u66_json.loads(response.read(1024*1024).decode("utf-8","replace"))
+            for item in data.get("query",{}).get("search",[]):
+                title=str(item.get("title",""))
+                page="https://pl.wikipedia.org/wiki/"+_u66_urlparse.quote(title.replace(" ","_"))
+                summary=_u66_re.sub(r"<[^>]+>"," ",str(item.get("snippet","")))
+                summary=_u66_html.unescape(_u66_re.sub(r"\s+"," ",summary)).strip()
+                results.append({"title":title,"text":summary,"source":page,"tags":"Wikipedia"})
+        except Exception as exc:
+            if not web_error:
+                web_error=f"Wikipedia API: {type(exc).__name__}: {exc}"
+    unique=[]
+    seen=set()
+    for result in results:
+        url=result.get("source","")
+        if url and url not in seen:
+            seen.add(url); unique.append(result)
+    if not unique and web_error:
+        raise RuntimeError(web_error)
+    return unique[:maximum]
+
+class _U66_TextParser(_U66_HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts=[]
+        self.title_parts=[]
+        self._skip=0
+        self._in_title=False
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script","style","noscript","svg"):
+            self._skip += 1
+        if tag=="title":
+            self._in_title=True
+        if tag in ("p","br","div","li","h1","h2","h3","tr","article","section"):
+            self.parts.append("\n")
+    def handle_endtag(self, tag):
+        if tag in ("script","style","noscript","svg") and self._skip:
+            self._skip -= 1
+        if tag=="title":
+            self._in_title=False
+        if tag in ("p","div","li","h1","h2","h3","tr","article","section"):
+            self.parts.append("\n")
+    def handle_data(self, data):
+        if self._skip:
+            return
+        value=_u66_re.sub(r"\s+"," ",data).strip()
+        if value:
+            self.parts.append(value+" ")
+            if self._in_title:
+                self.title_parts.append(value)
+    def result(self):
+        text=_u66_re.sub(r"[ \t]+\n","\n","".join(self.parts))
+        text=_u66_re.sub(r"\n{3,}","\n\n",text)
+        return " ".join(self.title_parts).strip(),text.strip()
+
+def _u66_read_web_page(url):
+    parsed=_u66_urlparse.urlparse(str(url).strip())
+    if parsed.scheme not in ("http","https") or not parsed.hostname:
+        raise ValueError("Adres musi zaczynać się od http:// lub https://.")
+    req=_u66_request.Request(str(url).strip(),headers={"User-Agent":"NAPRAWA-PC-HARDWARE-TEST-PRO/AIReader","Accept":"text/html,text/plain,application/pdf"})
+    with _u66_request.urlopen(req,timeout=15) as response:
+        final=_u66_urlparse.urlparse(response.geturl())
+        if final.scheme not in ("http","https"):
+            raise ValueError("Przekierowanie do nieobsługiwanego protokołu.")
+        data=response.read(2*1024*1024)
+        ctype=response.headers.get("Content-Type","").lower()
+    if "pdf" in ctype or str(url).lower().endswith(".pdf"):
+        try:
+            import fitz as _u66_fitz
+            doc=_u66_fitz.open(stream=data,filetype="pdf")
+            text="\n".join(page.get_text("text") for page in doc[:80])[:500000]
+            title=parsed.path.rsplit("/",1)[-1] or "Dokument PDF"
+        except Exception:
+            raise RuntimeError("To jest PDF. Do odczytu bezpośredniego potrzebny jest obsługiwany parser PDF; użyj importu pliku PDF, jeśli biblioteka jest dostępna.")
+    elif "html" in ctype or b"<html" in data[:512].lower():
+        parser=_U66_TextParser()
+        parser.feed(data.decode("utf-8","replace"))
+        title,text=parser.result()
+    else:
+        title=parsed.path.rsplit("/",1)[-1] or parsed.hostname
+        text=data.decode("utf-8","replace")
+    if not text.strip():
+        raise RuntimeError("Strona nie udostępniła czytelnej treści. Może wymagać JavaScript, logowania lub blokować automatyczny odczyt.")
+    return {"title":title or parsed.hostname,"text":text[:500000],"source":str(url),"tags":"wczytana strona internetowa","saved_at":_U66_datetime.now().isoformat(timespec="seconds")}
+
+def _u66_show_ai_reader(self):
+    self.current_view="AI_READER"
+    self.clear()
+    t=self.colors()
+    self.header_title.config(text="AI CZYTNIK WIEDZY — INTERNET + BAZA LOKALNA")
+    intro=self.panel(self.content); intro.pack(fill="x",pady=(0,8))
+    tk.Label(intro,text="AI KNOWLEDGE READER • wyszukiwanie źródeł, czytanie stron i lokalna biblioteka",bg=t["panel"],fg=t["accent"],font=self.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(10,3))
+    tk.Label(intro,text="To czytnik oparty na lokalnej bazie wiedzy i wyszukiwaniu internetowym. Nie pobiera „całego Internetu” naraz — znajdź temat, przeczytaj źródło i zapisz wybrane materiały do własnej bazy.",bg=t["panel"],fg=t["muted"],font=self.fnt(9),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,10))
+    row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x",pady=3)
+    self._u66_reader_query=tk.StringVar(value="")
+    entry=ttk.Entry(row,textvariable=self._u66_reader_query,font=self.fnt(11))
+    entry.pack(side="left",fill="x",expand=True,padx=3,ipady=5)
+    self.make_button(row,"SZUKAJ W BAZIE",lambda:_u66_reader_search(self,False),"card",side="left",ipady=5)
+    self.make_button(row,"SZUKAJ W INTERNECIE",lambda:_u66_reader_search(self,True),"accent",side="left",ipady=5)
+    row2=tk.Frame(self.content,bg=t["bg"]); row2.pack(fill="x",pady=3)
+    self._u66_reader_url=tk.StringVar(value="")
+    ttk.Entry(row2,textvariable=self._u66_reader_url,font=self.fnt(9)).pack(side="left",fill="x",expand=True,padx=3,ipady=4)
+    self.make_button(row2,"CZYTAJ URL",lambda:_u66_reader_load_url(self),"card",side="left",ipady=5)
+    self.make_button(row2,"IMPORTUJ PDF/TXT/HTML",lambda:_u66_reader_import_file(self),"card",side="left",ipady=5)
+    self.make_button(row2,"ZAPISZ WYNIKI",lambda:_u66_reader_save_results(self),"good",side="left",ipady=5)
+    row3=tk.Frame(self.content,bg=t["bg"]); row3.pack(fill="x",pady=3)
+    self.make_button(row3,"ANALIZUJ OSTATNIE TESTY",lambda:_u66_reader_analyze_tests(self),"accent",side="left",ipady=5)
+    self.make_button(row3,"OTWÓRZ FOLDER BAZY",lambda:_u66_os.startfile(str(_u66_store_dir())) if _u66_os.name=="nt" else _u66_webbrowser.open("file://"+str(_u66_store_dir())),"card",side="left",ipady=5)
+    self._u66_reader_status=tk.Label(self.content,text=f"Baza wbudowana: {len(_U66_KNOWLEDGE_SEED)} tematów • Zapisane lokalnie: {len(_u66_saved_knowledge())} • Źródła: linki w wynikach",bg=t["bg"],fg=t["muted"],font=self.fnt(8),anchor="w")
+    self._u66_reader_status.pack(fill="x",padx=4,pady=3)
+    outer=tk.Frame(self.content,bg=t["panel"]); outer.pack(fill="both",expand=True,pady=(3,6))
+    self._u66_reader_text=tk.Text(outer,wrap="word",bg=t["panel"],fg=t["fg"],insertbackground=t["fg"],font=self.fnt(10),relief="flat",padx=12,pady=10)
+    scroll=ttk.Scrollbar(outer,orient="vertical",command=self._u66_reader_text.yview)
+    self._u66_reader_text.configure(yscrollcommand=scroll.set)
+    self._u66_reader_text.pack(side="left",fill="both",expand=True); scroll.pack(side="right",fill="y")
+    self._u66_reader_text.tag_configure("title",foreground=t["accent"],font=self.fnt(12,"bold"))
+    self._u66_reader_text.tag_configure("source",foreground=t["good"],underline=True)
+    self._u66_reader_text.insert("end","Wpisz pytanie, np. „jak diagnozować temperaturę CPU i GPU”, „naprawa SFC/DISM”, „test prędkości Internetu” albo „NVMe SMART”. Wyszukiwanie internetowe pobiera wyniki na żądanie.\n","normal")
+    self._u66_reader_results=[]
+    entry.bind("<Return>",lambda e:_u66_reader_search(self,True))
+    self.make_button(self.content,"← POWRÓT DO TESTÓW",self.show_tests_hub,"card",side="left",ipady=5)
+
+def _u66_reader_render(self,heading,paragraph,items):
+    try:
+        box=self._u66_reader_text
+        box.configure(state="normal"); box.delete("1.0","end")
+        box.insert("end",heading+"\n","title")
+        box.insert("end",paragraph+"\n\n")
+        for idx,item in enumerate(items):
+            box.insert("end",str(idx+1)+". "+str(item.get("title","Bez tytułu"))+"\n","title")
+            text=str(item.get("text","")).strip()
+            box.insert("end",(text[:5000] if text else "Brak krótkiego opisu. Otwórz źródło, aby przeczytać pełną treść.")+"\n")
+            url=str(item.get("source",""))
+            if url.startswith(("https://","http://","file://")):
+                tag="u66source"+str(idx)
+                box.insert("end","Źródło: "+url+"\n\n",("source",tag))
+                box.tag_bind(tag,"<Button-1>",lambda e,u=url:_u66_webbrowser.open(u))
+                box.tag_bind(tag,"<Enter>",lambda e:box.config(cursor="hand2"))
+                box.tag_bind(tag,"<Leave>",lambda e:box.config(cursor=""))
+            else:
+                box.insert("end","Źródło: N/D\n\n")
+        box.configure(state="disabled")
+        try:
+            self._u66_reader_status.config(text=f"Wyniki: {len(items)} • Baza lokalna + źródła internetowe; zapis wymaga kliknięcia „ZAPISZ WYNIKI”.")
+        except Exception:
+            pass
+    except Exception as exc:
+        try: self.append_log("AI Reader render: "+repr(exc))
+        except Exception: pass
+
+def _u66_reader_search(self, online=False):
+    query=str(getattr(self,"_u66_reader_query",tk.StringVar(value="")).get()).strip()
+    if not query:
+        messagebox.showinfo("AI Czytnik","Wpisz temat lub pytanie.")
+        return
+    local=_u66_rank_knowledge(query,limit=8)
+    self._u66_reader_results=list(local)
+    _u66_reader_render(self,"WYNIKI BAZY LOKALNEJ",f"Zapytanie: {query}\nWiedza wbudowana: {len(_U66_KNOWLEDGE_SEED)} artykułów. Dopasowanie to wyszukiwanie treści, nie gwarancja kompletnej odpowiedzi.",local)
+    if not online:
+        return
+    _u66_reader_render(self,"WYSZUKIWANIE INTERNETOWE",f"Zapytanie: {query}\nŁączenie z publicznymi źródłami HTTPS…",local)
+    def job():
+        try:
+            web=_u66_web_search(query,8)
+            combined=local+web
+            def finish():
+                self._u66_reader_results=combined
+                _u66_reader_render(self,"LOKALNA BAZA + WYNIKI INTERNETOWE",f"Zapytanie: {query}\nWyniki Internetu są aktualne dla chwili wyszukania; sprawdź treść źródła i datę publikacji. Zapis do biblioteki jest lokalny.",combined)
+            self.queue_action(finish)
+        except Exception as exc:
+            def failure():
+                _u66_reader_render(self,"WYSZUKIWANIE NIEUDANE",f"{type(exc).__name__}: {exc}\nMożesz użyć bazy lokalnej lub otworzyć stronę źródłową w przeglądarce.",local)
+            self.queue_action(failure)
+    _u66_threading.Thread(target=job,name="NaprawaPCAIReaderSearch",daemon=True).start()
+
+def _u66_reader_load_url(self):
+    url=str(getattr(self,"_u66_reader_url",tk.StringVar(value="")).get()).strip()
+    if not url:
+        messagebox.showinfo("AI Czytnik","Wklej adres URL strony do przeczytania.")
+        return
+    _u66_reader_render(self,"CZYTANIE STRONY WWW","Pobieram tekst publicznej strony przez HTTPS/HTTP, limit 2 MB…",[])
+    def job():
+        try:
+            item=_u66_read_web_page(url)
+            def finish():
+                self._u66_reader_results=[item]
+                _u66_reader_render(self,"CZYTANA STRONA: "+item["title"],"Treść pobrana: "+str(len(item["text"]))+" znaków. Kliknij ZAPISZ WYNIKI, aby przechować ją lokalnie.",[item])
+            self.queue_action(finish)
+        except Exception as exc:
+            self.queue_action(lambda:_u66_reader_render(self,"NIE UDAŁO SIĘ ODCZYTAĆ STRONY",f"{type(exc).__name__}: {exc}\nNiektóre witryny wymagają JavaScript, logowania lub blokują automatyczne pobranie.",[]))
+    _u66_threading.Thread(target=job,name="NaprawaPCAIReaderPage",daemon=True).start()
+
+def _u66_reader_import_file(self):
+    path=_u66_filedialog.askopenfilename(title="Wybierz materiały do biblioteki AI",filetypes=[("Dokumenty","*.txt *.md *.html *.htm *.json *.pdf"),("Wszystkie pliki","*.*")])
+    if not path:
+        return
+    try:
+        p=Path(path)
+        if p.stat().st_size>5*1024*1024:
+            raise ValueError("Plik przekracza limit 5 MB.")
+        if p.suffix.lower()==".pdf":
+            text=""
+            try:
+                import pypdf as _u66_pypdf
+                reader=_u66_pypdf.PdfReader(str(p))
+                text="\n".join((page.extract_text() or "") for page in reader.pages[:100])
+            except Exception:
+                try:
+                    import fitz as _u66_fitz
+                    doc=_u66_fitz.open(str(p))
+                    text="\n".join(page.get_text("text") for page in doc[:100])
+                except Exception:
+                    raise RuntimeError("Nie wykryto czytnika PDF wbudowanego w ten build; wybierz TXT/HTML lub skopiuj tekst z PDF.")
+        else:
+            raw=p.read_text(encoding="utf-8",errors="replace")
+            if p.suffix.lower() in (".html",".htm"):
+                parser=_U66_TextParser(); parser.feed(raw); title,text=parser.result()
+            else:
+                text=raw
+        if not str(text).strip():
+            raise RuntimeError("Nie znaleziono czytelnego tekstu w tym pliku.")
+        item={"title":p.name,"text":str(text)[:500000],"source":p.resolve().as_uri(),"tags":"import lokalny","saved_at":_U66_datetime.now().isoformat(timespec="seconds")}
+        added,db=_u66_save_knowledge([item])
+        self._u66_reader_results=[item]
+        _u66_reader_render(self,"ZAIMPORTOWANO DOKUMENT",f"Zapisano materiał do lokalnej biblioteki. Plik: {p}\nBaza: {db}",[item])
+    except Exception as exc:
+        messagebox.showerror("AI Czytnik — import",f"{type(exc).__name__}: {exc}")
+
+def _u66_reader_save_results(self):
+    items=list(getattr(self,"_u66_reader_results",[]) or [])
+    if not items:
+        messagebox.showinfo("AI Czytnik","Brak wyników do zapisania. Najpierw wyszukaj temat lub wczytaj dokument.")
+        return
+    added,path=_u66_save_knowledge(items)
+    try:
+        self._u66_reader_status.config(text=f"Zapisano {added} materiałów • {path}")
+    except Exception: pass
+    try: self.append_log(f"AI Reader: zapisano {added} materiałów do lokalnej bazy {path}")
+    except Exception: pass
+    messagebox.showinfo("AI Czytnik",f"Zapisano materiały do lokalnej biblioteki.\nBaza: {path}\n\nZapis nie oznacza potwierdzenia poprawności treści — sprawdź źródła.")
+
+def _u66_reader_analyze_tests(self):
+    try:
+        self.worker(lambda:(self._ai_report_worker(),self.queue_action(self.show_report)))
+    except Exception as exc:
+        messagebox.showerror("AI Czytnik",str(exc))
+
+def _u66_format_rate(bytes_per_second):
+    value=max(0.0,float(bytes_per_second or 0))*8/1_000_000
+    return f"{value:.2f} Mbps"
+
+def _u66_net_request(url,data=None,timeout=30):
+    headers={"User-Agent":"NAPRAWA-PC-HARDWARE-TEST-PRO/SpeedTest","Cache-Control":"no-cache"}
+    if data is not None:
+        headers["Content-Type"]="application/octet-stream"
+    req=_u66_request.Request(url,data=data,headers=headers,method="POST" if data is not None else "GET")
+    started=_u66_time.perf_counter()
+    total=0
+    with _u66_request.urlopen(req,timeout=timeout) as response:
+        code=getattr(response,"status",200)
+        while True:
+            chunk=response.read(256*1024)
+            if not chunk:
+                break
+            total+=len(chunk)
+        final=_u66_urlparse.urlparse(response.geturl())
+        if final.scheme!="https" or final.hostname not in ("speed.cloudflare.com","www.cloudflare.com","cloudflare.com"):
+            raise ValueError("Odpowiedź testu sieci przekierowała poza dozwolony host Cloudflare.")
+    elapsed=max(.001,_u66_time.perf_counter()-started)
+    return {"bytes":total,"seconds":elapsed,"mbps":total*8/elapsed/1_000_000,"status":code}
+
+def _u66_measure_speed(self):
+    samples={"latency_ms":[],"download":[],"upload":[],"started_at":_U66_datetime.now().isoformat(timespec="seconds")}
+    total_data=0
+    def phase(text):
+        self.queue_action(lambda m=text:_u66_set_speed_status(self,m))
+        self.queue_status(text)
+    for i in range(3):
+        phase(f"Speed Test: pomiar opóźnienia {i+1}/3…")
+        start=_u66_time.perf_counter()
+        _u66_net_request("https://speed.cloudflare.com/__down?bytes=0&r="+str(_u66_uuid.uuid4().hex),None,15)
+        samples["latency_ms"].append(round((_u66_time.perf_counter()-start)*1000,2))
+    for idx,size in enumerate((1_000_000,5_000_000,10_000_000),1):
+        phase(f"Speed Test: pobieranie {idx}/3 ({size//1_000_000} MB)…")
+        result=_u66_net_request("https://speed.cloudflare.com/__down?bytes="+str(size)+"&r="+_u66_uuid.uuid4().hex,None,35)
+        total_data+=result["bytes"]; samples["download"].append({"requested_bytes":size,**result})
+    for idx,size in enumerate((500_000,2_000_000,5_000_000),1):
+        phase(f"Speed Test: wysyłanie {idx}/3 ({size//1_000_000} MB)…")
+        body=b"\x5a"*size
+        result=_u66_net_request("https://speed.cloudflare.com/__up?r="+_u66_uuid.uuid4().hex,body,35)
+        total_data+=size; samples["upload"].append({"requested_bytes":size,**result})
+    samples["latency_average_ms"]=round(sum(samples["latency_ms"])/max(1,len(samples["latency_ms"])),2)
+    samples["download_mbps"]=round(max([x["mbps"] for x in samples["download"]] or [0]),2)
+    samples["upload_mbps"]=round(max([x["mbps"] for x in samples["upload"]] or [0]),2)
+    samples["data_bytes"]=total_data
+    samples["state"]="good"
+    try:
+        folder=_u66_store_dir()/"speedtest"
+        folder.mkdir(parents=True,exist_ok=True)
+        history=folder/"history.json"
+        try: records=_u66_json.loads(history.read_text(encoding="utf-8"))
+        except Exception: records=[]
+        records.append(samples); history.write_text(_u66_json.dumps(records[-100:],ensure_ascii=False,indent=2),encoding="utf-8")
+        samples["history_path"]=str(history)
+    except Exception:
+        pass
+    return samples
+
+def _u66_set_speed_status(self,text):
+    try:
+        if hasattr(self,"_u66_speed_status") and self._u66_speed_status.winfo_exists():
+            self._u66_speed_status.config(text=str(text))
+        self._set_status(str(text))
+    except Exception:
+        pass
+
+def _u66_show_speed_test(self):
+    self.current_view="SPEED_TEST"; self.clear(); t=self.colors()
+    self.header_title.config(text="SPEED TEST — POMIAR INTERNETU NA ŻYWO")
+    p=self.panel(self.content); p.pack(fill="x",pady=(0,8))
+    tk.Label(p,text="DOWNLOAD • UPLOAD • OPÓŹNIENIE",bg=t["panel"],fg=t["accent"],font=self.fnt(14,"bold")).pack(anchor="w",padx=12,pady=(10,3))
+    tk.Label(p,text="Rzeczywisty transfer przez endpointy Cloudflare. Test używa około 23,5 MB na jeden pomiar i może nie działać w sieci blokującej endpointy.",bg=t["panel"],fg=t["muted"],font=self.fnt(9),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    metrics=tk.Frame(self.content,bg=t["bg"]); metrics.pack(fill="x",pady=3)
+    self._u66_speed_values={}
+    for name,key in (("PING / HTTP","latency"),("DOWNLOAD","download"),("UPLOAD","upload"),("DANE TRANSFEROWANE","data")):
+        card=self.panel(metrics); card.pack(side="left",fill="both",expand=True,padx=4)
+        tk.Label(card,text=name,bg=t["panel"],fg=t["muted"],font=self.fnt(9,"bold")).pack(pady=(10,2))
+        label=tk.Label(card,text="N/D",bg=t["panel"],fg=t["accent"],font=self.fnt(18,"bold"))
+        label.pack(pady=(0,10)); self._u66_speed_values[key]=label
+    self._u66_speed_status=tk.Label(self.content,text="Gotowy — uruchom test, aby wykonać rzeczywisty transfer.",bg=t["bg"],fg=t["muted"],font=self.fnt(9,"bold"),anchor="w")
+    self._u66_speed_status.pack(fill="x",padx=4,pady=6)
+    chart=self.panel(self.content); chart.pack(fill="both",expand=True,pady=6)
+    tk.Label(chart,text="PRÓBKI PRZEPUSTOWOŚCI — MBIT/S",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=10,pady=6)
+    self._u66_speed_chart=tk.Canvas(chart,bg=t["panel"],height=230,highlightthickness=0); self._u66_speed_chart.pack(fill="both",expand=True,padx=8,pady=8)
+    row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x")
+    self.make_button(row,"▶ URUCHOM SPEED TEST",lambda:_u66_start_speed_test(self),"accent",side="left",ipady=7)
+    self.make_button(row,"OTWÓRZ WYNIKI W FOLDERZE",lambda:_u66_os.startfile(str(_u66_store_dir()/"speedtest")) if _u66_os.name=="nt" else None,"card",side="left",ipady=7)
+    self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=7)
+    self._u66_speed_running=False
+
+def _u66_draw_speed_chart(self,result):
+    c=getattr(self,"_u66_speed_chart",None)
+    if c is None:
+        return
+    try:
+        if not c.winfo_exists(): return
+        t=self.colors(); c.delete("all"); w=max(500,c.winfo_width()); h=max(150,c.winfo_height())
+        values=[]
+        for i,x in enumerate(result.get("download",[])):
+            values.append((f"DL {i+1}",float(x.get("mbps",0)),"#2dd4bf"))
+        for i,x in enumerate(result.get("upload",[])):
+            values.append((f"UL {i+1}",float(x.get("mbps",0)),"#60a5fa"))
+        maximum=max([v[1] for v in values] or [1])
+        c.create_text(12,8,anchor="nw",text=f"Najwyższy zmierzony DL {result.get('download_mbps','N/D')} Mbps • UL {result.get('upload_mbps','N/D')} Mbps",fill=t["fg"],font=self.fnt(10,"bold"))
+        left=90; right=w-20; top=38; bottom=h-28
+        c.create_line(left,bottom,right,bottom,fill=t["muted"])
+        barw=max(12,(right-left)/max(1,len(values))*0.55)
+        for i,(name,val,col) in enumerate(values):
+            x=left+(i+.5)*(right-left)/max(1,len(values))
+            y=bottom-(val/maximum)*(bottom-top)
+            c.create_rectangle(x-barw/2,y,x+barw/2,bottom,fill=col,outline="")
+            c.create_text(x,bottom+10,text=name,fill=t["muted"],font=self.fnt(8))
+            c.create_text(x,max(top,y-10),text=f"{val:.1f}",fill=t["fg"],font=self.fnt(8,"bold"))
+    except Exception:
+        pass
+
+def _u66_start_speed_test(self):
+    if getattr(self,"_u66_speed_running",False):
+        return
+    self._u66_speed_running=True
+    _u66_set_speed_status(self,"Rozpoczynam pomiary. Nie zamykaj okna...")
+    def job():
+        try:
+            result=_u66_measure_speed(self)
+            self.results["SPEED_TEST"]=result
+            def done():
+                self._u66_speed_running=False
+                if getattr(self,"current_view","")=="SPEED_TEST":
+                    self._u66_speed_values["latency"].config(text=str(result["latency_average_ms"])+" ms")
+                    self._u66_speed_values["download"].config(text=str(result["download_mbps"])+" Mbps")
+                    self._u66_speed_values["upload"].config(text=str(result["upload_mbps"])+" Mbps")
+                    self._u66_speed_values["data"].config(text=f"{result['data_bytes']/1_000_000:.1f} MB")
+                    _u66_draw_speed_chart(self,result)
+                _u66_set_speed_status(self,f"Zakończono pomiar. Download {result['download_mbps']} Mbps, upload {result['upload_mbps']} Mbps. Dane: {result['data_bytes']/1_000_000:.1f} MB.")
+                self.queue_log("SPEED TEST: DL="+str(result["download_mbps"])+" Mbps; UL="+str(result["upload_mbps"])+" Mbps; latency="+str(result["latency_average_ms"])+" ms")
+            self.queue_action(done)
+        except Exception as exc:
+            def fail():
+                self._u66_speed_running=False
+                msg=f"Speed Test nie ukończył pomiaru: {type(exc).__name__}: {exc}"
+                _u66_set_speed_status(self,msg)
+                try: messagebox.showerror("Speed Test",msg)
+                except Exception: pass
+                self.queue_log(msg)
+            self.queue_action(fail)
+    _u66_threading.Thread(target=job,name="NaprawaPCSpeedTest",daemon=True).start()
+
+def _u66_sensor_probe():
+    result={"cpu_temp_c":None,"gpu_temp_c":None,"acpi_zones":[],"sensors":[],"method":"Windows WMI (best effort)"}
+    if _u66_os.name!="nt":
+        return result
+    script = r"""
+$ErrorActionPreference='SilentlyContinue'
+$sensors=@()
+foreach($ns in @('root/LibreHardwareMonitor','root/OpenHardwareMonitor')){
+  try{
+    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $_.SensorType -eq 'Temperature' -and $null -ne $_.Value } | Select-Object Name,Parent,Value,SensorType)
+    foreach($x in $xs){$sensors += [pscustomobject]@{name=[string]$x.Name; parent=[string]$x.Parent; value=[double]$x.Value; source=$ns}}
+  }catch{}
+}
+$zones=@()
+try{
+  foreach($x in @(Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction Stop)){
+    $c=([double]$x.CurrentTemperature/10.0)-273.15
+    if($c -gt -20 -and $c -lt 150){$zones += [pscustomobject]@{name=[string]$x.InstanceName; value=[math]::Round($c,1)}}
+  }
+}catch{}
+[pscustomobject]@{sensors=$sensors;zones=$zones} | ConvertTo-Json -Depth 5 -Compress
+"""
+    try:
+        exe=_u66_os.path.join(_u66_os.environ.get("WINDIR",r"C:\Windows"),"System32","WindowsPowerShell","v1.0","powershell.exe")
+        proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        if proc.returncode==0 and proc.stdout.strip():
+            payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
+            result["sensors"]=payload.get("sensors") or []
+            result["acpi_zones"]=payload.get("zones") or []
+            for sensor in result["sensors"]:
+                label=(str(sensor.get("name",""))+" "+str(sensor.get("parent",""))).lower()
+                try: value=float(sensor.get("value"))
+                except Exception: continue
+                if any(x in label for x in ("cpu package","cpu tctl","cpu die","cpu core","cpu ccd","cpu (tctl","processor package")):
+                    result["cpu_temp_c"]=value
+                    break
+                if result["gpu_temp_c"] is None and any(x in label for x in ("gpu core","gpu temperature","gpu hotspot","gpu package")):
+                    result["gpu_temp_c"]=value
+            if result["cpu_temp_c"] is None and result["acpi_zones"]:
+                result["method"]="ACPI zone only — not confirmed CPU die"
+    except Exception as exc:
+        result["error"]=f"{type(exc).__name__}: {exc}"
+    return result
+
+def _u66_sensor_poll(self):
+    try:
+        if getattr(self,"_u66_sensor_busy",False):
+            self.after(4000,lambda:_u66_sensor_poll(self)); return
+        if _u66_time.monotonic()-getattr(self,"_u66_sensor_last",0)>8:
+            self._u66_sensor_busy=True
+            self._u66_sensor_last=_u66_time.monotonic()
+            def job():
+                try:
+                    gpu=_u37_nvidia_telemetry() if "_u37_nvidia_telemetry" in globals() else {"available":False}
+                    temps=_u66_sensor_probe()
+                    self._u66_sensor_cache={"gpu":gpu,"temps":temps,"time":_u66_time.monotonic()}
+                    def update():
+                        self._u66_sensor_busy=False
+                        if getattr(self,"current_view","")=="LIVE_MONITOR":
+                            _u66_live_tick(self)
+                    self.queue_action(update)
+                except Exception:
+                    self._u66_sensor_busy=False
+            _u66_threading.Thread(target=job,name="NaprawaPCSensorPoll",daemon=True).start()
+    except Exception:
+        self._u66_sensor_busy=False
+    try: self.after(4000,lambda:_u66_sensor_poll(self))
+    except Exception: pass
+
+def _u66_header_live(self):
+    try:
+        if not hasattr(self,"header_sub") or not self.header_sub.winfo_exists():
+            return
+        vals=getattr(self,"_live_values",{}) or {}
+        cpu=vals.get("cpu"); ram=vals.get("ram")
+        cache=getattr(self,"_u66_sensor_cache",{}) or {}
+        gpu=cache.get("gpu",{}) or {}; temps=cache.get("temps",{}) or {}
+        ctemp=temps.get("cpu_temp_c")
+        gtemp=gpu.get("temperature_c")
+        fields=[f"CPU {cpu:.0f}%" if isinstance(cpu,(int,float)) else "CPU N/D",
+                f"RAM {ram:.0f}%" if isinstance(ram,(int,float)) else "RAM N/D",
+                f"TCPU {ctemp:.0f}°C" if isinstance(ctemp,(int,float)) else "TCPU N/D",
+                f"GPU {gtemp:.0f}°C" if isinstance(gtemp,(int,float)) else "TGPU N/D"]
+        self.header_sub.config(text="v"+str(VERSION).split(" ")[0]+" | "+" | ".join(fields))
+    except Exception:
+        pass
+
+def _u66_refresh_telemetry(self):
+    try:
+        _U66_ORIGINAL_REFRESH_TELEMETRY(self)
+    except Exception:
+        pass
+    _u66_header_live(self)
+
+def _u66_show_live_monitor(self):
+    self.current_view="LIVE_MONITOR"; self.clear(); t=self.colors()
+    self.header_title.config(text="MONITOR LIVE — TELEMETRIA SPRZĘTU")
+    info=self.panel(self.content); info.pack(fill="x",pady=(0,6))
+    tk.Label(info,text="ODCZYTY NA ŻYWO • odświeżanie co 1 sekundę, jeśli Windows udostępnia licznik",bg=t["panel"],fg=t["accent"],font=self.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(10,3))
+    tk.Label(info,text="Brak czujnika jest pokazywany jako N/D. ACPI thermal zone nie jest automatycznie traktowana jako temperatura rdzenia CPU.",bg=t["panel"],fg=t["muted"],font=self.fnt(9),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    grid=tk.Frame(self.content,bg=t["bg"]); grid.pack(fill="x",pady=4)
+    self._u66_live_labels={}
+    for title,key in [
+        ("CPU LOAD","cpu"),("RAM UŻYTA","ram"),("GPU LOAD","gpu"),("TEMP CPU","cpu_temp"),
+        ("TEMP GPU","gpu_temp"),("DYSK ODCZYT","disk_read"),("DYSK ZAPIS","disk_write"),
+        ("DOWNLOAD LIVE","net_down"),("UPLOAD LIVE","net_up"),("ZEGAR CPU","cpu_freq"),
+        ("VRAM UŻYTA","vram"),("CZUJNIK ACPI","acpi")
+    ]:
+        card=self.panel(grid); card.grid(row=len(self._u66_live_labels)//4,column=len(self._u66_live_labels)%4,sticky="nsew",padx=3,pady=3)
+        tk.Label(card,text=title,bg=t["panel"],fg=t["muted"],font=self.fnt(8,"bold")).pack(pady=(8,2))
+        val=tk.Label(card,text="N/D",bg=t["panel"],fg=t["accent"],font=self.fnt(14,"bold"))
+        val.pack(pady=(0,8)); self._u66_live_labels[key]=val
+    for col in range(4): grid.grid_columnconfigure(col,weight=1)
+    charts=tk.Frame(self.content,bg=t["bg"]); charts.pack(fill="both",expand=True,pady=6)
+    left=self.panel(charts); left.pack(side="left",fill="both",expand=True,padx=(0,4))
+    right=self.panel(charts); right.pack(side="left",fill="both",expand=True,padx=(4,0))
+    tk.Label(left,text="CPU / RAM / GPU — OSTATNIE 60 PRÓBEK",bg=t["panel"],fg=t["accent"],font=self.fnt(9,"bold")).pack(anchor="w",padx=8,pady=5)
+    tk.Label(right,text="SIEĆ — MBIT/S, OSTATNIE 60 PRÓBEK",bg=t["panel"],fg=t["accent"],font=self.fnt(9,"bold")).pack(anchor="w",padx=8,pady=5)
+    self._u66_live_chart=tk.Canvas(left,bg=t["panel"],height=200,highlightthickness=0); self._u66_live_chart.pack(fill="both",expand=True,padx=8,pady=8)
+    self._u66_net_chart=tk.Canvas(right,bg=t["panel"],height=200,highlightthickness=0); self._u66_net_chart.pack(fill="both",expand=True,padx=8,pady=8)
+    row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x")
+    self.make_button(row,"▶ SPEED TEST",self.show_speed_test,"accent",side="left",ipady=6)
+    self.make_button(row,"ODŚWIEŻ SPRZĘT",self.refresh_hardware_async,"card",side="left",ipady=6)
+    self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=6)
+    if not hasattr(self,"_u66_live_history"):
+        self._u66_live_history={"cpu":[],"ram":[],"gpu":[],"down":[],"up":[]}
+    _u66_live_tick(self)
+    _u66_sensor_poll(self)
+
+def _u66_draw_live_line(self,canvas,series,maximum=100):
+    try:
+        if not canvas.winfo_exists(): return
+        t=self.colors(); canvas.delete("all")
+        w=max(250,canvas.winfo_width()); h=max(120,canvas.winfo_height())
+        for i in range(1,5):
+            y=int(i*h/5); canvas.create_line(0,y,w,y,fill=t["card"],width=1)
+        palette={"cpu":t["accent"],"ram":t["warn"],"gpu":"#2dd4bf","down":"#60a5fa","up":"#c084fc"}
+        for name,values in series.items():
+            if not values: continue
+            maxval=max(maximum,max(values) if maximum>0 else 1)
+            pts=[]
+            for i,v in enumerate(values[-60:]):
+                x=8+i*(w-16)/max(1,min(59,len(values)-1))
+                y=h-10-(max(0,min(maxval,float(v)))/maxval)*(h-22)
+                pts.extend((x,y))
+            if len(pts)>=4:
+                canvas.create_line(*pts,fill=palette.get(name,t["accent"]),width=2,smooth=False)
+        if series:
+            labels=[]
+            for name,values in series.items():
+                if values: labels.append(f"{name.upper()} {values[-1]:.1f}")
+            canvas.create_text(8,5,anchor="nw",text="   •   ".join(labels),fill=t["fg"],font=self.fnt(8,"bold"))
+    except Exception:
+        pass
+
+def _u66_live_tick(self):
+    if getattr(self,"current_view","")!="LIVE_MONITOR":
+        return
+    try:
+        vals=getattr(self,"_live_values",{}) or {}
+        cache=getattr(self,"_u66_sensor_cache",{}) or {}
+        gpu=cache.get("gpu",{}) or {}; temps=cache.get("temps",{}) or {}
+        put=lambda key,text: self._u66_live_labels[key].config(text=str(text)) if key in self._u66_live_labels and self._u66_live_labels[key].winfo_exists() else None
+        cpu=vals.get("cpu"); ram=vals.get("ram")
+        put("cpu",f"{cpu:.1f}%" if isinstance(cpu,(int,float)) else "N/D")
+        put("ram",f"{ram:.1f}%" if isinstance(ram,(int,float)) else "N/D")
+        gu= gpu.get("gpu_load_percent",getattr(self,"_gpu_util",None))
+        put("gpu",f"{float(gu):.1f}%" if isinstance(gu,(int,float)) else "N/D")
+        ct=temps.get("cpu_temp_c")
+        gt=gpu.get("temperature_c",temps.get("gpu_temp_c"))
+        put("cpu_temp",f"{float(ct):.1f} °C" if isinstance(ct,(int,float)) else "N/D")
+        put("gpu_temp",f"{float(gt):.1f} °C" if isinstance(gt,(int,float)) else "N/D")
+        io=psutil.disk_io_counters() if psutil else None
+        now=_u66_time.monotonic()
+        prev=getattr(self,"_u66_disk_prev",None)
+        dr=dw=0.0
+        if io and prev:
+            dt=max(.1,now-prev[2]); dr=max(0,(io.read_bytes-prev[0])/dt); dw=max(0,(io.write_bytes-prev[1])/dt)
+        if io: self._u66_disk_prev=(io.read_bytes,io.write_bytes,now)
+        put("disk_read",f"{dr/1_000_000:.2f} MB/s" if io else "N/D")
+        put("disk_write",f"{dw/1_000_000:.2f} MB/s" if io else "N/D")
+        put("net_down",_u66_format_rate(vals.get("recv",0)))
+        put("net_up",_u66_format_rate(vals.get("sent",0)))
+        freq=psutil.cpu_freq() if psutil else None
+        put("cpu_freq",f"{freq.current:.0f} MHz" if freq and freq.current else "N/D")
+        used=gpu.get("vram_used_mb"); total=gpu.get("vram_total_mb")
+        put("vram",f"{used:.0f}/{total:.0f} MB" if isinstance(used,(int,float)) and isinstance(total,(int,float)) else "N/D")
+        zones=temps.get("acpi_zones") or []
+        put("acpi",f"{zones[0].get('value')} °C (ACPI)" if zones else "N/D")
+        hist=getattr(self,"_u66_live_history",{"cpu":[],"ram":[],"gpu":[],"down":[],"up":[]})
+        for key,val in (("cpu",cpu),("ram",ram),("gpu",gu),("down",max(0,float(vals.get("recv",0))*8/1_000_000)),("up",max(0,float(vals.get("sent",0))*8/1_000_000))):
+            if isinstance(val,(int,float)):
+                hist[key].append(float(val)); hist[key]=hist[key][-60:]
+        self._u66_live_history=hist
+        _u66_draw_live_line(self,self._u66_live_chart,{k:hist[k] for k in ("cpu","ram","gpu")},100)
+        _u66_draw_live_line(self,self._u66_net_chart,{k:hist[k] for k in ("down","up")},max(10,max(hist["down"]+hist["up"] or [10])))
+        _u66_header_live(self)
+    except Exception as exc:
+        try: self.append_log("Live telemetry: "+repr(exc))
+        except Exception: pass
+    try: self.after(1000,lambda:_u66_live_tick(self))
+    except Exception: pass
+
+def _u66_open_tests_item(self,key):
+    routes={
+      "CPU":lambda:(self.show_module("CPU"),self.worker(lambda:self._cpu_test(10))),
+      "RAM":lambda:(self.show_module("RAM"),self.worker(lambda:self._ram_test(256))),
+      "GPU":lambda:(self.show_module("GPU"),self.worker(self._gpu_test)),
+      "DYSK":lambda:(self.show_module("DYSK"),self.worker(lambda:self._disk_test(256))),
+      "EKRAN":lambda:(self.show_module("EKRAN"),self.worker(self._monitor_test)),
+      "SECURITY":lambda:(self.show_module("SECURITY"),self.worker(self._security_test)),
+      "BATERIA":lambda:(self.show_battery_or_power(),self.worker(self._battery_test)),
+      "USB":lambda:_u36_start_module_test(self,"USB"),
+      "SIEC":lambda:_u36_start_module_test(self,"SIEĆ"),
+      "AI":lambda:self.show_ai_reader(),
+      "SPEED":lambda:self.show_speed_test(),
+      "LIVE":lambda:self.show_live_monitor(),
+      "3D":lambda:self.show_3d_studio(),
+      "ALL":lambda:self.start_all_tests_sequential(),
+      "CENTRUM":lambda:self.show_service_center(),
+      "RAPORT":lambda:self.show_report(),
+      "WINSAT":lambda:(self.show_module("GPU"),self.run_winsat_d3d()),
+      "PIXEL":lambda:(self.show_module("EKRAN"),self._u37_open_screen_test()),
+      "VRAM":lambda:(self.show_module("GPU"),self._u41_start_vram_test()),
+      "LAN":lambda:self._start_module_test("SIEĆ"),
+      "USB_LIST":lambda:self._start_module_test("USB")
+    }
+    return routes[key]()
+
+def _u66_show_tests_hub(self):
+    self.current_view="TESTY"
+    self.clear()
+    t=self.colors()
+    self.header_title.config(text="CENTRUM TESTÓW — AUTOMATYCZNE, LIVE I SERWIS")
+    banner=self.panel(self.content); banner.pack(fill="x",pady=(0,7))
+    tk.Label(banner,text="TESTY SPRZĘTOWE • SPEED TEST • 20 SCEN 3D • AI CZYTNIK • NAPRAWA WINDOWS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(banner,text="„WSZYSTKIE TESTY PO KOLEI” przełącza ekran do aktualnie wykonywanego testu. Wyniki oznaczane są PASS/WARN/FAIL/N/D na podstawie dostępnych pomiarów; brak sensora nie jest zaliczeniem.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    outer=tk.Frame(self.content,bg=t["bg"]); outer.pack(fill="both",expand=True)
+    c=tk.Canvas(outer,bg=t["bg"],highlightthickness=0)
+    sb=ttk.Scrollbar(outer,orient="vertical",command=c.yview)
+    inner=tk.Frame(c,bg=t["bg"])
+    win=c.create_window((0,0),window=inner,anchor="nw")
+    inner.bind("<Configure>",lambda e:c.configure(scrollregion=c.bbox("all")))
+    c.bind("<Configure>",lambda e:c.itemconfigure(win,width=e.width))
+    c.configure(yscrollcommand=sb.set)
+    c.pack(side="left",fill="both",expand=True); sb.pack(side="right",fill="y")
+    items=[
+      ("WSZYSTKIE TESTY PO KOLEI","Automatyczny przebieg CPU → RAM → GPU → 20 scen 3D → SSD/HDD → matryca → sieć Speed Test → bezpieczeństwo → bateria/USB. Ekran zmienia się na każdym etapie; około 2–4 minuty.","ALL"),
+      ("MONITOR LIVE — WSZĘDZIE","CPU/RAM/GPU, zegary, transfer dysku i sieci, temperatury/czujniki z rzeczywistą próbką co sekundę.","LIVE"),
+      ("SPEED TEST INTERNETU","Pomiar prawdziwego download/upload w Mbps oraz opóźnienia HTTP; zapis historii lokalnie.","SPEED"),
+      ("3D BENCHMARK STUDIO — 20 SCEN","20 różnych proceduralnych scen OpenGL; FPS jest mierzony z renderowania, renderer i czas trafiają do raportu.","3D"),
+      ("AI CZYTNIK WIEDZY","Baza offline, wyszukiwanie Internetu, czytanie URL, import plików i zapis źródeł do prywatnej biblioteki.","AI"),
+      ("CENTRUM SERWISU + SYSTEM REPAIR","SFC, DISM, CHKDSK, raport baterii, narzędzia Windows oraz prywatne zgłoszenia.","CENTRUM"),
+      ("CPU — obciążenie i zegary","Rzeczywiste obciążenie etapowe, częstotliwość i wykres próbek.","CPU"),
+      ("RAM — wzorce zapisu/odczytu","Bufor RAM z weryfikacją wzorców 00/FF/AA/55; wynik opisuje rozmiar rzeczywiście sprawdzony.","RAM"),
+      ("GPU — karta i sterownik","Adaptery, status PnP, telemetria dostawcy i dostępne czujniki.","GPU"),
+      ("VRAM — tekstury i odczyt zwrotny","Przydział tekstur, zapis/odczyt i porównanie wzorców dla wybranego rozmiaru.","VRAM"),
+      ("DYSK — odczyt/zapis","Benchmark pliku tymczasowego, przepływ danych i dostępne dane niezawodności.","DYSK"),
+      ("MATRYCA / EDID","Identyfikacja EDID oraz ręczny test wzorców pikseli.","EKRAN"),
+      ("ANTYWIRUS / AUTOSTART","Sprawdzenie stanu ochrony i wpisów autostartu; brak danych jest jawnie oznaczony.","SECURITY"),
+      ("BATERIA / ZASILANIE","Raport baterii i źródło zasilania; PC stacjonarny nie jest błędnie oceniany jak laptop.","BATERIA"),
+      ("SIEĆ / WI-FI / LAN","Interfejsy, ich stan i rzeczywisty transfer w Speed Test.","SIEC"),
+      ("USB / URZĄDZENIA","Lista Plug and Play. Sama obecność urządzenia nie jest testem zasilania lub transferu portu.","USB"),
+      ("WINSAT / DIRECT3D","Uruchamia natywny test graficzny Windows, gdy jest dostępny.","WINSAT"),
+      ("PIKSELE — WZORCE EKRANU","Kolory, gradienty i wzorce; martwe piksele wymagają wzrokowego potwierdzenia.","PIXEL"),
+      ("RAPORT I HISTORIA","Wyniki faktycznie zapisanych pomiarów, nie przykładowe wartości.","RAPORT")
+    ]
+    for i,(title,desc,key) in enumerate(items):
+        card=self.panel(inner); card.grid(row=i//3,column=i%3,sticky="nsew",padx=4,pady=4)
+        tk.Label(card,text=title,bg=t["panel"],fg=t["accent"],font=self.fnt(9,"bold"),wraplength=400,justify="left").pack(anchor="w",padx=9,pady=(8,4))
+        tk.Label(card,text=desc,bg=t["panel"],fg=t["fg"],font=self.fnt(8),wraplength=400,justify="left").pack(fill="x",padx=9,pady=(0,6))
+        self.make_button(card,"OTWÓRZ / START",lambda k=key:_u66_open_tests_item(self,k),"accent" if key in ("ALL","SPEED","3D","AI") else "card",fill="x",ipady=5)
+    for i in range(3): inner.grid_columnconfigure(i,weight=1)
+    row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x",pady=(5,0))
+    self.make_button(row,"PULPIT",self.show_dashboard,"card",side="left",ipady=5)
+    self.make_button(row,"AI CZYTNIK",self.show_ai_reader,"accent",side="left",ipady=5)
+    self.make_button(row,"MONITOR LIVE",self.show_live_monitor,"card",side="left",ipady=5)
+
+def _u66_scene_child(output_path, seconds=5, scene_id=1):
+    result={"state":"warn","scene_id":int(scene_id),"scene_name":"N/D"}
+    pg=None
+    try:
+        import pygame as pg
+        from OpenGL import GL
+        from OpenGL.GLU import gluPerspective
+        sid=max(1,min(20,int(scene_id)))
+        name,kind,complexity=_U66_SCENES[sid-1]
+        result.update({"scene_name":name,"test":"OpenGL procedural scene","requested_seconds":seconds,"state":"running"})
+        pg.init()
+        try:
+            pg.display.gl_set_attribute(pg.GL_CONTEXT_MAJOR_VERSION,2)
+            pg.display.gl_set_attribute(pg.GL_CONTEXT_MINOR_VERSION,1)
+        except Exception: pass
+        width,height=1280,720
+        pg.display.set_mode((width,height),pg.OPENGL|pg.DOUBLEBUF|pg.RESIZABLE,vsync=0)
+        renderer=(GL.glGetString(GL.GL_RENDERER) or b"unknown").decode("utf-8","replace")
+        version=(GL.glGetString(GL.GL_VERSION) or b"unknown").decode("utf-8","replace")
+        GL.glEnable(GL.GL_DEPTH_TEST); GL.glClearColor(.008,.018,.03,1)
+        GL.glViewport(0,0,width,height); GL.glMatrixMode(GL.GL_PROJECTION); GL.glLoadIdentity(); gluPerspective(55,width/height,.1,250); GL.glMatrixMode(GL.GL_MODELVIEW)
+        start=_u66_time.perf_counter(); frames=0; running=True; samples=[]; win_frames=0; win_start=start; peak=0.0
+        requested=max(3,min(120,int(seconds)))
+        while running and _u66_time.perf_counter()-start < requested:
+            for ev in pg.event.get():
+                if ev.type==pg.QUIT or (ev.type==pg.KEYDOWN and ev.key==pg.K_ESCAPE): running=False
+                elif ev.type==pg.VIDEORESIZE:
+                    width=max(640,ev.w); height=max(480,ev.h); GL.glViewport(0,0,width,height); GL.glMatrixMode(GL.GL_PROJECTION); GL.glLoadIdentity(); gluPerspective(55,width/height,.1,250); GL.glMatrixMode(GL.GL_MODELVIEW)
+            elapsed=_u66_time.perf_counter()-start
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT)
+            GL.glPolygonMode(GL.GL_FRONT_AND_BACK,GL.GL_LINE if kind=="wire" else GL.GL_FILL)
+            GL.glLoadIdentity(); GL.glTranslatef(0,0,-13); GL.glRotatef(elapsed*18,0,1,0); GL.glRotatef(14+_u66_math.sin(elapsed)*7,1,0,0)
+            base=min(20,max(1,int(complexity)))
+            if kind in ("boxes","cubes","grid","materials","room","city","gpu","particles","mixed","ultimate"):
+                n=base
+                if kind=="ultimate": n=max(100,base)
+                for i in range(n):
+                    if kind=="city":
+                        x=(i%14-7)*.62; z=(i//14-2)*.7; y=.45+(i*7%13)*.22
+                        _u37_draw_gpu_box(GL,x,y,z,.38,y*2,.38,(.06+(i%4)*.09,.22+(i%5)*.07,.44+(i%3)*.12))
+                    elif kind=="gpu":
+                        GL.glPushMatrix(); GL.glTranslatef((i%4-1.5)*1.2,(i//4%3-1)*.8,(i//12)*-.9)
+                        _u37_draw_gpu_box(GL,0,0,0,2.2,.18,1.2,(.03,.3,.19))
+                        _u37_draw_gpu_box(GL,0,.18,0,1.4,.12,.9,(.35,.39,.43))
+                        for fin in range(7): _u37_draw_gpu_box(GL,-.55+fin*.18,.27,0,.035,.1,.75,(.52,.57,.6))
+                        GL.glPopMatrix()
+                    else:
+                        x=(i%11-5)*.72; y=((i//11)%7-3)*.6; z=-(i//77)*.7
+                        if kind=="room": z=-abs(z)*.5
+                        if kind=="particles":
+                            x=_u66_math.sin(i*13.31+elapsed)*4.5; y=_u66_math.cos(i*6.27+elapsed*1.3)*3.0; z=_u66_math.sin(i*2.7)*3.5
+                        col=((i%7)/7.0,.22+(i%4)*.13,.32+(i%5)*.12)
+                        _u37_draw_gpu_box(GL,x+_u66_math.sin(elapsed+i)*.12,y,z,.18+(i%3)*.06,.18+(i%2)*.08,.18+(i%4)*.035,col)
+            elif kind in ("triangles","triangles_extreme","mesh"):
+                tri=base*base*4 if kind!="triangles_extreme" else max(500,int(complexity)*4)
+                GL.glBegin(GL.GL_TRIANGLES)
+                for i in range(tri):
+                    a=i*.6180339887+elapsed*.1
+                    rad=1.4+(i%19)*.19
+                    GL.glColor3f((i%7)/7.0,.25+(i%4)*.16,.35+(i%3)*.2)
+                    GL.glVertex3f(_u66_math.sin(a)*rad,_u66_math.cos(a*1.13)*rad,_u66_math.sin(a*.71)*2)
+                    GL.glVertex3f(_u66_math.sin(a+1.9)*rad,_u66_math.cos(a*1.13+1.4)*rad,_u66_math.sin(a*.71+1)*2)
+                    GL.glVertex3f(_u66_math.sin(a+3.4)*rad,_u66_math.cos(a*1.13+3.2)*rad,_u66_math.sin(a*.71+2)*2)
+                GL.glEnd()
+            elif kind in ("terrain","waves"):
+                grid=max(8,min(48,base))
+                GL.glBegin(GL.GL_TRIANGLES)
+                for x in range(grid):
+                    for z in range(grid):
+                        for ox,oz in ((0,0),(1,0),(0,1),(1,0),(1,1),(0,1)):
+                            xx=(x+ox-grid/2)*.28; zz=(z+oz-grid/2)*.28
+                            yy=_u66_math.sin((x+ox)*.55+elapsed)*.35+_u66_math.cos((z+oz)*.45+elapsed*.7)*.35
+                            GL.glColor3f(.04+(x%8)*.04,.18+(z%6)*.07,.22+(x%5)*.1)
+                            GL.glVertex3f(xx,yy,zz)
+                GL.glEnd()
+            elif kind=="spheres":
+                for i in range(base):
+                    cx=(i%4-1.5)*2.1; cy=(i//4%3-1)*1.7; cz=-(i//12)*1.3
+                    radius=.38+(i%3)*.07
+                    lat=12; lon=16
+                    for la in range(lat):
+                        t1=_u66_math.pi*la/lat; t2=_u66_math.pi*(la+1)/lat
+                        GL.glBegin(GL.GL_TRIANGLES)
+                        for lo in range(lon):
+                            p1=2*_u66_math.pi*lo/lon; p2=2*_u66_math.pi*(lo+1)/lon
+                            def vertex(th,ph):
+                                return (cx+radius*_u66_math.sin(th)*_u66_math.cos(ph),cy+radius*_u66_math.cos(th),cz+radius*_u66_math.sin(th)*_u66_math.sin(ph))
+                            verts=[vertex(t1,p1),vertex(t2,p1),vertex(t2,p2),vertex(t1,p1),vertex(t2,p2),vertex(t1,p2)]
+                            GL.glColor3f(.1+(i%4)*.15,.38+(la%4)*.13,.6)
+                            for v in verts: GL.glVertex3f(*v)
+                        GL.glEnd()
+            elif kind=="torus":
+                for i in range(base):
+                    GL.glPushMatrix(); GL.glTranslatef((i%4-1.5)*1.8,(i//4%3-1)*1.6,-(i//12)*1.2); GL.glRotatef(elapsed*35+i*23,1,1,.3)
+                    for j in range(18):
+                        a1=2*_u66_math.pi*j/18; a2=2*_u66_math.pi*(j+1)/18; GL.glBegin(GL.GL_QUAD_STRIP)
+                        for k in range(13):
+                            b=2*_u66_math.pi*k/12
+                            for a in (a1,a2):
+                                rad=.55+.17*_u66_math.cos(b); GL.glColor3f(.14+.15*_u66_math.sin(a),.45,.55+.2*_u66_math.cos(b))
+                                GL.glVertex3f(rad*_u66_math.cos(a),.17*_u66_math.sin(b),rad*_u66_math.sin(a))
+                        GL.glEnd()
+                    GL.glPopMatrix()
+            elif kind in ("rings","planets"):
+                for i in range(base):
+                    GL.glPushMatrix(); GL.glTranslatef((i%5-2)*1.2,(i//5%4-1.5)*1.05,-(i//20)*.8); GL.glRotatef(elapsed*38+i*22,1,.4,1)
+                    GL.glColor3f(.12+(i%4)*.17,.34+(i%3)*.18,.72)
+                    GL.glBegin(GL.GL_LINE_LOOP)
+                    for j in range(48):
+                        a=2*_u66_math.pi*j/48; GL.glVertex3f(_u66_math.cos(a)*(.4+(i%3)*.08),_u66_math.sin(a)*(.4+(i%3)*.08),_u66_math.sin(a*3)*.06)
+                    GL.glEnd()
+                    for j in range(8):
+                        a=2*_u66_math.pi*j/8; _u37_draw_gpu_box(GL,_u66_math.cos(a)*.48,_u66_math.sin(a)*.48,0,.11,.11,.11,(.7,.26+(i%3)*.15,.12))
+                    GL.glPopMatrix()
+            else:
+                # Fallback workload is real triangle rendering, never a scripted/pass result.
+                GL.glBegin(GL.GL_TRIANGLES)
+                for i in range(base*base*8):
+                    x=_u66_math.sin(i*.17+elapsed)*4; y=_u66_math.cos(i*.21)*3
+                    GL.glColor3f((i%7)/7,.4,.7); GL.glVertex3f(x,y,0); GL.glVertex3f(x+.1,y+.2,.2); GL.glVertex3f(x+.2,y-.1,-.2)
+                GL.glEnd()
+            GL.glPolygonMode(GL.GL_FRONT_AND_BACK,GL.GL_FILL)
+            GL.glFlush(); pg.display.flip(); frames+=1; win_frames+=1; now=_u66_time.perf_counter()
+            if now-win_start>=1:
+                fps=win_frames/(now-win_start); samples.append(round(fps,2)); peak=max(peak,fps); win_frames=0; win_start=now
+                pg.display.set_caption(f"NAPRAWA PC 3D {sid}/20 • {name} • FPS {fps:.1f} • ESC = stop • {renderer[:80]}")
+        elapsed=max(.001,_u66_time.perf_counter()-start)
+        result.update({"state":"good" if frames else "warn","renderer":renderer,"opengl_version":version,"frames":frames,"duration_seconds":round(elapsed,2),"average_fps":round(frames/elapsed,2),"peak_fps_1s":round(peak,2),"fps_samples":samples,"workload":kind,"complexity":complexity,"scene_id":sid,"scene_name":name,"stopped_by_user":elapsed<requested-.5})
+        pg.display.quit(); pg.quit()
+    except Exception as exc:
+        result.update({"state":"warn","error":f"{type(exc).__name__}: {exc}","note":"Render 3D nie wystartował lub sterownik nie udostępnił OpenGL. Nie oznacza to automatycznie awarii GPU."})
+        try:
+            if pg is not None: pg.display.quit(); pg.quit()
+        except Exception: pass
+    try:
+        Path(output_path).write_text(_u66_json.dumps(result,ensure_ascii=False),encoding="utf-8")
+    except Exception: pass
+
+def _u66_set_suite_status(self,text):
+    try:
+        self.queue_status(text)
+        self.queue_action(lambda m=text:_u66_update_suite_label(self,m))
+        self.queue_log(text)
+    except Exception: pass
+
+def _u66_update_suite_label(self,text):
+    try:
+        for name in ("_u66_3d_status","_u66_speed_status"):
+            lbl=getattr(self,name,None)
+            if lbl is not None and lbl.winfo_exists():
+                lbl.config(text=str(text))
+    except Exception: pass
+
+def _u66_execute_gpu_scene(self,scene_id,seconds=5):
+    output=Path(tempfile.gettempdir())/("naprawapc_gpu_scene_"+str(os.getpid())+"_"+str(scene_id)+"_"+_u66_uuid.uuid4().hex[:8]+".json")
+    try: output.unlink(missing_ok=True)
+    except Exception: pass
+    if getattr(sys,"frozen",False):
+        cmd=[sys.executable,"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds))]
+    else:
+        cmd=[sys.executable,str(Path(__file__).resolve()),"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds))]
+    _u66_set_suite_status(self,f"SCENA 3D {scene_id}/20 — {_U66_SCENES[scene_id-1][0]} — uruchamianie OpenGL…")
+    proc=None
+    try:
+        proc=_u66_subprocess.Popen(cmd,cwd=tempfile.gettempdir(),creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        deadline=_u66_time.monotonic()+max(20,int(seconds)+40)
+        while proc.poll() is None and _u66_time.monotonic()<deadline:
+            if getattr(self,"stop_requested",False):
+                proc.terminate()
+                try: proc.wait(timeout=3)
+                except Exception: proc.kill()
+                break
+            _u66_time.sleep(.25)
+        if proc.poll() is None:
+            proc.kill()
+        rc=proc.wait(timeout=5)
+        if not output.is_file():
+            result={"state":"warn","scene_id":scene_id,"scene_name":_U66_SCENES[scene_id-1][0],"error":f"Brak raportu renderera; kod procesu {rc}."}
+        else:
+            result=_u66_json.loads(output.read_text(encoding="utf-8"))
+            result["returncode"]=rc
+        try: output.unlink(missing_ok=True)
+        except Exception: pass
+        self.queue_results("3D_SCENE_"+str(scene_id),result)
+        self.queue_log(f"3D SCENA {scene_id}: {result.get('state')} | FPS={result.get('average_fps','N/D')} | {result.get('renderer',result.get('error','N/D'))}")
+        return result
+    except Exception as exc:
+        result={"state":"warn","scene_id":scene_id,"scene_name":_U66_SCENES[scene_id-1][0],"error":f"{type(exc).__name__}: {exc}"}
+        self.queue_results("3D_SCENE_"+str(scene_id),result)
+        return result
+
+def _u66_show_3d_studio(self):
+    self.current_view="3D_STUDIO"; self.clear(); t=self.colors()
+    self.header_title.config(text="3D BENCHMARK STUDIO — 20 SCEN")
+    info=self.panel(self.content); info.pack(fill="x",pady=(0,7))
+    tk.Label(info,text="RZECZYWISTE RENDEROWANIE OPENGL • ŚREDNI FPS • PEAK 1 s • RENDERER • CZAS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(info,text="Sceny proceduralne badają różne obciążenia geometrii. Nie są wynikami gier ani porównaniem sprzętu między różnymi API i rozdzielczościami.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    options=tk.Frame(self.content,bg=t["bg"]); options.pack(fill="x",pady=4)
+    names=[f"{i+1:02d} — {sc[0].split('—',1)[-1].strip()}" for i,sc in enumerate(_U66_SCENES)]
+    self._u66_scene_var=tk.StringVar(value=names[0])
+    ttk.Combobox(options,textvariable=self._u66_scene_var,values=names,state="readonly",width=42).pack(side="left",padx=3,ipady=4)
+    self._u66_scene_seconds=tk.StringVar(value="5 s")
+    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("3 s","5 s","10 s","20 s","30 s","60 s"),state="readonly",width=9).pack(side="left",padx=3,ipady=4)
+    self._u66_3d_status=tk.Label(self.content,text="Gotowy — wybierz scenę albo uruchom wszystkie 20.",bg=t["bg"],fg=t["muted"],font=self.fnt(9,"bold"),anchor="w")
+    self._u66_3d_status.pack(fill="x",padx=4,pady=5)
+    table=self.panel(self.content); table.pack(fill="both",expand=True,pady=5)
+    cols=("SCENA","STATUS","FPS ŚREDNI","FPS PEAK","KLATKI","RENDERER / UWAGI")
+    self._u66_3d_tree=self.make_tree(table,cols)
+    for i,sc in enumerate(_U66_SCENES,1):
+        res=self.results.get("3D_SCENE_"+str(i),{}) or {}
+        self._u66_3d_tree.insert("","end",iid=str(i),values=(sc[0],res.get("state","—"),res.get("average_fps","N/D"),res.get("peak_fps_1s","N/D"),res.get("frames","N/D"),res.get("renderer",res.get("error","—"))))
+    row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x")
+    self.make_button(row,"▶ URUCHOM WYBRANĄ SCENĘ",lambda:_u66_start_3d_one(self),"accent",side="left",ipady=5)
+    self.make_button(row,"▶ WSZYSTKIE 20 SCEN",lambda:_u66_start_3d_all(self),"good",side="left",ipady=5)
+    self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=5)
+
+def _u66_start_3d_one(self):
+    try:
+        name=str(self._u66_scene_var.get()).split("—",1)[0].strip()
+        sid=int(name)
+        seconds=int(str(self._u66_scene_seconds.get()).split()[0])
+    except Exception:
+        sid=1; seconds=5
+    def job():
+        result=_u66_execute_gpu_scene(self,sid,seconds)
+        self.queue_action(lambda:_u66_show_3d_studio(self))
+        if result.get("state")=="warn":
+            self.queue_action(lambda:messagebox.showwarning("3D Benchmark",str(result.get("error") or result.get("note") or "Brak wyniku.")))
+    self.worker(job)
+
+def _u66_start_3d_all(self):
+    try: seconds=int(str(self._u66_scene_seconds.get()).split()[0])
+    except Exception: seconds=5
+    if not messagebox.askyesno("20 scen 3D",f"Uruchomić 20 scen, każdą przez {seconds} s? Łączny czas renderowania to co najmniej {20*seconds} sekund. ESC zatrzymuje aktywną scenę."):
+        return
+    self.worker(lambda:_u66_run_3d_suite(self,seconds))
+
+def _u66_run_3d_suite(self,seconds=5):
+    self._u66_ui_wait(lambda:_u66_show_3d_studio(self))
+    results=[]
+    for i,sc in enumerate(_U66_SCENES,1):
+        if self._test_should_stop(): break
+        self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/20 — {sc[0]}")
+        r=_u66_execute_gpu_scene(self,i,seconds); results.append(r)
+        self._u66_ui_wait(lambda:_u66_show_3d_studio(self))
+    good=sum(1 for r in results if r.get("state")=="good")
+    report={"state":"good" if good==len(results) and results else "warn","completed":len(results),"good":good,"scenes":results,"time":_U66_datetime.now().isoformat(timespec="seconds")}
+    self.results["3D_SUITE"]=report
+    try:
+        folder=_u66_store_dir()/"benchmarks"; folder.mkdir(parents=True,exist_ok=True)
+        (folder/("3d-benchmark-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")).write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
+    except Exception: pass
+    self.queue_log(f"3D STUDIO: ukończono {len(results)}/20 scen; wyniki prawidłowe: {good}.")
+
+def _u66_ui_wait(self,callback,timeout=10):
+    event=_u66_threading.Event()
+    def run():
+        try: callback()
+        except Exception as exc:
+            try: self.append_log("UI stage switch: "+repr(exc))
+            except Exception: pass
+        finally: event.set()
+    self.queue_action(run)
+    event.wait(timeout)
+
+def _u66_start_all_tests(self):
+    if getattr(self,"running",False):
+        messagebox.showinfo("Testy","Inny test już trwa. Poczekaj, aż się zakończy.")
+        return
+    if not messagebox.askyesno("Wszystkie testy po kolei","Uruchomić pełny przebieg: CPU, RAM, GPU, 20 scen 3D, dysk, matryca, Internet Speed Test, bezpieczeństwo, bateria i urządzenia USB/sieć? Sceny 3D zajmą około 100 sekund, a test sieci zużyje około 23,5 MB. Test można zatrzymać klawiszem ESC."):
+        return
+    self.worker(self._u66_run_all_tests_worker)
+
+def _u66_run_all_tests_worker(self):
+    started=_U66_datetime.now().isoformat(timespec="seconds")
+    summary=[]
+    def stage(num,total,title,view,fn):
+        if self._test_should_stop(): return
+        _u66_set_suite_status(self,f"TEST {num}/{total}: {title}")
+        _u66_ui_wait(self,lambda:view())
+        if self._test_should_stop(): return
+        try:
+            fn()
+            item={"stage":title,"state":"completed","time":_U66_datetime.now().isoformat(timespec="seconds")}
+        except Exception as exc:
+            item={"stage":title,"state":"error","error":f"{type(exc).__name__}: {exc}","time":_U66_datetime.now().isoformat(timespec="seconds)"}
+            self.queue_log(f"TEST {title}: błąd {item['error']}")
+        summary.append(item)
+        _u66_ui_wait(self,lambda:view())
+    total=10
+    stage(1,total,"CPU — obciążenie i zegary",lambda:self.show_module("CPU"),lambda:self._cpu_test(8))
+    stage(2,total,"RAM — wzorce",lambda:self.show_module("RAM"),lambda:self._ram_test(256))
+    stage(3,total,"GPU — adapter i sterownik",lambda:self.show_module("GPU"),self._gpu_test)
+    stage(4,total,"3D Benchmark — 20 scen po kolei",lambda:_u66_show_3d_studio(self),lambda:_u66_run_3d_suite(self,5))
+    stage(5,total,"SSD/HDD — odczyt i zapis",lambda:self.show_module("DYSK"),lambda:self._disk_test(128))
+    stage(6,total,"Matryca — EDID",lambda:self.show_module("EKRAN"),self._monitor_test)
+    def net_job():
+        self._u66_speed_running=True
+        try:
+            result=_u66_measure_speed(self); self.results["SPEED_TEST"]=result
+        finally:
+            self._u66_speed_running=False
+    stage(7,total,"Internet — Speed Test download/upload",lambda:_u66_show_speed_test(self),net_job)
+    stage(8,total,"Bezpieczeństwo — Defender/autostart",lambda:self.show_module("SECURITY"),self._security_test)
+    stage(9,total,"Bateria / zasilanie",lambda:self.show_battery_or_power(),self._battery_test)
+    def peripherals():
+        for key in ("USB","SIEĆ"):
+            if self._test_should_stop(): break
+            try: self._peripheral_test(key)
+            except Exception as exc: self.queue_log(f"{key}: {type(exc).__name__}: {exc}")
+    stage(10,total,"USB i sieć — enumeracja",lambda:self.show_simple_module("USB / URZĄDZENIA"),peripherals)
+    report={"state":"warn" if self._test_should_stop() or any(x.get("state")=="error" for x in summary) else "completed","started":started,"finished":_U66_datetime.now().isoformat(timespec="seconds"),"stages":summary}
+    self.results["ALL_TESTS_SEQUENCE"]=report
+    try:
+        folder=_u66_store_dir()/"reports"; folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("all-tests-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")
+        target.write_text(_u66_json.dumps({"suite":report,"results":self.results},ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+        report["report_path"]=str(target)
+    except Exception: pass
+    self.queue_log(f"WSZYSTKIE TESTY: {report['state']} — etapy {len(summary)}/{total}.")
+    self.queue_status("Testy zakończone" if not self._test_should_stop() else "Testy zatrzymane.")
+    self.queue_action(self.show_report)
+
+def _u66_selftest_advanced():
+    assert len(_U66_SCENES)==20, "Studio must have 20 separately named scenes"
+    assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
+    assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
+    ranked=_u66_rank_knowledge("temperatura CPU GPU",limit=5)
+    assert ranked and any("temperatura" in str(x.get("title","")).lower() for x in ranked)
+    assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed)
+    assert callable(_u66_scene_child)
+    assert callable(_u66_run_all_tests_worker)
+    assert _u66_format_rate(1_000_000)==8.0 and _u66_format_rate(0)==0.0
+    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, internet speed test, AI reader, 20 OpenGL scenes, sequential test suite")
+
+# Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
+_U66_ORIGINAL_REFRESH_TELEMETRY=AppV43.refresh_telemetry
+AppV43.show_ai_reader=_u66_show_ai_reader
+AppV43.show_speed_test=_u66_show_speed_test
+AppV43.show_live_monitor=_u66_show_live_monitor
+AppV43.show_3d_studio=_u66_show_3d_studio
+AppV43.show_tests_hub=_u66_show_tests_hub
+AppV43.start_all_tests_sequential=_u66_start_all_tests
+AppV43.full_test=_u66_start_all_tests
+AppV43.run_ai_only=_u66_show_ai_reader
+AppV43.refresh_telemetry=_u66_refresh_telemetry
+_u37_gpu_benchmark_child=_u66_scene_child
+
+if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
+    try:
+        _u66_selftest_advanced()
+        raise SystemExit(0)
+    except Exception as _u66_exc:
+        print("ADVANCED_MODULES_SELFTEST_FAILED:",type(_u66_exc).__name__,str(_u66_exc))
+        raise SystemExit(1)
