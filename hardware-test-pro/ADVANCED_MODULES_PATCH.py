@@ -99,7 +99,13 @@ _U66_SCENES = [
 ("37 — PCIe / interfejsy wejścia-wyjścia", "pcie_bus", 500),
 ("38 — Matryca / Pixel Grid 3D", "display_pixels", 220),
 ("39 — Chłodzenie / airflow simulation", "waves", 64),
-("40 — ULTRA MAX Composite Scene", "ultimate", 2800)
+("40 — ULTRA MAX Composite Scene", "ultimate", 2800),
+("41 — Internet / Network Packet Flow", "network_packets", 460),
+("42 — Audio Waveform / Speaker", "audio_wave", 320),
+("43 — USB Hub / Data Bus", "usb_bus", 280),
+("44 — Battery / Power Flow", "battery_power", 240),
+("45 — Keyboard Matrix / Key Response", "keyboard_matrix", 220),
+("46 — Security Process Tree / Shield", "security_tree", 260)
 ]
 
 def _u66_store_dir():
@@ -1190,6 +1196,127 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
                     b=((pixel%3)==2)*.9 + .07
                     pulse=.25+.65*(_U66_math.sin(elapsed*2+pixel*.12)+1)/2
                     _u37_draw_gpu_box(GL,x,.29,z,.11,.06,.14,(min(1,r*pulse),min(1,g*pulse),min(1,b*pulse)))
+            elif kind=="network_packets":
+                # Router, switch and endpoints connected with moving packets.
+                _u37_draw_gpu_box(GL,-2.3,.05,0,1.05,.55,1.35,(.12,.2,.27))
+                for port in range(8):
+                    pulse=.35+.5*(_U66_math.sin(elapsed*5+port)+1)/2
+                    _u37_draw_gpu_box(GL,-2.68+(port%4)*.24,.36,-.43+(port//4)*.42,.13,.09,.06,(.02,.5+pulse*.45,.22))
+                for side in (-1,1):
+                    for endpoint in range(3):
+                        x=side*(.25+endpoint*.95)
+                        z=(endpoint-1)*.75
+                        _u37_draw_gpu_box(GL,x,.06,z,.42,.34,.48,(.22,.29,.35))
+                GL.glColor3f(.04,.62,.9)
+                for lane in range(8):
+                    z=(lane-3.5)*.23
+                    GL.glBegin(GL.GL_LINE_STRIP)
+                    for point in range(30):
+                        x=-1.65+point*.115
+                        y=.04+.12*_U66_math.sin(elapsed*4-point*.25+lane)
+                        GL.glVertex3f(x,y,z)
+                    GL.glEnd()
+                    pulse=(elapsed*1.1+lane/8)%1
+                    _u37_draw_gpu_box(GL,-1.55+pulse*3.0,.2,z,.14,.1,.1,(.04,.82,.98))
+            elif kind=="audio_wave":
+                _u37_draw_gpu_box(GL,-2.5,.1,0,.9,1.6,1.1,(.12,.16,.2))
+                _u37_draw_gpu_box(GL,2.5,.1,0,.9,1.6,1.1,(.12,.16,.2))
+                for speaker_x in (-2.5,2.5):
+                    GL.glPushMatrix()
+                    GL.glTranslatef(speaker_x,.12,.58)
+                    GL.glColor3f(.22,.3,.38)
+                    GL.glBegin(GL.GL_LINE_LOOP)
+                    for point in range(50):
+                        a=2*_U66_math.pi*point/50
+                        GL.glVertex3f(.47*_U66_math.cos(a),.47*_U66_math.sin(a),0)
+                    GL.glEnd()
+                    for radius in (.13,.22,.32):
+                        GL.glBegin(GL.GL_LINE_LOOP)
+                        for point in range(50):
+                            a=2*_U66_math.pi*point/50
+                            GL.glVertex3f(radius*_U66_math.cos(a),radius*_U66_math.sin(a),.02)
+                        GL.glEnd()
+                    GL.glPopMatrix()
+                GL.glColor3f(.08,.9,.55)
+                GL.glBegin(GL.GL_LINE_STRIP)
+                for point in range(180):
+                    x=-2.0+point*(4.0/179)
+                    y=.45*_U66_math.sin(point*.18+elapsed*5)+.18*_U66_math.sin(point*.47-elapsed*3)
+                    GL.glVertex3f(x,.35+y,.15)
+                GL.glEnd()
+                for point in range(20):
+                    x=-1.9+(point/19)*3.8
+                    amp=_U66_math.sin(point*.7+elapsed*4)
+                    _u37_draw_gpu_box(GL,x,.36+amp*.32,.18,.08,.08,.12,(.08,.55+.3*abs(amp),.75))
+            elif kind=="usb_bus":
+                _u37_draw_gpu_box(GL,0,-.28,0,5.8,.2,1.8,(.02,.17,.11))
+                for port in range(8):
+                    x=(port-3.5)*.68
+                    _u37_draw_gpu_box(GL,x,-.04,.95,.42,.16,.3,(.22,.27,.32))
+                    _u37_draw_gpu_box(GL,x,-.01,1.12,.2,.09,.025,(.7,.65,.37))
+                    _u37_draw_gpu_box(GL,x,.03,-.92,.34,.18,.25,(.32,.37,.42))
+                GL.glColor3f(.03,.7,.9)
+                GL.glBegin(GL.GL_LINE_STRIP)
+                for point in range(90):
+                    x=-2.7+point*(5.4/89)
+                    GL.glVertex3f(x,.16+.05*_U66_math.sin(elapsed*4+point*.18),0)
+                GL.glEnd()
+                for point in range(10):
+                    pulse=(elapsed*.8+point/10)%1
+                    _u37_draw_gpu_box(GL,-2.65+pulse*5.3,.22,0,.15,.12,.12,(.05,.75,.95))
+            elif kind=="battery_power":
+                _u37_draw_gpu_box(GL,0,.02,0,2.6,1.35,1.05,(.14,.2,.26))
+                _u37_draw_gpu_box(GL,1.48,.02,0,.25,.6,.34,(.45,.5,.55))
+                _u37_draw_gpu_box(GL,-.1,.08,.56,1.95,.1,.045,(.03,.48,.22))
+                pulse=.2+.75*(_U66_math.sin(elapsed*2)+1)/2
+                for cell in range(6):
+                    x=-.86+cell*.34
+                    _u37_draw_gpu_box(GL,x,.17,.62,.24,.09,.06,(.04,.2+pulse*.45,.14+pulse*.5))
+                for particle in range(28):
+                    x=-2.7+((elapsed*.6+particle/28)%1)*5.4
+                    y=.75+.18*_U66_math.sin(elapsed*2+particle)
+                    z=.2*_U66_math.cos(elapsed+particle*.4)
+                    _u37_draw_gpu_box(GL,x,y,z,.08,.08,.08,(.06,.7,.38))
+                for ring in range(3):
+                    radius=.42+ring*.26
+                    GL.glColor3f(.08,.48+ring*.13,.72)
+                    GL.glBegin(GL.GL_LINE_LOOP)
+                    for point in range(50):
+                        a=2*_U66_math.pi*point/50+elapsed*.25
+                        GL.glVertex3f(0,1.15+radius*_U66_math.sin(a),radius*_U66_math.cos(a))
+                    GL.glEnd()
+            elif kind=="keyboard_matrix":
+                for key_id in range(min(104,max(40,complexity//2))):
+                    row=key_id//13
+                    col=key_id%13
+                    x=(col-6)*.4
+                    z=(row-3)*.37
+                    pulse=.3+.65*(_U66_math.sin(elapsed*3+key_id*.42)+1)/2
+                    _u37_draw_gpu_box(GL,x,.02,z,.32,.12,.28,(.15,.19,.24))
+                    _u37_draw_gpu_box(GL,x,.1,z,.25,.055,.21,(.04,.22+pulse*.6,.45+pulse*.45))
+                _u37_draw_gpu_box(GL,0,-.12,0,5.5,.07,2.8,(.08,.12,.17))
+            elif kind=="security_tree":
+                # Abstract shield + process tree visualization; no real security verdict is inferred from this render.
+                GL.glColor3f(.06,.72,.45)
+                GL.glBegin(GL.GL_LINE_LOOP)
+                GL.glVertex3f(0,1.8,.1); GL.glVertex3f(1.1,1.25,.1); GL.glVertex3f(.82,.0,.1)
+                GL.glVertex3f(0,-.7,.1); GL.glVertex3f(-.82,.0,.1); GL.glVertex3f(-1.1,1.25,.1)
+                GL.glEnd()
+                _u37_draw_gpu_box(GL,0,.75,0,.62,.24,.35,(.07,.45,.3))
+                for level in range(3):
+                    count=2**level
+                    y=.55-level*.7
+                    for node in range(count):
+                        x=(node-(count-1)/2)*(1.15/(level+1))
+                        _u37_draw_gpu_box(GL,x,y,-.25*level,.25,.16,.22,(.08,.26+.13*level,.5+.1*(node%2)))
+                        if level<2:
+                            child_y=y-.7
+                            for branch in (-1,1):
+                                GL.glColor3f(.08,.4,.7)
+                                GL.glBegin(GL.GL_LINES)
+                                GL.glVertex3f(x,y-.08,-.25*level)
+                                GL.glVertex3f(x+branch*.24,child_y+.09,-.25*(level+1))
+                                GL.glEnd()
             elif kind in ("boxes","cubes","grid","materials","room","city","gpu","particles","mixed","ultimate"):
                 n=min(1200,complexity)
                 if kind=="ultimate": n=min(3000,complexity)
@@ -1821,8 +1948,8 @@ def _u67_init_with_sensor_poll(self):
 _U68_PROFILE_SECONDS = {"SZYBKI 5 s":5, "STANDARD 15 s":15, "ULTRA 60 s":60, "MAX 120 s":120, "EXTREME 300 s":300}
 _U68_MODULE_SCENES = {
     "CPU":21, "RAM":25, "DYSK":29, "GPU":35, "VRAM":34,
-    "EKRAN":38, "BATERIA":39, "SIEC":37, "AUDIO":37,
-    "KLAWIATURA":37, "USB":37, "SECURITY":40, "SYSTEM":40
+    "EKRAN":38, "BATERIA":44, "SIEC":41, "AUDIO":42,
+    "KLAWIATURA":45, "USB":43, "SECURITY":46, "SYSTEM":46
 }
 _U68_GAME_GUIDE = [
     ("Counter-Strike 2","konkurencyjny: niskie/średnie; wyłącz ciężkie efekty","CPU + GPU"),
