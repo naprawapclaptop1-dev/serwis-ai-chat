@@ -1293,13 +1293,21 @@ def _u66_start_3d_all(self):
     self.worker(lambda:_u66_run_3d_suite(self,seconds))
 
 def _u66_run_3d_suite(self,seconds=5):
-    self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
+    def show_suite_view(scene_no=0):
+        _u66_show_3d_studio(self)
+        if getattr(self,"_u67_sequence_active",False):
+            stage_no=getattr(self,"_u67_current_num",1)
+            stage_total=getattr(self,"_u67_current_total",1)
+            stage_title=getattr(self,"_u67_current_title","3D Benchmark")
+            suffix=f" — scena {scene_no}/{len(_U66_SCENES)}" if scene_no else ""
+            _u67_stage_live_panel(self,stage_no,stage_total,stage_title+suffix)
+    self._u66_ui_wait(self,lambda:show_suite_view(0))
     results=[]
     for i,sc in enumerate(_U66_SCENES,1):
         if self._test_should_stop(): break
         self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/{len(_U66_SCENES)} — {sc[0]}")
         r=_u66_execute_gpu_scene(self,i,seconds); results.append(r)
-        self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
+        self._u66_ui_wait(self,lambda i=i:show_suite_view(i))
     good=sum(1 for r in results if r.get("state")=="good")
     report={"state":"good" if good==len(results) and results else "warn","completed":len(results),"good":good,"scenes":results,"time":_U66_datetime.now().isoformat(timespec="seconds")}
     self.results["3D_SUITE"]=report
@@ -1609,6 +1617,10 @@ def _u67_run_selected_diagnostic(self, selected):
             self.queue_log("Diagnostyka: użytkownik zatrzymał przebieg.")
             break
         def prepare_view(view=view, num=num, title=title):
+            self._u67_sequence_active = True
+            self._u67_current_num = num
+            self._u67_current_total = total
+            self._u67_current_title = title
             view()
             _u67_stage_live_panel(self, num, total, title)
             try:
@@ -1660,6 +1672,7 @@ def _u67_run_selected_diagnostic(self, selected):
     except Exception as exc:
         self.queue_log("Nie udało się zapisać raportu pełnej diagnostyki: " + repr(exc))
     self.queue_log(f"=== KONIEC PEŁNEJ DIAGNOSTYKI: {report['state']} — {len(summary)}/{total} etapów ===")
+    self._u67_sequence_active = False
     self.queue_action(self.show_report)
 
 
