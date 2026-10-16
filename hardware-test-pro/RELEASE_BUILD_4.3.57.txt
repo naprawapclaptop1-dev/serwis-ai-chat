@@ -1,5 +1,5 @@
 Request Windows x64 global release build triggered 2026-10-16.
-Expected next version: 4.3.64, derived from verified stable manifest 4.3.63.
-Critical fix: after verified download, schedule _u44_dispatch_confirm_downloaded(self, path, version) as a UI queue action; do not invoke self._u39_confirm_downloaded via a fragile alias. Dispatcher must set visible status before invoking _u44_confirm_downloaded directly and surface all exceptions in a message box and log.
-Self-tests must assert the downloader references _u44_dispatch_confirm_downloaded and not _u39_confirm_downloaded, and that the dispatcher references _u44_confirm_downloaded.
-Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, publish release assets, then update latest.json only after success. Manifest points directly to Setup.exe. No UpdateBootstrap, no silent setup flags, no ExecutionPolicy Bypass.
+Expected next version: based on the verified stable manifest at build time.
+Updater emergency fallback: after the download completes and size/SHA-256/PE checks pass, automatically open the exact Updates folder in Windows Explorer even if launching the installer fails or is blocked. Use os.startfile on Windows and explorer.exe fallback through the UI queue. Progress text must show the folder path.
+The updater must invoke _u44_dispatch_confirm_downloaded; self-tests must assert correct callback wiring and folder-open fallback.
+Run source restoration, syntax checks, all built-in self-tests, EXE build, installer build, asset size/hash validation, publish release assets, then update latest.json only after success. Global manifest points directly to Setup.exe. No UpdateBootstrap, no silent setup flags, no ExecutionPolicy Bypass.
