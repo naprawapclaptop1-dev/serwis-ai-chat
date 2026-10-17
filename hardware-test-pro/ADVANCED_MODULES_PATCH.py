@@ -3809,7 +3809,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
         assert callable(_u84_attach_gpu_live_panel)
         assert callable(_u84_gpu_live_tick)
-        assert AppV43.show_module is _u84_show_module_with_gpu_live
+        assert AppV43.show_module is _u86_show_module_with_component_workbench
         assert any("GPU LIVE STUDIO" in str(x) for x in _u84_attach_gpu_live_panel.__code__.co_consts)
         assert _U84_GPU_LIVE_FIELDS and len(_U84_GPU_LIVE_FIELDS) >= 8
         print("GPU_LIVE_PANEL_SELFTEST_OK")
