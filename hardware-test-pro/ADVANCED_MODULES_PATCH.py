@@ -2403,7 +2403,6 @@ def _u69_attach_simple_workbench(self,module):
     self.make_button(row,"SKAN + LIVE 3D",lambda m=module:_u69_open_component_simulator(self,m,True,"scan"),"card",side="left",ipady=4)
     self.make_button(row,"TEST FUNKCJONALNY",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=4)
-    if module=="SIEĆ":self.make_button(row,"SPEED TEST DOWNLOAD/UPLOAD",self.show_speed_test,"card",side="left",ipady=4)
     labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=5,pady=(0,4))
     self.make_button(labrow,"OTWÓRZ LABORATORIUM — WSZYSTKIE TESTY OSOBNO",self.show_component_lab,"good",side="left",ipady=4)
     speedrow=tk.Frame(panel,bg=t["panel"]);speedrow.pack(fill="x",padx=5,pady=(0,5))
@@ -3133,7 +3132,7 @@ def _u66_selftest_advanced():
     _u80_selftest_sound_hooks()
     assert AppV43.show_component_lab is _u78_show_component_lab
     assert AppV43.show_module is _u69_show_module
-    assert AppV43.show_simple_module is _u69_show_simple_module
+    assert AppV43.show_simple_module is _u83_show_simple_module_speed_entry
     assert len(_U66_SCENES)==46 and len({scene[0] for scene in _U66_SCENES})==46
     assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts
@@ -3277,6 +3276,46 @@ def _u80_selftest_sound_hooks():
     if failed:
         raise AssertionError("Test sound hook checks failed: " + ", ".join(failed) + (("; missing methods: " + ", ".join(missing)) if missing else ""))
     print("TEST_SOUND_HOOKS_SELFTEST_OK: " + ", ".join(checks))
+
+
+
+# v4.3.83 — unmistakable direct Speed Test entry on every network screen.
+_U83_ORIGINAL_SHOW_SIMPLE_MODULE = AppV43.show_simple_module
+
+def _u83_show_simple_module_speed_entry(self, title):
+    _U83_ORIGINAL_SHOW_SIMPLE_MODULE(self, title)
+    upper = str(title or "").upper()
+    if not any(word in upper for word in ("SIEĆ", "WI-FI", "WIFI", "LAN", "NETWORK", "INTERNET")):
+        return
+    try:
+        if getattr(self, "_u83_speed_bar", None) is not None:
+            try:
+                if self._u83_speed_bar.winfo_exists():
+                    self._u83_speed_bar.destroy()
+            except Exception:
+                pass
+        t = self.colors()
+        bar = tk.Frame(self.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
+        children = list(self.content.winfo_children())
+        if children:
+            bar.pack(fill="x", padx=4, pady=(2, 5), before=children[0])
+        else:
+            bar.pack(fill="x", padx=4, pady=(2, 5))
+        self._u83_speed_bar = bar
+        tk.Label(
+            bar,
+            text="SPEED TEST INTERNETU — RZECZYWISTY PING / DOWNLOAD / UPLOAD",
+            bg=t["panel"], fg=t["accent"], font=self.fnt(10, "bold"), anchor="w"
+        ).pack(side="left", fill="x", expand=True, padx=10, pady=7)
+        self.make_button(bar, "▶ URUCHOM SPEED TEST", self.show_speed_test, "accent", side="right", ipady=6)
+        self.make_button(bar, "MONITOR LIVE", self.show_live_monitor, "card", side="right", ipady=6)
+    except Exception as exc:
+        try:
+            self.append_log("Speed Test: nie udało się dodać przycisku: " + repr(exc))
+        except Exception:
+            pass
+
+AppV43.show_simple_module = _u83_show_simple_module_speed_entry
 
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
