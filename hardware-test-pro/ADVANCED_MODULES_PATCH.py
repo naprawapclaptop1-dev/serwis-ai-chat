@@ -3679,7 +3679,7 @@ def _u86_render_component_report(self,module):
                 if result.get(k) is not None:lines.append(f"{label}: {result[k]}")
             usage=result.get("volume_usage")
             if isinstance(usage,dict):
-                lines.extend([f"Pojemność woluminu: {fmt_bytes(usage['total']) if usage.get('total') else 'N/D'}",f"Wolne miejsce: {fmt_bytes(usage['free']) if usage.get('free') else 'N/D'"])
+                lines.extend([f"Pojemność woluminu: {fmt_bytes(usage['total']) if usage.get('total') else 'N/D'}",f"Wolne miejsce: {fmt_bytes(usage['free']) if usage.get('free') else 'N/D'}"])
             benchmark=result.get("benchmark")
             if isinstance(benchmark,dict):
                 if benchmark.get("read_bps") is not None:lines.append(f"Prędkość odczytu: {fmt_speed(benchmark['read_bps'])}")
