@@ -775,16 +775,106 @@ def _u66_start_speed_test(self):
     _u66_threading.Thread(target=job,name="NaprawaPCSpeedTest",daemon=True).start()
 
 def _u66_sensor_probe():
-    result={"cpu_temp_c":None,"gpu_temp_c":None,"acpi_zones":[],"sensors":[],"method":"Windows WMI (best effort)"}
+    result={"cpu_temp_c":None,"gpu_temp_c":None,"cpu_power_w":None,"gpu_power_w":None,
+            "system_power_w":None,"battery_power_w":None,"power_sensors":[],"acpi_zones":[],
+            "sensors":[],"method":"N/D — brak czujnika"}
     if _u66_os.name!="nt":
         return result
+
+    def collect_sensor_rows(rows, source):
+        if not isinstance(rows,list):
+            return
+        result["sensors"]=rows[:2000]
+        power_rows=[]
+        cpu_power_candidates=[]
+        gpu_power_candidates=[]
+        system_power_candidates=[]
+        for sensor in rows:
+            if not isinstance(sensor,dict):
+                continue
+            name=str(sensor.get("sensor") or sensor.get("name") or "")
+            hardware=str(sensor.get("hardware") or "")
+            hardware_type=str(sensor.get("hardwareType") or sensor.get("hardware_type") or "")
+            parent=str(sensor.get("parent") or "")
+            label=(hardware+" "+hardware_type+" "+name+" "+parent).lower()
+            sensor_type=str(sensor.get("sensorType") or sensor.get("sensor_type") or "").lower()
+            unit=str(sensor.get("unit") or "").lower()
+            try:
+                value=float(sensor.get("value"))
+                if not _u66_math.isfinite(value):
+                    continue
+            except Exception:
+                continue
+            if sensor_type=="temperature" or "°c" in unit:
+                if result["cpu_temp_c"] is None and any(k in label for k in ("cpu package","cpu tctl","cpu die","cpu core","cpu ccd","processor package")):
+                    result["cpu_temp_c"]=value
+                if result["gpu_temp_c"] is None and any(k in label for k in ("gpu core","gpu temperature","gpu hotspot","gpu package")):
+                    result["gpu_temp_c"]=value
+            if sensor_type=="power" or unit in ("w","watt","watts"):
+                item={"hardware":hardware,"sensor":name,"value_w":value,"unit":"W","source":sensor.get("source") or source}
+                power_rows.append(item)
+                cpu_like=("cpu" in label or "processor" in label or hardware_type.lower()=="cpu")
+                gpu_like=("gpu" in label or hardware_type.lower()=="gpu" or "graphics" in label)
+                if cpu_like:
+                    score=3 if "package" in label else (2 if "total" in label or "cores" in label else 1)
+                    cpu_power_candidates.append((score,value))
+                elif gpu_like:
+                    score=3 if "board" in label or "total" in label else (2 if "chip" in label or "asic" in label else 1)
+                    gpu_power_candidates.append((score,value))
+                elif any(k in label for k in ("system power","platform power","total system","motherboard power")):
+                    system_power_candidates.append(value)
+                elif "battery" in label and any(k in label for k in ("discharge","power")):
+                    result["battery_power_w"]=value
+        result["power_sensors"]=power_rows
+        if cpu_power_candidates:
+            result["cpu_power_w"]=sorted(cpu_power_candidates,key=lambda x:x[0],reverse=True)[0][1]
+        if gpu_power_candidates:
+            result["gpu_power_w"]=sorted(gpu_power_candidates,key=lambda x:x[0],reverse=True)[0][1]
+        if system_power_candidates:
+            result["system_power_w"]=system_power_candidates[0]
+        result["method"]=source
+
+    bridge_name="NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe"
+    candidates=[]
+    bundle_dir=getattr(sys,"_MEIPASS",None)
+    if bundle_dir:
+        candidates.append(_u66_os.path.join(bundle_dir,bridge_name))
+    try:
+        candidates.append(_u66_os.path.join(_u66_os.path.dirname(_u66_os.path.abspath(sys.executable)),bridge_name))
+    except Exception:
+        pass
+    try:
+        candidates.append(_u66_os.path.join(_u66_os.path.dirname(_u66_os.path.abspath(__file__)),"SensorBridge","publish",bridge_name))
+    except Exception:
+        pass
+    for bridge in dict.fromkeys(candidates):
+        if not _u66_os.path.isfile(bridge):
+            continue
+        try:
+            proc=_u66_subprocess.run([bridge],capture_output=True,text=True,timeout=12,
+                creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+            lines=[line.strip() for line in (proc.stdout or "").splitlines() if line.strip()]
+            if lines:
+                payload=_u66_json.loads(lines[-1])
+                collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor sensor bridge")
+                if result["sensors"]:
+                    result["bridge_provider"]=payload.get("provider")
+                    result["bridge_errors"]=payload.get("errors") or []
+                    break
+        except Exception as exc:
+            result["bridge_error"]=f"{type(exc).__name__}: {exc}"
+
+    # WMI/ACPI fallback. It can provide temperatures on some systems even if no power sensors exist.
     script = r"""
 $ErrorActionPreference='SilentlyContinue'
 $sensors=@()
 foreach($ns in @('root/LibreHardwareMonitor','root/OpenHardwareMonitor')){
   try{
-    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $_.SensorType -eq 'Temperature' -and $null -ne $_.Value } | Select-Object Name,Parent,Value,SensorType)
-    foreach($x in $xs){$sensors += [pscustomobject]@{name=[string]$x.Name; parent=[string]$x.Parent; value=[double]$x.Value; source=$ns}}
+    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $_.SensorType -in @('Temperature','Power') -and $null -ne $_.Value } | Select-Object Name,Parent,Value,SensorType)
+    foreach($x in $xs){
+      $unit=if($x.SensorType -eq 'Power'){'W'}elseif($x.SensorType -eq 'Temperature'){'°C'}else{''}
+      $sensors += [pscustomobject]@{name=[string]$x.Name; parent=[string]$x.Parent; value=[double]$x.Value; sensorType=[string]$x.SensorType; unit=$unit; source=$ns}
+    }
   }catch{}
 }
 $zones=@()
@@ -801,15 +891,16 @@ try{
         proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
         if proc.returncode==0 and proc.stdout.strip():
             payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
-            result["sensors"]=payload.get("sensors") or []
+            if not result["sensors"]:
+                collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
             result["acpi_zones"]=payload.get("zones") or []
             for sensor in result["sensors"]:
-                label=(str(sensor.get("name",""))+" "+str(sensor.get("parent",""))).lower()
+                if not isinstance(sensor,dict): continue
+                label=(str(sensor.get("sensor") or sensor.get("name") or "")+" "+str(sensor.get("hardware") or "")+" "+str(sensor.get("parent") or "")).lower()
                 try: value=float(sensor.get("value"))
                 except Exception: continue
-                if any(x in label for x in ("cpu package","cpu tctl","cpu die","cpu core","cpu ccd","cpu (tctl","processor package")):
+                if result["cpu_temp_c"] is None and any(x in label for x in ("cpu package","cpu tctl","cpu die","cpu core","cpu ccd","cpu (tctl","processor package")):
                     result["cpu_temp_c"]=value
-                    break
                 if result["gpu_temp_c"] is None and any(x in label for x in ("gpu core","gpu temperature","gpu hotspot","gpu package")):
                     result["gpu_temp_c"]=value
             if result["cpu_temp_c"] is None and result["acpi_zones"]:
