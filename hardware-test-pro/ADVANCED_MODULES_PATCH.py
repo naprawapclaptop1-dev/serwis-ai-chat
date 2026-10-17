@@ -2046,6 +2046,7 @@ _U69_ORIGINAL_SHOW_MODULE=_U68_ORIGINAL_SHOW_MODULE
 _U69_ORIGINAL_SHOW_SIMPLE_MODULE=_U68_ORIGINAL_SHOW_SIMPLE_MODULE
 _U69_ORIGINAL_SHOW_BATTERY=AppV43.show_battery_or_power
 _U69_ORIGINAL_VRAM_STATUS=getattr(AppV43,"_u41_set_vram_status",None)
+_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR=_u68_open_component_simulator
 
 def _u69_drive_options(self):
     drives=[]
@@ -2181,6 +2182,37 @@ def _u69_ram_throughput_benchmark(self,requested_mb,seconds):
     self.queue_log(f"RAM BENCHMARK: {safe_mb} MB • zapis {result['write_MBps']} MB/s • odczyt+SHA256 {result['read_MBps']} MB/s • przebiegi {passes} • stan {result['state']}")
     return result
 
+def _u69_safe_disk_benchmark(root,mb):
+    """Benchmark a unique, exclusively-created temporary file on the selected volume."""
+    total=int(max(64,int(mb))*1024*1024)
+    block=os.urandom(min(8*1024*1024,total))
+    filename=f".naprawapc_hw_benchmark_{os.getpid()}_{_u66_uuid.uuid4().hex}.tmp"
+    target=os.path.join(root,filename)
+    created=False
+    try:
+        handle=open(target,"xb",buffering=0)
+        created=True
+        with handle as f:
+            t0=_u66_time.perf_counter();written=0
+            while written<total:
+                n=min(len(block),total-written)
+                f.write(block[:n]);written+=n
+            f.flush();os.fsync(f.fileno())
+            write_seconds=max(.0001,_u66_time.perf_counter()-t0)
+        t0=_u66_time.perf_counter();read=0
+        with open(target,"rb",buffering=0) as f:
+            while read<total:
+                data=f.read(min(len(block),total-read))
+                if not data:break
+                read+=len(data)
+        read_seconds=max(.0001,_u66_time.perf_counter()-t0)
+        if read!=total:raise OSError(f"Odczyt niepełny: {read}/{total} bajtów.")
+        return {"write_bps":total/write_seconds,"read_bps":read/read_seconds,"size_mb":mb,"root":root,"temp_file":"unikalny i usunięty po teście"}
+    finally:
+        if created:
+            try:os.remove(target)
+            except Exception:pass
+
 def _u69_disk_throughput_benchmark(self,requested_mb,seconds):
     var=getattr(self,"_u69_disk_drive_var",None)
     drive=str(var.get() if var else _u69_drive_options(self)[0]).strip()
@@ -2195,7 +2227,7 @@ def _u69_disk_throughput_benchmark(self,requested_mb,seconds):
     samples=[];start=_u66_time.perf_counter();deadline=start+max(15,min(300,int(seconds)));passes=0
     while passes==0 or _u66_time.perf_counter()<deadline:
         if self._test_should_stop():break
-        result=disk_benchmark(drive,mb)
+        result=_u69_safe_disk_benchmark(drive,mb)
         if "error" in result:
             self.queue_results("DYSK",{"state":"warn","error":result["error"],"target_volume":drive,"requested_mb":mb,"passes":passes})
             raise OSError(result["error"])
@@ -2257,7 +2289,7 @@ def _u69_status_text(self,message):
     except Exception:pass
 
 def _u69_component_result_text(self,module,mode,started):
-    scan_keys={"CPU":"COMPONENT_SCAN_CPU","RAM":"COMPONENT_SCAN_RAM","DYSK":"COMPONENT_SCAN_DYSK","SIEĆ":"NETWORK"}
+    scan_keys={"CPU":"COMPONENT_SCAN_CPU","RAM":"COMPONENT_SCAN_RAM","DYSK":"COMPONENT_SCAN_DYSK","VRAM":"COMPONENT_SCAN_VRAM","SIEĆ":"NETWORK"}
     result={}
     if mode=="scan" and module in scan_keys:result=(getattr(self,"results",{}) or {}).get(scan_keys[module],{}) or {}
     else:
@@ -2279,7 +2311,9 @@ def _u69_component_result_text(self,module,mode,started):
     elif module=="DYSK":
         bench=result.get("benchmark",{}) or {};details.extend([f"Wolumin: {result.get('target_volume','N/D')}",f"Rozmiar: {bench.get('size_mb',result.get('requested_mb','N/D'))} MB",f"Odczyt: {fmt_speed(bench.get('read_bps',0))}",f"Zapis: {fmt_speed(bench.get('write_bps',0))}",f"Przebiegi: {result.get('passes','N/D')}"])
         if mode=="scan":details.append(f"Fizyczne urządzenia: {len(result.get('devices',[]))}; rekordy SMART/reliability: {len(result.get('reliability',[]))}")
-    elif module=="VRAM":details.extend([f"Alokowano: {result.get('allocated_mb','N/D')} MB",f"Wzorce: {result.get('patterns_completed',0)}/{result.get('patterns_total',0)}",f"Zweryfikowane bajty: {result.get('bytes_verified','N/D')}"])
+    elif module=="VRAM":
+        if mode=="scan":details.append("Inwentarz VRAM: "+str(result.get("vram_inventory","N/D"))+" — to skan identyfikacyjny, nie test pamięci.")
+        else:details.extend([f"Alokowano: {result.get('allocated_mb','N/D')} MB",f"Wzorce: {result.get('patterns_completed',0)}/{result.get('patterns_total',0)}",f"Zweryfikowane bajty: {result.get('bytes_verified','N/D')}"])
     elif module=="GPU":details.extend([f"Karta: {(primary_gpu(self.gpus) or {}).get('Name','N/D')}",str(result.get('message',''))])
     elif module=="EKRAN":details.append(f"Wykryte monitory: {len(result.get('monitors',[]))}")
     elif module=="SIEĆ":details.extend([f"Download: {result.get('download_mbps','N/D')} Mbps",f"Upload: {result.get('upload_mbps','N/D')} Mbps",f"Latency: {result.get('latency_average_ms','N/D')} ms"])
@@ -2349,7 +2383,7 @@ def _u69_run_component_worker(self,module,mode):
     self.queue_action(finish)
 
 def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
-    _u68_open_component_simulator(self,module,False,mode)
+    _U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR(self,module,False,mode)
     try:
         children=self.content.winfo_children()
         if children:children[-1].destroy()
@@ -2434,6 +2468,9 @@ def _u69_selftest_component_workbenches():
     assert callable(_u69_open_component_simulator)
     assert callable(_u69_launch_component_test)
     assert callable(_u69_disk_throughput_benchmark)
+    assert callable(_u69_safe_disk_benchmark)
+    assert "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR(self,module,False,mode)" in _u69_open_component_simulator.__code__.co_consts
+    assert "naprawapc_hw_benchmark_" in _u69_safe_disk_benchmark.__code__.co_consts
     assert callable(_u69_ram_throughput_benchmark)
     assert callable(_u69_camera_scan)
     assert "C:" in "".join(_u69_drive_options(type("O",(),{"logical_disks":[{"DeviceID":"C:"}]})()))
