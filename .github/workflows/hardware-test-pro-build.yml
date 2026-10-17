@@ -31,6 +31,21 @@ jobs:
           python-version: "3.12"
           architecture: "x64"
 
+      - name: Set up .NET 10 for hardware sensor bridge
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build self-contained hardware sensor bridge
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          dotnet publish ".\SensorBridge\HardwareSensorBridge.csproj" -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o ".\SensorBridge\publish"
+          if ($LASTEXITCODE -ne 0) { throw "Hardware sensor bridge publish failed." }
+          $bridge = ".\SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe"
+          if (!(Test-Path -LiteralPath $bridge) -or (Get-Item -LiteralPath $bridge).Length -lt 1MB) { throw "Self-contained sensor bridge EXE is missing or incomplete." }
+
       - name: Restore source and exact artwork
         shell: pwsh
         run: |
@@ -92,7 +107,7 @@ jobs:
         shell: pwsh
         run: |
           Set-Location "${{ github.workspace }}\hardware-test-pro"
-          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --add-binary "SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
           if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")) { throw "PyInstaller did not create the EXE." }
 
       - name: Install Inno Setup
