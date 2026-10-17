@@ -1526,7 +1526,9 @@ def _u67_stage_live_panel(self, index, total, title):
     metrics.pack(fill="x", padx=6, pady=(0, 5))
     metric_specs = [
         ("CPU", "cpu"), ("RAM", "ram"), ("GPU", "gpu"), ("TEMP CPU", "cpu_temp"),
-        ("TEMP GPU", "gpu_temp"), ("DYSK ODCZYT", "disk_read"), ("DYSK ZAPIS", "disk_write"),
+        ("TEMP GPU", "gpu_temp"), ("CPU MOC", "cpu_power"), ("GPU MOC", "gpu_power"),
+        ("MOC SYSTEMU", "system_power"), ("MOC BATERII", "battery_power"),
+        ("DYSK ODCZYT", "disk_read"), ("DYSK ZAPIS", "disk_write"),
         ("NET ↓", "net_down"), ("NET ↑", "net_up")
     ]
     for i, (label, key) in enumerate(metric_specs):
@@ -1544,8 +1546,11 @@ def _u67_stage_live_panel(self, index, total, title):
     self._u67_stage_chart_hw.pack(side="left", fill="both", expand=True, padx=(0, 3))
     self._u67_stage_chart_io = tk.Canvas(graphs, height=82, bg=t["card"], highlightthickness=0)
     self._u67_stage_chart_io.pack(side="left", fill="both", expand=True, padx=(3, 0))
+    self._u67_stage_chart_power = tk.Canvas(graphs, height=82, bg=t["card"], highlightthickness=0)
+    self._u67_stage_chart_power.pack(side="left", fill="both", expand=True, padx=(3, 0))
     if not hasattr(self, "_u67_hist"):
-        self._u67_hist = {"cpu": [], "ram": [], "gpu": [], "read": [], "write": [], "down": [], "up": []}
+        self._u67_hist = {"cpu": [], "ram": [], "gpu": [], "read": [], "write": [], "down": [], "up": [],
+                          "cpu_power": [], "gpu_power": [], "system_power": [], "battery_power": []}
     self._u67_stage_key = title
     _u67_refresh_visible_charts(self)
 
@@ -1565,7 +1570,9 @@ def _u67_draw_history_chart(canvas, series, maximum, title, app):
         canvas.create_line(left, y, right, y, fill=t["panel"], width=1)
     palette = [
         ("cpu", t["accent"]), ("ram", t["good"]), ("gpu", t["warn"]),
-        ("read", t["accent2"]), ("write", t["good"]), ("down", t["warn"]), ("up", t["accent"])
+        ("read", t["accent2"]), ("write", t["good"]), ("down", t["warn"]), ("up", t["accent"]),
+        ("cpu_power", t["accent"]), ("gpu_power", t["warn"]),
+        ("system_power", t["good"]), ("battery_power", t["accent2"])
     ]
     for key, color in palette:
         vals = series.get(key, [])
@@ -1601,6 +1608,10 @@ def _u67_refresh_visible_charts(self):
     gpu_load = numeric(gpu.get("gpu_load_percent", getattr(self, "_gpu_util", None)))
     cpu_temp = numeric(temps.get("cpu_temp_c"))
     gpu_temp = numeric(gpu.get("temperature_c", temps.get("gpu_temp_c")))
+    cpu_power = numeric(temps.get("cpu_power_w"))
+    gpu_power = numeric(gpu.get("power_draw_w", gpu.get("power_w", temps.get("gpu_power_w"))))
+    system_power = numeric(temps.get("system_power_w"))
+    battery_power = numeric(temps.get("battery_power_w"))
     acpi_val = None
     if cpu_temp is None:
         acpi = temps.get("acpi_zones") or []
@@ -1626,6 +1637,10 @@ def _u67_refresh_visible_charts(self):
         "gpu": f"{gpu_load:.1f}%" if gpu_load is not None else "N/D",
         "cpu_temp": f"{cpu_temp:.1f} °C" if cpu_temp is not None else (f"ACPI {acpi_val:.1f} °C" if acpi_val is not None else "N/D"),
         "gpu_temp": f"{gpu_temp:.1f} °C" if gpu_temp is not None else "N/D",
+        "cpu_power": f"{cpu_power:.1f} W" if cpu_power is not None else "N/D",
+        "gpu_power": f"{gpu_power:.1f} W" if gpu_power is not None else "N/D",
+        "system_power": f"{system_power:.1f} W" if system_power is not None else "N/D",
+        "battery_power": f"{battery_power:.1f} W" if battery_power is not None else "N/D",
         "disk_read": f"{read_rate:.2f} MB/s" if read_rate is not None else "N/D",
         "disk_write": f"{write_rate:.2f} MB/s" if write_rate is not None else "N/D",
         "net_down": f"{down * 8 / 1_000_000:.2f} Mbps" if down is not None else "N/D",
@@ -1643,7 +1658,9 @@ def _u67_refresh_visible_charts(self):
         for key, value in (
             ("cpu", cpu), ("ram", ram), ("gpu", gpu_load), ("read", read_rate), ("write", write_rate),
             ("down", down * 8 / 1_000_000 if down is not None else None),
-            ("up", up * 8 / 1_000_000 if up is not None else None)
+            ("up", up * 8 / 1_000_000 if up is not None else None),
+            ("cpu_power", cpu_power), ("gpu_power", gpu_power),
+            ("system_power", system_power), ("battery_power", battery_power)
         ):
             if value is not None and _u66_math.isfinite(float(value)):
                 hist[key].append(float(value))
@@ -1654,6 +1671,11 @@ def _u67_refresh_visible_charts(self):
         io_vals = io_series["read"] + io_series["write"] + io_series["down"] + io_series["up"]
         io_max = max([1.0] + io_vals)
         _u67_draw_history_chart(getattr(self, "_u67_stage_chart_io", None), io_series, io_max, "DYSK MB/s • SIEĆ Mbps", self)
+        power_series = {"cpu_power": (hist or {}).get("cpu_power", []), "gpu_power": (hist or {}).get("gpu_power", []),
+                        "system_power": (hist or {}).get("system_power", []), "battery_power": (hist or {}).get("battery_power", [])}
+        power_values = power_series["cpu_power"] + power_series["gpu_power"] + power_series["system_power"] + power_series["battery_power"]
+        power_max = max([1.0] + power_values)
+        _u67_draw_history_chart(getattr(self, "_u67_stage_chart_power", None), power_series, power_max, "POBÓR MOCY W", self)
     except Exception:
         pass
     try:
@@ -3113,6 +3135,8 @@ def _u80_selftest_sound_hooks():
         "each 3D scene wrapped": bool(_U80_SOUND_3D_SCENE_WRAPPED),
         "selected-run speed test wrapped": bool(_U80_SOUND_SPEED_TEST_WRAPPED),
         "distinct start/end tones": callable(_u80_test_sound),
+        "power telemetry probe and W units": callable(_u66_sensor_probe) and "cpu_power_w" in _u66_sensor_probe.__code__.co_consts,
+        "visible power cards and graph": "MOC SYSTEMU" in _u67_stage_live_panel.__code__.co_consts and "POBÓR MOCY W" in _u67_refresh_visible_charts.__code__.co_consts,
         "nested calls do not double beep": callable(_u80_run_with_sound),
     }
     failed = [name for name, passed in checks.items() if not passed]
