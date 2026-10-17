@@ -105,7 +105,21 @@ _U66_SCENES = [
 ("43 — Pole cząstek MAX", "particles", 96),
 ("44 — Instancje sześcianów MAX", "cubes", 100),
 ("45 — Siatka trójkątów MAX", "triangles_extreme", 9000),
-("46 — Ultimate mixed geometry MAX", "ultimate", 700)
+("46 — Ultimate mixed geometry MAX", "ultimate", 700),
+("47 — Ultra wireframe corridors", "wire", 90),
+("48 — Dense mesh wave", "mesh", 180),
+("49 — Dual terrain stress", "terrain", 44),
+("50 — High instance cube field", "cubes", 280),
+("51 — Particle storm EXTREME", "particles", 650),
+("52 — Procedural city EXTREME", "city", 220),
+("53 — Geometry workload extreme", "triangles_extreme", 11000),
+("54 — Multi-ring stress", "rings", 82),
+("55 — Sphere field EXTREME", "spheres", 72),
+("56 — Multi-material MAX", "materials", 180),
+("57 — Complex GPU board geometry", "gpu", 90),
+("58 — Mixed scene EXTREME", "mixed", 440),
+("59 — MAX triangle throughput", "triangles_extreme", 14000),
+("60 — Ultimate scene endurance", "ultimate", 900)
 ]
 
 
@@ -1248,7 +1262,7 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
         GL.glEnable(GL.GL_DEPTH_TEST); GL.glClearColor(.008,.018,.03,1)
         GL.glViewport(0,0,width,height); GL.glMatrixMode(GL.GL_PROJECTION); GL.glLoadIdentity(); gluPerspective(55,width/height,.1,250); GL.glMatrixMode(GL.GL_MODELVIEW)
         start=_u66_time.perf_counter(); frames=0; running=True; samples=[]; win_frames=0; win_start=start; peak=0.0
-        requested=max(3,min(300,int(seconds)))
+        requested=max(3,min(900,int(seconds)))
         while running and _u66_time.perf_counter()-start < requested:
             for ev in pg.event.get():
                 if ev.type==pg.QUIT or (ev.type==pg.KEYDOWN and ev.key==pg.K_ESCAPE): running=False
@@ -1428,7 +1442,7 @@ def _u66_show_3d_studio(self):
     self._u66_scene_var=tk.StringVar(value=names[0])
     ttk.Combobox(options,textvariable=self._u66_scene_var,values=names,state="readonly",width=42).pack(side="left",padx=3,ipady=4)
     self._u66_scene_seconds=tk.StringVar(value="10 s")
-    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s"),state="readonly",width=9).pack(side="left",padx=3,ipady=4)
+    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s"),state="readonly",width=9).pack(side="left",padx=3,ipady=4)
     self._u66_3d_status=tk.Label(self.content,text=f"Gotowy — wybierz scenę albo uruchom wszystkie {len(_U66_SCENES)}.",bg=t["bg"],fg=t["muted"],font=self.fnt(9,"bold"),anchor="w")
     self._u66_3d_status.pack(fill="x",padx=4,pady=5)
     table=self.panel(self.content); table.pack(fill="both",expand=True,pady=5)
@@ -1961,12 +1975,12 @@ def _u67_init_with_sensor_poll(self):
 
 
 # v4.3.72 — independent component tests, long ULTRA/MAX profiles, per-component 3D visualizer.
-_U68_PROFILE_CHOICES=("SZYBKI — 15 s","STANDARD — 60 s","ULTRA — 180 s","MAX — 300 s")
+_U68_PROFILE_CHOICES=("SZYBKI — 15 s","STANDARD — 60 s","ULTRA — 180 s","MAX — 300 s","EXTREME — 600 s","TEST TERMICZNY — 900 s")
 _U68_COMPONENT_LABELS={"CPU":"Procesor / CPU","RAM":"Pamięć RAM","GPU":"Karta graficzna / GPU","DYSK":"SSD / HDD / NVMe","EKRAN":"Matryca / EDID","SECURITY":"Bezpieczeństwo","VRAM":"Pamięć karty / VRAM"}
 
 def _u68_profile_seconds(self):
     value=str(getattr(self,"_u68_profile_var",tk.StringVar(value="ULTRA — 180 s")).get())
-    try:return max(15,min(300,int(value.split("—",1)[1].strip().split()[0])))
+    try:return max(15,min(900,int(value.split("—",1)[1].strip().split()[0])))
     except Exception:return 180
 
 def _u68_selected_mb(self,kind):
@@ -2435,7 +2449,7 @@ def _u69_ram_throughput_benchmark(self,requested_mb,seconds):
         for _ in range(full):digest.update(chunk)
         if rem:digest.update(bytes([pattern])*rem)
         expected[pattern]=digest.digest()
-    samples=[];writes=0;reads=0;passes=0;start=_u66_time.perf_counter();deadline=start+max(15,min(300,int(seconds)));error=None
+    samples=[];writes=0;reads=0;passes=0;start=_u66_time.perf_counter();deadline=start+max(15,min(900,int(seconds)));error=None
     while passes==0 or _u66_time.perf_counter()<deadline:
         for pattern in (0x00,0xFF,0xAA,0x55):
             if self._test_should_stop():break
@@ -2501,7 +2515,7 @@ def _u69_disk_throughput_benchmark(self,requested_mb,seconds):
     try:free=__import__("shutil").disk_usage(drive).free
     except Exception as exc:raise OSError(f"Nie można odczytać wolnego miejsca na {drive}: {exc}")
     if free<required:raise OSError(f"Na {drive} jest za mało wolnego miejsca dla pliku testowego {mb} MB.")
-    samples=[];start=_u66_time.perf_counter();deadline=start+max(15,min(300,int(seconds)));passes=0
+    samples=[];start=_u66_time.perf_counter();deadline=start+max(15,min(900,int(seconds)));passes=0
     while passes==0 or _u66_time.perf_counter()<deadline:
         if self._test_should_stop():break
         result=_u69_safe_disk_benchmark(drive,mb)
@@ -2540,7 +2554,7 @@ def _u69_battery_monitor(self,seconds):
     if first is None:
         result={"state":"warn","message":"Brak baterii — prawdopodobnie PC stacjonarny albo kontroler nie udostępnia danych.","samples":[]}
         self.queue_results("BATTERY_BENCHMARK",result);self.queue_log("BATERIA: brak kontrolera, monitorowanie pominięte.");return
-    deadline=start+max(15,min(300,int(seconds)))
+    deadline=start+max(15,min(900,int(seconds)))
     while True:
         now=_u66_time.monotonic()
         try:
@@ -2755,7 +2769,7 @@ def _u69_selftest_component_workbenches():
         ("exclusive create mode", "xb" in _u69_safe_disk_benchmark.__code__.co_consts),
         ("RAM bandwidth", callable(_u69_ram_throughput_benchmark)),
         ("camera scan", callable(_u69_camera_scan)),
-        ("duration max", "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")),
+        ("duration max", "900 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s")),
         ("component labels", all(k in _U69_COMPONENT_LABELS for k in ("CPU","RAM","DYSK","VRAM","GPU","BATERIA","SIEĆ","USB","AUDIO","KLAWIATURA","KAMERA"))),
     ]
     try:
@@ -2971,7 +2985,7 @@ def _u76_disk_scan_selected_volume(self):
     return result
 
 def _u76_selftest_workbenches():
-    assert len(_U66_SCENES) == 46 and len({str(x[0]) for x in _U66_SCENES}) == 46
+    assert len(_U66_SCENES) == 60 and len({str(x[0]) for x in _U66_SCENES}) == 60
     assert callable(_u76_component_report_text) and callable(_u76_refresh_component_report)
     assert callable(_u76_open_component_simulator) and callable(_u76_run_component_worker)
     assert callable(_u76_disk_scan_selected_volume)
@@ -2980,7 +2994,7 @@ def _u76_selftest_workbenches():
     assert "RAM_BENCHMARK" in _u76_component_result_keys("RAM", "benchmark")
     assert "VRAM_TEST" in _u76_component_result_keys("VRAM", "benchmark")
     assert "3D_SUITE" in _u76_component_result_keys("GPU", "benchmark")
-    print("COMPONENT_REPORT_46_SCENES_SELFTEST_OK")
+    print("COMPONENT_REPORT_60_SCENES_SELFTEST_OK")
 
 _U69_ORIGINAL_COMPONENT_WORKER = _u69_run_component_worker
 _U69_ORIGINAL_STATUS_TEXT_V76 = _u69_status_text
@@ -2998,7 +3012,7 @@ _u68_sim_metrics_tick = _u76_sim_metrics_tick
 _U78_COMPONENT_LAB = [
     ("CPU", "PROCESOR / CPU", "Identyfikacja, rdzenie/wątki, obciążenie, zegary i próbki. Benchmark wykonuje rzeczywiste obciążenie CPU.", "BENCHMARK ULTRA/MAX"),
     ("RAM", "PAMIĘĆ RAM", "Pojemność i dostępność pamięci; test wzorców 00/FF/AA/55 z porównaniem SHA-256 w ograniczonym buforze.", "BENCHMARK RAM ULTRA/MAX"),
-    ("GPU", "KARTA GRAFICZNA / GPU", "Identyfikacja adaptera, sterownika i czujników. Benchmark uruchamia 46 scen OpenGL z prawdziwym pomiarem FPS.", "46 SCEN 3D ULTRA/MAX"),
+    ("GPU", "KARTA GRAFICZNA / GPU", "Identyfikacja adaptera, sterownika i czujników. Benchmark uruchamia sceny OpenGL z prawdziwym pomiarem FPS.", f"{len(_U66_SCENES)} SCEN 3D ULTRA/MAX"),
     ("VRAM", "PAMIĘĆ KARTY / VRAM", "Inwentarz pamięci oraz oddzielny test tekstur, wzorców zapisu i odczytu zwrotnego.", "TEST VRAM ULTRA/MAX"),
     ("DYSK", "SSD / HDD / NVMe", "Wybór woluminu, pojemność/wolne miejsce, urządzenia i dostępne dane niezawodności; benchmark unikalnym plikiem tymczasowym.", "BENCHMARK ODCZYT/ZAPIS"),
     ("EKRAN", "MATRYCA / EDID", "Identyfikacja monitora i trybów. Test funkcjonalny pokazuje wzorce/kolory; martwe piksele wymagają oceny wzrokowej.", "TEST WZORCÓW"),
@@ -3050,7 +3064,7 @@ def _u78_show_component_lab(self):
     hero = self.panel(self.content)
     hero.pack(fill="x", pady=(0, 6))
     tk.Label(hero, text="KAŻDY PODZESPÓŁ OSOBNO • SKAN • TEST / BENCHMARK • SYMULATOR 3D", bg=t["panel"], fg=t["accent"], font=self.fnt(12, "bold")).pack(anchor="w", padx=12, pady=(9, 3))
-    tk.Label(hero, text=f"{len(_U78_COMPONENT_LAB)} niezależnych modułów. Wybierz pojedynczą operację — nie musisz uruchamiać całej diagnostyki. Profile benchmarków: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s. GPU ma {len(_U66_SCENES)} scen OpenGL. Animacja 3D pokazuje schemat podzespołu; wynik PASS/OSTRZEŻENIE/FAIL pochodzi wyłącznie z rzeczywistego testu. Nieobsługiwane sensory oznaczamy N/D.", bg=t["panel"], fg=t["muted"], font=self.fnt(8), wraplength=1450, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+    tk.Label(hero, text=f"{len(_U78_COMPONENT_LAB)} niezależnych modułów. Wybierz pojedynczą operację — nie musisz uruchamiać całej diagnostyki. Profile benchmarków: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s / EXTREME 600 s / TEST TERMICZNY 900 s. GPU ma {len(_U66_SCENES)} scen OpenGL. Animacja 3D pokazuje schemat podzespołu; wynik PASS/OSTRZEŻENIE/FAIL pochodzi wyłącznie z rzeczywistego testu. Nieobsługiwane sensory oznaczamy N/D.", bg=t["panel"], fg=t["muted"], font=self.fnt(8), wraplength=1450, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
     quick = tk.Frame(self.content, bg=t["bg"])
     quick.pack(fill="x", pady=(0, 6))
     self.make_button(quick, "▶ SPEED TEST INTERNETU — DOWNLOAD / UPLOAD / PING", self.show_speed_test, "accent", side="left", ipady=7)
@@ -3091,10 +3105,10 @@ def _u78_selftest_component_lab():
     checks = [
         ("13 unique module entries", len(keys) == 13 and len(set(keys)) == 13),
         ("same set as component simulators", set(keys) == set(_U69_COMPONENT_LABELS)),
-        ("46 unique OpenGL scenes", len(_U66_SCENES) == 46 and len({str(x[0]) for x in _U66_SCENES}) == 46),
+        ("60 unique OpenGL scenes", len(_U66_SCENES) == 60 and len({str(x[0]) for x in _U66_SCENES}) == 60),
         ("component lab callable", callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)),
         ("real component launcher callable", callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)),
-        ("MAX 300-second profile", len(_U68_PROFILE_CHOICES) >= 4 and str(_U68_PROFILE_CHOICES[-1]).endswith("300 s")),
+        ("MAX 900-second profile", len(_U68_PROFILE_CHOICES) >= 6 and str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")),
         ("visible 3D action", any("SAMO SYMULATOR 3D" in str(x) for x in _u78_show_component_lab.__code__.co_consts)),
         ("scan action", any("SKAN + LIVE 3D" in str(x) for x in _u78_show_component_lab.__code__.co_consts)),
         ("visible internet speed test", any("SPEED TEST INTERNETU" in str(x) for x in _u78_show_component_lab.__code__.co_consts) and callable(AppV43.show_speed_test)),
@@ -3105,7 +3119,7 @@ def _u78_selftest_component_lab():
     print("COMPONENT_LAB_13_MODULES_SELFTEST_OK: " + ", ".join(name for name, _ in checks))
 
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==46, "Studio must have 46 separately named scenes"
+    assert len(_U66_SCENES)==60, "Studio must have 60 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
@@ -3121,8 +3135,8 @@ def _u66_selftest_advanced():
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)
     assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)
     assert callable(_u67_set_suite_status)
-    assert len(_U66_SCENES)==46 and all(sc[1] for sc in _U66_SCENES)
-    assert "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")
+    assert len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES)
+    assert "900 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s")
     assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)
     assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)
     assert callable(_u68_show_games_advisor)
@@ -3131,13 +3145,13 @@ def _u66_selftest_advanced():
     _u78_selftest_component_lab()
     _u80_selftest_sound_hooks()
     assert AppV43.show_component_lab is _u78_show_component_lab
-    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live)
-    assert AppV43.show_simple_module is _u83_show_simple_module_speed_entry
-    assert len(_U66_SCENES)==46 and len({scene[0] for scene in _U66_SCENES})==46
+    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench)
+    assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench)
+    assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60
     assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps"
-    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, independent component tests, 46 OpenGL scenes ULTRA/MAX, 3D schematics, game graphics advisor, AI reader")
+    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 60 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
 
 # Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
 _U66_ORIGINAL_REFRESH_TELEMETRY=AppV43.refresh_telemetry
@@ -3567,10 +3581,231 @@ AppV43.show_module = _u84_show_module_with_gpu_live
 AppV43.show_simple_module = _u83_show_simple_module_speed_entry
 
 
+
+# v4.3.86 — universal independent component workbenches, extended telemetry and stress profiles.
+_U86_COMPONENT_KEYS = {
+    "CPU": ("CPU", "COMPONENT_SCAN_CPU"), "GPU": ("GPU", "GPU_WINSAT", "3D_SUITE"),
+    "RAM": ("RAM_BENCHMARK", "RAM", "COMPONENT_SCAN_RAM"), "DYSK": ("DISK_BENCHMARK", "DYSK", "COMPONENT_SCAN_DYSK", "SMART"),
+    "VRAM": ("VRAM_TEST", "COMPONENT_SCAN_VRAM"), "EKRAN": ("EKRAN",), "SECURITY": ("SECURITY", "SYSTEM", "STARTUP_AUDIT"),
+    "BATERIA": ("BATTERY_BENCHMARK", "BATERIA"), "SIEĆ": ("SPEED_TEST", "NETWORK"),
+    "USB": ("USB",), "AUDIO": ("AUDIO",), "KLAWIATURA": ("INPUTS", "KLAWIATURA"), "KAMERA": ("CAMERA",)
+}
+_U86_MODULE_TITLES = {
+    "CPU":"CPU / PROCESOR", "GPU":"GPU / KARTA GRAFICZNA", "RAM":"RAM / PAMIĘĆ", "DYSK":"SSD / HDD / NVMe",
+    "VRAM":"VRAM / PAMIĘĆ KARTY", "EKRAN":"MATRYCA / MONITOR", "SECURITY":"BEZPIECZEŃSTWO WINDOWS",
+    "BATERIA":"BATERIA / ZASILANIE", "SIEĆ":"SIEĆ / WI-FI / LAN", "USB":"USB / URZĄDZENIA",
+    "AUDIO":"AUDIO / MIKROFON", "KLAWIATURA":"KLAWIATURA / TOUCHPAD", "KAMERA":"KAMERA"
+}
+_U86_HISTORY_KEYS=("cpu","ram","gpu","read","write","down","up","cpu_power","gpu_power","system_power","battery_power","cpu_temp","gpu_temp","cpu_voltage","gpu_voltage","cpu_clock","gpu_clock")
+
+def _u86_stage_live_panel(self,index,total,title):
+    try:
+        old=getattr(self,"_u67_stage_panel",None)
+        if old is not None and old.winfo_exists():old.destroy()
+    except Exception:pass
+    t=self.colors();panel=tk.Frame(self.content,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
+    children=self.content.winfo_children();after_widget=None
+    for attr in ("_u84_gpu_panel","_u69_workbench_panel","_u69_simple_workbench_panel"):
+        candidate=getattr(self,attr,None)
+        try:
+            if candidate is not None and candidate.winfo_exists():after_widget=candidate;break
+        except Exception:pass
+    try:
+        if after_widget is not None:panel.pack(fill="x",padx=3,pady=(2,5),after=after_widget)
+        elif children:panel.pack(fill="x",padx=3,pady=(2,5),before=children[0])
+        else:panel.pack(fill="x",padx=3,pady=(2,5))
+    except Exception:panel.pack(fill="x",padx=3,pady=(2,5))
+    self._u67_stage_panel=panel
+    top=tk.Frame(panel,bg=t["panel"]);top.pack(fill="x",padx=10,pady=(6,3))
+    self._u67_stage_title=tk.Label(top,text=f"TEST {index}/{total} — {title}",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold"),anchor="w")
+    self._u67_stage_title.pack(side="left",fill="x",expand=True)
+    self.make_button(top,"STOP TEST",self.stop_current_test,"bad",side="right",ipady=3)
+    self._u67_stage_values={}
+    metrics=tk.Frame(panel,bg=t["panel"]);metrics.pack(fill="x",padx=5,pady=(0,5))
+    specs=[
+        ("CPU","cpu"),("RAM","ram"),("GPU","gpu"),("TEMP CPU","cpu_temp"),("TEMP GPU","gpu_temp"),("MOC CPU","cpu_power"),
+        ("MOC GPU","gpu_power"),("MOC SYSTEMU","system_power"),("NAPIĘCIE CPU","cpu_voltage"),("NAPIĘCIE GPU","gpu_voltage"),
+        ("ZEGAR CPU","cpu_clock"),("ZEGAR GPU","gpu_clock"),("WENTYLATOR CPU","cpu_fan"),("WENTYLATOR GPU","gpu_fan"),
+        ("DYSK ODCZYT","disk_read"),("DYSK ZAPIS","disk_write"),("NET ↓","net_down"),("NET ↑","net_up")]
+    for i,(label,key) in enumerate(specs):
+        card=tk.Frame(metrics,bg=t["card"],highlightbackground=t["accent2"],highlightthickness=1);card.grid(row=i//6,column=i%6,sticky="nsew",padx=1,pady=1)
+        tk.Label(card,text=label,bg=t["card"],fg=t["muted"],font=self.fnt(7,"bold")).pack(padx=3,pady=(3,0))
+        value=tk.Label(card,text="N/D",bg=t["card"],fg=t["accent"],font=self.fnt(8,"bold"));value.pack(padx=3,pady=(0,3));self._u67_stage_values[key]=value
+    for col in range(6):metrics.grid_columnconfigure(col,weight=1)
+    charts=tk.Frame(panel,bg=t["panel"]);charts.pack(fill="x",padx=5,pady=(0,5))
+    for name,row,col in (("_u67_stage_chart_hw",0,0),("_u67_stage_chart_io",0,1),("_u67_stage_chart_power",0,2),
+                         ("_u67_stage_chart_temp",1,0),("_u67_stage_chart_voltage",1,1),("_u67_stage_chart_clocks",1,2)):
+        chart=tk.Canvas(charts,height=104,bg=t["card"],highlightthickness=0);chart.grid(row=row,column=col,sticky="nsew",padx=2,pady=2);setattr(self,name,chart)
+    for col in range(3):charts.grid_columnconfigure(col,weight=1)
+    hist=getattr(self,"_u67_hist",{}) or {}
+    for key in _U86_HISTORY_KEYS:hist.setdefault(key,[])
+    self._u67_hist=hist;self._u86_result_text=None
+    module=getattr(self,"_u86_module_context",None)
+    if module and not getattr(self,"_u86_suite_active",False):
+        row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=5,pady=(0,3))
+        self.make_button(row,"SKAN TEGO PODZESPOŁU",lambda m=module:_u86_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
+        self.make_button(row,"BENCHMARK ULTRA / MAX",lambda m=module:_u86_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
+        self.make_button(row,"SYMULATOR 3D TEGO PODZESPOŁU",lambda m=module:_u86_launch_component_test(self,m,"visual"),"good",side="left",ipady=4)
+        if module=="GPU":
+            self.make_button(row,"TEST VRAM",lambda:_u86_launch_component_test(self,"VRAM","benchmark"),"card",side="left",ipady=4)
+            self.make_button(row,f"{len(_U66_SCENES)} SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"good",side="left",ipady=4)
+        out=tk.Text(panel,height=4,wrap="word",bg=t["card"],fg=t["fg"],insertbackground=t["fg"],relief="flat",font=("Consolas",8),padx=7,pady=5)
+        out.pack(fill="x",padx=5,pady=(0,5));out.configure(state="disabled");self._u86_result_text=out
+        _u86_render_component_report(self,module)
+    _u67_refresh_visible_charts(self)
+
+def _u86_result_for_component(self,module):
+    resultset=getattr(self,"results",{}) or {}
+    for key in _U86_COMPONENT_KEYS.get(module,(module,)):
+        value=resultset.get(key)
+        if isinstance(value,dict) and value:return key,value
+    return "",{}
+
+def _u86_render_component_report(self,module):
+    box=getattr(self,"_u86_result_text",None)
+    try:
+        if box is None or not box.winfo_exists():return
+        key,result=_u86_result_for_component(self,module)
+        if not result:
+            body=("NIE WYKONANO JESZCZE TESTU.\nWybierz SKAN TEGO PODZESPOŁU lub BENCHMARK ULTRA/MAX. "
+                  "Puste pole nie oznacza, że podzespół jest sprawny.")
+        else:
+            state=str(result.get("state","N/D")).upper()
+            lines=[f"OSTATNI WYNIK: {module} • {key} • STAN: {state}",f"Czas: {result.get('sampled_at') or result.get('finished') or result.get('time') or 'N/D'}"]
+            for k,label in (("target_volume","Wolumin"),("passes","Przebiegi"),("duration_seconds","Czas testu (s)"),
+                            ("buffer_mb","Bufor RAM (MB)"),("allocated_mb","VRAM zaalokowana (MB)"),("average_fps","Średni FPS"),
+                            ("peak_fps_1s","Szczyt FPS"),("download_mbps","Download Mbps"),("upload_mbps","Upload Mbps"),
+                            ("latency_average_ms","Ping ms"),("write_MBps","Zapis RAM MB/s"),("read_MBps","Odczyt RAM MB/s")):
+                if result.get(k) is not None:lines.append(f"{label}: {result[k]}")
+            usage=result.get("volume_usage")
+            if isinstance(usage,dict):
+                lines.extend([f"Pojemność woluminu: {fmt_bytes(usage['total']) if usage.get('total') else 'N/D'}",f"Wolne miejsce: {fmt_bytes(usage['free']) if usage.get('free') else 'N/D'"])
+            benchmark=result.get("benchmark")
+            if isinstance(benchmark,dict):
+                if benchmark.get("read_bps") is not None:lines.append(f"Prędkość odczytu: {fmt_speed(benchmark['read_bps'])}")
+                if benchmark.get("write_bps") is not None:lines.append(f"Prędkość zapisu: {fmt_speed(benchmark['write_bps'])}")
+            if result.get("message"):lines.append("Informacja: "+str(result["message"])[:1200])
+            if result.get("note"):lines.append("Zakres: "+str(result["note"])[:800])
+            if result.get("error"):lines.append("BŁĄD: "+str(result["error"])[:1000])
+            if state in ("WARN","N/D","ERROR"):lines.append("UWAGA: wynik nie potwierdza pełnej sprawności podzespołu.")
+            body="\n".join(lines)
+        box.configure(state="normal");box.delete("1.0","end");box.insert("1.0",body);box.configure(state="disabled")
+    except Exception as exc:
+        try:self.append_log("Raport podzespołu: "+repr(exc))
+        except Exception:pass
+
+def _u86_launch_component_test(self,module,mode):
+    if mode=="visual":
+        try:_u69_open_component_simulator(self,module,False,"scan")
+        except Exception as exc:messagebox.showerror("Symulator 3D",str(exc))
+        return
+    if getattr(self,"running",False):
+        messagebox.showwarning("Test komponentu","Inny test już działa. Poczekaj albo użyj STOP TEST.");return
+    try:
+        if module=="GPU" and mode=="benchmark":_u68_open_gpu_suite(self,auto_start=True);return
+        _u69_launch_component_test(self,module,mode)
+    except Exception as exc:
+        self.queue_log(f"Uruchomienie {module}: {type(exc).__name__}: {exc}")
+        messagebox.showerror("Test komponentu",str(exc))
+
+def _u86_component_monitor_tick(self,page_id):
+    if getattr(self,"_u86_page_id",None)!=page_id:return
+    panel=getattr(self,"_u67_stage_panel",None)
+    try:
+        if panel is None or not panel.winfo_exists():return
+    except Exception:return
+    try:
+        _u67_refresh_visible_charts(self)
+        module=getattr(self,"_u86_module_context",None)
+        if module and getattr(self,"_u86_result_text",None) is not None:_u86_render_component_report(self,module)
+        if not getattr(self,"_u84_gpu_poll_busy",False) and _u66_time.monotonic()-getattr(self,"_u86_gpu_poll_time",0)>=4:
+            self._u86_gpu_poll_time=_u66_time.monotonic();_u84_gpu_poll_now(self)
+    except Exception:pass
+    try:self.after(1000,lambda:_u86_component_monitor_tick(self,page_id))
+    except Exception:pass
+
+def _u86_module_key(value):
+    text=str(value or "").strip().upper()
+    if text in ("DYSKI","DYSK","SSD / HDD / NVME","DYSKI — SSD / HDD / NVME"):return "DYSK"
+    if any(word in text for word in ("WI-FI","WIFI","SIEĆ","LAN","NETWORK","INTERNET")):return "SIEĆ"
+    if "USB" in text:return "USB"
+    if any(word in text for word in ("AUDIO","DŹWIĘK","MIKROFON")):return "AUDIO"
+    if any(word in text for word in ("KLAWIATURA","TOUCHPAD","INPUT")):return "KLAWIATURA"
+    if any(word in text for word in ("KAMERA","WEBCAM")):return "KAMERA"
+    if any(word in text for word in ("BATTERY","BATERIA","ZASILANIE")):return "BATERIA"
+    if "VRAM" in text:return "VRAM"
+    if any(word in text for word in ("MATRYCA","EKRAN","MONITOR")):return "EKRAN"
+    if any(word in text for word in ("SECURITY","BEZPIECZEŃSTWO","ANTYWIRUS")):return "SECURITY"
+    for key in ("CPU","GPU","RAM"):
+        if text==key or text.startswith(key+" "):return key
+    return ""
+
+_U86_ORIGINAL_SHOW_MODULE=AppV43.show_module
+def _u86_show_module_with_component_workbench(self,module):
+    _U86_ORIGINAL_SHOW_MODULE(self,module)
+    key=_u86_module_key(module)
+    if not key or getattr(self,"_u86_suite_active",False):return
+    self._u86_page_id=int(getattr(self,"_u86_page_id",0))+1;self._u86_module_context=key
+    _u67_stage_live_panel(self,1,1,_U86_MODULE_TITLES.get(key,key)+" — MONITOR LIVE")
+    self.after(180,lambda pid=self._u86_page_id:_u86_component_monitor_tick(self,pid))
+
+_U86_ORIGINAL_SHOW_SIMPLE_MODULE=AppV43.show_simple_module
+def _u86_show_simple_module_with_component_workbench(self,title):
+    _U86_ORIGINAL_SHOW_SIMPLE_MODULE(self,title)
+    key=_u86_module_key(title)
+    if not key or getattr(self,"_u86_suite_active",False):return
+    self._u86_page_id=int(getattr(self,"_u86_page_id",0))+1;self._u86_module_context=key
+    _u67_stage_live_panel(self,1,1,_U86_MODULE_TITLES.get(key,key)+" — MONITOR LIVE")
+    self.after(180,lambda pid=self._u86_page_id:_u86_component_monitor_tick(self,pid))
+
+_U86_ORIGINAL_SHOW_BATTERY=AppV43.show_battery_or_power
+def _u86_show_battery_with_component_workbench(self):
+    _U86_ORIGINAL_SHOW_BATTERY(self)
+    if getattr(self,"_u86_suite_active",False):return
+    self._u86_page_id=int(getattr(self,"_u86_page_id",0))+1;self._u86_module_context="BATERIA"
+    _u67_stage_live_panel(self,1,1,"BATERIA / ZASILANIE — MONITOR LIVE")
+    self.after(180,lambda pid=self._u86_page_id:_u86_component_monitor_tick(self,pid))
+
+_U86_ORIGINAL_RUN_SELECTED_DIAGNOSTIC=_u67_run_selected_diagnostic
+def _u86_run_selected_diagnostic(self,selected):
+    self._u86_suite_active=True
+    try:return _U86_ORIGINAL_RUN_SELECTED_DIAGNOSTIC(self,selected)
+    finally:self._u86_suite_active=False
+
+_U86_ORIGINAL_DRAW_BAR_CHART=AppV43.draw_bar_chart
+def _u86_draw_bar_chart(self,canvas,items,title=""):
+    t=self.colors();canvas.delete("all")
+    w=max(200,canvas.winfo_width() or 500);h=max(120,canvas.winfo_height() or 180)
+    if title:canvas.create_text(12,12,text=title,anchor="w",fill=t["fg"],font=self.fnt(9,"bold"))
+    if not items:
+        canvas.create_text(w/2,h/2-8,text="TEST NIEZROBIONY — URUCHOM SKAN LUB BENCHMARK",fill=t["warn"],font=self.fnt(9,"bold"))
+        canvas.create_text(w/2,h/2+15,text="Brak próbki nie oznacza ani usterki, ani sprawności.",fill=t["muted"],font=self.fnt(8))
+        return
+    _U86_ORIGINAL_DRAW_BAR_CHART(self,canvas,items,title)
+
+def _u86_selftest_component_ui():
+    assert len(_U66_SCENES)==60 and len({x[0] for x in _U66_SCENES})==60
+    assert str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")
+    assert callable(_u86_stage_live_panel) and callable(_u86_launch_component_test)
+    assert callable(_u86_render_component_report) and callable(_u86_component_monitor_tick)
+    assert all(k in _U86_COMPONENT_KEYS for k in ("CPU","GPU","RAM","DYSK","VRAM","EKRAN","SECURITY","BATERIA","SIEĆ","USB","AUDIO","KLAWIATURA","KAMERA"))
+    assert any("NIEZROBIONY" in str(x) for x in _u86_draw_bar_chart.__code__.co_consts)
+    assert "cpu_power" in _u67_draw_history_chart.__code__.co_consts
+    print("COMPONENT_LIVE_UI_60_SCENE_SELFTEST_OK: 13 modules, independent controls, 6 live charts, sensors N/D")
+
+_u67_stage_live_panel=_u86_stage_live_panel
+_u67_run_selected_diagnostic=_u86_run_selected_diagnostic
+AppV43.show_module=_u86_show_module_with_component_workbench
+AppV43.show_simple_module=_u86_show_simple_module_with_component_workbench
+AppV43.show_battery_or_power=_u86_show_battery_with_component_workbench
+AppV43.draw_bar_chart=_u86_draw_bar_chart
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u66_selftest_advanced()
-        assert AppV43.show_module is _u84_show_module_with_gpu_live
+        _u86_selftest_component_ui()
+        assert AppV43.show_module is _u86_show_module_with_component_workbench
         assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
         assert callable(_u84_attach_gpu_live_panel)
         assert callable(_u84_gpu_live_tick)
