@@ -3131,7 +3131,7 @@ def _u66_selftest_advanced():
     _u78_selftest_component_lab()
     _u80_selftest_sound_hooks()
     assert AppV43.show_component_lab is _u78_show_component_lab
-    assert AppV43.show_module is _u69_show_module
+    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live)
     assert AppV43.show_simple_module is _u83_show_simple_module_speed_entry
     assert len(_U66_SCENES)==46 and len({scene[0] for scene in _U66_SCENES})==46
     assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
@@ -3570,6 +3570,8 @@ AppV43.show_simple_module = _u83_show_simple_module_speed_entry
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u66_selftest_advanced()
+        assert AppV43.show_module is _u84_show_module_with_gpu_live
+        assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
         assert callable(_u84_attach_gpu_live_panel)
         assert callable(_u84_gpu_live_tick)
         assert AppV43.show_module is _u84_show_module_with_gpu_live
