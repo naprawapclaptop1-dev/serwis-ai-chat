@@ -2478,7 +2478,7 @@ def _u69_selftest_component_workbenches():
         ("component launch", callable(_u69_launch_component_test)),
         ("disk benchmark", callable(_u69_disk_throughput_benchmark)),
         ("unique safe disk benchmark", callable(_u69_safe_disk_benchmark)),
-        ("simulator original delegate", "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names),
+        ("simulator original delegate", "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names or "_U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names),
         ("open function", "open" in _u69_safe_disk_benchmark.__code__.co_names),
         ("exclusive create mode", "xb" in _u69_safe_disk_benchmark.__code__.co_consts),
         ("RAM bandwidth", callable(_u69_ram_throughput_benchmark)),
@@ -2572,7 +2572,7 @@ def _u76_component_report_text(self):
         found, found_key = err, "COMPONENT_ERROR_" + module
     if not found:
         progress = str(getattr(self, "_u76_live_progress", "") or "")
-        return f"MODUŁ: {module} | TRYB: {mode.upper()}\\nStan: oczekiwanie na raport rzeczywistego testu.\\n{progress or 'Po zakończeniu skanu/benchmarku wynik zostanie pokazany tutaj.'}"
+        return f"MODUŁ: {module} | TRYB: {mode.upper()}\nStan: oczekiwanie na raport rzeczywistego testu.\n{progress or 'Po zakończeniu skanu/benchmarku wynik zostanie pokazany tutaj.'}"
     summary = {
         "module": module, "mode": mode, "result_key": found_key,
         "state": found.get("state", "N/D"), "sampled_at": found.get("sampled_at"),
@@ -2618,7 +2618,7 @@ def _u76_component_report_text(self):
         summary.update(found)
     raw = _u66_json.dumps(_u76_trim_report(summary), ensure_ascii=False, indent=2, default=str)
     progress = str(getattr(self, "_u76_live_progress", "") or "")
-    return f"RZECZYWISTY RAPORT • {module} • {mode.upper()} • klucz: {found_key}\\n" + (("Ostatni postęp: "+progress[:400]+"\\n") if progress else "") + raw[:14000]
+    return f"RZECZYWISTY RAPORT • {module} • {mode.upper()} • klucz: {found_key}\n" + (("Ostatni postęp: "+progress[:400]+"\n") if progress else "") + raw[:14000]
 
 def _u76_refresh_component_report(self):
     box = getattr(self, "_u76_result_text", None)
@@ -2684,7 +2684,7 @@ def _u76_disk_scan_selected_volume(self):
     var = getattr(self, "_u69_disk_drive_var", None)
     drive = str(var.get() if var else (drives[0] if drives else "N/D")).strip()
     if not drive: drive = drives[0] if drives else "N/D"
-    if len(drive) == 2 and drive[1] == ":": drive += "\\\\"
+    if len(drive) == 2 and drive[1] == ":": drive += "\\"
     usage, usage_error = None, None
     try: usage = __import__("shutil").disk_usage(drive)
     except Exception as exc: usage_error = f"{type(exc).__name__}: {exc}"
