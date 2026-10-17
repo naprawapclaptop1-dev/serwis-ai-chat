@@ -2883,6 +2883,7 @@ def _u66_selftest_advanced():
     _u69_selftest_component_workbenches()
     _u76_selftest_workbenches()
     _u78_selftest_component_lab()
+    _u80_selftest_sound_hooks()
     assert AppV43.show_component_lab is _u78_show_component_lab
     assert AppV43.show_module is _u69_show_module
     assert AppV43.show_simple_module is _u69_show_simple_module
@@ -2909,6 +2910,125 @@ AppV43.refresh_telemetry=_u66_refresh_telemetry
 _U66_ORIGINAL_INIT_FOR_SENSOR=AppV43.__init__
 AppV43.__init__=_u67_init_with_sensor_poll
 _u37_gpu_benchmark_child=_u66_scene_child
+
+
+# v4.3.80 — audible, distinct start/end signals for actual tests.
+# Short Windows beeps are synchronous and run from the test worker; they do not block the Tk UI.
+def _u80_test_sound(event):
+    try:
+        import winsound as _u80_winsound
+        if event == "start":
+            try:
+                _u80_winsound.Beep(880, 110)
+            except Exception:
+                _u80_winsound.MessageBeep(_u80_winsound.MB_ICONASTERISK)
+        else:
+            try:
+                _u80_winsound.Beep(660, 90)
+                _u80_winsound.Beep(988, 140)
+            except Exception:
+                _u80_winsound.MessageBeep(_u80_winsound.MB_OK)
+    except Exception:
+        # Sound hardware/Windows policy can disable beeps; never fail a diagnostic because of audio.
+        pass
+
+
+def _u80_run_with_sound(app, label, function, *args, **kwargs):
+    depth = int(getattr(app, "_u80_test_sound_depth", 0) or 0)
+    outermost = depth == 0
+    try:
+        app._u80_test_sound_depth = depth + 1
+    except Exception:
+        pass
+    if outermost:
+        _u80_test_sound("start")
+        try:
+            app.queue_log(f"DŹWIĘK TESTU: START — {label}")
+        except Exception:
+            pass
+    try:
+        return function(*args, **kwargs)
+    finally:
+        try:
+            new_depth = max(0, int(getattr(app, "_u80_test_sound_depth", 1) or 1) - 1)
+            app._u80_test_sound_depth = new_depth
+        except Exception:
+            new_depth = 0
+        if outermost:
+            _u80_test_sound("end")
+            try:
+                app.queue_log(f"DŹWIĘK TESTU: KONIEC — {label}")
+            except Exception:
+                pass
+
+
+def _u80_wrap_app_method(method_name):
+    original = getattr(AppV43, method_name, None)
+    if not callable(original) or getattr(original, "_u80_sound_wrapped", False):
+        return False
+    def wrapped(self, *args, **kwargs):
+        return _u80_run_with_sound(self, method_name, original, self, *args, **kwargs)
+    wrapped.__name__ = getattr(original, "__name__", method_name)
+    wrapped.__doc__ = getattr(original, "__doc__", None)
+    wrapped._u80_sound_wrapped = True
+    setattr(AppV43, method_name, wrapped)
+    return True
+
+
+def _u80_wrap_global(function_name, label=None):
+    original = globals().get(function_name)
+    if not callable(original) or getattr(original, "_u80_sound_wrapped", False):
+        return False
+    def wrapped(app, *args, **kwargs):
+        return _u80_run_with_sound(app, label or function_name, original, app, *args, **kwargs)
+    wrapped.__name__ = getattr(original, "__name__", function_name)
+    wrapped.__doc__ = getattr(original, "__doc__", None)
+    wrapped._u80_sound_wrapped = True
+    globals()[function_name] = wrapped
+    return True
+
+
+_U80_SOUND_METHODS = (
+    "_cpu_test",
+    "_ram_test",
+    "_gpu_test",
+    "_disk_test",
+    "_monitor_test",
+    "_security_test",
+    "_battery_test",
+    "_peripheral_test",
+    "_system_test",
+    "_selected_system_security_test",
+)
+_U80_SOUND_WRAPPED_METHODS = tuple(name for name in _U80_SOUND_METHODS if _u80_wrap_app_method(name))
+
+# Component-lab runs have their own worker entry point; depth tracking prevents a second
+# beep when the worker invokes one of the lower-level CPU/RAM/disk test methods.
+_U80_SOUND_COMPONENT_WORKER_WRAPPED = _u80_wrap_global("_u69_run_component_worker", "test komponentu / skan / benchmark")
+globals()["_u68_run_component_worker"] = globals().get("_u69_run_component_worker")
+
+# A full 3D suite emits one start/end pair per separately measured OpenGL scene.
+_U80_SOUND_3D_SCENE_WRAPPED = _u80_wrap_global("_u66_execute_gpu_scene", "pojedyncza scena benchmarku 3D")
+# The selected-test sequence calls the internet throughput function directly, outside the component worker.
+_U80_SOUND_SPEED_TEST_WRAPPED = _u80_wrap_global("_u67_run_visible_speed_test", "Internet Speed Test download/upload")
+
+
+def _u80_selftest_sound_hooks():
+    required = ("_cpu_test", "_ram_test", "_gpu_test", "_disk_test", "_monitor_test")
+    missing = [name for name in required if not getattr(getattr(AppV43, name, None), "_u80_sound_wrapped", False)]
+    checks = {
+        "core test methods wrapped": not missing,
+        "component worker wrapped": bool(_U80_SOUND_COMPONENT_WORKER_WRAPPED),
+        "each 3D scene wrapped": bool(_U80_SOUND_3D_SCENE_WRAPPED),
+        "selected-run speed test wrapped": bool(_U80_SOUND_SPEED_TEST_WRAPPED),
+        "distinct start/end tones": callable(_u80_test_sound),
+        "nested calls do not double beep": callable(_u80_run_with_sound),
+    }
+    failed = [name for name, passed in checks.items() if not passed]
+    if failed:
+        raise AssertionError("Test sound hook checks failed: " + ", ".join(failed) + (("; missing methods: " + ", ".join(missing)) if missing else ""))
+    print("TEST_SOUND_HOOKS_SELFTEST_OK: " + ", ".join(checks))
+
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
