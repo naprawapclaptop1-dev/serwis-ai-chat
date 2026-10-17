@@ -1487,7 +1487,7 @@ def _u66_run_3d_suite(self,seconds=5):
     results=[]
     for i,sc in enumerate(_U66_SCENES,1):
         if self._test_should_stop(): break
-        self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/{len(_U66_SCENES)} — {sc[0]}")
+        _u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/{len(_U66_SCENES)} — {sc[0]}")
         r=_u66_execute_gpu_scene(self,i,seconds); results.append(r)
         _u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
     good=sum(1 for r in results if r.get("state")=="good")
@@ -3127,36 +3127,36 @@ def _u78_selftest_component_lab():
 def _u66_selftest_advanced():
     assert len(_U66_SCENES)==60, "Studio must have 60 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
-    assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
-    assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
-    assert _U66_KNOWLEDGE_PACK_URL.startswith("https://raw.githubusercontent.com/")
-    assert callable(_u66_sync_knowledge_from_server)
+    assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED), "ADVANCED self-test check 1: all(x.get('source','').startswith('https://') for x in _U66_KNOWLEDGE_SEED)"
+    assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge", "ADVANCED self-test check 2: _U66_KNOWLEDGE_PACK_FORMAT == 'naprawapc-ai-reader-knowledge'"
+    assert _U66_KNOWLEDGE_PACK_URL.startswith("https://raw.githubusercontent.com/"), "ADVANCED self-test check 3: _U66_KNOWLEDGE_PACK_URL.startswith('https://raw.githubusercontent.com/')"
+    assert callable(_u66_sync_knowledge_from_server), "ADVANCED self-test check 4: callable(_u66_sync_knowledge_from_server)"
     ranked=_u66_rank_knowledge("temperatura CPU GPU",limit=5)
-    assert ranked and any("temperatura" in str(x.get("title","")).lower() for x in ranked)
-    assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed)
-    assert callable(AppV43.show_speed_test) and callable(_u66_show_speed_test)
-    assert "DOWNLOAD" in " ".join(str(x) for x in _u66_show_speed_test.__code__.co_consts)
-    assert callable(_u66_scene_child)
-    assert callable(_u66_run_all_tests_worker)
-    assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)
-    assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)
-    assert callable(_u67_set_suite_status)
-    assert len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES)
-    assert "900 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s")
-    assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)
-    assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)
-    assert callable(_u68_show_games_advisor)
+    assert ranked and any("temperatura" in str(x.get("title","")).lower() for x in ranked), "ADVANCED self-test check 5: ranked and any('temperatura' in str(x.get('title','')).lower() for x in ranked)"
+    assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed), "ADVANCED self-test check 6: callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed"
+    assert callable(AppV43.show_speed_test) and callable(_u66_show_speed_test), "ADVANCED self-test check 7: callable(AppV43.show_speed_test) and callable(_u66_show_speed_test)"
+    assert "DOWNLOAD" in " ".join(str(x) for x in _u66_show_speed_test.__code__.co_consts), "ADVANCED self-test check 8: 'DOWNLOAD' in ' '.join(str(x) for x in _u66_show_speed_test.__code__.co_consts)"
+    assert callable(_u66_scene_child), "ADVANCED self-test check 9: callable(_u66_scene_child)"
+    assert callable(_u66_run_all_tests_worker), "ADVANCED self-test check 10: callable(_u66_run_all_tests_worker)"
+    assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic), "ADVANCED self-test check 11: callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)"
+    assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel), "ADVANCED self-test check 12: callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)"
+    assert callable(_u67_set_suite_status), "ADVANCED self-test check 13: callable(_u67_set_suite_status)"
+    assert len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES), "ADVANCED self-test check 14: len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES)"
+    assert "900 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s"), "ADVANCED self-test check 15: '900 s' in ('3 s','5 s','10 s','20 s','30 s','60 s','120 s','180 s','300 s','600 s','900 s"
+    assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator), "ADVANCED self-test check 16: callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)"
+    assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene), "ADVANCED self-test check 17: callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)"
+    assert callable(_u68_show_games_advisor), "ADVANCED self-test check 18: callable(_u68_show_games_advisor)"
     _u69_selftest_component_workbenches()
     _u76_selftest_workbenches()
     _u78_selftest_component_lab()
     _u80_selftest_sound_hooks()
-    assert AppV43.show_component_lab is _u78_show_component_lab
-    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench)
-    assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench)
-    assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60
-    assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
-    assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts
-    assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps"
+    assert AppV43.show_component_lab is _u78_show_component_lab, "ADVANCED self-test check 19: AppV43.show_component_lab is _u78_show_component_lab"
+    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench), "ADVANCED self-test check 20: AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_"
+    assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench), "ADVANCED self-test check 21: AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module"
+    assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60"
+    assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic, "ADVANCED self-test check 23: AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic"
+    assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
+    assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
     print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 60 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
 
 # Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
@@ -3659,6 +3659,40 @@ def _u86_stage_live_panel(self,index,total,title):
         out.pack(fill="x",padx=5,pady=(0,5));out.configure(state="disabled");self._u86_result_text=out
         _u86_render_component_report(self,module)
     _u67_refresh_visible_charts(self)
+    self._u86_stage_live_token = int(getattr(self, "_u86_stage_live_token", 0)) + 1
+    token = self._u86_stage_live_token
+    try:
+        self.after(350, lambda token=token: _u86_stage_live_tick(self, token))
+    except Exception:
+        pass
+
+def _u86_stage_live_tick(self, token):
+    if getattr(self, "_u86_stage_live_token", None) != token:
+        return
+    panel = getattr(self, "_u67_stage_panel", None)
+    try:
+        if panel is None or not panel.winfo_exists():
+            return
+    except Exception:
+        return
+    try:
+        _u67_refresh_visible_charts(self)
+        # Keep hardware telemetry fresh while a long test is running in a worker thread.
+        if not getattr(self, "_u84_gpu_poll_busy", False) and (
+            _u66_time.monotonic() - float(getattr(self, "_u86_gpu_poll_time", 0) or 0) >= 3
+        ):
+            self._u86_gpu_poll_time = _u66_time.monotonic()
+            _u84_gpu_poll_now(self)
+    except Exception as exc:
+        try:
+            self.append_log("Live test sampler: " + repr(exc))
+        except Exception:
+            pass
+    try:
+        self.after(1000, lambda token=token: _u86_stage_live_tick(self, token))
+    except Exception:
+        pass
+
 
 def _u86_result_for_component(self,module):
     resultset=getattr(self,"results",{}) or {}
@@ -4265,7 +4299,7 @@ def _u90_run_vram_profile_worker(self, requested_mb, seconds, open_gpu_after=Fal
     final_state="warn"
     try:
         self._u41_vram_test_running=True
-        self._u66_set_suite_status(self,f"VRAM: profil {seconds} s, żądana alokacja {requested} MB.")
+        _u66_set_suite_status(self,f"VRAM: profil {seconds} s, żądana alokacja {requested} MB.")
         while pass_index==0 or (_u66_time.monotonic()-overall_start)<seconds:
             if self._test_should_stop():
                 final_state="warn"
@@ -4402,10 +4436,14 @@ _u66_show_3d_studio = _u90_show_3d_studio
 AppV43.show_3d_studio = _u90_show_3d_studio
 AppV43.show_speed_test = _u90_show_speed_test
 AppV43._u41_start_vram_test = _u90_start_vram_profile_test
+AppV43._u66_ui_wait = _u66_ui_wait
+AppV43._u66_set_suite_status = _u66_set_suite_status
 
 
 def _u90_selftest_release_fixes():
-    assert "_u66_ui_wait" in _u90_run_3d_suite.__code__.co_names
+    assert callable(AppV43._u66_ui_wait), "Missing AppV43._u66_ui_wait compatibility binding"
+    assert callable(AppV43._u66_set_suite_status), "Missing AppV43._u66_set_suite_status compatibility binding"
+    assert "self" not in _u90_run_3d_suite.__code__.co_names
     assert "self" not in _u90_run_3d_suite.__code__.co_names
     assert "KRÓTKI — 15 s" in _U68_PROFILE_CHOICES
     assert "ŚREDNI — 60 s" in _U68_PROFILE_CHOICES
