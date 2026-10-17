@@ -95,7 +95,17 @@ _U66_SCENES = [
 ("33 — Pokój z wieloma obiektami", "room", 140),
 ("34 — Instancje geometryczne", "cubes", 220),
 ("35 — Podwójna geometria MAX", "mixed", 360),
-("36 — ULTRA MAX — render mieszany", "ultimate", 720)
+("36 — ULTRA MAX — render mieszany", "ultimate", 720),
+("37 — ULTRA: fale geometrii", "waves", 46),
+("38 — Pole sfer XL", "spheres", 64),
+("39 — Torusy wielowarstwowe MAX", "torus", 48),
+("40 — Labirynt wireframe", "wire", 46),
+("41 — Chłodzenie GPU — geometria", "gpu", 60),
+("42 — Laboratorium materiałów ULTRA", "materials", 92),
+("43 — Pole cząstek MAX", "particles", 96),
+("44 — Instancje sześcianów MAX", "cubes", 100),
+("45 — Siatka trójkątów MAX", "triangles_extreme", 9000),
+("46 — Ultimate mixed geometry MAX", "ultimate", 700)
 ]
 
 
@@ -1005,7 +1015,7 @@ def _u66_show_tests_hub(self):
     t=self.colors()
     self.header_title.config(text="CENTRUM TESTÓW — AUTOMATYCZNE, LIVE I SERWIS")
     banner=self.panel(self.content); banner.pack(fill="x",pady=(0,7))
-    tk.Label(banner,text="TESTY SPRZĘTOWE • SPEED TEST • 36 SCEN 3D • AI CZYTNIK • NAPRAWA WINDOWS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(banner,text=f"TESTY SPRZĘTOWE • SPEED TEST • {len(_U66_SCENES)} SCEN 3D • AI CZYTNIK • NAPRAWA WINDOWS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
     tk.Label(banner,text="„WSZYSTKIE TESTY PO KOLEI” przełącza ekran do aktualnie wykonywanego testu. Wyniki oznaczane są PASS/WARN/FAIL/N/D na podstawie dostępnych pomiarów; brak sensora nie jest zaliczeniem.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
     outer=tk.Frame(self.content,bg=t["bg"]); outer.pack(fill="both",expand=True)
     c=tk.Canvas(outer,bg=t["bg"],highlightthickness=0)
@@ -1017,10 +1027,10 @@ def _u66_show_tests_hub(self):
     c.configure(yscrollcommand=sb.set)
     c.pack(side="left",fill="both",expand=True); sb.pack(side="right",fill="y")
     items=[
-      ("WSZYSTKIE TESTY PO KOLEI","Automatyczny przebieg CPU → RAM → GPU → 36 scen 3D → SSD/HDD → matryca → sieć Speed Test → bezpieczeństwo → bateria/USB. Ekran zmienia się na każdym etapie; około 2–4 minuty.","ALL"),
+      ( "WSZYSTKIE TESTY PO KOLEI", f"Automatyczny przebieg CPU → RAM → GPU → {len(_U66_SCENES)} scen 3D → SSD/HDD → matryca → sieć Speed Test → bezpieczeństwo → bateria/USB. Każdy etap ma raport; czas zależy od wybranego profilu.", "ALL"),
       ("MONITOR LIVE — WSZĘDZIE","CPU/RAM/GPU, zegary, transfer dysku i sieci, temperatury/czujniki z rzeczywistą próbką co sekundę.","LIVE"),
       ("SPEED TEST INTERNETU","Pomiar prawdziwego download/upload w Mbps oraz opóźnienia HTTP; zapis historii lokalnie.","SPEED"),
-      ("3D BENCHMARK STUDIO — 36 SCEN","20 różnych proceduralnych scen OpenGL; FPS jest mierzony z renderowania, renderer i czas trafiają do raportu.","3D"),
+      (f"3D BENCHMARK STUDIO — {len(_U66_SCENES)} SCEN", f"{len(_U66_SCENES)} proceduralnych scen OpenGL; FPS jest mierzony z renderowania, renderer i czas trafiają do raportu.", "3D"),
       ("AI CZYTNIK WIEDZY","Baza offline, wyszukiwanie Internetu, czytanie URL, import plików i zapis źródeł do prywatnej biblioteki.","AI"),
       ("CENTRUM SERWISU + SYSTEM REPAIR","SFC, DISM, CHKDSK, raport baterii, narzędzia Windows oraz prywatne zgłoszenia.","CENTRUM"),
       ("CPU — obciążenie i zegary","Rzeczywiste obciążenie etapowe, częstotliwość i wykres próbek.","CPU"),
@@ -1245,7 +1255,7 @@ def _u66_show_3d_studio(self):
     self.header_title.config(text=f"3D BENCHMARK STUDIO — {len(_U66_SCENES)} SCEN")
     info=self.panel(self.content); info.pack(fill="x",pady=(0,7))
     tk.Label(info,text="RZECZYWISTE RENDEROWANIE OPENGL • ŚREDNI FPS • PEAK 1 s • RENDERER • CZAS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
-    tk.Label(info,text="Profile 36 scen proceduralnych badają różne obciążenia geometrii. Nie są wynikami gier ani porównaniem sprzętu między różnymi API i rozdzielczościami.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    tk.Label(info,text=f"Profile {len(_U66_SCENES)} scen proceduralnych badają różne obciążenia geometrii. Nie są wynikami gier ani porównaniem sprzętu między różnymi API i rozdzielczościami.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
     options=tk.Frame(self.content,bg=t["bg"]); options.pack(fill="x",pady=4)
     names=[f"{i+1:02d} — {sc[0].split('—',1)[-1].strip()}" for i,sc in enumerate(_U66_SCENES)]
     self._u66_scene_var=tk.StringVar(value=names[0])
@@ -1318,7 +1328,7 @@ def _u66_start_all_tests(self):
     if getattr(self,"running",False):
         messagebox.showinfo("Testy","Inny test już trwa. Poczekaj, aż się zakończy.")
         return
-    if not messagebox.askyesno("Wszystkie testy po kolei","Uruchomić pełny przebieg: CPU, RAM, GPU, 36 scen 3D, dysk, matryca, Internet Speed Test, bezpieczeństwo, bateria i urządzenia USB/sieć? Sceny 3D zajmą około 100 sekund, a test sieci zużyje około 23,5 MB. Test można zatrzymać klawiszem ESC."):
+    if not messagebox.askyesno("Wszystkie testy po kolei",f"Uruchomić pełny przebieg: CPU, RAM, GPU, {len(_U66_SCENES)} scen 3D, VRAM, dysk, matryca, Internet Speed Test, bezpieczeństwo, bateria i urządzenia USB/sieć? Każda scena renderuje przez 10 s (minimum {len(_U66_SCENES)*10} s samego GPU); test sieci przesyła około 24 MB. Można zatrzymać klawiszem ESC."):
         return
     self.worker(self._u66_run_all_tests_worker)
 
@@ -1342,7 +1352,7 @@ def _u66_run_all_tests_worker(self):
     stage(1,total,"CPU — obciążenie i zegary",lambda:self.show_module("CPU"),lambda:self._cpu_test(8))
     stage(2,total,"RAM — wzorce",lambda:self.show_module("RAM"),lambda:self._ram_test(256))
     stage(3,total,"GPU — adapter i sterownik",lambda:self.show_module("GPU"),self._gpu_test)
-    stage(4,total,"3D Benchmark — 36 scen po kolei",lambda:_u66_show_3d_studio(self),lambda:_u66_run_3d_suite(self,10))
+    stage(4,total,f"3D Benchmark — {len(_U66_SCENES)} scen po kolei",lambda:_u66_show_3d_studio(self),lambda:_u66_run_3d_suite(self,10))
     stage(5,total,"SSD/HDD — odczyt i zapis",lambda:self.show_module("DYSK"),lambda:self._disk_test(128))
     stage(6,total,"Matryca — EDID",lambda:self.show_module("EKRAN"),self._monitor_test)
     def net_job():
@@ -1591,7 +1601,7 @@ def _u67_run_selected_diagnostic(self, selected):
     for entry in chosen:
         expanded.append(entry)
         if entry[0] == "GPU":
-            expanded.append(("__3D__", "3D Benchmark Studio — 36 scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
+            expanded.append(("__3D__", f"3D Benchmark Studio — {len(_U66_SCENES)} scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
         if entry[0] == "SIEC":
             expanded.append(("__USB__", "USB — enumeracja urządzeń", lambda: self.show_simple_module("USB / URZĄDZENIA"), lambda: self._peripheral_test("USB"), ["USB"]))
     started = _U66_datetime.now().isoformat(timespec="seconds")
@@ -1734,7 +1744,7 @@ def _u68_attach_component_workbench(self,module):
         self.make_button(row,"SYMULATOR 3D",lambda m=module:_u68_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=5)
         if module=="GPU":
             self.make_button(row,"TEST VRAM",lambda:_u68_open_vram_test(self),"card",side="left",ipady=5)
-            self.make_button(row,"36 SCEN 3D",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
+            self.make_button(row,f"{len(_U66_SCENES)} SCEN 3D",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
     except Exception as exc:
         try:self.append_log("Nie udało się dodać panelu testów komponentu: "+repr(exc))
         except Exception:pass
@@ -2019,9 +2029,9 @@ def _u68_show_games_advisor(self):
       ("Alan Wake 2 / inne wymagające tytuły","Najniższy zgodny preset; wymagania sprawdź dla wersji gry","To nie jest gwarancja zgodności ani uruchomienia.")
     ]
     for item in titles:tree.insert("","end",values=item)
-    tk.Label(self.content,text="Przed ustawieniem Ultra: wykonaj 36 scen OpenGL, test VRAM i odczyt RAM. FPS proceduralnego OpenGL nie jest przelicznikiem FPS w grze. Profile są wskazówką, nie gwarancją wydajności.",bg=t["bg"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(fill="x",padx=5,pady=5)
+    tk.Label(self.content,text=f"Przed ustawieniem Ultra: wykonaj {len(_U66_SCENES)} scen OpenGL, test VRAM i odczyt RAM. FPS proceduralnego OpenGL nie jest przelicznikiem FPS w grze. Profile są wskazówką, nie gwarancją wydajności.",bg=t["bg"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(fill="x",padx=5,pady=5)
     row=tk.Frame(self.content,bg=t["bg"]);row.pack(fill="x")
-    self.make_button(row,"▶ URUCHOM 36 SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"accent",side="left",ipady=5)
+    self.make_button(row,f"▶ URUCHOM {len(_U66_SCENES)} SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"accent",side="left",ipady=5)
     self.make_button(row,"▶ TEST VRAM",lambda:_u68_open_vram_test(self),"card",side="left",ipady=5)
     self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=5)
 
@@ -2097,7 +2107,7 @@ def _u69_attach_workbench(self,module):
         self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=5)
         if module=="GPU":
             self.make_button(row,"TEST VRAM 3D",lambda:_u69_open_vram_test(self),"card",side="left",ipady=5)
-            self.make_button(row,"STUDIO GPU 36 SCEN",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
+            self.make_button(row,f"STUDIO GPU {len(_U66_SCENES)} SCEN",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
         if module=="EKRAN" and hasattr(self,"_u37_open_screen_test"):
             self.make_button(row,"TEST PIKSELI",self._u37_open_screen_test,"card",side="left",ipady=5)
     except Exception as exc:
@@ -2341,13 +2351,11 @@ def _u69_run_component_worker(self,module,mode):
             else:_u69_ram_throughput_benchmark(self,_u68_selected_mb(self,"ram"),seconds)
         elif module=="DYSK":
             if mode=="scan":
-                devices=get_physical_disks();reliability=get_storage_reliability()
-                self.queue_results("COMPONENT_SCAN_DYSK",{"state":"good" if devices else "warn","devices":devices,"reliability":reliability,"sampled_at":_U66_datetime.now().isoformat(timespec="seconds")})
-                self.queue_log(f"DYSK SCAN: wykryto {len(devices)} fizycznych urządzeń i {len(reliability)} rekordów SMART/reliability.")
+                _u76_disk_scan_selected_volume(self)
             else:_u69_disk_throughput_benchmark(self,_u68_selected_mb(self,"disk"),seconds)
         elif module=="GPU":
             if mode=="scan":self._gpu_test()
-            else:self.queue_log("GPU benchmark uruchamia rzeczywiste 36 scen OpenGL — ekran 3D Benchmark Studio.")
+            else:self.queue_log(f"GPU benchmark uruchamia rzeczywiste {len(_U66_SCENES)} scen OpenGL — ekran 3D Benchmark Studio.")
         elif module=="VRAM":
             if mode=="scan":
                 gpus=get_gpu_info();main=primary_gpu(gpus) if gpus else {}
@@ -2498,8 +2506,221 @@ AppV43.show_simple_module=_u69_show_simple_module
 AppV43.show_battery_or_power=_u69_show_battery_module
 if hasattr(AppV43,"_u41_set_vram_status"):AppV43._u41_set_vram_status=_u69_vram_status
 
+
+# v4.3.76 — persistent per-component result reports and visible live telemetry.
+_U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR = _u69_open_component_simulator
+_U76_ORIGINAL_SIM_METRICS_TICK = _u68_sim_metrics_tick
+_U76_ORIGINAL_COMPONENT_WORKER = _u69_run_component_worker
+_U76_ORIGINAL_STATUS_TEXT = _u69_status_text
+
+def _u76_component_result_keys(module, mode):
+    scan = {
+        "CPU": ("COMPONENT_SCAN_CPU", "CPU"),
+        "RAM": ("COMPONENT_SCAN_RAM", "RAM"),
+        "DYSK": ("COMPONENT_SCAN_DYSK", "DISK_BENCHMARK", "DYSK"),
+        "GPU": ("GPU", "GPU_WINSAT"),
+        "VRAM": ("COMPONENT_SCAN_VRAM", "VRAM_TEST"),
+        "EKRAN": ("EKRAN",),
+        "SECURITY": ("SECURITY",),
+        "BATERIA": ("BATERIA", "BATTERY_BENCHMARK"),
+        "SIEĆ": ("NETWORK", "SPEED_TEST"),
+        "USB": ("USB",), "AUDIO": ("AUDIO",),
+        "KLAWIATURA": ("INPUTS", "KLAWIATURA"), "KAMERA": ("CAMERA",)
+    }
+    benchmark = {
+        "CPU": ("CPU",), "RAM": ("RAM_BENCHMARK", "RAM"),
+        "DYSK": ("DISK_BENCHMARK", "DYSK"), "GPU": ("3D_SUITE", "GPU", "GPU_WINSAT"),
+        "VRAM": ("VRAM_TEST",), "EKRAN": ("EKRAN",), "SECURITY": ("SECURITY",),
+        "BATERIA": ("BATTERY_BENCHMARK", "BATERIA"), "SIEĆ": ("SPEED_TEST", "NETWORK"),
+        "USB": ("USB",), "AUDIO": ("AUDIO",),
+        "KLAWIATURA": ("INPUTS", "KLAWIATURA"), "KAMERA": ("CAMERA",)
+    }
+    return (scan if mode == "scan" else benchmark).get(module, (module,))
+
+def _u76_trim_report(value, depth=0):
+    if depth >= 4:
+        return str(value)[:250]
+    if isinstance(value, dict):
+        out = {}
+        for key, item in value.items():
+            if key in ("samples", "fps_samples") and isinstance(item, list):
+                out[key] = {"count": len(item), "first": item[:3], "last": item[-3:]}
+            else:
+                out[str(key)] = _u76_trim_report(item, depth + 1)
+        return out
+    if isinstance(value, (list, tuple)):
+        if len(value) > 12:
+            return {"count": len(value), "first": [_u76_trim_report(x, depth+1) for x in value[:6]],
+                    "last": [_u76_trim_report(x, depth+1) for x in value[-3:]]}
+        return [_u76_trim_report(x, depth+1) for x in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)[:500]
+
+def _u76_component_report_text(self):
+    module = str(getattr(self, "_u76_component_module", "") or str(getattr(self, "current_view", "")).replace("SIM3D_", ""))
+    mode = str(getattr(self, "_u76_component_mode", "scan"))
+    results = getattr(self, "results", {}) or {}
+    found, found_key = None, None
+    for key in _u76_component_result_keys(module, mode):
+        item = results.get(key)
+        if isinstance(item, dict) and item:
+            found, found_key = item, key
+            break
+    err = getattr(self, "_u69_last_component_error", None)
+    if isinstance(err, dict) and err.get("module") == module:
+        found, found_key = err, "COMPONENT_ERROR_" + module
+    if not found:
+        progress = str(getattr(self, "_u76_live_progress", "") or "")
+        return f"MODUŁ: {module} | TRYB: {mode.upper()}\\nStan: oczekiwanie na raport rzeczywistego testu.\\n{progress or 'Po zakończeniu skanu/benchmarku wynik zostanie pokazany tutaj.'}"
+    summary = {
+        "module": module, "mode": mode, "result_key": found_key,
+        "state": found.get("state", "N/D"), "sampled_at": found.get("sampled_at"),
+        "note": found.get("note"), "message": found.get("message"), "error": found.get("error"),
+    }
+    if module == "CPU":
+        cpu = found.get("cpu") or getattr(self, "cpu", {}) or {}
+        summary.update({"model":cpu.get("Name",cpu.get("name","N/D")),"logical_threads":os.cpu_count(),
+                        "physical_cores":cpu.get("NumberOfCores","N/D"),"stages":found.get("stages",[])})
+    elif module == "RAM":
+        vm = found.get("benchmark", found)
+        summary.update({"installed_bytes":found.get("total_bytes"),"available_bytes":found.get("available_bytes"),
+                        "used_percent":found.get("used_percent"),"buffer_mb":vm.get("buffer_mb",vm.get("size_mb")),
+                        "read_MBps":vm.get("read_MBps"),"write_MBps":vm.get("write_MBps"),"passes":vm.get("passes"),
+                        "bytes_verified":vm.get("bytes_verified"),"verification":vm.get("verification")})
+    elif module == "DYSK":
+        usage = found.get("volume_usage") or {}
+        summary.update({"target_volume":found.get("target_volume",found.get("root","N/D")),
+                        "volume_total_bytes":usage.get("total"),"volume_used_bytes":usage.get("used"),
+                        "volume_free_bytes":usage.get("free"),"volume_percent":usage.get("percent"),
+                        "physical_devices_count":len(found.get("devices",[])),"physical_devices":found.get("devices",[]),
+                        "reliability":found.get("reliability",[]),"benchmark":found.get("benchmark",{}),
+                        "passes":found.get("passes"),"duration_seconds":found.get("duration_seconds"),
+                        "samples":found.get("samples",[])})
+    elif module == "GPU":
+        gpus = getattr(self, "gpus", []) or []
+        summary.update({"gpu":(primary_gpu(gpus) or {}).get("Name","N/D"),"renderer":found.get("renderer"),
+                        "opengl_version":found.get("opengl_version"),"completed_scenes":found.get("completed",found.get("completed_scenes")),
+                        "average_fps":found.get("average_fps"),"scene_results":found.get("scenes",[])})
+    elif module == "VRAM":
+        summary.update({"gpu":(found.get("gpu") or {}).get("Name","N/D"),"vram_inventory":found.get("vram_inventory"),
+                        "requested_mb":found.get("requested_mb"),"allocated_mb":found.get("allocated_mb"),
+                        "patterns_completed":found.get("patterns_completed"),"patterns_total":found.get("patterns_total"),
+                        "bytes_verified":found.get("bytes_verified")})
+    elif module == "SIEĆ":
+        summary.update({"download_mbps":found.get("download_mbps"),"upload_mbps":found.get("upload_mbps"),
+                        "latency_average_ms":found.get("latency_average_ms"),"data_bytes":found.get("data_bytes")})
+    elif module == "BATERIA":
+        summary.update({"start_percent":found.get("start_percent"),"end_percent":found.get("end_percent"),
+                        "delta_percent":found.get("delta_percent"),"duration_seconds":found.get("duration_seconds"),
+                        "samples":found.get("samples",[])})
+    elif module in ("EKRAN","SECURITY","USB","AUDIO","KLAWIATURA","KAMERA"):
+        summary.update(found)
+    raw = _u66_json.dumps(_u76_trim_report(summary), ensure_ascii=False, indent=2, default=str)
+    progress = str(getattr(self, "_u76_live_progress", "") or "")
+    return f"RZECZYWISTY RAPORT • {module} • {mode.upper()} • klucz: {found_key}\\n" + (("Ostatni postęp: "+progress[:400]+"\\n") if progress else "") + raw[:14000]
+
+def _u76_refresh_component_report(self):
+    box = getattr(self, "_u76_result_text", None)
+    if box is None or not box.winfo_exists(): return
+    try:
+        value = _u76_component_report_text(self)
+        if getattr(self, "_u76_last_report_text", None) == value: return
+        self._u76_last_report_text = value
+        box.configure(state="normal"); box.delete("1.0", "end"); box.insert("1.0", value); box.configure(state="disabled")
+    except Exception as exc:
+        try:
+            box.configure(state="normal"); box.delete("1.0", "end")
+            box.insert("1.0", "Nie udało się wyświetlić raportu: " + repr(exc)); box.configure(state="disabled")
+        except Exception: pass
+
+def _u76_open_component_simulator(self, module, run_test=False, mode="scan"):
+    _U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR(self, module, run_test, mode)
+    try:
+        self._u76_component_module = str(module); self._u76_component_mode = str(mode)
+        self._u76_live_progress = ""; self._u76_last_report_text = None
+        for canvas_name in ("_u67_stage_chart_hw", "_u67_stage_chart_io"):
+            canvas = getattr(self, canvas_name, None)
+            if canvas is not None and canvas.winfo_exists(): canvas.configure(height=118)
+        panel = tk.Frame(self.content, bg=self.colors()["panel"], highlightbackground=self.colors()["accent"], highlightthickness=1)
+        panel.pack(fill="both", expand=True, padx=3, pady=(2,4))
+        tk.Label(panel, text="RAPORT SKANU / BENCHMARKU — RZECZYWISTE DANE", bg=self.colors()["panel"], fg=self.colors()["accent"], font=self.fnt(9,"bold"), anchor="w").pack(fill="x", padx=8, pady=(4,1))
+        frame = tk.Frame(panel, bg=self.colors()["panel"]); frame.pack(fill="both", expand=True, padx=5, pady=(0,4))
+        box = tk.Text(frame, height=5, wrap="word", bg=self.colors()["card"], fg=self.colors()["fg"], insertbackground=self.colors()["fg"], relief="flat", font=("Consolas",8), padx=6, pady=5)
+        sb = ttk.Scrollbar(frame, orient="vertical", command=box.yview); box.configure(yscrollcommand=sb.set)
+        box.pack(side="left", fill="both", expand=True); sb.pack(side="right", fill="y")
+        box.configure(state="disabled"); self._u76_result_text = box
+        self.after(160, lambda: _u76_refresh_component_report(self))
+    except Exception as exc:
+        try: self.append_log("Panel raportu modułu: " + repr(exc))
+        except Exception: pass
+
+def _u76_run_component_worker(self, module, mode):
+    self._u76_component_module = str(module); self._u76_component_mode = str(mode)
+    self._u76_live_progress = f"Start: {module} — {mode.upper()}"
+    try: return _U76_ORIGINAL_COMPONENT_WORKER(self, module, mode)
+    finally:
+        try: self.queue_action(lambda: _u76_refresh_component_report(self))
+        except Exception: pass
+
+def _u76_status_text(self, message):
+    self._u76_live_progress = str(message)
+    try: _U76_ORIGINAL_STATUS_TEXT(self, message)
+    except Exception: pass
+    try: self.queue_action(lambda: _u76_refresh_component_report(self))
+    except Exception: pass
+
+def _u76_sim_metrics_tick(self):
+    if not str(getattr(self, "current_view", "")).startswith("SIM3D_"): return
+    try: _u67_refresh_visible_charts(self)
+    except Exception: pass
+    try: _u76_refresh_component_report(self)
+    except Exception: pass
+    try: self.after(1000, lambda: _u76_sim_metrics_tick(self))
+    except Exception: pass
+
+def _u76_disk_scan_selected_volume(self):
+    drives = _u69_drive_options(self)
+    var = getattr(self, "_u69_disk_drive_var", None)
+    drive = str(var.get() if var else (drives[0] if drives else "N/D")).strip()
+    if not drive: drive = drives[0] if drives else "N/D"
+    if len(drive) == 2 and drive[1] == ":": drive += "\\\\"
+    usage, usage_error = None, None
+    try: usage = __import__("shutil").disk_usage(drive)
+    except Exception as exc: usage_error = f"{type(exc).__name__}: {exc}"
+    volume_usage = {"total":getattr(usage,"total",None),"used":getattr(usage,"used",None),"free":getattr(usage,"free",None),
+                    "percent":round(usage.used/usage.total*100,2) if usage and usage.total else None,"error":usage_error}
+    devices = get_physical_disks(); reliability = get_storage_reliability()
+    result = {"state":"good" if devices and not usage_error else "warn","target_volume":drive,"volume_usage":volume_usage,
+              "devices":devices,"reliability":reliability,"sampled_at":_U66_datetime.now().isoformat(timespec="seconds"),
+              "note":"Skan identyfikacyjny woluminu i nośników; nie jest to destrukcyjny test sektorowy."}
+    self.queue_results("COMPONENT_SCAN_DYSK", result)
+    self.queue_log(f"DYSK SKAN {drive}: {len(devices)} fizycznych urządzeń; użycie {volume_usage.get('percent','N/D')}%; wolne {volume_usage.get('free','N/D')} bajtów.")
+    return result
+
+def _u76_selftest_workbenches():
+    assert len(_U66_SCENES) == 46 and len({str(x[0]) for x in _U66_SCENES}) == 46
+    assert callable(_u76_component_report_text) and callable(_u76_refresh_component_report)
+    assert callable(_u76_open_component_simulator) and callable(_u76_run_component_worker)
+    assert callable(_u76_disk_scan_selected_volume)
+    assert "COMPONENT_SCAN_DYSK" in _u76_component_result_keys("DYSK", "scan")
+    assert "DISK_BENCHMARK" in _u76_component_result_keys("DYSK", "benchmark")
+    assert "RAM_BENCHMARK" in _u76_component_result_keys("RAM", "benchmark")
+    assert "VRAM_TEST" in _u76_component_result_keys("VRAM", "benchmark")
+    assert "3D_SUITE" in _u76_component_result_keys("GPU", "benchmark")
+    print("COMPONENT_REPORT_46_SCENES_SELFTEST_OK")
+
+_U69_ORIGINAL_COMPONENT_WORKER = _u69_run_component_worker
+_U69_ORIGINAL_STATUS_TEXT_V76 = _u69_status_text
+_u69_open_component_simulator = _u76_open_component_simulator
+_u68_open_component_simulator = _u76_open_component_simulator
+_u69_run_component_worker = _u76_run_component_worker
+_u68_run_component_worker = _u76_run_component_worker
+_u69_status_text = _u76_status_text
+_u68_sim_metrics_tick = _u76_sim_metrics_tick
+
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==36, "Studio must have 36 separately named scenes"
+    assert len(_U66_SCENES)==46, "Studio must have 46 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED)
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge"
@@ -2512,19 +2733,20 @@ def _u66_selftest_advanced():
     assert callable(_u66_run_all_tests_worker)
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)
     assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)
-    assert len(_U66_SCENES)==36 and all(sc[1] for sc in _U66_SCENES)
+    assert len(_U66_SCENES)==46 and all(sc[1] for sc in _U66_SCENES)
     assert "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")
     assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)
     assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)
     assert callable(_u68_show_games_advisor)
     _u69_selftest_component_workbenches()
+    _u76_selftest_workbenches()
     assert AppV43.show_module is _u69_show_module
     assert AppV43.show_simple_module is _u69_show_simple_module
-    assert len(_U66_SCENES)==36 and all(scene[0] for scene in _U66_SCENES)
+    assert len(_U66_SCENES)==46 and len({scene[0] for scene in _U66_SCENES})==46
     assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps"
-    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, independent component tests, 36 OpenGL scenes ULTRA/MAX, 3D schematics, game graphics advisor, AI reader")
+    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, independent component tests, 46 OpenGL scenes ULTRA/MAX, 3D schematics, game graphics advisor, AI reader")
 
 # Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
 _U66_ORIGINAL_REFRESH_TELEMETRY=AppV43.refresh_telemetry
