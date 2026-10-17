@@ -24,3 +24,6 @@ AKTUALIZACJE Z INNEGO KOMPUTERA
 TESTY I GRANICE
 - SELFTEST_THEMES_UPDATE.bat sprawdza liczbę i unikalność skórek, logikę updatera oraz test nazw antywirusów.
 - Zestaw wymaga testów końcowych na prawdziwym Windows. Pomiary GPU/VRAM zależą od sterownika i dostępnej pamięci i nie gwarantują sprawdzenia każdej fizycznej komórki VRAM.
+
+LABORATORIUM PODZESPOŁÓW
+Otwórz Centrum Testów i wybierz „LABORATORIUM PODZESPOŁÓW — 13 MODUŁÓW”. Każdy moduł ma niezależne przyciski SKAN + LIVE 3D, TEST/BENCHMARK lub TEST FUNKCJONALNY oraz SAMO SYMULATOR 3D. Profile testów obejmują 15, 60, 180 i 300 sekund; GPU obsługuje 46 scen OpenGL. Wynik pomiaru jest oddzielony od schematycznej wizualizacji 3D. Zobacz CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md.

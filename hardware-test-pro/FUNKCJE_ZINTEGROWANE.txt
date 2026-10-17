@@ -10,3 +10,10 @@ KLAWIATURA, MYSZ, KAMERA, MIKROFON, GŁOŚNIKI: testy wejść, podglądu i prób
 BEZPIECZEŃSTWO, USB, SIEĆ, raporty i naprawa Windows w tym samym oknie.
 Aktualizacja: stały publiczny kanał HTTPS; klient nie podaje linku. Publikacja wydania wymaga
 zbudowania Setup.exe na Windows i uruchomienia PUBLISH_GLOBAL_UPDATE.ps1 przez właściciela.
+
+NOWE LABORATORIUM PODZESPOŁÓW:
+- 13 niezależnych modułów; każdy ma osobny SKAN + LIVE 3D, TEST/BENCHMARK lub TEST FUNKCJONALNY oraz SAMO SYMULATOR 3D.
+- GPU: 46 scen OpenGL z rzeczywistym pomiarem FPS.
+- Profile: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s.
+- Laboratorium dostępne z Centrum Testów i ekranów komponentów.
+- Checklista: CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md

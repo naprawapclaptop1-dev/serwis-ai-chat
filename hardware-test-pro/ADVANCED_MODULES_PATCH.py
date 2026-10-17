@@ -1058,6 +1058,7 @@ def _u66_show_tests_hub(self):
     self.make_button(row,"PULPIT",self.show_dashboard,"card",side="left",ipady=5)
     self.make_button(row,"AI CZYTNIK",self.show_ai_reader,"accent",side="left",ipady=5)
     self.make_button(row,"MONITOR LIVE",self.show_live_monitor,"card",side="left",ipady=5)
+    self.make_button(row,"LABORATORIUM PODZESPOŁÓW — 13 MODUŁÓW",self.show_component_lab,"good",side="left",ipady=5)
 
 def _u66_scene_child(output_path, seconds=5, scene_id=1):
     result={"state":"warn","scene_id":int(scene_id),"scene_name":"N/D"}
@@ -2110,6 +2111,8 @@ def _u69_attach_workbench(self,module):
             self.make_button(row,f"STUDIO GPU {len(_U66_SCENES)} SCEN",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
         if module=="EKRAN" and hasattr(self,"_u37_open_screen_test"):
             self.make_button(row,"TEST PIKSELI",self._u37_open_screen_test,"card",side="left",ipady=5)
+        labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=6,pady=(0,6))
+        self.make_button(labrow,"OTWÓRZ LABORATORIUM — WSZYSTKIE TESTY OSOBNO",self.show_component_lab,"good",side="left",ipady=4)
     except Exception as exc:
         try:self.append_log("Nie udało się dodać panelu komponentu: "+repr(exc))
         except Exception:pass
@@ -2141,6 +2144,8 @@ def _u69_attach_simple_workbench(self,module):
     self.make_button(row,"TEST FUNKCJONALNY",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=4)
     if module=="SIEĆ":self.make_button(row,"SPEED TEST DOWNLOAD/UPLOAD",self.show_speed_test,"card",side="left",ipady=4)
+    labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=5,pady=(0,5))
+    self.make_button(labrow,"OTWÓRZ LABORATORIUM — WSZYSTKIE TESTY OSOBNO",self.show_component_lab,"good",side="left",ipady=4)
 
 def _u69_show_simple_module(self,title):
     _U69_ORIGINAL_SHOW_SIMPLE_MODULE(self,title)
@@ -2419,6 +2424,10 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
     def back(m=module):
+        if getattr(self,"_u78_return_to_component_lab",False):
+            self._u78_return_to_component_lab=False
+            self.show_component_lab()
+            return
         if m in ("CPU","GPU","RAM","DYSK","EKRAN","SECURITY","VRAM"):self.show_module("GPU" if m=="VRAM" else m)
         elif m=="BATERIA":self.show_battery_or_power()
         else:self.show_simple_module({"SIEĆ":"SIEĆ / WI-FI / LAN","USB":"USB / URZĄDZENIA","AUDIO":"DŹWIĘK / AUDIO","KLAWIATURA":"KLAWIATURA / TOUCHPAD","KAMERA":"KAMERA"}.get(m,m))
@@ -2719,6 +2728,108 @@ _u68_run_component_worker = _u76_run_component_worker
 _u69_status_text = _u76_status_text
 _u68_sim_metrics_tick = _u76_sim_metrics_tick
 
+
+# v4.3.78 — one obvious independent-test laboratory for every subsystem.
+# A schematic animation is never reported as a measured benchmark. Real results are
+# read from the same component test functions used in the individual module screens.
+_U78_COMPONENT_LAB = [
+    ("CPU", "PROCESOR / CPU", "Identyfikacja, rdzenie/wątki, obciążenie, zegary i próbki. Benchmark wykonuje rzeczywiste obciążenie CPU.", "BENCHMARK ULTRA/MAX"),
+    ("RAM", "PAMIĘĆ RAM", "Pojemność i dostępność pamięci; test wzorców 00/FF/AA/55 z porównaniem SHA-256 w ograniczonym buforze.", "BENCHMARK RAM ULTRA/MAX"),
+    ("GPU", "KARTA GRAFICZNA / GPU", "Identyfikacja adaptera, sterownika i czujników. Benchmark uruchamia 46 scen OpenGL z prawdziwym pomiarem FPS.", "46 SCEN 3D ULTRA/MAX"),
+    ("VRAM", "PAMIĘĆ KARTY / VRAM", "Inwentarz pamięci oraz oddzielny test tekstur, wzorców zapisu i odczytu zwrotnego.", "TEST VRAM ULTRA/MAX"),
+    ("DYSK", "SSD / HDD / NVMe", "Wybór woluminu, pojemność/wolne miejsce, urządzenia i dostępne dane niezawodności; benchmark unikalnym plikiem tymczasowym.", "BENCHMARK ODCZYT/ZAPIS"),
+    ("EKRAN", "MATRYCA / EDID", "Identyfikacja monitora i trybów. Test funkcjonalny pokazuje wzorce/kolory; martwe piksele wymagają oceny wzrokowej.", "TEST WZORCÓW"),
+    ("SECURITY", "BEZPIECZEŃSTWO WINDOWS", "Audyt dostępnego stanu ochrony, autostartu i narzędzi systemu; nie jest to niezależny test wydajności.", "AUDYT FUNKCJONALNY"),
+    ("BATERIA", "BATERIA / ZASILANIE", "Odczyt źródła zasilania oraz dostępnej telemetrii baterii; benchmark monitoruje próbki w czasie.", "MONITOR ULTRA/MAX"),
+    ("SIEĆ", "SIEĆ / WI-FI / LAN", "Skan interfejsów i stanów; test Internetu mierzy rzeczywiste download/upload i opóźnienie.", "SPEED TEST"),
+    ("USB", "USB / URZĄDZENIA", "Enumeracja urządzeń Plug and Play i dostępne kody stanu. Sama obecność USB nie potwierdza transferu ani zasilania portu.", "TEST FUNKCJONALNY"),
+    ("AUDIO", "AUDIO / MIKROFON / GŁOŚNIKI", "Wykrywanie urządzeń audio i test funkcjonalny; słyszalność trzeba potwierdzić na sprzęcie.", "TEST FUNKCJONALNY"),
+    ("KLAWIATURA", "KLAWIATURA / TOUCHPAD", "Wykrywanie urządzeń wejściowych i test funkcjonalny.", "TEST FUNKCJONALNY"),
+    ("KAMERA", "KAMERA", "Wykrywanie urządzenia i kontrola dostępności; działanie obrazu wymaga potwierdzenia podglądem.", "TEST FUNKCJONALNY"),
+]
+
+def _u78_latest_component_state(self, module):
+    try:
+        for mode in ("benchmark", "scan"):
+            for key in _u76_component_result_keys(module, mode):
+                value = (getattr(self, "results", {}) or {}).get(key)
+                if isinstance(value, dict) and value:
+                    state = str(value.get("state") or "N/D").upper()
+                    sample = value.get("sampled_at") or value.get("time")
+                    detail = value.get("message") or value.get("note") or value.get("error")
+                    return f"Ostatni zapisany wynik: {state}" + (f" • {sample}" if sample else "") + (f" • {str(detail)[:90]}" if detail else "")
+    except Exception:
+        pass
+    return "Ostatni wynik: nie wykonano jeszcze testu."
+
+def _u78_launch_from_lab(self, module, mode):
+    # All controls use the same guarded launch and worker as the existing module screens.
+    try:
+        self._u78_return_to_component_lab = True
+        if mode == "visual":
+            _u69_open_component_simulator(self, module, False, "scan")
+        else:
+            _u69_open_component_simulator(self, module, True, mode)
+    except Exception as exc:
+        self._u78_return_to_component_lab = False
+        message = f"Nie udało się otworzyć modułu {module}: {type(exc).__name__}: {exc}"
+        try:
+            self.append_log(message)
+        except Exception:
+            pass
+        messagebox.showerror("Laboratorium podzespołów", message)
+
+def _u78_show_component_lab(self):
+    self.current_view = "COMPONENT_LAB"
+    self.clear()
+    t = self.colors()
+    self.header_title.config(text="LABORATORIUM PODZESPOŁÓW — 13 MODUŁÓW")
+    hero = self.panel(self.content)
+    hero.pack(fill="x", pady=(0, 6))
+    tk.Label(hero, text="KAŻDY PODZESPÓŁ OSOBNO • SKAN • TEST / BENCHMARK • SYMULATOR 3D", bg=t["panel"], fg=t["accent"], font=self.fnt(12, "bold")).pack(anchor="w", padx=12, pady=(9, 3))
+    tk.Label(hero, text=f"{len(_U78_COMPONENT_LAB)} niezależnych modułów. Wybierz pojedynczą operację — nie musisz uruchamiać całej diagnostyki. Profile benchmarków: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s. GPU ma {len(_U66_SCENES)} scen OpenGL. Animacja 3D pokazuje schemat podzespołu; wynik PASS/OSTRZEŻENIE/FAIL pochodzi wyłącznie z rzeczywistego testu. Nieobsługiwane sensory oznaczamy N/D.", bg=t["panel"], fg=t["muted"], font=self.fnt(8), wraplength=1450, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+    outer = tk.Frame(self.content, bg=t["bg"])
+    outer.pack(fill="both", expand=True)
+    canvas = tk.Canvas(outer, bg=t["bg"], highlightthickness=0)
+    sb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+    inner = tk.Frame(canvas, bg=t["bg"])
+    win = canvas.create_window((0, 0), window=inner, anchor="nw")
+    inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    canvas.bind("<Configure>", lambda e: canvas.itemconfigure(win, width=e.width))
+    canvas.configure(yscrollcommand=sb.set)
+    canvas.pack(side="left", fill="both", expand=True)
+    sb.pack(side="right", fill="y")
+    for i, (module, title, description, bench_label) in enumerate(_U78_COMPONENT_LAB):
+        card = self.panel(inner)
+        card.grid(row=i // 3, column=i % 3, sticky="nsew", padx=4, pady=4)
+        tk.Label(card, text=f"{i+1:02d}  {title}", bg=t["panel"], fg=t["accent"], font=self.fnt(9, "bold"), wraplength=430, justify="left").pack(anchor="w", padx=9, pady=(8, 4))
+        tk.Label(card, text=description, bg=t["panel"], fg=t["fg"], font=self.fnt(8), wraplength=430, justify="left").pack(fill="x", padx=9, pady=(0, 5))
+        result_text = tk.Label(card, text=_u78_latest_component_state(self, module), bg=t["panel"], fg=t["muted"], font=self.fnt(7), wraplength=430, justify="left", anchor="w")
+        result_text.pack(fill="x", padx=9, pady=(0, 5))
+        buttons = tk.Frame(card, bg=t["panel"])
+        buttons.pack(fill="x", padx=5, pady=(0, 7))
+        self.make_button(buttons, "SKAN + LIVE 3D", lambda m=module: _u78_launch_from_lab(self, m, "scan"), "card", side="left", ipady=4)
+        self.make_button(buttons, bench_label, lambda m=module: _u78_launch_from_lab(self, m, "benchmark"), "accent", side="left", ipady=4)
+        self.make_button(buttons, "SAMO SYMULATOR 3D", lambda m=module: _u78_launch_from_lab(self, m, "visual"), "good", side="left", ipady=4)
+    for col in range(3):
+        inner.grid_columnconfigure(col, weight=1)
+    nav = tk.Frame(self.content, bg=t["bg"])
+    nav.pack(fill="x", pady=(4, 0))
+    self.make_button(nav, "WSZYSTKIE TESTY PO KOLEI", lambda: _u66_start_all_tests(self), "accent", side="left", ipady=5)
+    self.make_button(nav, "CENTRUM TESTÓW", self.show_tests_hub, "card", side="left", ipady=5)
+    self.make_button(nav, "PULPIT DIAGNOSTYKI", self.show_dashboard, "card", side="left", ipady=5)
+
+def _u78_selftest_component_lab():
+    keys = [item[0] for item in _U78_COMPONENT_LAB]
+    assert len(keys) == 13 and len(set(keys)) == 13, "All 13 component lab entries must be unique"
+    assert set(keys) == set(_U69_COMPONENT_LABELS), "The lab and component simulator must cover the same modules"
+    assert len(_U66_SCENES) == 46 and len({str(x[0]) for x in _U66_SCENES}) == 46
+    assert callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)
+    assert callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)
+    assert "SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s" in _u78_show_component_lab.__code__.co_consts
+    assert "SAMO SYMULATOR 3D" in _u78_show_component_lab.__code__.co_consts
+    print("COMPONENT_LAB_13_MODULES_SELFTEST_OK")
+
 def _u66_selftest_advanced():
     assert len(_U66_SCENES)==46, "Studio must have 46 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
@@ -2740,6 +2851,8 @@ def _u66_selftest_advanced():
     assert callable(_u68_show_games_advisor)
     _u69_selftest_component_workbenches()
     _u76_selftest_workbenches()
+    _u78_selftest_component_lab()
+    assert AppV43.show_component_lab is _u78_show_component_lab
     assert AppV43.show_module is _u69_show_module
     assert AppV43.show_simple_module is _u69_show_simple_module
     assert len(_U66_SCENES)==46 and len({scene[0] for scene in _U66_SCENES})==46
@@ -2755,6 +2868,7 @@ AppV43.show_speed_test=_u66_show_speed_test
 AppV43.show_live_monitor=_u66_show_live_monitor
 AppV43.show_3d_studio=_u66_show_3d_studio
 AppV43.show_tests_hub=_u66_show_tests_hub
+AppV43.show_component_lab=_u78_show_component_lab
 AppV43.start_all_tests_sequential=_u66_start_all_tests
 AppV43.full_test=_u66_start_all_tests
 AppV43._start_selected_diagnostic=_u67_start_selected_diagnostic
