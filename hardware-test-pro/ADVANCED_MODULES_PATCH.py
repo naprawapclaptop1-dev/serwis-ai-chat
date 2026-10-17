@@ -1677,7 +1677,7 @@ def _u67_start_selected_diagnostic(self):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz przynajmniej jeden moduł.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 36 scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
+        "CPU": "CPU", "GPU": f"GPU + {len(_U66_SCENES)} scen 3D", "RAM": "RAM", "DYSKI": "Dyski",
         "MATRYCA": "Matryca / EDID", "BATERIA": "Bateria", "KLAWIATURA": "Klawiatura / touchpad",
         "AUDIO": "Audio", "SIEC": "Internet Speed Test + USB", "SYSTEM_SECURITY": "Windows i bezpieczeństwo"
     }
