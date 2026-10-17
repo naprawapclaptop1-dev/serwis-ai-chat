@@ -3315,12 +3315,267 @@ def _u83_show_simple_module_speed_entry(self, title):
         except Exception:
             pass
 
+
+# v4.3.85 — live GPU telemetry panel embedded directly in the GPU module.
+_U84_GPU_LIVE_FIELDS = (
+    ("GPU LOAD", "load", "gpu_load_percent", "%"),
+    ("TEMPERATURA", "temp", "temperature_c", "°C"),
+    ("VRAM ZAJĘTA", "vram_used", "vram_used_mb", "MB"),
+    ("VRAM RAZEM", "vram_total", "vram_total_mb", "MB"),
+    ("ZEGAR RDZENIA", "core_clock", "gpu_clock_mhz", "MHz"),
+    ("ZEGAR PAMIĘCI", "memory_clock", "memory_clock_mhz", "MHz"),
+    ("MOC GPU", "power", "power_draw_w", "W"),
+    ("WENTYLATOR", "fan", "fan_speed_rpm", "RPM"),
+)
+
+def _u84_gpu_numeric(value):
+    try:
+        result = float(value)
+        return result if _u66_math.isfinite(result) and result >= 0 else None
+    except Exception:
+        return None
+
+
+def _u84_gpu_panel_draw(canvas, series, maximum, title, app, colors):
+    try:
+        if canvas is None or not canvas.winfo_exists():
+            return
+        canvas.delete("all")
+        width = max(240, canvas.winfo_width() or 360)
+        height = max(105, canvas.winfo_height() or 128)
+        left, right, top, bottom = 38, width - 8, 17, height - 22
+        canvas.create_text(8, 3, text=title, anchor="nw", fill=colors["muted"], font=app.fnt(8, "bold"))
+        ceiling = max(1.0, float(maximum or 1))
+        for percent in (0, 25, 50, 75, 100):
+            y = bottom - (bottom - top) * percent / 100
+            canvas.create_line(left, y, right, y, fill=colors["card"], width=1)
+        palette = {"load": colors["accent"], "vram": colors["good"], "temp": colors["warn"],
+                   "clock": colors["accent2"], "power": "#c084fc"}
+        for key, label, color_key in (
+            ("load", "GPU %", "load"), ("vram", "VRAM %", "vram"), ("temp", "°C", "temp"),
+            ("clock", "MHz", "clock"), ("power", "W", "power")
+        ):
+            values = list(series.get(key, []))[-90:]
+            if len(values) < 2:
+                continue
+            points = []
+            for index, value in enumerate(values):
+                x = left + (right - left) * index / max(1, len(values) - 1)
+                y = bottom - (bottom - top) * max(0.0, min(ceiling, float(value))) / ceiling
+                points.extend((x, y))
+            canvas.create_line(*points, fill=palette[color_key], width=2, smooth=True)
+        current = []
+        for key, label in (("load", "GPU %"), ("vram", "VRAM %"), ("temp", "°C"), ("clock", "MHz"), ("power", "W")):
+            values = series.get(key, [])
+            if values:
+                current.append(f"{label}: {values[-1]:.1f}")
+        canvas.create_text(left + 3, bottom + 3, text="  •  ".join(current) or "Zbieranie próbek…",
+                           anchor="sw", fill=colors["fg"], font=app.fnt(7))
+    except Exception:
+        pass
+
+
+def _u84_attach_gpu_live_panel(self):
+    try:
+        previous = getattr(self, "_u84_gpu_panel", None)
+        if previous is not None and previous.winfo_exists():
+            previous.destroy()
+        t = self.colors()
+        panel = tk.Frame(self.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
+        workbench = getattr(self, "_u69_workbench_panel", None)
+        if workbench is not None and workbench.winfo_exists():
+            panel.pack(fill="x", padx=3, pady=(2, 5), after=workbench)
+        else:
+            panel.pack(fill="x", padx=3, pady=4)
+        self._u84_gpu_panel = panel
+        title = tk.Frame(panel, bg=t["panel"])
+        title.pack(fill="x", padx=10, pady=(7, 2))
+        tk.Label(title, text="GPU LIVE STUDIO — TELEMETRIA RZECZYWISTA",
+                 bg=t["panel"], fg=t["accent"], font=self.fnt(11, "bold")).pack(side="left", anchor="w")
+        self._u84_gpu_status = tk.Label(title, text="Zbieranie odczytów…", bg=t["panel"], fg=t["muted"], font=self.fnt(8))
+        self._u84_gpu_status.pack(side="right")
+        tk.Label(panel,
+                 text="Odświeżanie obrazu co 1 s; źródła czujników aktualizowane zgodnie z możliwościami sterownika. N/D oznacza brak odczytu, nie 0.",
+                 bg=t["panel"], fg=t["muted"], font=self.fnt(8), anchor="w").pack(fill="x", padx=10, pady=(0, 5))
+        self._u84_gpu_values = {}
+        grid = tk.Frame(panel, bg=t["panel"]); grid.pack(fill="x", padx=6, pady=(0, 5))
+        specs = [
+            ("GPU LOAD", "load", "%", t["accent"]),
+            ("TEMPERATURA", "temp", "°C", t["warn"]),
+            ("VRAM ZAJĘTA", "vram_used", "MB", t["good"]),
+            ("VRAM CAŁKOWITA", "vram_total", "MB", t["good"]),
+            ("ZEGAR GPU", "core_clock", "MHz", t["accent2"]),
+            ("ZEGAR VRAM", "memory_clock", "MHz", t["accent2"]),
+            ("MOC GPU", "power", "W", t["warn"]),
+            ("WENTYLATOR", "fan", "RPM", t["accent"]),
+        ]
+        for i, (caption, key, unit, color) in enumerate(specs):
+            card = tk.Frame(grid, bg=t["card"], highlightbackground=t["panel"], highlightthickness=1)
+            card.grid(row=i // 4, column=i % 4, sticky="nsew", padx=2, pady=2)
+            tk.Label(card, text=caption, bg=t["card"], fg=t["muted"], font=self.fnt(7, "bold")).pack(padx=5, pady=(5, 1))
+            value = tk.Label(card, text="N/D", bg=t["card"], fg=color, font=self.fnt(12, "bold"))
+            value.pack(padx=5, pady=(0, 2))
+            bar = tk.Canvas(card, height=6, bg=t["panel"], highlightthickness=0)
+            bar.pack(fill="x", padx=6, pady=(0, 5))
+            self._u84_gpu_values[key] = (value, bar, unit, color)
+        for column in range(4):
+            grid.grid_columnconfigure(column, weight=1)
+        charts = tk.Frame(panel, bg=t["panel"]); charts.pack(fill="x", padx=6, pady=(0, 5))
+        self._u84_gpu_chart_load = tk.Canvas(charts, height=122, bg=t["card"], highlightthickness=0)
+        self._u84_gpu_chart_load.pack(side="left", fill="both", expand=True, padx=(0, 3))
+        self._u84_gpu_chart_thermal = tk.Canvas(charts, height=122, bg=t["card"], highlightthickness=0)
+        self._u84_gpu_chart_thermal.pack(side="left", fill="both", expand=True, padx=3)
+        self._u84_gpu_chart_clock = tk.Canvas(charts, height=122, bg=t["card"], highlightthickness=0)
+        self._u84_gpu_chart_clock.pack(side="left", fill="both", expand=True, padx=(3, 0))
+        self._u84_gpu_history = {"load": [], "vram": [], "temp": [], "clock": [], "power": []}
+        row = tk.Frame(panel, bg=t["panel"]); row.pack(fill="x", padx=6, pady=(0, 6))
+        self.make_button(row, "ODŚWIEŻ GPU", lambda: _u84_gpu_poll_now(self), "card", side="left", ipady=4)
+        self.make_button(row, "BENCHMARK GPU + 3D", lambda: _u68_open_gpu_suite(self, auto_start=True), "accent", side="left", ipady=4)
+        self.make_button(row, "TEST VRAM", lambda: _u69_open_vram_test(self), "good", side="left", ipady=4)
+        self.make_button(row, "MONITOR LIVE", self.show_live_monitor, "card", side="left", ipady=4)
+        _u84_gpu_poll_now(self)
+        _u84_gpu_live_tick(self)
+    except Exception as exc:
+        try:
+            self.append_log("GPU LIVE STUDIO: " + repr(exc))
+        except Exception:
+            pass
+
+
+def _u84_gpu_poll_now(self):
+    if getattr(self, "_u84_gpu_poll_busy", False):
+        return
+    self._u84_gpu_poll_busy = True
+    def job():
+        error = None
+        try:
+            telemetry = _u37_nvidia_telemetry() if "_u37_nvidia_telemetry" in globals() else {"available": False, "message": "Brak dostawcy GPU."}
+        except Exception as exc:
+            telemetry = {"available": False, "message": f"{type(exc).__name__}: {exc}"}
+            error = telemetry["message"]
+        def finish():
+            self._u84_gpu_poll_busy = False
+            self._u84_gpu_last_telemetry = telemetry
+            try:
+                self._u66_sensor_cache = dict(getattr(self, "_u66_sensor_cache", {}) or {},
+                    gpu=telemetry, time=_u66_time.monotonic())
+                if error and hasattr(self, "append_log"):
+                    self.append_log("GPU telemetry: " + error)
+            except Exception:
+                pass
+            try:
+                if getattr(self, "current_view", "") == "GPU":
+                    _u84_gpu_live_tick(self, schedule=False)
+            except Exception:
+                pass
+        try:
+            self.queue_action(finish)
+        except Exception:
+            self._u84_gpu_poll_busy = False
+    _u66_threading.Thread(target=job, name="NaprawaPCGpuLiveTelemetry", daemon=True).start()
+
+
+def _u84_gpu_live_tick(self, schedule=True):
+    try:
+        if getattr(self, "current_view", "") != "GPU":
+            return
+        telemetry = getattr(self, "_u84_gpu_last_telemetry", None) or {}
+        cache = getattr(self, "_u66_sensor_cache", {}) or {}
+        temps = cache.get("temps", {}) or {}
+        utilization = _u84_gpu_numeric(telemetry.get("gpu_load_percent"))
+        if utilization is None:
+            utilization = _u84_gpu_numeric(getattr(self, "_gpu_util", None))
+        gpu_temp = _u84_gpu_numeric(telemetry.get("temperature_c"))
+        if gpu_temp is None:
+            gpu_temp = _u84_gpu_numeric(temps.get("gpu_temp_c"))
+        used = _u84_gpu_numeric(telemetry.get("vram_used_mb"))
+        total = _u84_gpu_numeric(telemetry.get("vram_total_mb"))
+        clock = _u84_gpu_numeric(telemetry.get("gpu_clock_mhz"))
+        memory_clock = _u84_gpu_numeric(telemetry.get("memory_clock_mhz"))
+        power = _u84_gpu_numeric(telemetry.get("power_draw_w", telemetry.get("power_w", temps.get("gpu_power_w"))))
+        fan = _u84_gpu_numeric(telemetry.get("fan_speed_rpm", temps.get("gpu_fan_rpm")))
+        vram_percent = used * 100.0 / total if used is not None and total else None
+        current = {
+            "load": utilization, "temp": gpu_temp, "vram_used": used, "vram_total": total,
+            "core_clock": clock, "memory_clock": memory_clock, "power": power, "fan": fan
+        }
+        hist = getattr(self, "_u84_gpu_history", {"load": [], "vram": [], "temp": [], "clock": [], "power": []})
+        for key, value in (("load", utilization), ("vram", vram_percent), ("temp", gpu_temp),
+                           ("clock", clock), ("power", power)):
+            if value is not None:
+                hist[key].append(float(value)); hist[key] = hist[key][-90:]
+        self._u84_gpu_history = hist
+        label_map = getattr(self, "_u84_gpu_values", {})
+        for key, value in current.items():
+            try:
+                label, bar, unit, color = label_map[key]
+                label.config(text=(f"{value:.1f} {unit}" if value is not None else "N/D"))
+                bar.delete("all")
+                if value is not None:
+                    if key == "vram_used":
+                        pct = min(100.0, value * 100.0 / total) if total else 0.0
+                    elif key == "vram_total":
+                        pct = 100.0
+                    elif key in ("load", "temp"):
+                        pct = min(100.0, value) if key == "load" else min(100.0, value / 110.0 * 100.0)
+                    else:
+                        pct = 100.0 if value > 0 else 0.0
+                    width = max(10, bar.winfo_width())
+                    color_fill = self.colors()["bad"] if key == "load" and value >= 95 else self.colors()["warn"] if key == "temp" and value >= 85 else color
+                    bar.create_rectangle(0, 0, width * pct / 100.0, 6, fill=color_fill, outline="")
+            except Exception:
+                pass
+        try:
+            if hasattr(self, "_u84_gpu_status") and self._u84_gpu_status.winfo_exists():
+                provider = str(telemetry.get("provider") or telemetry.get("message") or "Źródło N/D")
+                name = str(telemetry.get("name") or "GPU — odczyt podstawowy")
+                self._u84_gpu_status.config(text=f"{name} • {provider}" if telemetry.get("available") else f"{name} • telemetria częściowa")
+        except Exception:
+            pass
+        t = self.colors()
+        _u84_gpu_panel_draw(getattr(self, "_u84_gpu_chart_load", None), hist, 100, "OBciążenie GPU / VRAM %", self, t)
+        _u84_gpu_panel_draw(getattr(self, "_u84_gpu_chart_thermal", None),
+                            {"temp": hist.get("temp", [])}, max([100.0] + hist.get("temp", [])), "TEMPERATURA GPU °C", self, t)
+        _u84_gpu_panel_draw(getattr(self, "_u84_gpu_chart_clock", None),
+                            {"clock": hist.get("clock", []), "power": hist.get("power", [])},
+                            max([100.0] + hist.get("clock", []) + hist.get("power", [])), "ZEGAR GPU MHz / MOC W", self, t)
+    except Exception as exc:
+        try: self.append_log("GPU LIVE odświeżanie: " + repr(exc))
+        except Exception: pass
+    if schedule:
+        try:
+            self.after(1000, lambda: _u84_gpu_live_tick(self))
+            if not getattr(self, "_u84_gpu_poll_busy", False):
+                last = float(getattr(self, "_u84_gpu_poll_time", 0))
+                now = _u66_time.monotonic()
+                if now - last >= 3.0:
+                    self._u84_gpu_poll_time = now
+                    _u84_gpu_poll_now(self)
+        except Exception:
+            pass
+
+
+_U84_ORIGINAL_SHOW_MODULE = AppV43.show_module
+def _u84_show_module_with_gpu_live(self, module):
+    _U84_ORIGINAL_SHOW_MODULE(self, module)
+    if str(module).strip().upper() == "GPU":
+        _u84_attach_gpu_live_panel(self)
+
+AppV43.show_module = _u84_show_module_with_gpu_live
+
+
 AppV43.show_simple_module = _u83_show_simple_module_speed_entry
 
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u66_selftest_advanced()
+        assert callable(_u84_attach_gpu_live_panel)
+        assert callable(_u84_gpu_live_tick)
+        assert AppV43.show_module is _u84_show_module_with_gpu_live
+        assert any("GPU LIVE STUDIO" in str(x) for x in _u84_attach_gpu_live_panel.__code__.co_consts)
+        assert _U84_GPU_LIVE_FIELDS and len(_U84_GPU_LIVE_FIELDS) >= 8
+        print("GPU_LIVE_PANEL_SELFTEST_OK")
         raise SystemExit(0)
     except Exception as _u66_exc:
         print("ADVANCED_MODULES_SELFTEST_FAILED:",type(_u66_exc).__name__,str(_u66_exc))
