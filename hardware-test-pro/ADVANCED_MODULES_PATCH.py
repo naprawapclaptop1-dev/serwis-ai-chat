@@ -3135,8 +3135,8 @@ def _u80_selftest_sound_hooks():
         "each 3D scene wrapped": bool(_U80_SOUND_3D_SCENE_WRAPPED),
         "selected-run speed test wrapped": bool(_U80_SOUND_SPEED_TEST_WRAPPED),
         "distinct start/end tones": callable(_u80_test_sound),
-        "power telemetry probe and W units": callable(_u66_sensor_probe) and "cpu_power_w" in _u66_sensor_probe.__code__.co_consts,
-        "visible power cards and graph": "MOC SYSTEMU" in _u67_stage_live_panel.__code__.co_consts and "POBÓR MOCY W" in _u67_refresh_visible_charts.__code__.co_consts,
+        "power telemetry probe and W units": callable(_u66_sensor_probe) and any("cpu_power_w" in repr(item) for item in _u66_sensor_probe.__code__.co_consts),
+        "visible power cards and graph": any("MOC SYSTEMU" in repr(item) for item in _u67_stage_live_panel.__code__.co_consts) and any("POBÓR MOCY W" in repr(item) for item in _u67_refresh_visible_charts.__code__.co_consts),
         "nested calls do not double beep": callable(_u80_run_with_sound),
     }
     failed = [name for name, passed in checks.items() if not passed]
