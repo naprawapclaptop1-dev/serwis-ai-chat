@@ -1,8 +1,8 @@
-# Lista kontrolna integracji — NAPRAWA PC HARDWARE TEST PRO ULTIMATE
+# Lista kontrolna integracji — NAPRAWA PC HARDWARE TEST PRO ULTIMATE 4.3.86
 
 Ta lista służy do odhaczania funkcji według **rzeczywistego kodu, wyniku kompilacji i testu na Windows**. Sam przycisk/menu nie wystarcza, aby oznaczyć test jako zweryfikowany.
 
-## A. Zmiany kodu wersji 4.3.86
+## A. Zmiany kodu wersji 4.3.86 — wykonane
 
 - [x] Rozbudować studio GPU z 46 do 60 nazwanych scen OpenGL.
 - [x] Dodać profile 600 s EXTREME i 900 s TEST TERMICZNY oraz podnieść limity czasu testów obsługujących długie profile.
@@ -43,11 +43,11 @@ Ta lista służy do odhaczania funkcji według **rzeczywistego kodu, wyniku komp
 
 ## D. Weryfikacja wydania
 
-- [ ] Przejść kontrolę składni Python po odtworzeniu źródeł.
-- [ ] Uruchomić wszystkie wbudowane testy, w tym `--selftest-advanced-modules`.
-- [ ] Zbudować główny EXE i skompilować instalator Setup.exe.
-- [ ] Potwierdzić rozmiar i SHA-256 pliku instalatora względem manifestu globalnego.
-- [ ] Potwierdzić opublikowaną wersję w `updates/hardware-test-pro/latest.json`.
+- [x] Przejść kontrolę składni Python po odtworzeniu źródeł.
+- [x] Uruchomić wszystkie wbudowane testy, w tym `--selftest-advanced-modules` (testy zakończone sukcesem).
+- [x] Zbudować główny EXE i skompilować instalator Setup.exe.
+- [x] Potwierdzić rozmiar i SHA-256 pliku instalatora względem manifestu globalnego.
+- [x] Potwierdzić opublikowaną wersję w `updates/hardware-test-pro/latest.json` (4.3.86).
 - [ ] Na komputerze użytkownika potwierdzić numer wersji w pasku tytułu i wykonać po jednym teście każdego modułu.
 - [ ] Potwierdzić, że wykresy otrzymują próbki na żywo; niedostępne czujniki mają pokazywać N/D.
 - [ ] Przeprowadzić test długiego profilu z nadzorem temperatury i sprawdzić działanie STOP.
@@ -59,3 +59,13 @@ Ta lista służy do odhaczania funkcji według **rzeczywistego kodu, wyniku komp
 - Syntetyczne FPS z OpenGL nie są gwarantowanym FPS w konkretnej grze.
 - Benchmark dysku korzysta z tymczasowego pliku; nie jest destrukcyjnym testem sektorów fizycznych.
 - Długi test obciążeniowy może mocno nagrzać i obciążyć komputer; przed uruchomieniem należy zachować możliwość przerwania.
+
+
+## F. Opublikowany artefakt 4.3.86
+
+- Instalator: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.86/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.86.exe
+- Pełny ZIP: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.86/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.86.zip
+- SHA-256 Setup.exe: `59972619930cad72d896cfaa604de909de095dc9669d97b9dcff1c89577650cd`
+- Rozmiar Setup.exe: 141,457,252 bajtów.
+- Automatyczne budowanie/testy/publikacja: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39064102257
+- Wyniki w Actions: składnia i testy wbudowane — sukces; EXE — sukces; kompilacja/ weryfikacja Setup.exe — sukces; publikacja artefaktów i manifestu — sukces.
