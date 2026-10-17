@@ -1386,6 +1386,30 @@ def _u66_run_all_tests_worker(self):
 
 # v4.3.71 — route dashboard full diagnostic into per-test live views.
 # This explicitly replaces the legacy RUN_MONITOR-only route.
+def _u67_set_suite_status(self, text):
+    """Bezpiecznie aktualizuje status pełnej diagnostyki bez zależności od brakującego aliasu."""
+    message = str(text or "")
+    try:
+        queue_status = getattr(self, "queue_status", None)
+        if callable(queue_status):
+            queue_status(message)
+            return
+    except Exception:
+        pass
+    try:
+        queue_action = getattr(self, "queue_action", None)
+        header = getattr(self, "header_status", None)
+        if callable(queue_action) and header is not None:
+            queue_action(lambda h=header, m=message: h.config(text=m))
+            return
+    except Exception:
+        pass
+    try:
+        self.queue_log("Diagnostyka: " + message)
+    except Exception:
+        pass
+
+
 def _u67_stage_live_panel(self, index, total, title):
     try:
         old = getattr(self, "_u67_stage_panel", None)
@@ -2850,6 +2874,7 @@ def _u66_selftest_advanced():
     assert callable(_u66_run_all_tests_worker)
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)
     assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)
+    assert callable(_u67_set_suite_status)
     assert len(_U66_SCENES)==46 and all(sc[1] for sc in _U66_SCENES)
     assert "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")
     assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)
