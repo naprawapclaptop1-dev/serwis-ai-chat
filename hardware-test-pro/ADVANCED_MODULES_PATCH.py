@@ -3135,7 +3135,7 @@ def _u66_selftest_advanced():
     assert ranked and any("temperatura" in str(x.get("title","")).lower() for x in ranked), "ADVANCED self-test check 5: ranked and any('temperatura' in str(x.get('title','')).lower() for x in ranked)"
     assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed), "ADVANCED self-test check 6: callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed"
     assert callable(AppV43.show_speed_test) and callable(_u66_show_speed_test), "ADVANCED self-test check 7: callable(AppV43.show_speed_test) and callable(_u66_show_speed_test)"
-    assert "DOWNLOAD" in " ".join(str(x) for x in _U90_ORIGINAL_SHOW_SPEED_TEST.__code__.co_consts), "Speed Test must expose download/upload labels in the delegated screen", "ADVANCED self-test check 8: 'DOWNLOAD' in ' '.join(str(x) for x in _u66_show_speed_test.__code__.co_consts)"
+    assert "DOWNLOAD" in " ".join(str(x) for x in _U90_ORIGINAL_SHOW_SPEED_TEST.__code__.co_consts), "Speed Test must expose download/upload labels in the delegated screen"
     assert callable(_u66_scene_child), "ADVANCED self-test check 9: callable(_u66_scene_child)"
     assert callable(_u66_run_all_tests_worker), "ADVANCED self-test check 10: callable(_u66_run_all_tests_worker)"
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic), "ADVANCED self-test check 11: callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)"
