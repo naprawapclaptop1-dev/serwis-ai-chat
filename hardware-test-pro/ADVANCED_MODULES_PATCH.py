@@ -2465,19 +2465,28 @@ def _u69_show_battery_module(self):
     _u69_attach_simple_workbench(self,"BATERIA")
 
 def _u69_selftest_component_workbenches():
-    assert callable(_u69_open_component_simulator)
-    assert callable(_u69_launch_component_test)
-    assert callable(_u69_disk_throughput_benchmark)
-    assert callable(_u69_safe_disk_benchmark)
-    assert "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names
-    assert "open" in _u69_safe_disk_benchmark.__code__.co_names
-    assert "xb" in _u69_safe_disk_benchmark.__code__.co_consts
-    assert callable(_u69_ram_throughput_benchmark)
-    assert callable(_u69_camera_scan)
-    assert "C:" in "".join(_u69_drive_options(type("O",(),{"logical_disks":[{"DeviceID":"C:"}]})()))
-    assert "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")
-    assert all(k in _U69_COMPONENT_LABELS for k in ("CPU","RAM","DYSK","VRAM","GPU","BATERIA","SIEĆ","USB","AUDIO","KLAWIATURA","KAMERA"))
-    print("COMPONENT_WORKBENCH_SELFTEST_OK: independent scans, selected-volume I/O benchmark, verified RAM bandwidth, VRAM page and per-module 3D")
+    checks = [
+        ("component simulator", callable(_u69_open_component_simulator)),
+        ("component launch", callable(_u69_launch_component_test)),
+        ("disk benchmark", callable(_u69_disk_throughput_benchmark)),
+        ("unique safe disk benchmark", callable(_u69_safe_disk_benchmark)),
+        ("simulator original delegate", "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names),
+        ("open function", "open" in _u69_safe_disk_benchmark.__code__.co_names),
+        ("exclusive create mode", "xb" in _u69_safe_disk_benchmark.__code__.co_consts),
+        ("RAM bandwidth", callable(_u69_ram_throughput_benchmark)),
+        ("camera scan", callable(_u69_camera_scan)),
+        ("duration max", "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")),
+        ("component labels", all(k in _U69_COMPONENT_LABELS for k in ("CPU","RAM","DYSK","VRAM","GPU","BATERIA","SIEĆ","USB","AUDIO","KLAWIATURA","KAMERA"))),
+    ]
+    try:
+        drives = "".join(_u69_drive_options(type("O", (), {"logical_disks":[{"DeviceID":"C:"}]})()))
+        checks.append(("drive selector C:", "C:" in drives))
+    except Exception as exc:
+        checks.append(("drive selector C:", False))
+    failed = [name for name, ok in checks if not ok]
+    if failed:
+        raise AssertionError("Failed checks: " + ", ".join(failed))
+    print("COMPONENT_WORKBENCH_SELFTEST_OK: " + ", ".join(name for name, _ in checks))
 
 _U69_ORIGINAL_COMPONENT_WORKER=_u68_run_component_worker
 _u68_run_component_worker=_u69_run_component_worker
