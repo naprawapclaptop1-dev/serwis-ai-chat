@@ -1878,7 +1878,8 @@ def _u67_run_selected_diagnostic(self, selected):
     for entry in chosen:
         expanded.append(entry)
         if entry[0] == "GPU":
-            expanded.append(("__3D__", f"3D Benchmark Studio — {len(_U66_SCENES)} scen OpenGL", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 5), ["3D_SUITE"]))
+            expanded.append(("__3D__", f"3D Benchmark Studio — {len(_U66_SCENES)} scen OpenGL ULTRA/MAX", lambda: _u66_show_3d_studio(self), lambda: _u66_run_3d_suite(self, 30), ["3D_SUITE"]))
+            expanded.append(("__VRAM__", "VRAM — test zapisu/readback 6 wzorców", lambda: _u68_open_vram_test(self), lambda: _u90_run_vram_profile_from_suite(self), ["VRAM_TEST"]))
         if entry[0] == "SIEC":
             expanded.append(("__USB__", "USB — enumeracja urządzeń", lambda: self.show_simple_module("USB / URZĄDZENIA"), lambda: self._peripheral_test("USB"), ["USB"]))
     started = _U66_datetime.now().isoformat(timespec="seconds")
@@ -4060,7 +4061,8 @@ def _u90_measure_speed(self):
     }
     total_data = 0
     def phase(text):
-        _u66_set_speed_status(self, text)
+        try: self.queue_action(lambda m=text: _u66_set_speed_status(self,m))
+        except Exception: pass
         try: self.queue_status(text)
         except Exception: pass
     try:
@@ -4082,7 +4084,7 @@ def _u90_measure_speed(self):
             total_data += int(result["bytes"])
         for idx, size in enumerate((500_000, 2_000_000, 5_000_000), 1):
             phase(f"Speed Test NA ŻYWO: upload {idx}/3 — wysyłanie rzeczywistych bajtów ({size/1_000_000:.1f} MB)…")
-            body = _u90_os.urandom(size)
+            body = _u66_os.urandom(size)
             url = "https://speed.cloudflare.com/__up?r=" + _u66_uuid.uuid4().hex
             result = _u90_speed_request(url, body, 40,
                 lambda p,d,t,e,i,a,b=total_data:_u90_emit_speed_progress(self,p,d,t,e,i,a,b), "upload")
@@ -4269,7 +4271,7 @@ def _u90_run_vram_profile_worker(self, requested_mb, seconds, open_gpu_after=Fal
                 final_state="warn"
                 break
             pass_index += 1
-            out=Path(_u90_os.path.join(tempfile.gettempdir(),
+            out=Path(_u66_os.path.join(tempfile.gettempdir(),
                 f"naprawapc_vram_{os.getpid()}_{_u66_uuid.uuid4().hex[:10]}_{pass_index}.json"))
             try: out.unlink(missing_ok=True)
             except Exception: pass
@@ -4396,6 +4398,8 @@ def _u90_component_worker(self, module, mode):
         return
     return _u69_run_component_worker_original(self,module,mode)
 _u69_run_component_worker = _u90_component_worker
+_u66_show_3d_studio = _u90_show_3d_studio
+AppV43.show_3d_studio = _u90_show_3d_studio
 AppV43.show_speed_test = _u90_show_speed_test
 AppV43._u41_start_vram_test = _u90_start_vram_profile_test
 
