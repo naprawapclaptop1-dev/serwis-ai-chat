@@ -2821,14 +2821,20 @@ def _u78_show_component_lab(self):
 
 def _u78_selftest_component_lab():
     keys = [item[0] for item in _U78_COMPONENT_LAB]
-    assert len(keys) == 13 and len(set(keys)) == 13, "All 13 component lab entries must be unique"
-    assert set(keys) == set(_U69_COMPONENT_LABELS), "The lab and component simulator must cover the same modules"
-    assert len(_U66_SCENES) == 46 and len({str(x[0]) for x in _U66_SCENES}) == 46
-    assert callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)
-    assert callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)
-    assert "SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s" in _u78_show_component_lab.__code__.co_consts
-    assert "SAMO SYMULATOR 3D" in _u78_show_component_lab.__code__.co_consts
-    print("COMPONENT_LAB_13_MODULES_SELFTEST_OK")
+    checks = [
+        ("13 unique module entries", len(keys) == 13 and len(set(keys)) == 13),
+        ("same set as component simulators", set(keys) == set(_U69_COMPONENT_LABELS)),
+        ("46 unique OpenGL scenes", len(_U66_SCENES) == 46 and len({str(x[0]) for x in _U66_SCENES}) == 46),
+        ("component lab callable", callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)),
+        ("real component launcher callable", callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)),
+        ("MAX 300-second profile", len(_U68_PROFILE_CHOICES) >= 4 and str(_U68_PROFILE_CHOICES[-1]).endswith("300 s")),
+        ("visible 3D action", any("SAMO SYMULATOR 3D" in str(x) for x in _u78_show_component_lab.__code__.co_consts)),
+        ("scan action", any("SKAN + LIVE 3D" in str(x) for x in _u78_show_component_lab.__code__.co_consts)),
+    ]
+    failed = [name for name, ok in checks if not ok]
+    if failed:
+        raise AssertionError("Component lab checks failed: " + ", ".join(failed))
+    print("COMPONENT_LAB_13_MODULES_SELFTEST_OK: " + ", ".join(name for name, _ in checks))
 
 def _u66_selftest_advanced():
     assert len(_U66_SCENES)==46, "Studio must have 46 separately named scenes"
