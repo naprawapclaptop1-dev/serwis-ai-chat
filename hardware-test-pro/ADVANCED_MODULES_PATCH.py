@@ -1180,6 +1180,9 @@ def _u66_show_tests_hub(self):
     banner=self.panel(self.content); banner.pack(fill="x",pady=(0,7))
     tk.Label(banner,text=f"TESTY SPRZĘTOWE • SPEED TEST • {len(_U66_SCENES)} SCEN 3D • AI CZYTNIK • NAPRAWA WINDOWS",bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
     tk.Label(banner,text="„WSZYSTKIE TESTY PO KOLEI” przełącza ekran do aktualnie wykonywanego testu. Wyniki oznaczane są PASS/WARN/FAIL/N/D na podstawie dostępnych pomiarów; brak sensora nie jest zaliczeniem.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    quick=tk.Frame(self.content,bg=t["bg"]); quick.pack(fill="x",pady=(0,6))
+    self.make_button(quick,"▶ URUCHOM SPEED TEST INTERNETU",self.show_speed_test,"accent",side="left",ipady=7)
+    self.make_button(quick,"TELEMETRIA LIVE: TEMPERATURY / W / V / MHZ",self.show_live_monitor,"good",side="left",ipady=7)
     outer=tk.Frame(self.content,bg=t["bg"]); outer.pack(fill="both",expand=True)
     c=tk.Canvas(outer,bg=t["bg"],highlightthickness=0)
     sb=ttk.Scrollbar(outer,orient="vertical",command=c.yview)
@@ -2365,8 +2368,11 @@ def _u69_attach_workbench(self,module):
             self.make_button(row,f"STUDIO GPU {len(_U66_SCENES)} SCEN",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
         if module=="EKRAN" and hasattr(self,"_u37_open_screen_test"):
             self.make_button(row,"TEST PIKSELI",self._u37_open_screen_test,"card",side="left",ipady=5)
-        labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=6,pady=(0,6))
+        labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=6,pady=(0,4))
         self.make_button(labrow,"OTWÓRZ LABORATORIUM — WSZYSTKIE TESTY OSOBNO",self.show_component_lab,"good",side="left",ipady=4)
+        speedrow=tk.Frame(panel,bg=t["panel"]);speedrow.pack(fill="x",padx=6,pady=(0,6))
+        self.make_button(speedrow,"▶ SPEED TEST INTERNETU — DOWNLOAD / UPLOAD / PING",self.show_speed_test,"accent",side="left",ipady=6)
+        self.make_button(speedrow,"MONITOR LIVE — TEMPERATURY / W / V / MHZ",self.show_live_monitor,"card",side="left",ipady=6)
     except Exception as exc:
         try:self.append_log("Nie udało się dodać panelu komponentu: "+repr(exc))
         except Exception:pass
@@ -2398,8 +2404,11 @@ def _u69_attach_simple_workbench(self,module):
     self.make_button(row,"TEST FUNKCJONALNY",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=4)
     if module=="SIEĆ":self.make_button(row,"SPEED TEST DOWNLOAD/UPLOAD",self.show_speed_test,"card",side="left",ipady=4)
-    labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=5,pady=(0,5))
+    labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=5,pady=(0,4))
     self.make_button(labrow,"OTWÓRZ LABORATORIUM — WSZYSTKIE TESTY OSOBNO",self.show_component_lab,"good",side="left",ipady=4)
+    speedrow=tk.Frame(panel,bg=t["panel"]);speedrow.pack(fill="x",padx=5,pady=(0,5))
+    self.make_button(speedrow,"▶ SPEED TEST INTERNETU — DOWNLOAD / UPLOAD / PING",self.show_speed_test,"accent",side="left",ipady=6)
+    self.make_button(speedrow,"MONITOR LIVE — TEMPERATURY / W / V / MHZ",self.show_live_monitor,"card",side="left",ipady=6)
 
 def _u69_show_simple_module(self,title):
     _U69_ORIGINAL_SHOW_SIMPLE_MODULE(self,title)
@@ -2677,6 +2686,7 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     self.make_button(row,"SKAN",lambda m=module:_u69_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
     self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
+    self.make_button(row,"▶ SPEED TEST",self.show_speed_test,"accent",side="left",ipady=4)
     def back(m=module):
         if getattr(self,"_u78_return_to_component_lab",False):
             self._u78_return_to_component_lab=False
@@ -3042,6 +3052,10 @@ def _u78_show_component_lab(self):
     hero.pack(fill="x", pady=(0, 6))
     tk.Label(hero, text="KAŻDY PODZESPÓŁ OSOBNO • SKAN • TEST / BENCHMARK • SYMULATOR 3D", bg=t["panel"], fg=t["accent"], font=self.fnt(12, "bold")).pack(anchor="w", padx=12, pady=(9, 3))
     tk.Label(hero, text=f"{len(_U78_COMPONENT_LAB)} niezależnych modułów. Wybierz pojedynczą operację — nie musisz uruchamiać całej diagnostyki. Profile benchmarków: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s. GPU ma {len(_U66_SCENES)} scen OpenGL. Animacja 3D pokazuje schemat podzespołu; wynik PASS/OSTRZEŻENIE/FAIL pochodzi wyłącznie z rzeczywistego testu. Nieobsługiwane sensory oznaczamy N/D.", bg=t["panel"], fg=t["muted"], font=self.fnt(8), wraplength=1450, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+    quick = tk.Frame(self.content, bg=t["bg"])
+    quick.pack(fill="x", pady=(0, 6))
+    self.make_button(quick, "▶ SPEED TEST INTERNETU — DOWNLOAD / UPLOAD / PING", self.show_speed_test, "accent", side="left", ipady=7)
+    self.make_button(quick, "MONITOR LIVE — TEMPERATURY / W / V / MHZ", self.show_live_monitor, "good", side="left", ipady=7)
     outer = tk.Frame(self.content, bg=t["bg"])
     outer.pack(fill="both", expand=True)
     canvas = tk.Canvas(outer, bg=t["bg"], highlightthickness=0)
@@ -3084,6 +3098,7 @@ def _u78_selftest_component_lab():
         ("MAX 300-second profile", len(_U68_PROFILE_CHOICES) >= 4 and str(_U68_PROFILE_CHOICES[-1]).endswith("300 s")),
         ("visible 3D action", any("SAMO SYMULATOR 3D" in str(x) for x in _u78_show_component_lab.__code__.co_consts)),
         ("scan action", any("SKAN + LIVE 3D" in str(x) for x in _u78_show_component_lab.__code__.co_consts)),
+        ("visible internet speed test", any("SPEED TEST INTERNETU" in str(x) for x in _u78_show_component_lab.__code__.co_consts) and callable(AppV43.show_speed_test)),
     ]
     failed = [name for name, ok in checks if not ok]
     if failed:
@@ -3100,6 +3115,8 @@ def _u66_selftest_advanced():
     ranked=_u66_rank_knowledge("temperatura CPU GPU",limit=5)
     assert ranked and any("temperatura" in str(x.get("title","")).lower() for x in ranked)
     assert callable(_u66_web_search) and callable(_u66_read_web_page) and callable(_u66_measure_speed)
+    assert callable(AppV43.show_speed_test) and callable(_u66_show_speed_test)
+    assert "DOWNLOAD" in " ".join(str(x) for x in _u66_show_speed_test.__code__.co_consts)
     assert callable(_u66_scene_child)
     assert callable(_u66_run_all_tests_worker)
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)
