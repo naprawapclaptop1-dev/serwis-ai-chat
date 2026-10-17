@@ -2469,8 +2469,9 @@ def _u69_selftest_component_workbenches():
     assert callable(_u69_launch_component_test)
     assert callable(_u69_disk_throughput_benchmark)
     assert callable(_u69_safe_disk_benchmark)
-    assert "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR(self,module,False,mode)" in _u69_open_component_simulator.__code__.co_consts
-    assert "naprawapc_hw_benchmark_" in _u69_safe_disk_benchmark.__code__.co_consts
+    assert "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names
+    assert "open" in _u69_safe_disk_benchmark.__code__.co_names
+    assert "xb" in _u69_safe_disk_benchmark.__code__.co_consts
     assert callable(_u69_ram_throughput_benchmark)
     assert callable(_u69_camera_scan)
     assert "C:" in "".join(_u69_drive_options(type("O",(),{"logical_disks":[{"DeviceID":"C:"}]})()))
