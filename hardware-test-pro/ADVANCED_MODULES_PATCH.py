@@ -4471,5 +4471,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         print("GPU_LIVE_PANEL_SELFTEST_OK")
         raise SystemExit(0)
     except Exception as _u66_exc:
+        import traceback as _u66_traceback
         print("ADVANCED_MODULES_SELFTEST_FAILED:",type(_u66_exc).__name__,str(_u66_exc))
+        _u66_traceback.print_exc()
         raise SystemExit(1)
