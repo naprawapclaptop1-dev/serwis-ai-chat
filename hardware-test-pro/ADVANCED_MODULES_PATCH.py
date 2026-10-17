@@ -776,8 +776,10 @@ def _u66_start_speed_test(self):
 
 def _u66_sensor_probe():
     result={"cpu_temp_c":None,"gpu_temp_c":None,"cpu_power_w":None,"gpu_power_w":None,
-            "system_power_w":None,"battery_power_w":None,"power_sensors":[],"acpi_zones":[],
-            "sensors":[],"method":"N/D — brak czujnika"}
+            "system_power_w":None,"battery_power_w":None,"cpu_voltage_v":None,"gpu_voltage_v":None,
+            "cpu_clock_mhz":None,"gpu_clock_mhz":None,"cpu_fan_rpm":None,"gpu_fan_rpm":None,
+            "power_sensors":[],"sensor_groups":{},"acpi_zones":[],"sensors":[],
+            "method":"N/D — brak czujnika"}
     if _u66_os.name!="nt":
         return result
 
@@ -832,6 +834,55 @@ def _u66_sensor_probe():
             result["gpu_power_w"]=sorted(gpu_power_candidates,key=lambda x:x[0],reverse=True)[0][1]
         if system_power_candidates:
             result["system_power_w"]=system_power_candidates[0]
+
+        # Keep every available sensor category, not just the two selected temperature fields.
+        groups={"temperature":[],"voltage":[],"clock":[],"fan":[],"load":[],"power":[],"current":[],"throughput":[],"other":[]}
+        chosen={"cpu_voltage":[],"gpu_voltage":[],"cpu_clock":[],"gpu_clock":[],"cpu_fan":[],"gpu_fan":[]}
+        for sensor in rows:
+            if not isinstance(sensor,dict):
+                continue
+            name=str(sensor.get("sensor") or sensor.get("name") or "")
+            hardware=str(sensor.get("hardware") or sensor.get("parent") or "")
+            hardware_type=str(sensor.get("hardwareType") or sensor.get("hardware_type") or "")
+            label=(hardware+" "+hardware_type+" "+name+" "+str(sensor.get("parent") or "")).lower()
+            stype=str(sensor.get("sensorType") or sensor.get("sensor_type") or "").lower()
+            unit=str(sensor.get("unit") or "").strip()
+            try:
+                value=float(sensor.get("value"))
+                if not _u66_math.isfinite(value):
+                    continue
+            except Exception:
+                continue
+            category={"temperature":"temperature","voltage":"voltage","clock":"clock","fan":"fan",
+                      "load":"load","power":"power","current":"current","throughput":"throughput",
+                      "energy":"other","data":"other","smalldata":"other","level":"load"}.get(stype,"other")
+            if unit.lower() in ("°c","c") or stype=="temperature": category="temperature"
+            elif unit.lower() in ("v","mv") or stype=="voltage": category="voltage"
+            elif unit.lower() in ("mhz","ghz") or stype=="clock": category="clock"
+            elif unit.lower()=="rpm" or stype=="fan": category="fan"
+            elif unit.lower() in ("w","watt","watts") or stype=="power": category="power"
+            elif unit.lower() in ("a","ma") or stype=="current": category="current"
+            row={"hardware":hardware,"hardwareType":hardware_type,"sensor":name,
+                 "sensorType":stype,"value":value,"unit":unit,"source":sensor.get("source") or source,
+                 "identifier":str(sensor.get("identifier") or "")}
+            groups.setdefault(category,[]).append(row)
+            cpu_like=("cpu" in label or "processor" in label or "core voltage" in label or "vcore" in label)
+            gpu_like=("gpu" in label or "graphics" in label or "video" in label or "gfx" in label)
+            if category=="voltage":
+                if cpu_like: chosen["cpu_voltage"].append(value)
+                if gpu_like: chosen["gpu_voltage"].append(value)
+            elif category=="clock":
+                if cpu_like: chosen["cpu_clock"].append(value)
+                if gpu_like: chosen["gpu_clock"].append(value)
+            elif category=="fan":
+                if cpu_like: chosen["cpu_fan"].append(value)
+                if gpu_like: chosen["gpu_fan"].append(value)
+        result["sensor_groups"]=groups
+        for key,values in chosen.items():
+            if values:
+                result[{"cpu_voltage":"cpu_voltage_v","gpu_voltage":"gpu_voltage_v",
+                        "cpu_clock":"cpu_clock_mhz","gpu_clock":"gpu_clock_mhz",
+                        "cpu_fan":"cpu_fan_rpm","gpu_fan":"gpu_fan_rpm"}[key]]=values[0]
         result["method"]=source
 
     bridge_name="NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe"
@@ -913,7 +964,7 @@ def _u66_sensor_poll(self):
     try:
         if getattr(self,"_u66_sensor_busy",False):
             self.after(4000,lambda:_u66_sensor_poll(self)); return
-        if _u66_time.monotonic()-getattr(self,"_u66_sensor_last",0)>8:
+        if _u66_time.monotonic()-getattr(self,"_u66_sensor_last",0)>5:
             self._u66_sensor_busy=True
             self._u66_sensor_last=_u66_time.monotonic()
             def job():
@@ -923,6 +974,13 @@ def _u66_sensor_poll(self):
                     self._u66_sensor_cache={"gpu":gpu,"temps":temps,"time":_u66_time.monotonic()}
                     def update():
                         self._u66_sensor_busy=False
+                        try:
+                            if "_u81_refresh_sensor_table" in globals():
+                                _u81_refresh_sensor_table(self)
+                            if "_u67_refresh_visible_charts" in globals() and getattr(self,"_u67_stage_panel",None) is not None:
+                                _u67_refresh_visible_charts(self)
+                        except Exception:
+                            pass
                         if getattr(self,"current_view","")=="LIVE_MONITOR":
                             _u66_live_tick(self)
                     self.queue_action(update)
@@ -975,15 +1033,19 @@ def _u66_show_live_monitor(self):
     self._u66_live_labels={}
     for title,key in [
         ("CPU LOAD","cpu"),("RAM UŻYTA","ram"),("GPU LOAD","gpu"),("TEMP CPU","cpu_temp"),
-        ("TEMP GPU","gpu_temp"),("DYSK ODCZYT","disk_read"),("DYSK ZAPIS","disk_write"),
-        ("DOWNLOAD LIVE","net_down"),("UPLOAD LIVE","net_up"),("ZEGAR CPU","cpu_freq"),
-        ("VRAM UŻYTA","vram"),("CZUJNIK ACPI","acpi")
+        ("TEMP GPU","gpu_temp"),("CPU POWER","cpu_power"),("GPU POWER","gpu_power"),
+        ("SYSTEM POWER","system_power"),("BATTERY POWER","battery_power"),
+        ("CPU VOLTAGE","cpu_voltage"),("GPU VOLTAGE","gpu_voltage"),
+        ("CPU CLOCK","cpu_clock"),("GPU CLOCK","gpu_clock"),("CPU FAN","cpu_fan"),("GPU FAN","gpu_fan"),
+        ("DYSK ODCZYT","disk_read"),("DYSK ZAPIS","disk_write"),
+        ("DOWNLOAD LIVE","net_down"),("UPLOAD LIVE","net_up"),("VRAM UŻYTA","vram"),("CZUJNIK ACPI","acpi")
     ]:
-        card=self.panel(grid); card.grid(row=len(self._u66_live_labels)//4,column=len(self._u66_live_labels)%4,sticky="nsew",padx=3,pady=3)
+        card=self.panel(grid); card.grid(row=len(self._u66_live_labels)//5,column=len(self._u66_live_labels)%5,sticky="nsew",padx=3,pady=3)
         tk.Label(card,text=title,bg=t["panel"],fg=t["muted"],font=self.fnt(8,"bold")).pack(pady=(8,2))
         val=tk.Label(card,text="N/D",bg=t["panel"],fg=t["accent"],font=self.fnt(14,"bold"))
         val.pack(pady=(0,8)); self._u66_live_labels[key]=val
-    for col in range(4): grid.grid_columnconfigure(col,weight=1)
+    for col in range(5): grid.grid_columnconfigure(col,weight=1)
+    _u81_attach_sensor_table(self,self.content,height=6)
     charts=tk.Frame(self.content,bg=t["bg"]); charts.pack(fill="both",expand=True,pady=6)
     left=self.panel(charts); left.pack(side="left",fill="both",expand=True,padx=(0,4))
     right=self.panel(charts); right.pack(side="left",fill="both",expand=True,padx=(4,0))
@@ -1043,6 +1105,16 @@ def _u66_live_tick(self):
         gt=gpu.get("temperature_c",temps.get("gpu_temp_c"))
         put("cpu_temp",f"{float(ct):.1f} °C" if isinstance(ct,(int,float)) else "N/D")
         put("gpu_temp",f"{float(gt):.1f} °C" if isinstance(gt,(int,float)) else "N/D")
+        numeric=lambda x: float(x) if isinstance(x,(int,float)) else None
+        for key,field,unit,precision in (
+            ("cpu_power","cpu_power_w","W",1),("gpu_power","gpu_power_w","W",1),
+            ("system_power","system_power_w","W",1),("battery_power","battery_power_w","W",1),
+            ("cpu_voltage","cpu_voltage_v","V",3),("gpu_voltage","gpu_voltage_v","V",3),
+            ("cpu_clock","cpu_clock_mhz","MHz",0),("gpu_clock","gpu_clock_mhz","MHz",0),
+            ("cpu_fan","cpu_fan_rpm","RPM",0),("gpu_fan","gpu_fan_rpm","RPM",0)
+        ):
+            value=numeric(temps.get(field))
+            put(key,(f"{value:.{precision}f} {unit}" if value is not None else "N/D"))
         io=psutil.disk_io_counters() if psutil else None
         now=_u66_time.monotonic()
         prev=getattr(self,"_u66_disk_prev",None)
@@ -1528,6 +1600,8 @@ def _u67_stage_live_panel(self, index, total, title):
         ("CPU", "cpu"), ("RAM", "ram"), ("GPU", "gpu"), ("TEMP CPU", "cpu_temp"),
         ("TEMP GPU", "gpu_temp"), ("CPU MOC", "cpu_power"), ("GPU MOC", "gpu_power"),
         ("MOC SYSTEMU", "system_power"), ("MOC BATERII", "battery_power"),
+        ("CPU V", "cpu_voltage"), ("GPU V", "gpu_voltage"), ("CPU MHz", "cpu_clock"),
+        ("GPU MHz", "gpu_clock"), ("WENTYLATOR CPU", "cpu_fan"), ("WENTYLATOR GPU", "gpu_fan"),
         ("DYSK ODCZYT", "disk_read"), ("DYSK ZAPIS", "disk_write"),
         ("NET ↓", "net_down"), ("NET ↑", "net_up")
     ]
@@ -1548,11 +1622,23 @@ def _u67_stage_live_panel(self, index, total, title):
     self._u67_stage_chart_io.pack(side="left", fill="both", expand=True, padx=(3, 0))
     self._u67_stage_chart_power = tk.Canvas(graphs, height=82, bg=t["card"], highlightthickness=0)
     self._u67_stage_chart_power.pack(side="left", fill="both", expand=True, padx=(3, 0))
+    graphs2 = tk.Frame(panel, bg=t["panel"])
+    graphs2.pack(fill="x", padx=6, pady=(0, 5))
+    self._u67_stage_chart_temp = tk.Canvas(graphs2, height=94, bg=t["card"], highlightthickness=0)
+    self._u67_stage_chart_temp.pack(side="left", fill="both", expand=True, padx=(0, 3))
+    self._u67_stage_chart_voltage = tk.Canvas(graphs2, height=94, bg=t["card"], highlightthickness=0)
+    self._u67_stage_chart_voltage.pack(side="left", fill="both", expand=True, padx=3)
+    self._u67_stage_chart_clocks = tk.Canvas(graphs2, height=94, bg=t["card"], highlightthickness=0)
+    self._u67_stage_chart_clocks.pack(side="left", fill="both", expand=True, padx=(3, 0))
     if not hasattr(self, "_u67_hist"):
         self._u67_hist = {"cpu": [], "ram": [], "gpu": [], "read": [], "write": [], "down": [], "up": [],
-                          "cpu_power": [], "gpu_power": [], "system_power": [], "battery_power": []}
+                          "cpu_power": [], "gpu_power": [], "system_power": [], "battery_power": [],
+                          "cpu_temp": [], "gpu_temp": [], "cpu_voltage": [], "gpu_voltage": [],
+                          "cpu_clock": [], "gpu_clock": []}
+    _u81_attach_sensor_table(self, panel, height=5)
     self._u67_stage_key = title
     _u67_refresh_visible_charts(self)
+    _u81_schedule_stage_live_tick(self)
 
 
 def _u67_draw_history_chart(canvas, series, maximum, title, app):
@@ -1572,7 +1658,10 @@ def _u67_draw_history_chart(canvas, series, maximum, title, app):
         ("cpu", t["accent"]), ("ram", t["good"]), ("gpu", t["warn"]),
         ("read", t["accent2"]), ("write", t["good"]), ("down", t["warn"]), ("up", t["accent"]),
         ("cpu_power", t["accent"]), ("gpu_power", t["warn"]),
-        ("system_power", t["good"]), ("battery_power", t["accent2"])
+        ("system_power", t["good"]), ("battery_power", t["accent2"]),
+        ("cpu_temp", t["warn"]), ("gpu_temp", t["accent2"]),
+        ("cpu_voltage", t["good"]), ("gpu_voltage", t["accent"]),
+        ("cpu_clock", t["accent2"]), ("gpu_clock", t["warn"])
     ]
     for key, color in palette:
         vals = series.get(key, [])
@@ -1631,6 +1720,15 @@ def _u67_refresh_visible_charts(self):
         self._u67_disk_prev = (io.read_bytes, io.write_bytes, now)
     down = numeric(vals.get("recv"))
     up = numeric(vals.get("sent"))
+    cpu_voltage = numeric(temps.get("cpu_voltage_v"))
+    gpu_voltage = numeric(temps.get("gpu_voltage_v"))
+    cpu_clock = numeric(temps.get("cpu_clock_mhz"))
+    gpu_clock = numeric(temps.get("gpu_clock_mhz"))
+    cpu_fan = numeric(temps.get("cpu_fan_rpm"))
+    gpu_fan = numeric(temps.get("gpu_fan_rpm"))
+    if cpu_clock is None:
+        freq = psutil.cpu_freq() if psutil else None
+        cpu_clock = numeric(freq.current) if freq else None
     shown = {
         "cpu": f"{cpu:.1f}%" if cpu is not None else "N/D",
         "ram": f"{ram:.1f}%" if ram is not None else "N/D",
@@ -1641,6 +1739,12 @@ def _u67_refresh_visible_charts(self):
         "gpu_power": f"{gpu_power:.1f} W" if gpu_power is not None else "N/D",
         "system_power": f"{system_power:.1f} W" if system_power is not None else "N/D",
         "battery_power": f"{battery_power:.1f} W" if battery_power is not None else "N/D",
+        "cpu_voltage": f"{cpu_voltage:.3f} V" if cpu_voltage is not None else "N/D",
+        "gpu_voltage": f"{gpu_voltage:.3f} V" if gpu_voltage is not None else "N/D",
+        "cpu_clock": f"{cpu_clock:.0f} MHz" if cpu_clock is not None else "N/D",
+        "gpu_clock": f"{gpu_clock:.0f} MHz" if gpu_clock is not None else "N/D",
+        "cpu_fan": f"{cpu_fan:.0f} RPM" if cpu_fan is not None else "N/D",
+        "gpu_fan": f"{gpu_fan:.0f} RPM" if gpu_fan is not None else "N/D",
         "disk_read": f"{read_rate:.2f} MB/s" if read_rate is not None else "N/D",
         "disk_write": f"{write_rate:.2f} MB/s" if write_rate is not None else "N/D",
         "net_down": f"{down * 8 / 1_000_000:.2f} Mbps" if down is not None else "N/D",
@@ -1660,7 +1764,9 @@ def _u67_refresh_visible_charts(self):
             ("down", down * 8 / 1_000_000 if down is not None else None),
             ("up", up * 8 / 1_000_000 if up is not None else None),
             ("cpu_power", cpu_power), ("gpu_power", gpu_power),
-            ("system_power", system_power), ("battery_power", battery_power)
+            ("system_power", system_power), ("battery_power", battery_power),
+            ("cpu_temp", cpu_temp), ("gpu_temp", gpu_temp), ("cpu_voltage", cpu_voltage), ("gpu_voltage", gpu_voltage),
+            ("cpu_clock", cpu_clock), ("gpu_clock", gpu_clock)
         ):
             if value is not None and _u66_math.isfinite(float(value)):
                 hist[key].append(float(value))
@@ -1676,6 +1782,17 @@ def _u67_refresh_visible_charts(self):
         power_values = power_series["cpu_power"] + power_series["gpu_power"] + power_series["system_power"] + power_series["battery_power"]
         power_max = max([1.0] + power_values)
         _u67_draw_history_chart(getattr(self, "_u67_stage_chart_power", None), power_series, power_max, "POBÓR MOCY W", self)
+        thermal = {"cpu_temp": (hist or {}).get("cpu_temp", []), "gpu_temp": (hist or {}).get("gpu_temp", [])}
+        thermal_values = thermal["cpu_temp"] + thermal["gpu_temp"]
+        _u67_draw_history_chart(getattr(self, "_u67_stage_chart_temp", None), thermal, max([100.0] + thermal_values), "TEMPERATURA °C", self)
+        voltage = {"cpu_voltage": (hist or {}).get("cpu_voltage", []), "gpu_voltage": (hist or {}).get("gpu_voltage", [])}
+        voltage_values = voltage["cpu_voltage"] + voltage["gpu_voltage"]
+        _u67_draw_history_chart(getattr(self, "_u67_stage_chart_voltage", None), voltage, max([2.0] + voltage_values), "NAPIĘCIA V", self)
+        clocks = {"cpu_clock": (hist or {}).get("cpu_clock", []), "gpu_clock": (hist or {}).get("gpu_clock", [])}
+        clock_values = clocks["cpu_clock"] + clocks["gpu_clock"]
+        _u67_draw_history_chart(getattr(self, "_u67_stage_chart_clocks", None), clocks, max([1000.0] + clock_values), "ZEGARY CPU / GPU MHz", self)
+    except Exception:
+        pass
     except Exception:
         pass
     try:
