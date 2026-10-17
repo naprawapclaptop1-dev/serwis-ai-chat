@@ -1240,7 +1240,7 @@ def _u66_show_tests_hub(self):
     self.make_button(row,"MONITOR LIVE",self.show_live_monitor,"card",side="left",ipady=5)
     self.make_button(row,"LABORATORIUM PODZESPOŁÓW — 13 MODUŁÓW",self.show_component_lab,"good",side="left",ipady=5)
 
-def _u66_scene_child(output_path, seconds=5, scene_id=1):
+def _u66_scene_child(output_path, seconds=5, scene_id=1, resolution="1920x1080"):
     result={"state":"warn","scene_id":int(scene_id),"scene_name":"N/D"}
     pg=None
     try:
@@ -1255,7 +1255,11 @@ def _u66_scene_child(output_path, seconds=5, scene_id=1):
             pg.display.gl_set_attribute(pg.GL_CONTEXT_MAJOR_VERSION,2)
             pg.display.gl_set_attribute(pg.GL_CONTEXT_MINOR_VERSION,1)
         except Exception: pass
-        width,height=1280,720
+        try:
+            width,height=(int(v) for v in str(resolution or "1920x1080").lower().split("x",1))
+        except Exception:
+            width,height=1920,1080
+        width=max(640,min(3840,width)); height=max(480,min(2160,height))
         pg.display.set_mode((width,height),pg.OPENGL|pg.DOUBLEBUF|pg.RESIZABLE,vsync=0)
         renderer=(GL.glGetString(GL.GL_RENDERER) or b"unknown").decode("utf-8","replace")
         version=(GL.glGetString(GL.GL_VERSION) or b"unknown").decode("utf-8","replace")
@@ -1397,10 +1401,11 @@ def _u66_execute_gpu_scene(self,scene_id,seconds=5):
     output=Path(tempfile.gettempdir())/("naprawapc_gpu_scene_"+str(os.getpid())+"_"+str(scene_id)+"_"+_u66_uuid.uuid4().hex[:8]+".json")
     try: output.unlink(missing_ok=True)
     except Exception: pass
+    resolution=str(getattr(self,"_u90_scene_resolution_value","1920x1080") or "1920x1080")
     if getattr(sys,"frozen",False):
-        cmd=[sys.executable,"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds))]
+        cmd=[sys.executable,"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds)),resolution]
     else:
-        cmd=[sys.executable,str(Path(__file__).resolve()),"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds))]
+        cmd=[sys.executable,str(Path(__file__).resolve()),"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds)),resolution]
     _u66_set_suite_status(self,f"SCENA 3D {scene_id}/{len(_U66_SCENES)} — {_U66_SCENES[scene_id-1][0]} — uruchamianie OpenGL…")
     proc=None
     try:
@@ -1441,8 +1446,8 @@ def _u66_show_3d_studio(self):
     names=[f"{i+1:02d} — {sc[0].split('—',1)[-1].strip()}" for i,sc in enumerate(_U66_SCENES)]
     self._u66_scene_var=tk.StringVar(value=names[0])
     ttk.Combobox(options,textvariable=self._u66_scene_var,values=names,state="readonly",width=42).pack(side="left",padx=3,ipady=4)
-    self._u66_scene_seconds=tk.StringVar(value="10 s")
-    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s"),state="readonly",width=9).pack(side="left",padx=3,ipady=4)
+    self._u66_scene_seconds=tk.StringVar(value="30 s")
+    ttk.Combobox(options,textvariable=self._u66_scene_seconds,values=("3 s","5 s","10 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s"),state="readonly",width=9).pack(side="left",padx=3,ipady=4)
     self._u66_3d_status=tk.Label(self.content,text=f"Gotowy — wybierz scenę albo uruchom wszystkie {len(_U66_SCENES)}.",bg=t["bg"],fg=t["muted"],font=self.fnt(9,"bold"),anchor="w")
     self._u66_3d_status.pack(fill="x",padx=4,pady=5)
     table=self.panel(self.content); table.pack(fill="both",expand=True,pady=5)
@@ -1478,13 +1483,13 @@ def _u66_start_3d_all(self):
     self.worker(lambda:_u66_run_3d_suite(self,seconds))
 
 def _u66_run_3d_suite(self,seconds=5):
-    self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
+    _u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
     results=[]
     for i,sc in enumerate(_U66_SCENES,1):
         if self._test_should_stop(): break
         self._u66_set_suite_status(self,f"3D BENCHMARK: scena {i}/{len(_U66_SCENES)} — {sc[0]}")
         r=_u66_execute_gpu_scene(self,i,seconds); results.append(r)
-        self._u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
+        _u66_ui_wait(self,lambda:_u66_show_3d_studio(self))
     good=sum(1 for r in results if r.get("state")=="good")
     report={"state":"good" if good==len(results) and results else "warn","completed":len(results),"good":good,"scenes":results,"time":_U66_datetime.now().isoformat(timespec="seconds")}
     self.results["3D_SUITE"]=report
@@ -1975,11 +1980,11 @@ def _u67_init_with_sensor_poll(self):
 
 
 # v4.3.72 — independent component tests, long ULTRA/MAX profiles, per-component 3D visualizer.
-_U68_PROFILE_CHOICES=("SZYBKI — 15 s","STANDARD — 60 s","ULTRA — 180 s","MAX — 300 s","EXTREME — 600 s","TEST TERMICZNY — 900 s")
+_U68_PROFILE_CHOICES=("KRÓTKI — 15 s","ŚREDNI — 60 s","DŁUGI — 180 s","ULTRA — 300 s","MAX — 600 s","TEST TERMICZNY — 900 s")
 _U68_COMPONENT_LABELS={"CPU":"Procesor / CPU","RAM":"Pamięć RAM","GPU":"Karta graficzna / GPU","DYSK":"SSD / HDD / NVMe","EKRAN":"Matryca / EDID","SECURITY":"Bezpieczeństwo","VRAM":"Pamięć karty / VRAM"}
 
 def _u68_profile_seconds(self):
-    value=str(getattr(self,"_u68_profile_var",tk.StringVar(value="ULTRA — 180 s")).get())
+    value=str(getattr(self,"_u68_profile_var",tk.StringVar(value="ULTRA — 300 s")).get())
     try:return max(15,min(900,int(value.split("—",1)[1].strip().split()[0])))
     except Exception:return 180
 
@@ -2000,7 +2005,7 @@ def _u68_attach_component_workbench(self,module):
         tk.Label(panel,text="TESTY NIEZALEŻNE • BENCHMARK ULTRA/MAX • WIZUALIZACJA 3D",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,2))
         tk.Label(panel,text="Skan i benchmark wykonują rzeczywistą operację. Model 3D pokazuje schemat działania — nie udaje dodatkowego wyniku FPS.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=9,pady=(0,5))
         row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,6))
-        self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 180 s"))
+        self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 300 s"))
         cb=ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18);cb.pack(side="left",padx=3,ipady=3)
         cb.bind("<<ComboboxSelected>>",lambda e:setattr(self,"_u68_profile_value",self._u68_profile_var.get()))
         if module=="RAM":
@@ -2358,7 +2363,7 @@ def _u69_attach_workbench(self,module):
         tk.Label(panel,text="TESTY NIEZALEŻNE • SKAN • BENCHMARK ULTRA/MAX • WIZUALIZACJA 3D",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,2))
         tk.Label(panel,text="Każdy przycisk uruchamia osobny test. Wykresy są pomiarami bieżącymi; schemat 3D jest wizualizacją, a FPS mierzy tylko rzeczywisty test renderera.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,5))
         row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,6))
-        self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 180 s"))
+        self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 300 s"))
         cb=ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18);cb.pack(side="left",padx=3,ipady=3)
         cb.bind("<<ComboboxSelected>>",lambda e:setattr(self,"_u68_profile_value",self._u68_profile_var.get()))
         if module=="RAM":
@@ -2681,7 +2686,7 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     try:options.pack(fill="x",padx=3,pady=2,before=self._u68_sim_canvas)
     except Exception:options.pack(fill="x",padx=3,pady=2)
     row=tk.Frame(options,bg=self.colors()["bg"]);row.pack(fill="x")
-    if not hasattr(self,"_u68_profile_var"):self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 180 s"))
+    if not hasattr(self,"_u68_profile_var"):self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 300 s"))
     ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18).pack(side="left",padx=2,ipady=3)
     if module=="DYSK":
         drives=_u69_drive_options(self);current=getattr(self,"_u69_disk_drive_value",drives[0])
@@ -3064,7 +3069,7 @@ def _u78_show_component_lab(self):
     hero = self.panel(self.content)
     hero.pack(fill="x", pady=(0, 6))
     tk.Label(hero, text="KAŻDY PODZESPÓŁ OSOBNO • SKAN • TEST / BENCHMARK • SYMULATOR 3D", bg=t["panel"], fg=t["accent"], font=self.fnt(12, "bold")).pack(anchor="w", padx=12, pady=(9, 3))
-    tk.Label(hero, text=f"{len(_U78_COMPONENT_LAB)} niezależnych modułów. Wybierz pojedynczą operację — nie musisz uruchamiać całej diagnostyki. Profile benchmarków: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s / EXTREME 600 s / TEST TERMICZNY 900 s. GPU ma {len(_U66_SCENES)} scen OpenGL. Animacja 3D pokazuje schemat podzespołu; wynik PASS/OSTRZEŻENIE/FAIL pochodzi wyłącznie z rzeczywistego testu. Nieobsługiwane sensory oznaczamy N/D.", bg=t["panel"], fg=t["muted"], font=self.fnt(8), wraplength=1450, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+    tk.Label(hero, text=f"{len(_U78_COMPONENT_LAB)} niezależnych modułów. Wybierz pojedynczą operację — nie musisz uruchamiać całej diagnostyki. Profile benchmarków: KRÓTKI 15 s / ŚREDNI 60 s / DŁUGI 180 s / ULTRA 300 s / MAX 600 s / TEST TERMICZNY 900 s. GPU ma {len(_U66_SCENES)} scen OpenGL. Animacja 3D pokazuje schemat podzespołu; wynik PASS/OSTRZEŻENIE/FAIL pochodzi wyłącznie z rzeczywistego testu. Nieobsługiwane sensory oznaczamy N/D.", bg=t["panel"], fg=t["muted"], font=self.fnt(8), wraplength=1450, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
     quick = tk.Frame(self.content, bg=t["bg"])
     quick.pack(fill="x", pady=(0, 6))
     self.make_button(quick, "▶ SPEED TEST INTERNETU — DOWNLOAD / UPLOAD / PING", self.show_speed_test, "accent", side="left", ipady=7)
@@ -3801,10 +3806,657 @@ AppV43.show_battery_or_power=_u86_show_battery_with_component_workbench
 AppV43.draw_bar_chart=_u86_draw_bar_chart
 
 
+
+# v4.3.87 — honest live throughput, per-scene 3D fixes, real short/medium/long VRAM tests, error alarm.
+import http.client as _u90_http_client
+import ssl as _u90_ssl
+
+_U90_ORIGINAL_QUEUE_RESULTS = AppV43.queue_results
+_U90_ERROR_SOUND_GAP = 2.2
+
+def _u90_error_alarm(app, detail):
+    now = _u66_time.monotonic()
+    if now - float(getattr(app, "_u90_last_error_beep", 0.0) or 0.0) < _U90_ERROR_SOUND_GAP:
+        return
+    try:
+        app._u90_last_error_beep = now
+    except Exception:
+        pass
+    try:
+        import winsound as _u90_winsound
+        try:
+            _u90_winsound.MessageBeep(_u90_winsound.MB_ICONHAND)
+        except Exception:
+            def alarm():
+                try:
+                    _u90_winsound.Beep(1300, 180)
+                    _u90_winsound.Beep(720, 260)
+                except Exception:
+                    pass
+            _u90_threading.Thread(target=alarm, daemon=True, name="NaprawaPCErrorAlarm").start()
+    except Exception:
+        pass
+    try:
+        app.queue_log("ALARM TESTU — wykryto błąd: " + str(detail)[:220])
+    except Exception:
+        pass
+
+
+def _u90_queue_results_with_error_alarm(self, key, value):
+    result = _U90_ORIGINAL_QUEUE_RESULTS(self, key, value)
+    if isinstance(value, dict):
+        state = str(value.get("state", "")).lower()
+        has_error = bool(value.get("error")) or state in ("bad", "error", "failed", "fail")
+        if has_error and not value.get("stopped") and not value.get("stopped_by_user"):
+            _u90_error_alarm(self, f"{key}: {value.get('error') or value.get('message') or state}")
+    return result
+
+AppV43.queue_results = _u90_queue_results_with_error_alarm
+
+
+def _u90_speed_request(url, data=None, timeout=40, progress=None, phase="download"):
+    parsed = _u66_urlparse.urlparse(str(url))
+    if parsed.scheme != "https" or (parsed.hostname or "").lower() != "speed.cloudflare.com":
+        raise ValueError("Speed Test dopuszcza wyłącznie HTTPS do speed.cloudflare.com.")
+    path = parsed.path or "/"
+    if parsed.query:
+        path += "?" + parsed.query
+    headers = {
+        "User-Agent": "NAPRAWA-PC-HARDWARE-TEST-PRO/SpeedTest-live",
+        "Cache-Control": "no-cache",
+        "Accept-Encoding": "identity",
+        "Connection": "close",
+    }
+    conn = None
+    total_started = _u66_time.perf_counter()
+    transferred = 0
+    response_bytes = 0
+    try:
+        conn = _u90_http_client.HTTPSConnection(parsed.hostname, parsed.port or 443, timeout=timeout,
+                                                context=_u90_ssl.create_default_context())
+        if data is None:
+            conn.request("GET", path, headers=headers)
+            response = conn.getresponse()
+            status = int(response.status)
+            if status < 200 or status >= 300:
+                raise OSError(f"Cloudflare zwrócił HTTP {status}; pomiar download nie jest ważny.")
+            started = _u66_time.perf_counter()
+            last_t = started
+            last_bytes = 0
+            expected = None
+            try:
+                values = _u66_urlparse.parse_qs(parsed.query)
+                if values.get("bytes"):
+                    expected = max(0, int(values["bytes"][0]))
+            except Exception:
+                expected = None
+            header_length = response.getheader("Content-Length")
+            if expected is None and header_length:
+                try: expected = max(0, int(header_length))
+                except Exception: expected = None
+            while True:
+                chunk = response.read(256 * 1024)
+                if not chunk:
+                    break
+                transferred += len(chunk)
+                now = _u66_time.perf_counter()
+                elapsed = max(0.001, now - started)
+                inst_elapsed = max(0.001, now - last_t)
+                instant = max(0.0, (transferred - last_bytes) * 8 / inst_elapsed / 1_000_000)
+                average = transferred * 8 / elapsed / 1_000_000
+                if callable(progress):
+                    try: progress(phase, transferred, expected or 0, elapsed, instant, average)
+                    except Exception: pass
+                last_t, last_bytes = now, transferred
+            transfer_seconds = max(0.001, _u66_time.perf_counter() - started)
+            if expected is not None and expected > 0 and transferred < int(expected * 0.98):
+                raise OSError(f"Niepełny download: odebrano {transferred} z {expected} bajtów.")
+        else:
+            body = memoryview(data)
+            conn.putrequest("POST", path)
+            conn.putheader("User-Agent", headers["User-Agent"])
+            conn.putheader("Cache-Control", headers["Cache-Control"])
+            conn.putheader("Accept-Encoding", "identity")
+            conn.putheader("Connection", "close")
+            conn.putheader("Content-Type", "application/octet-stream")
+            conn.putheader("Content-Length", str(len(body)))
+            conn.endheaders()
+            started = _u66_time.perf_counter()
+            last_t = started
+            last_bytes = 0
+            block_size = 256 * 1024
+            for offset in range(0, len(body), block_size):
+                chunk = body[offset:offset + block_size]
+                conn.send(chunk)
+                transferred += len(chunk)
+                now = _u66_time.perf_counter()
+                elapsed = max(0.001, now - started)
+                inst_elapsed = max(0.001, now - last_t)
+                instant = max(0.0, (transferred - last_bytes) * 8 / inst_elapsed / 1_000_000)
+                average = transferred * 8 / elapsed / 1_000_000
+                if callable(progress):
+                    try: progress(phase, transferred, len(body), elapsed, instant, average)
+                    except Exception: pass
+                last_t, last_bytes = now, transferred
+            transfer_seconds = max(0.001, _u66_time.perf_counter() - started)
+            response = conn.getresponse()
+            status = int(response.status)
+            if status < 200 or status >= 300:
+                raise OSError(f"Cloudflare zwrócił HTTP {status}; pomiar upload nie jest ważny.")
+            while True:
+                chunk = response.read(64 * 1024)
+                if not chunk:
+                    break
+                response_bytes += len(chunk)
+        if data is None:
+            # Count the received transfer only. Upload responses are not counted as uploaded bytes.
+            response_bytes = 0
+        request_seconds = max(0.001, _u66_time.perf_counter() - total_started)
+        return {
+            "bytes": int(transferred),
+            "seconds": round(transfer_seconds, 4),
+            "request_seconds": round(request_seconds, 4),
+            "mbps": round(transferred * 8 / max(0.001, transfer_seconds) / 1_000_000, 3),
+            "status": status,
+            "response_bytes": int(response_bytes),
+            "transfer_method": "HTTPS real bytes / monotonic clock",
+        }
+    finally:
+        if conn is not None:
+            try: conn.close()
+            except Exception: pass
+
+
+def _u90_draw_live_speed_chart(self):
+    canvas = getattr(self, "_u66_speed_chart", None)
+    if canvas is None:
+        return
+    try:
+        if not canvas.winfo_exists():
+            return
+        canvas.delete("all")
+        t = self.colors()
+        w = max(420, canvas.winfo_width() or 520)
+        h = max(145, canvas.winfo_height() or 230)
+        left, right, top, bottom = 48, w - 14, 30, h - 28
+        history = getattr(self, "_u90_speed_history", {"download": [], "upload": {}})
+        down = history.get("download", [])[-100:]
+        up = history.get("upload", [])[-100:]
+        ceiling = max([50.0] + [float(v) for v in down + up if v is not None])
+        canvas.create_text(10, 7, text="PRĘDKOŚĆ CHWILOWA Z PRZESŁANYCH BAJTÓW • Mbps", anchor="nw",
+                           fill=t["fg"], font=self.fnt(9, "bold"))
+        for pct in (0, 25, 50, 75, 100):
+            y = bottom - (bottom - top) * pct / 100
+            canvas.create_line(left, y, right, y, fill=t["card"])
+            canvas.create_text(left - 6, y, text=f"{ceiling*pct/100:.0f}", anchor="e", fill=t["muted"], font=self.fnt(7))
+        for values, color in ((down, t["accent"]), (up, t["good"])):
+            if len(values) < 2:
+                continue
+            points = []
+            for i, value in enumerate(values):
+                x = left + (right-left) * i / max(1, len(values)-1)
+                y = bottom - (bottom-top) * max(0.0, min(ceiling, float(value))) / ceiling
+                points.extend((x,y))
+            canvas.create_line(*points, fill=color, width=2, smooth=True)
+        canvas.create_text(left, h-8, text="DOWNLOAD", anchor="sw", fill=t["accent"], font=self.fnt(8, "bold"))
+        canvas.create_text(left+100, h-8, text="UPLOAD", anchor="sw", fill=t["good"], font=self.fnt(8, "bold"))
+        canvas.create_text(right, h-8, text=f"skala 0–{ceiling:.0f} Mbps", anchor="se", fill=t["muted"], font=self.fnt(7))
+    except Exception:
+        pass
+
+
+def _u90_speed_progress_ui(self, phase, done, total, elapsed, instant_mbps, average_mbps, base_data):
+    try:
+        history = getattr(self, "_u90_speed_history", None)
+        if not isinstance(history, dict):
+            history = {"download": [], "upload": []}
+            self._u90_speed_history = history
+        if phase in ("download", "upload"):
+            history.setdefault(phase, []).append(max(0.0, float(instant_mbps)))
+            history[phase] = history[phase][-100:]
+        ratio = f"{done/total*100:.0f}%" if total and total > 0 else "100%"
+        rate = f"{instant_mbps:.1f} Mbps chwilowo / {average_mbps:.1f} Mbps średnio"
+        if phase in ("download", "upload"):
+            label = self._u66_speed_values.get(phase)
+            if label is not None and label.winfo_exists():
+                label.config(text=f"{instant_mbps:.1f} Mbps")
+            data_label = self._u66_speed_values.get("data")
+            if data_label is not None and data_label.winfo_exists():
+                data_label.config(text=f"{(base_data+done)/1_000_000:.2f} MB")
+            _u66_set_speed_status(self,
+                f"NA ŻYWO — {phase.upper()} {ratio} • {done/1_000_000:.2f}/{total/1_000_000:.2f} MB • {rate} • {elapsed:.2f} s")
+            _u90_draw_live_speed_chart(self)
+        elif phase == "ping":
+            label = self._u66_speed_values.get("latency")
+            if label is not None and label.winfo_exists():
+                label.config(text=f"{elapsed:.1f} ms")
+            _u66_set_speed_status(self, f"NA ŻYWO — HTTPS RTT {elapsed:.1f} ms (to opóźnienie HTTPS, nie ping ICMP).")
+    except Exception:
+        pass
+
+
+def _u90_emit_speed_progress(self, phase, done, total, elapsed, instant, average, base_data=0):
+    try:
+        self.queue_action(lambda p=phase,d=done,t=total,e=elapsed,i=instant,a=average,b=base_data:
+            _u90_speed_progress_ui(self,p,d,t,e,i,a,b))
+    except Exception:
+        pass
+
+
+def _u90_median(values):
+    vals = sorted(float(v) for v in values if v is not None and _u66_math.isfinite(float(v)))
+    if not vals:
+        raise ValueError("Brak prawidłowych próbek przepustowości.")
+    n = len(vals)
+    return vals[n//2] if n % 2 else (vals[n//2-1] + vals[n//2]) / 2.0
+
+
+def _u90_measure_speed(self):
+    samples = {
+        "latency_ms": [], "download": [], "upload": [],
+        "started_at": _U66_datetime.now().isoformat(timespec="seconds"),
+        "method": "Rzeczywiste bajty HTTPS do speed.cloudflare.com; mediana 3 próbek; postęp liczony podczas transmisji.",
+        "latency_method": "HTTPS round-trip time, nie ICMP ping",
+    }
+    total_data = 0
+    def phase(text):
+        _u66_set_speed_status(self, text)
+        try: self.queue_status(text)
+        except Exception: pass
+    try:
+        for i in range(3):
+            phase(f"Speed Test NA ŻYWO: HTTPS RTT {i+1}/3…")
+            url = "https://speed.cloudflare.com/__down?bytes=0&r=" + _u66_uuid.uuid4().hex
+            t0 = _u66_time.perf_counter()
+            _u90_speed_request(url, None, 20, None, "ping")
+            latency = round((_u66_time.perf_counter()-t0)*1000, 2)
+            samples["latency_ms"].append(latency)
+            _u90_emit_speed_progress(self, "ping", 0, 0, latency, 0.0, 0.0, total_data)
+        for idx, size in enumerate((1_000_000, 5_000_000, 10_000_000), 1):
+            phase(f"Speed Test NA ŻYWO: download {idx}/3 — pobieranie rzeczywistych bajtów ({size//1_000_000} MB)…")
+            url = "https://speed.cloudflare.com/__down?bytes=" + str(size) + "&r=" + _u66_uuid.uuid4().hex
+            result = _u90_speed_request(url, None, 40,
+                lambda p,d,t,e,i,a,b=total_data:_u90_emit_speed_progress(self,p,d,t,e,i,a,b), "download")
+            result["requested_bytes"] = size
+            samples["download"].append(result)
+            total_data += int(result["bytes"])
+        for idx, size in enumerate((500_000, 2_000_000, 5_000_000), 1):
+            phase(f"Speed Test NA ŻYWO: upload {idx}/3 — wysyłanie rzeczywistych bajtów ({size/1_000_000:.1f} MB)…")
+            body = _u90_os.urandom(size)
+            url = "https://speed.cloudflare.com/__up?r=" + _u66_uuid.uuid4().hex
+            result = _u90_speed_request(url, body, 40,
+                lambda p,d,t,e,i,a,b=total_data:_u90_emit_speed_progress(self,p,d,t,e,i,a,b), "upload")
+            result["requested_bytes"] = size
+            samples["upload"].append(result)
+            total_data += int(result["bytes"])
+        samples["latency_average_ms"] = round(_u90_median(samples["latency_ms"]), 2)
+        samples["download_mbps"] = round(_u90_median([x["mbps"] for x in samples["download"]]), 2)
+        samples["upload_mbps"] = round(_u90_median([x["mbps"] for x in samples["upload"]]), 2)
+        samples["data_bytes"] = total_data
+        samples["state"] = "good"
+        try:
+            folder = _u66_store_dir() / "speedtest"
+            folder.mkdir(parents=True, exist_ok=True)
+            history_path = folder / "history.json"
+            try: records = _u66_json.loads(history_path.read_text(encoding="utf-8"))
+            except Exception: records = []
+            records.append(samples)
+            history_path.write_text(_u66_json.dumps(records[-100:], ensure_ascii=False, indent=2), encoding="utf-8")
+            samples["history_path"] = str(history_path)
+        except Exception:
+            pass
+        return samples
+    except Exception as exc:
+        _u90_error_alarm(self, f"Speed Test: {type(exc).__name__}: {exc}")
+        raise
+
+
+def _u90_draw_speed_chart(self, result):
+    # Keep the live transmission history visible after completion; never replace it with fabricated bars.
+    _u90_draw_live_speed_chart(self)
+    try:
+        if getattr(self, "_u66_speed_status", None) is not None and self._u66_speed_status.winfo_exists():
+            self._u66_speed_status.config(
+                text=f"WYNIK KOŃCOWY — mediana 3 realnych próbek: DOWNLOAD {result.get('download_mbps','N/D')} Mbps • "
+                     f"UPLOAD {result.get('upload_mbps','N/D')} Mbps • HTTPS RTT {result.get('latency_average_ms','N/D')} ms • "
+                     f"transfer {result.get('data_bytes',0)/1_000_000:.2f} MB"
+            )
+    except Exception:
+        pass
+
+
+def _u90_show_speed_test(self):
+    _U90_ORIGINAL_SHOW_SPEED_TEST(self)
+    self._u90_speed_history = {"download": [], "upload": []}
+    try: _u90_draw_live_speed_chart(self)
+    except Exception: pass
+
+
+def _u90_start_speed_test(self):
+    if getattr(self, "_u66_speed_running", False):
+        return
+    self._u66_speed_running = True
+    self._u90_speed_history = {"download": [], "upload": []}
+    _u66_set_speed_status(self, "Rozpoczynam rzeczywisty test HTTPS. Odczyty będą aktualizowane podczas transferu…")
+    def job():
+        try:
+            result = _u90_measure_speed(self)
+            self.results["SPEED_TEST"] = result
+            def done(r=result):
+                self._u66_speed_running = False
+                if getattr(self, "current_view", "") == "SPEED_TEST":
+                    for key, val in (
+                        ("latency", f"{r['latency_average_ms']} ms"),
+                        ("download", f"{r['download_mbps']} Mbps"),
+                        ("upload", f"{r['upload_mbps']} Mbps"),
+                        ("data", f"{r['data_bytes']/1_000_000:.2f} MB"),
+                    ):
+                        try: self._u66_speed_values[key].config(text=val)
+                        except Exception: pass
+                    _u90_draw_speed_chart(self, r)
+                _u66_set_speed_status(self,
+                    f"Zakończono. Mediana 3 próbek: download {r['download_mbps']} Mbps, "
+                    f"upload {r['upload_mbps']} Mbps; HTTPS RTT {r['latency_average_ms']} ms.")
+                self.queue_log(f"SPEED TEST RZECZYWISTY: DL={r['download_mbps']} Mbps; UL={r['upload_mbps']} Mbps; RTT={r['latency_average_ms']} ms.")
+            self.queue_action(done)
+        except Exception as exc:
+            def fail(err=exc):
+                self._u66_speed_running = False
+                msg = f"Speed Test NIEUKOŃCZONY — {type(err).__name__}: {err}"
+                _u66_set_speed_status(self, msg)
+                _u90_error_alarm(self, msg)
+                try: messagebox.showerror("Speed Test — błąd pomiaru", msg)
+                except Exception: pass
+                self.queue_log(msg)
+            self.queue_action(fail)
+    _u66_threading.Thread(target=job, name="NaprawaPCSpeedTestLive", daemon=True).start()
+
+
+def _u90_show_3d_studio(self):
+    _U90_ORIGINAL_SHOW_3D_STUDIO(self)
+    try:
+        self._u90_scene_resolution_var = tk.StringVar(value=str(getattr(self, "_u90_scene_resolution_value", "1920x1080")))
+        row = tk.Frame(self.content, bg=self.colors()["bg"])
+        if getattr(self, "_u66_3d_status", None) is not None and self._u66_3d_status.winfo_exists():
+            row.pack(fill="x", pady=(0, 4), before=self._u66_3d_status)
+        else:
+            row.pack(fill="x", pady=(0, 4))
+        tk.Label(row, text="ROZDZIELCZOŚĆ RENDERERA:", bg=self.colors()["bg"], fg=self.colors()["muted"], font=self.fnt(8, "bold")).pack(side="left", padx=(3, 6))
+        cb = ttk.Combobox(row, textvariable=self._u90_scene_resolution_var,
+            values=("1280x720", "1920x1080", "2560x1440", "3840x2160"), state="readonly", width=12)
+        cb.pack(side="left", padx=3, ipady=3)
+        self._u90_scene_resolution_var.trace_add("write", lambda *_: setattr(self, "_u90_scene_resolution_value", self._u90_scene_resolution_var.get()))
+        self._u90_scene_resolution_value = self._u90_scene_resolution_var.get()
+    except Exception as exc:
+        try: self.queue_log("3D: wybór rozdzielczości niedostępny: " + repr(exc))
+        except Exception: pass
+
+
+def _u90_update_3d_scene(self, scene_id, scene, result, index, total):
+    try:
+        if getattr(self, "current_view", "") == "3D_STUDIO":
+            tree = getattr(self, "_u66_3d_tree", None)
+            if tree is not None and tree.winfo_exists():
+                values=(scene[0],result.get("state","N/D"),result.get("average_fps","N/D"),
+                        result.get("peak_fps_1s","N/D"),result.get("frames","N/D"),
+                        result.get("renderer",result.get("error","—")))
+                try: tree.item(str(scene_id), values=values)
+                except Exception: pass
+            status=getattr(self,"_u66_3d_status",None)
+            if status is not None and status.winfo_exists():
+                status.config(text=f"SCENA {index}/{total}: {scene[0]} • {result.get('state','N/D')} • "
+                                   f"FPS {result.get('average_fps','N/D')} • {result.get('duration_seconds','N/D')} s")
+    except Exception:
+        pass
+
+
+def _u90_run_3d_suite(self, seconds=5):
+    seconds=max(3,min(900,int(seconds)))
+    _u66_ui_wait(self, lambda: _u90_show_3d_studio(self))
+    results=[]
+    total=len(_U66_SCENES)
+    for i, scene in enumerate(_U66_SCENES,1):
+        if self._test_should_stop():
+            break
+        title=f"3D BENCHMARK {i}/{total} — {scene[0]}"
+        _u66_set_suite_status(self,title)
+        result=_u66_execute_gpu_scene(self,i,seconds)
+        results.append(result)
+        if result.get("state") != "good" and not result.get("stopped_by_user"):
+            _u90_error_alarm(self, f"3D scena {i}: {result.get('error') or result.get('note') or result.get('state')}")
+        _u66_ui_wait(self, lambda sid=i,sc=scene,r=result,n=i,t=total:
+            _u90_update_3d_scene(self,sid,sc,r,n,t))
+    passed=sum(1 for item in results if item.get("state")=="good")
+    report={
+        "state":"good" if results and passed==len(results) and len(results)==total else "warn",
+        "completed":len(results),"total":total,"good":passed,"seconds_per_scene":seconds,
+        "resolution":str(getattr(self,"_u90_scene_resolution_value","1920x1080")),
+        "scenes":results,"time":_U66_datetime.now().isoformat(timespec="seconds"),
+    }
+    self.results["3D_SUITE"]=report
+    self.queue_results("3D_SUITE",report)
+    try:
+        folder=_u66_store_dir()/"benchmarks";folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("3d-benchmark-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")
+        target.write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2),encoding="utf-8")
+        report["report_path"]=str(target)
+    except Exception as exc:
+        self.queue_log("Nie udało się zapisać raportu 3D: "+repr(exc))
+    status=f"3D BENCHMARK: {passed}/{len(results)} udanych scen; {len(results)}/{total} wykonanych; rozdzielczość {report['resolution']}; {seconds} s/scena."
+    self.queue_log(status)
+    _u66_ui_wait(self,lambda:_u90_set_3d_final_status(self,status))
+
+
+def _u90_set_3d_final_status(self, status):
+    try:
+        if getattr(self,"current_view","")=="3D_STUDIO" and self._u66_3d_status.winfo_exists():
+            self._u66_3d_status.config(text=status)
+    except Exception: pass
+
+
+def _u90_run_vram_profile_worker(self, requested_mb, seconds, open_gpu_after=False):
+    requested=max(32,min(256,int(requested_mb)))
+    seconds=max(15,min(900,int(seconds)))
+    overall_start=_u66_time.monotonic()
+    passes=[]
+    pass_index=0
+    final_state="warn"
+    try:
+        self._u41_vram_test_running=True
+        self._u66_set_suite_status(self,f"VRAM: profil {seconds} s, żądana alokacja {requested} MB.")
+        while pass_index==0 or (_u66_time.monotonic()-overall_start)<seconds:
+            if self._test_should_stop():
+                final_state="warn"
+                break
+            pass_index += 1
+            out=Path(_u90_os.path.join(tempfile.gettempdir(),
+                f"naprawapc_vram_{os.getpid()}_{_u66_uuid.uuid4().hex[:10]}_{pass_index}.json"))
+            try: out.unlink(missing_ok=True)
+            except Exception: pass
+            command=[sys.executable,"--vram-test",str(out),str(requested)] if getattr(sys,"frozen",False) else [
+                sys.executable,str(Path(__file__).resolve()),"--vram-test",str(out),str(requested)]
+            result={"state":"warn","requested_mb":requested,"message":"Tester VRAM nie zwrócił raportu."}
+            proc=None
+            try:
+                proc=_u66_subprocess.Popen(command,cwd=tempfile.gettempdir(),
+                    creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+                started=_u66_time.monotonic()
+                self._u90_vram_child_process=proc
+                while proc.poll() is None and _u66_time.monotonic()-started<240:
+                    if self._test_should_stop():
+                        try: proc.terminate()
+                        except Exception: pass
+                        break
+                    try:
+                        if out.is_file():
+                            snap=_u66_json.loads(out.read_text(encoding="utf-8"))
+                            self.queue_action(lambda r=snap:self._u41_set_vram_status(r))
+                            progress=snap.get("status_text") or snap.get("message") or "VRAM: test tekstur w toku…"
+                            self.queue_status(f"VRAM {pass_index}: {progress}")
+                            status_label=getattr(self,"_u69_workbench_status",None)
+                            if status_label is not None:
+                                self.queue_action(lambda label=status_label,msg=progress:
+                                    label.config(text=str(msg)) if label.winfo_exists() else None)
+                    except Exception: pass
+                    _u66_time.sleep(.25)
+                if proc.poll() is None:
+                    try: proc.kill()
+                    except Exception: pass
+                    result={"state":"warn","requested_mb":requested,"error":"Timeout po 240 s",
+                            "message":"Tester VRAM przekroczył 240 s na jednym przebiegu."}
+                elif out.is_file():
+                    result=_u66_json.loads(out.read_text(encoding="utf-8"))
+                else:
+                    result={"state":"warn","requested_mb":requested,"error":f"Brak raportu, kod procesu {proc.returncode}",
+                            "message":"Tester VRAM nie wygenerował raportu; sprawdź obsługę OpenGL."}
+            except Exception as exc:
+                result={"state":"warn","requested_mb":requested,"error":f"{type(exc).__name__}: {exc}",
+                        "message":f"Nie udało się uruchomić testera VRAM: {exc}"}
+            finally:
+                try:
+                    if proc is not None and proc.poll() is None: proc.kill()
+                except Exception: pass
+                self._u90_vram_child_process=None
+            result["pass_number"]=pass_index
+            result["profile_seconds"]=seconds
+            result["elapsed_profile_seconds"]=round(_u66_time.monotonic()-overall_start,2)
+            passes.append(result)
+            self.queue_log(f"VRAM profil: przebieg {pass_index}, stan {result.get('state')}, "
+                           f"alokacja {result.get('allocated_mb','N/D')} MB, "
+                           f"wzorce {result.get('patterns_completed','N/D')}/{result.get('patterns_total','N/D')}.")
+            if result.get("state") not in ("good",):
+                final_state=result.get("state","warn")
+                if not result.get("stopped_by_user") and not result.get("stopped"):
+                    _u90_error_alarm(self,f"VRAM: {result.get('error') or result.get('message') or final_state}")
+                break
+            final_state="good"
+            if _u66_time.monotonic()-overall_start>=seconds:
+                break
+        combined={
+            "state":final_state if passes else "warn","requested_mb":requested,"profile_seconds":seconds,
+            "passes_completed":len(passes),"elapsed_seconds":round(_u66_time.monotonic()-overall_start,2),
+            "passes":passes,"stopped":self._test_should_stop(),
+            "note":"VRAM to test pamięci tekstur OpenGL z zapisem/readback; każdy przebieg sprawdza sześć wzorców. Jeden pełny przebieg może trwać dłużej niż profil KRÓTKI."
+        }
+        self.results["VRAM_TEST"]=combined
+        self.queue_results("VRAM_TEST",combined)
+        self.queue_log(f"VRAM BENCHMARK zakończony: {len(passes)} pełnych przebiegów / {combined['elapsed_seconds']} s / {combined['state']}.")
+        return combined
+    finally:
+        self._u41_vram_test_running=False
+        if open_gpu_after:
+            def done():
+                self.running=False
+                self.stop_requested=False
+                if getattr(self,"current_view","")=="GPU":
+                    try: self.show_module("GPU")
+                    except Exception: pass
+                try:
+                    status=getattr(self,"_u41_vram_status_var",None)
+                    if status is not None: status.set(f"VRAM: profil zakończony — {len(passes)} przebiegów; {seconds} s.")
+                except Exception: pass
+            self.queue_action(done)
+
+
+def _u90_start_vram_profile_test(self):
+    if getattr(self,"running",False) or getattr(self,"_u41_vram_test_running",False):
+        messagebox.showwarning("Test VRAM","Inny test już trwa. Zatrzymaj go albo poczekaj.")
+        return
+    try: requested=int(str(self._u41_vram_size_var.get()).split()[0])
+    except Exception: requested=64
+    requested=max(32,min(256,requested))
+    seconds=_u68_profile_seconds(self)
+    if not messagebox.askyesno("Rzeczywisty benchmark VRAM",
+        f"Profil {seconds} s, alokacja do {requested} MB. Każdy przebieg zapisuje tekstury przez OpenGL i porównuje 6 wzorców przez readback. "
+        "Profil dłuższy powtarza pełne przebiegi. Jeden przebieg może przekroczyć czas profilu. Kontynuować?"):
+        return
+    self.running=True
+    self.stop_requested=False
+    _u66_threading.Thread(target=lambda:_u90_run_vram_profile_worker(self,requested,seconds,True),
+        name="NaprawaPCVRAMProfile",daemon=True).start()
+
+
+def _u90_run_vram_profile_from_suite(self):
+    try: requested=int(str(self._u41_vram_size_var.get()).split()[0])
+    except Exception: requested=64
+    return _u90_run_vram_profile_worker(self,requested,_u68_profile_seconds(self),False)
+
+
+_U90_ORIGINAL_SHOW_SPEED_TEST = _u66_show_speed_test
+_U90_ORIGINAL_SHOW_3D_STUDIO = _u66_show_3d_studio
+_u66_measure_speed = _u90_measure_speed
+_u66_draw_speed_chart = _u90_draw_speed_chart
+_u66_show_speed_test = _u90_show_speed_test
+_u66_start_speed_test = _u90_start_speed_test
+_u66_run_3d_suite = _u90_run_3d_suite
+_u69_run_component_worker_original = _u69_run_component_worker
+def _u90_component_worker(self, module, mode):
+    if module=="VRAM" and mode!="scan":
+        _u90_run_vram_profile_from_suite(self)
+        return
+    return _u69_run_component_worker_original(self,module,mode)
+_u69_run_component_worker = _u90_component_worker
+AppV43.show_speed_test = _u90_show_speed_test
+AppV43._u41_start_vram_test = _u90_start_vram_profile_test
+
+
+def _u90_selftest_release_fixes():
+    assert "_u66_ui_wait" in _u90_run_3d_suite.__code__.co_names
+    assert "self" not in _u90_run_3d_suite.__code__.co_names
+    assert "KRÓTKI — 15 s" in _U68_PROFILE_CHOICES
+    assert "ŚREDNI — 60 s" in _U68_PROFILE_CHOICES
+    assert "DŁUGI — 180 s" in _U68_PROFILE_CHOICES
+    assert "900 s" in _U68_PROFILE_CHOICES[-1]
+    assert AppV43._u41_start_vram_test is _u90_start_vram_profile_test
+    assert AppV43.show_speed_test is _u90_show_speed_test
+    assert _u66_measure_speed is _u90_measure_speed
+    assert callable(_u90_error_alarm) and AppV43.queue_results is _u90_queue_results_with_error_alarm
+
+    progress=[]
+    class _FakeResponse:
+        def __init__(self, body, status=200):
+            self.body=body; self.position=0; self.status=status
+        def getheader(self, name):
+            return str(len(self.body)) if name.lower()=="content-length" else None
+        def read(self, n=-1):
+            if self.position>=len(self.body): return b""
+            take=len(self.body)-self.position if n<0 else min(n,len(self.body)-self.position)
+            part=self.body[self.position:self.position+take]; self.position+=len(part); return part
+    class _FakeHTTPSConnection:
+        def __init__(self,*args,**kwargs): self.method="GET"; self.path="/"; self.sent=0; self.response=None
+        def request(self,method,path,headers=None):
+            self.method=method; self.path=path
+            if method=="GET":
+                parsed=_u66_urlparse.urlparse(path)
+                qs=_u66_urlparse.parse_qs(parsed.query)
+                count=int((qs.get("bytes") or ["128"])[0])
+                self.response=_FakeResponse(b"X"*max(0,count))
+            else: self.response=_FakeResponse(b"OK")
+        def putrequest(self,method,path): self.method=method; self.path=path
+        def putheader(self,*args): pass
+        def endheaders(self): pass
+        def send(self,payload): self.sent+=len(payload)
+        def getresponse(self): return self.response or _FakeResponse(b"OK")
+        def close(self): pass
+    original_connection=_u90_http_client.HTTPSConnection
+    try:
+        _u90_http_client.HTTPSConnection=_FakeHTTPSConnection
+        downloaded=_u90_speed_request("https://speed.cloudflare.com/__down?bytes=2048&test=1",None,progress=lambda *x:progress.append(x))
+        assert downloaded["bytes"]==2048 and downloaded["status"]==200
+        assert downloaded["mbps"]>=0 and progress and progress[-1][1]==2048
+        uploaded=_u90_speed_request("https://speed.cloudflare.com/__up?test=1",b"U"*512000,progress=lambda *x:progress.append(x),phase="upload")
+        assert uploaded["bytes"]==512000 and uploaded["status"]==200
+        assert any(x[0]=="upload" and x[1]==512000 for x in progress)
+    finally:
+        _u90_http_client.HTTPSConnection=original_connection
+    assert _u90_median([100,5,6])==6
+    print("RELEASE_4_3_87_SELFTEST_OK: live byte-progress download/upload, median throughput, corrected 3D UI wait, short/medium/long CPU+VRAM profiles, error alarm")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u66_selftest_advanced()
         _u86_selftest_component_ui()
+        _u90_selftest_release_fixes()
         assert AppV43.show_module is _u86_show_module_with_component_workbench
         assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
         assert callable(_u84_attach_gpu_live_panel)
