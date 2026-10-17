@@ -1808,6 +1808,56 @@ def _u68_draw_component_scene(self):
                     aa=angle*1.8+i*(_u66_math.pi/4);px=origin[0]+(fanx*_u66_math.cos(angle)-.1*_u66_math.sin(aa))*scale/5.7;py=origin[1]-(.1+.33*_u66_math.sin(aa))*scale/5.7
                     canvas.create_oval(px-12,py-12,px+12,py+12,outline=teal,width=2)
             canvas.create_text(20,20,text="VRAM • TEKSTURY / ODCZYT ZWROTNY" if module=="VRAM" else "GPU • GEOMETRIA / RENDER / FPS",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module in ("SIEĆ","SIEC"):
+            _u68_draw_box3d(canvas,(-1.9,0,0),(1.1,.52,1.05),angle,dark,teal,scale,origin)
+            for i in range(8):
+                _u68_draw_box3d(canvas,(-2.25+(i%4)*.23,.34,(i//4-.5)*.45),(.12,.08,.08),angle,blue,teal,scale,origin)
+            for i in range(5):
+                _u68_draw_box3d(canvas,(.15+i*.7,.05,(i%3-1)*.5),(.4,.35,.5),angle,silver,teal,scale,origin)
+            canvas.create_text(20,20,text="SIEĆ • ADAPTERY / PAKIETY / DOWNLOAD / UPLOAD",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="USB":
+            _u68_draw_box3d(canvas,(0,0,0),(1.25,.48,.55),angle,silver,teal,scale,origin)
+            for i in range(6):
+                x=-2.1+i*.82
+                _u68_draw_box3d(canvas,(x,.5,0),(.42,.16,.3),angle,blue,teal,scale,origin)
+                _u68_draw_box3d(canvas,(x,.28,0),(.08,.2,.08),angle,purple,"#ef6cff",scale,origin)
+            canvas.create_text(20,20,text="USB • PORTY / URZĄDZENIA / ENUMERACJA",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="AUDIO":
+            _u68_draw_box3d(canvas,(-1.55,0,0),(.95,1.4,.8),angle,dark,teal,scale,origin)
+            _u68_draw_box3d(canvas,(1.55,0,0),(.95,1.4,.8),angle,dark,teal,scale,origin)
+            for j in range(4):
+                yy=-.45+j*.3
+                _u68_draw_box3d(canvas,(-1.55,yy,.45),(.36,.18,.08),angle,purple,teal,scale,origin)
+                _u68_draw_box3d(canvas,(1.55,yy,.45),(.36,.18,.08),angle,blue,teal,scale,origin)
+            canvas.create_text(20,20,text="AUDIO • URZĄDZENIA WEJŚCIA / WYJŚCIA",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="KLAWIATURA":
+            _u68_draw_box3d(canvas,(0,0,0),(4.5,.18,1.65),angle,dark,teal,scale,origin)
+            for r in range(4):
+                for c in range(13):
+                    _u68_draw_box3d(canvas,(-1.92+c*.32,.17,(r-1.5)*.31),(.25,.07,.22),angle,purple if (r+c)%5==0 else silver,teal,scale,origin)
+            canvas.create_text(20,20,text="KLAWIATURA / TOUCHPAD • WEJŚCIE UŻYTKOWNIKA",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="BATERIA":
+            _u68_draw_box3d(canvas,(0,0,0),(2.8,.45,1.05),angle,dark,teal,scale,origin)
+            for i in range(8):
+                _u68_draw_box3d(canvas,(-1.15+i*.32,.27,0),(.23,.18,.68),angle,blue if i<5 else purple,teal,scale,origin)
+            _u68_draw_box3d(canvas,(1.55,.02,0),(.25,.6,.35),angle,silver,teal,scale,origin)
+            canvas.create_text(20,20,text="BATERIA • POJEMNOŚĆ / CZAS / ZASILANIE",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="KAMERA":
+            _u68_draw_box3d(canvas,(0,0,0),(2.5,.28,.75),angle,dark,teal,scale,origin)
+            _u68_draw_box3d(canvas,(0,.05,.44),(.8,.72,.2),angle,silver,teal,scale,origin)
+            canvas.create_oval(origin[0]-34,origin[1]-25,origin[0]+34,origin[1]+25,outline="#14d9bf",width=3)
+            canvas.create_text(20,20,text="KAMERA • OBECNOŚĆ URZĄDZENIA / PODGLĄD",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="EKRAN":
+            _u68_draw_box3d(canvas,(0,0,0),(3.6,.18,2.1),angle,dark,teal,scale,origin)
+            for r in range(4):
+                for c in range(9):
+                    color=("#ff5c78","#ffd166","#06d6a0","#118ab2","#7b61ff")[(r+c)%5]
+                    _u68_draw_box3d(canvas,(-1.45+c*.36,.14,(r-1.5)*.28),(.29,.025,.2),angle,color,teal,scale,origin)
+            canvas.create_text(20,20,text="MATRYCA • EDID / PIXELE / KOLOR / GRADIENT",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
+        elif module=="SECURITY":
+            _u68_draw_box3d(canvas,(0,0,0),(2.1,.25,2.25),angle,dark,teal,scale,origin)
+            _u68_draw_box3d(canvas,(0,.22,0),(1.25,.08,1.45),angle,blue,teal,scale,origin)
+            canvas.create_text(20,20,text="BEZPIECZEŃSTWO • AUDYT / URZĄDZENIA / AUTOSTART",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
         else:
             _u68_draw_box3d(canvas,(0,0,0),(3.4,.22,2.4),angle,silver,teal,scale,origin);canvas.create_text(20,20,text=module+" • WIZUALIZACJA SCHEMATYCZNA",anchor="nw",fill="#7ceaff",font=self.fnt(10,"bold"))
         canvas.create_text(w-20,h-18,text="WIZUALIZACJA 3D SCHEMATYCZNA — POMIARY WYKONYWANE ODDZIELNIE",anchor="se",fill="#a6c8df",font=self.fnt(7))
@@ -1945,10 +1995,7 @@ def _u68_open_gpu_suite(self,auto_start=False):
     if auto_start:self.after(300,lambda:_u66_start_3d_all(self))
 
 def _u68_open_vram_test(self):
-    self.show_module("GPU")
-    try:self._u41_vram_size_var.set("128 MB")
-    except Exception:pass
-    self.after(220,lambda:self._u41_start_vram_test())
+    _u69_open_component_simulator(self,"VRAM",False,"scan")
 
 def _u68_show_games_advisor(self):
     self.current_view="GAMES_ADVISOR";self.clear();t=self.colors();self.header_title.config(text="DORADCA GIER — PROFILE GRAFIKI")
@@ -1988,6 +2035,422 @@ def _u68_open_tests_item(self,key):
     return _U68_ORIGINAL_OPEN_TESTS_ITEM(self,key)
 _u66_open_tests_item=_u68_open_tests_item
 
+
+# v4.3.73 — independent component workbenches, selected-volume benchmarks, and own VRAM 3D page.
+_U69_COMPONENT_LABELS={
+    "CPU":"Procesor / CPU","RAM":"Pamięć RAM","GPU":"Karta graficzna / GPU","VRAM":"Pamięć karty / VRAM",
+    "DYSK":"SSD / HDD / NVMe","EKRAN":"Matryca / EDID","SECURITY":"Bezpieczeństwo","BATERIA":"Bateria / zasilanie",
+    "SIEĆ":"Sieć / Wi-Fi / LAN","USB":"USB / urządzenia","AUDIO":"Audio / mikrofon / głośniki","KLAWIATURA":"Klawiatura / touchpad","KAMERA":"Kamera"
+}
+_U69_ORIGINAL_SHOW_MODULE=_U68_ORIGINAL_SHOW_MODULE
+_U69_ORIGINAL_SHOW_SIMPLE_MODULE=_U68_ORIGINAL_SHOW_SIMPLE_MODULE
+_U69_ORIGINAL_SHOW_BATTERY=AppV43.show_battery_or_power
+_U69_ORIGINAL_VRAM_STATUS=getattr(AppV43,"_u41_set_vram_status",None)
+
+def _u69_drive_options(self):
+    drives=[]
+    try:
+        logical=getattr(self,"logical_disks",None) or get_logical_disks()
+        for item in logical or []:
+            ident=str(item.get("DeviceID") or item.get("device_id") or item.get("DriveLetter") or "").strip()
+            if len(ident)>=2 and ident[1]==":":
+                root=ident[:2]+"\\"
+                if root not in drives:drives.append(root)
+    except Exception:pass
+    if not drives:
+        root=str(os.environ.get("SystemDrive","C:")).strip()
+        if len(root)==2 and root[1]==":":root+="\\"
+        drives=[root or "C:\\"]
+    return drives
+
+def _u69_attach_workbench(self,module):
+    try:
+        t=self.colors()
+        panel=tk.Frame(self.content,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
+        children=self.content.winfo_children()
+        if len(children)>1:panel.pack(fill="x",padx=3,pady=4,before=children[1])
+        elif children:panel.pack(fill="x",padx=3,pady=4,before=children[0])
+        else:panel.pack(fill="x",padx=3,pady=4)
+        self._u69_workbench_panel=panel
+        tk.Label(panel,text="TESTY NIEZALEŻNE • SKAN • BENCHMARK ULTRA/MAX • WIZUALIZACJA 3D",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,2))
+        tk.Label(panel,text="Każdy przycisk uruchamia osobny test. Wykresy są pomiarami bieżącymi; schemat 3D jest wizualizacją, a FPS mierzy tylko rzeczywisty test renderera.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,5))
+        row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,6))
+        self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 180 s"))
+        cb=ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18);cb.pack(side="left",padx=3,ipady=3)
+        cb.bind("<<ComboboxSelected>>",lambda e:setattr(self,"_u68_profile_value",self._u68_profile_var.get()))
+        if module=="RAM":
+            self._u68_ram_size_var=tk.StringVar(value=getattr(self,"_u68_ram_value","512 MB"))
+            ttk.Combobox(row,textvariable=self._u68_ram_size_var,values=("128 MB","256 MB","512 MB","1024 MB","1536 MB","2048 MB"),state="readonly",width=11).pack(side="left",padx=3,ipady=3)
+        elif module=="DYSK":
+            self._u68_disk_size_var=tk.StringVar(value=getattr(self,"_u68_disk_value","512 MB"))
+            ttk.Combobox(row,textvariable=self._u68_disk_size_var,values=("128 MB","256 MB","512 MB","1024 MB","2048 MB","4096 MB"),state="readonly",width=11).pack(side="left",padx=3,ipady=3)
+            drives=_u69_drive_options(self)
+            self._u69_disk_drive_var=tk.StringVar(value=getattr(self,"_u69_disk_drive_value",drives[0]))
+            if self._u69_disk_drive_var.get() not in drives:self._u69_disk_drive_var.set(drives[0])
+            ttk.Combobox(row,textvariable=self._u69_disk_drive_var,values=drives,state="readonly",width=8).pack(side="left",padx=3,ipady=3)
+            self._u69_disk_drive_var.trace_add("write",lambda *_:setattr(self,"_u69_disk_drive_value",self._u69_disk_drive_var.get()))
+        self._u69_workbench_status=tk.Label(row,text="Gotowy — wybierz SKAN, BENCHMARK albo SYMULATOR 3D.",bg=t["panel"],fg=t["muted"],font=self.fnt(8,"bold"),anchor="w")
+        self._u69_workbench_status.pack(side="left",fill="x",expand=True,padx=8)
+        self.make_button(row,"SKAN + LIVE 3D",lambda m=module:_u69_open_component_simulator(self,m,True,"scan"),"card",side="left",ipady=5)
+        self.make_button(row,"BENCHMARK ULTRA/MAX",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),"accent",side="left",ipady=5)
+        self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=5)
+        if module=="GPU":
+            self.make_button(row,"TEST VRAM 3D",lambda:_u69_open_vram_test(self),"card",side="left",ipady=5)
+            self.make_button(row,"STUDIO GPU 36 SCEN",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
+        if module=="EKRAN" and hasattr(self,"_u37_open_screen_test"):
+            self.make_button(row,"TEST PIKSELI",self._u37_open_screen_test,"card",side="left",ipady=5)
+    except Exception as exc:
+        try:self.append_log("Nie udało się dodać panelu komponentu: "+repr(exc))
+        except Exception:pass
+
+def _u69_show_module(self,module):
+    if module in ("DYSKI","DYSKI — SSD / HDD / NVMe","SSD / HDD / NVMe"):module="DYSK"
+    _U69_ORIGINAL_SHOW_MODULE(self,module)
+    if module in ("CPU","GPU","RAM","DYSK","EKRAN","SECURITY"):_u69_attach_workbench(self,module)
+
+def _u69_key_for_simple(title):
+    name=str(title).upper()
+    if "USB" in name:return "USB"
+    if any(x in name for x in ("SIEĆ","WI-FI","WIFI","LAN")):return "SIEĆ"
+    if any(x in name for x in ("AUDIO","DŹWIĘK","MIKROFON","GŁOŚNIK")):return "AUDIO"
+    if any(x in name for x in ("KLAWIATURA","TOUCHPAD","MYSZ")):return "KLAWIATURA"
+    if any(x in name for x in ("KAMERA","WEBCAM")):return "KAMERA"
+    return None
+
+def _u69_attach_simple_workbench(self,module):
+    t=self.colors();panel=tk.Frame(self.content,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
+    children=self.content.winfo_children()
+    if len(children)>1:panel.pack(fill="x",padx=3,pady=4,before=children[1])
+    else:panel.pack(fill="x",padx=3,pady=4)
+    tk.Label(panel,text=f"{_U69_COMPONENT_LABELS.get(module,module)} • TEST NIEZALEŻNY + WIZUALIZACJA 3D",bg=t["panel"],fg=t["accent"],font=self.fnt(9,"bold")).pack(anchor="w",padx=9,pady=(6,2))
+    row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=5,pady=(0,5))
+    self._u69_simple_status=tk.Label(row,text="Gotowy — wynik skanu nie jest wynikiem benchmarku.",bg=t["panel"],fg=t["muted"],font=self.fnt(8,"bold"),anchor="w")
+    self._u69_simple_status.pack(side="left",fill="x",expand=True,padx=5)
+    self.make_button(row,"SKAN + LIVE 3D",lambda m=module:_u69_open_component_simulator(self,m,True,"scan"),"card",side="left",ipady=4)
+    self.make_button(row,"TEST FUNKCJONALNY",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),"accent",side="left",ipady=4)
+    self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=4)
+    if module=="SIEĆ":self.make_button(row,"SPEED TEST DOWNLOAD/UPLOAD",self.show_speed_test,"card",side="left",ipady=4)
+
+def _u69_show_simple_module(self,title):
+    _U69_ORIGINAL_SHOW_SIMPLE_MODULE(self,title)
+    key=_u69_key_for_simple(title)
+    if key:_u69_attach_simple_workbench(self,key)
+
+def _u69_show_battery_module(self):
+    _U69_ORIGINAL_SHOW_BATTERY(self)
+    _u69_attach_simple_workbench(self,"BATERIA")
+
+def _u69_ram_throughput_benchmark(self,requested_mb,seconds):
+    ctypes_mod=__import__("ctypes");hashlib_mod=__import__("hashlib")
+    available_mb=int(psutil.virtual_memory().available/(1024*1024)) if psutil else 512
+    safe_mb=max(64,min(int(requested_mb),2048,max(64,int(available_mb*.20))))
+    buffer=None
+    while safe_mb>=64 and buffer is None:
+        try:buffer=bytearray(safe_mb*1024*1024)
+        except MemoryError:safe_mb//=2
+    if buffer is None:raise MemoryError("Nie udało się przydzielić bezpiecznego bufora RAM nawet 64 MB.")
+    size=len(buffer);ptr=ctypes_mod.addressof(ctypes_mod.c_char.from_buffer(buffer))
+    expected={}
+    for pattern in (0x00,0xFF,0xAA,0x55):
+        digest=hashlib_mod.sha256()
+        full,rem=divmod(size,1024*1024);chunk=bytes([pattern])*(1024*1024)
+        for _ in range(full):digest.update(chunk)
+        if rem:digest.update(bytes([pattern])*rem)
+        expected[pattern]=digest.digest()
+    samples=[];writes=0;reads=0;passes=0;start=_u66_time.perf_counter();deadline=start+max(15,min(300,int(seconds)));error=None
+    while passes==0 or _u66_time.perf_counter()<deadline:
+        for pattern in (0x00,0xFF,0xAA,0x55):
+            if self._test_should_stop():break
+            t0=_u66_time.perf_counter()
+            ctypes_mod.memset(ptr,pattern,size);writes+=size
+            actual=hashlib_mod.sha256(memoryview(buffer)).digest();reads+=size
+            if actual!=expected[pattern]:
+                error=f"Niezgodność pełnego skrótu wzorca {pattern:02X}; test RAM wykrył różnicę."
+                break
+            samples.append({"pattern":f"{pattern:02X}","pass":passes+1,"write_MBps":round(size/max(.001,_u66_time.perf_counter()-t0)/1_000_000,2)})
+        passes+=1;elapsed=max(.001,_u66_time.perf_counter()-start)
+        if error or self._test_should_stop() or elapsed>=seconds:break
+        self.queue_action(lambda n=passes,e=elapsed,m=safe_mb:self._u69_status_text(self,f"RAM BENCHMARK: {m} MB • przebieg {n} • {e:.0f}/{seconds} s"))
+    elapsed=max(.001,_u66_time.perf_counter()-start)
+    result={"state":"bad" if error else "warn" if self._test_should_stop() else "good","buffer_mb":safe_mb,"passes":passes,
+            "duration_seconds":round(elapsed,2),"write_MBps":round(writes/elapsed/1_000_000,2),"read_MBps":round(reads/elapsed/1_000_000,2),
+            "bytes_written":writes,"bytes_verified":reads,"verification":"SHA-256 full-buffer match for 00/FF/AA/55 patterns","error":error,
+            "stopped":bool(self._test_should_stop()),"note":"Testuje przydzielony bufor, nie całą fizyczną pamięć. Hash pełnego bufora potwierdza wzorzec; RAM pozostaje używany przez Windows."}
+    self.queue_results("RAM_BENCHMARK",result)
+    self.queue_results("RAM",{"state":result["state"],"size_mb":safe_mb,"message":f"RAM wzorce: {passes} przebiegów, zapis {result['write_MBps']} MB/s, odczyt/weryfikacja {result['read_MBps']} MB/s","benchmark":result})
+    self.queue_log(f"RAM BENCHMARK: {safe_mb} MB • zapis {result['write_MBps']} MB/s • odczyt+SHA256 {result['read_MBps']} MB/s • przebiegi {passes} • stan {result['state']}")
+    return result
+
+def _u69_disk_throughput_benchmark(self,requested_mb,seconds):
+    var=getattr(self,"_u69_disk_drive_var",None)
+    drive=str(var.get() if var else _u69_drive_options(self)[0]).strip()
+    drives=_u69_drive_options(self)
+    if not drive:drive=drives[0]
+    if drive not in drives:raise ValueError("Wybrany wolumin nie należy do listy wykrytych dysków.")
+    if len(drive)==2 and drive[1]==":":drive+="\\"
+    mb=max(64,min(4096,int(requested_mb)));required=mb*1024*1024+128*1024*1024
+    try:free=__import__("shutil").disk_usage(drive).free
+    except Exception as exc:raise OSError(f"Nie można odczytać wolnego miejsca na {drive}: {exc}")
+    if free<required:raise OSError(f"Na {drive} jest za mało wolnego miejsca dla pliku testowego {mb} MB.")
+    samples=[];start=_u66_time.perf_counter();deadline=start+max(15,min(300,int(seconds)));passes=0
+    while passes==0 or _u66_time.perf_counter()<deadline:
+        if self._test_should_stop():break
+        result=disk_benchmark(drive,mb)
+        if "error" in result:
+            self.queue_results("DYSK",{"state":"warn","error":result["error"],"target_volume":drive,"requested_mb":mb,"passes":passes})
+            raise OSError(result["error"])
+        samples.append(result);passes+=1;elapsed=max(.001,_u66_time.perf_counter()-start)
+        self.queue_action(lambda n=passes,e=elapsed,r=result,d=drive:self._u69_status_text(self,f"DYSK {d}: przebieg {n} • zapis {fmt_speed(r.get('write_bps',0))} • odczyt {fmt_speed(r.get('read_bps',0))} • {e:.0f}/{seconds} s"))
+        if self._test_should_stop():break
+    elapsed=max(.001,_u66_time.perf_counter()-start)
+    writes=sum(float(x.get("write_bps",0)) for x in samples)/max(1,len(samples))
+    reads=sum(float(x.get("read_bps",0)) for x in samples)/max(1,len(samples))
+    reliability=get_storage_reliability();critical=[x for x in reliability if safe_int(x.get("ReadErrorsTotal"),0)>0 or safe_int(x.get("WriteErrorsTotal"),0)>0 or safe_int(x.get("Wear"),0)>=100]
+    report={"state":"bad" if critical else "warn" if self._test_should_stop() else "good","benchmark":{"write_bps":writes,"read_bps":reads,"size_mb":mb},
+            "target_volume":drive,"requested_mb":mb,"passes":passes,"duration_seconds":round(elapsed,2),"samples":samples,
+            "devices":get_physical_disks(),"reliability":reliability,"critical_reliability":critical,"note":"Test pliku na wybranym woluminie; nie jest to bezpośredni test sektorów fizycznych."}
+    self.queue_results("DYSK",report);self.queue_results("DISK_BENCHMARK",report)
+    self.queue_log(f"DYSK BENCHMARK {drive}: zapis {fmt_speed(writes)} • odczyt {fmt_speed(reads)} • {passes} przebiegów • stan {report['state']}")
+    return report
+
+def _u69_camera_scan(self):
+    items=[]
+    if is_windows():
+        try:items=_v4319_normalize_items(ps_json("Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Class -match 'Camera|Image' -or $_.FriendlyName -match 'camera|webcam|kamera' } | Select-Object Class,FriendlyName,Status,InstanceId | ConvertTo-Json -Compress",default=[]))
+        except Exception:items=[]
+    state="good" if items else "warn"
+    result={"state":state,"items":items,"count":len(items),"message":f"Wykryte urządzenia kamery: {len(items)}; podgląd obrazu wymaga jawnego uruchomienia użytkownika."}
+    self.queue_results("CAMERA",result);self.queue_log("KAMERA: "+result["message"])
+    return result
+
+def _u69_battery_monitor(self,seconds):
+    start=_u66_time.monotonic();samples=[]
+    if not psutil:
+        self.queue_results("BATTERY_BENCHMARK",{"state":"warn","message":"psutil niedostępny."});return
+    first=psutil.sensors_battery()
+    if first is None:
+        result={"state":"warn","message":"Brak baterii — prawdopodobnie PC stacjonarny albo kontroler nie udostępnia danych.","samples":[]}
+        self.queue_results("BATTERY_BENCHMARK",result);self.queue_log("BATERIA: brak kontrolera, monitorowanie pominięte.");return
+    deadline=start+max(15,min(300,int(seconds)))
+    while True:
+        now=_u66_time.monotonic()
+        try:
+            battery=psutil.sensors_battery()
+            if battery is not None:samples.append({"seconds":round(now-start,1),"percent":float(battery.percent),"plugged":bool(battery.power_plugged)})
+        except Exception:pass
+        if self._test_should_stop() or now>=deadline:break
+        self.queue_action(lambda n=len(samples),p=(samples[-1]["percent"] if samples else "N/D"),e=now-start:self._u69_status_text(self,f"BATERIA: próbka {n} • poziom {p}% • czas {e:.0f}/{seconds} s"))
+        _u66_time.sleep(1)
+    elapsed=max(.1,_u66_time.monotonic()-start);delta=(samples[-1]["percent"]-samples[0]["percent"]) if len(samples)>1 else None
+    result={"state":"warn" if self._test_should_stop() or len(samples)<2 else "good","duration_seconds":round(elapsed,1),"samples":samples,
+            "start_percent":samples[0]["percent"] if samples else None,"end_percent":samples[-1]["percent"] if samples else None,
+            "delta_percent":round(delta,2) if delta is not None else None,"note":"Krótki test pokazuje obserwowaną zmianę; nie jest pełnym pomiarem czasu pracy baterii."}
+    self.queue_results("BATTERY_BENCHMARK",result);self.queue_log(f"BATERIA BENCHMARK: próbki {len(samples)} • zmiana {result.get('delta_percent','N/D')}% • {elapsed:.0f} s")
+
+def _u69_status_text(self,message):
+    for name in ("_u69_workbench_status","_u69_sim_status","_u68_sim_status","_u69_simple_status"):
+        label=getattr(self,name,None)
+        try:
+            if label is not None and label.winfo_exists():label.config(text=message,fg=self.colors()["warn"])
+        except Exception:pass
+    try:self.header_status.config(text="TEST W TOKU",fg=self.colors()["warn"])
+    except Exception:pass
+
+def _u69_component_result_text(self,module,mode,started):
+    scan_keys={"CPU":"COMPONENT_SCAN_CPU","RAM":"COMPONENT_SCAN_RAM","DYSK":"COMPONENT_SCAN_DYSK","SIEĆ":"NETWORK"}
+    result={}
+    if mode=="scan" and module in scan_keys:result=(getattr(self,"results",{}) or {}).get(scan_keys[module],{}) or {}
+    else:
+        keys={"CPU":["CPU"],"RAM":["RAM_BENCHMARK","RAM"],"DYSK":["DISK_BENCHMARK","DYSK"],"GPU":["GPU","GPU_WINSAT"],"VRAM":["VRAM_TEST"],
+              "EKRAN":["EKRAN"],"SECURITY":["SECURITY"],"BATERIA":["BATTERY_BENCHMARK","BATERIA"],"SIEĆ":["SPEED_TEST","NETWORK"],
+              "USB":["USB"],"AUDIO":["AUDIO"],"KLAWIATURA":["INPUTS"],"KAMERA":["CAMERA"]}
+        for key in keys.get(module,[module]):
+            value=(getattr(self,"results",{}) or {}).get(key)
+            if isinstance(value,dict) and value:result=value;break
+    error=getattr(self,"_u69_last_component_error",None)
+    if isinstance(error,dict) and error.get("module")==module and error.get("time")==getattr(self,"_u69_last_error_time",None):result=error
+    elapsed=max(.01,_u66_time.monotonic()-started);state=str(result.get("state","N/D"));details=[]
+    if mode=="scan" and state.lower()=="good":state="WYKRYTO"
+    if module=="CPU":
+        details.extend([f"Model: {(result.get('cpu') or self.cpu or {}).get('Name','N/D')}",f"Etapy: {len(result.get('stages',[]))}"])
+    elif module=="RAM":
+        if mode=="scan":details.extend([f"Zainstalowano: {fmt_bytes(result.get('total_bytes')) if result.get('total_bytes') else 'N/D'}",f"Użycie: {result.get('used_percent','N/D')}%",f"Dostępne: {fmt_bytes(result.get('available_bytes')) if result.get('available_bytes') else 'N/D'}"])
+        else:details.extend([f"Bufor: {result.get('buffer_mb',result.get('size_mb','N/D'))} MB",f"Zapis: {result.get('write_MBps','N/D')} MB/s",f"Odczyt/weryfikacja: {result.get('read_MBps','N/D')} MB/s",f"Przebiegi: {result.get('passes','N/D')}"])
+    elif module=="DYSK":
+        bench=result.get("benchmark",{}) or {};details.extend([f"Wolumin: {result.get('target_volume','N/D')}",f"Rozmiar: {bench.get('size_mb',result.get('requested_mb','N/D'))} MB",f"Odczyt: {fmt_speed(bench.get('read_bps',0))}",f"Zapis: {fmt_speed(bench.get('write_bps',0))}",f"Przebiegi: {result.get('passes','N/D')}"])
+        if mode=="scan":details.append(f"Fizyczne urządzenia: {len(result.get('devices',[]))}; rekordy SMART/reliability: {len(result.get('reliability',[]))}")
+    elif module=="VRAM":details.extend([f"Alokowano: {result.get('allocated_mb','N/D')} MB",f"Wzorce: {result.get('patterns_completed',0)}/{result.get('patterns_total',0)}",f"Zweryfikowane bajty: {result.get('bytes_verified','N/D')}"])
+    elif module=="GPU":details.extend([f"Karta: {(primary_gpu(self.gpus) or {}).get('Name','N/D')}",str(result.get('message',''))])
+    elif module=="EKRAN":details.append(f"Wykryte monitory: {len(result.get('monitors',[]))}")
+    elif module=="SIEĆ":details.extend([f"Download: {result.get('download_mbps','N/D')} Mbps",f"Upload: {result.get('upload_mbps','N/D')} Mbps",f"Latency: {result.get('latency_average_ms','N/D')} ms"])
+    elif module=="BATERIA":details.extend([f"Próbki: {len(result.get('samples',[]))}",f"Zmiana: {result.get('delta_percent','N/D')}%"])
+    elif module in ("USB","AUDIO","KLAWIATURA","KAMERA"):details.append(str(result.get('message') or f"Elementy wykryte: {len(result.get('items',[]))}"))
+    if result.get("error"):details.append("BŁĄD: "+str(result.get("error")))
+    prefix="SKAN" if mode=="scan" else "TEST / BENCHMARK"
+    return f"{prefix} {module}: {state.upper()} • {elapsed:.1f} s • "+" • ".join(x for x in details if x)
+
+def _u69_run_component_worker(self,module,mode):
+    started=_u66_time.monotonic();seconds=_u68_profile_seconds(self)
+    self._u69_last_component_error=None;self._u69_last_error_time=None
+    try:
+        if module=="CPU":
+            if mode=="scan":
+                vm=psutil.virtual_memory() if psutil else None
+                self.queue_results("COMPONENT_SCAN_CPU",{"state":"good" if self.cpu else "warn","cpu":self.cpu,"logical_cpus":os.cpu_count(),"ram_total":vm.total if vm else None,"sampled_at":_U66_datetime.now().isoformat(timespec="seconds")})
+                self.queue_log(f"CPU SCAN: {(self.cpu or {}).get('Name','N/D')} | rdzenie {(self.cpu or {}).get('NumberOfCores','N/D')} | wątki {os.cpu_count() or 'N/D'}")
+            else:self._cpu_test(seconds)
+        elif module=="RAM":
+            if mode=="scan":
+                vm=psutil.virtual_memory() if psutil else None
+                self.queue_results("COMPONENT_SCAN_RAM",{"state":"good" if vm else "warn","total_bytes":vm.total if vm else None,"available_bytes":vm.available if vm else None,"used_percent":vm.percent if vm else None,"sampled_at":_U66_datetime.now().isoformat(timespec="seconds")})
+                self.queue_log("RAM SCAN: "+(f"zainstalowano {fmt_bytes(vm.total)}, dostępne {fmt_bytes(vm.available)}, użycie {vm.percent:.1f}%" if vm else "N/D — psutil niedostępny"))
+            else:_u69_ram_throughput_benchmark(self,_u68_selected_mb(self,"ram"),seconds)
+        elif module=="DYSK":
+            if mode=="scan":
+                devices=get_physical_disks();reliability=get_storage_reliability()
+                self.queue_results("COMPONENT_SCAN_DYSK",{"state":"good" if devices else "warn","devices":devices,"reliability":reliability,"sampled_at":_U66_datetime.now().isoformat(timespec="seconds")})
+                self.queue_log(f"DYSK SCAN: wykryto {len(devices)} fizycznych urządzeń i {len(reliability)} rekordów SMART/reliability.")
+            else:_u69_disk_throughput_benchmark(self,_u68_selected_mb(self,"disk"),seconds)
+        elif module=="GPU":
+            if mode=="scan":self._gpu_test()
+            else:self.queue_log("GPU benchmark uruchamia rzeczywiste 36 scen OpenGL — ekran 3D Benchmark Studio.")
+        elif module=="VRAM":
+            if mode=="scan":
+                gpus=get_gpu_info();main=primary_gpu(gpus) if gpus else {}
+                inv=_u41_vram_inventory_text(main) if main else "N/D"
+                self.queue_results("COMPONENT_SCAN_VRAM",{"state":"good" if main else "warn","gpu":main,"vram_inventory":inv,"sampled_at":_U66_datetime.now().isoformat(timespec="seconds")})
+                self.queue_log("VRAM SCAN: "+str(inv)+" — to inwentarz, nie test pamięci.")
+            else:self.queue_log("VRAM: użyj przycisku URUCHOM TEST VRAM, aby wykonać rzeczywisty zapis i readback tekstur.")
+        elif module=="EKRAN":
+            if mode=="scan":self._monitor_test()
+            elif hasattr(self,"_u37_open_screen_test"):self._u37_open_screen_test()
+            else:self._monitor_test()
+        elif module=="SECURITY":self._security_test()
+        elif module=="BATERIA":
+            if mode=="scan":self._battery_test()
+            else:_u69_battery_monitor(self,seconds)
+        elif module=="SIEĆ":
+            if mode=="scan":self._peripheral_test("SIEĆ")
+            else:
+                result=_u66_measure_speed(self);self.queue_results("SPEED_TEST",result)
+                self.queue_log(f"SPEED TEST: download {result.get('download_mbps','N/D')} Mbps / upload {result.get('upload_mbps','N/D')} Mbps")
+        elif module in ("USB","AUDIO","KLAWIATURA"):self._peripheral_test(module)
+        elif module=="KAMERA":_u69_camera_scan(self)
+        else:self.queue_log(f"Brak niezależnego testu dla modułu {module}.")
+    except Exception as exc:
+        error={"state":"warn","error":f"{type(exc).__name__}: {exc}","module":module,"time":_U66_datetime.now().isoformat(timespec="seconds")}
+        self._u69_last_component_error=error;self._u69_last_error_time=error["time"]
+        self.queue_results("COMPONENT_ERROR_"+module,error);self.queue_log(f"TEST {module}: {error['error']}")
+    def finish():
+        text=_u69_component_result_text(self,module,mode,started)
+        _u69_status_text(self,text)
+        try:self.header_status.config(text="GOTOWY — "+module,fg=self.colors()["good"] if "GOOD" in text or "WYKRYTO" in text else self.colors()["warn"])
+        except Exception:pass
+    self.queue_action(finish)
+
+def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
+    _u68_open_component_simulator(self,module,False,mode)
+    try:
+        children=self.content.winfo_children()
+        if children:children[-1].destroy()
+    except Exception:pass
+    options=tk.Frame(self.content,bg=self.colors()["bg"])
+    try:options.pack(fill="x",padx=3,pady=2,before=self._u68_sim_canvas)
+    except Exception:options.pack(fill="x",padx=3,pady=2)
+    row=tk.Frame(options,bg=self.colors()["bg"]);row.pack(fill="x")
+    if not hasattr(self,"_u68_profile_var"):self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 180 s"))
+    ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18).pack(side="left",padx=2,ipady=3)
+    if module=="DYSK":
+        drives=_u69_drive_options(self);current=getattr(self,"_u69_disk_drive_value",drives[0])
+        self._u69_disk_drive_var=tk.StringVar(value=current if current in drives else drives[0])
+        ttk.Combobox(row,textvariable=self._u69_disk_drive_var,values=drives,state="readonly",width=9).pack(side="left",padx=2,ipady=3)
+        self._u69_disk_drive_var.trace_add("write",lambda *_:setattr(self,"_u69_disk_drive_value",self._u69_disk_drive_var.get()))
+        self._u68_disk_size_var=tk.StringVar(value=getattr(self,"_u68_disk_value","512 MB"))
+        ttk.Combobox(row,textvariable=self._u68_disk_size_var,values=("128 MB","256 MB","512 MB","1024 MB","2048 MB","4096 MB"),state="readonly",width=11).pack(side="left",padx=2,ipady=3)
+    elif module=="RAM":
+        self._u68_ram_size_var=tk.StringVar(value=getattr(self,"_u68_ram_value","512 MB"))
+        ttk.Combobox(row,textvariable=self._u68_ram_size_var,values=("128 MB","256 MB","512 MB","1024 MB","1536 MB","2048 MB"),state="readonly",width=11).pack(side="left",padx=2,ipady=3)
+    elif module=="VRAM":
+        self._u41_vram_size_var=tk.StringVar(value=getattr(self,"_u69_vram_size_value","128 MB"))
+        ttk.Combobox(row,textvariable=self._u41_vram_size_var,values=("32 MB","64 MB","128 MB","192 MB","256 MB"),state="readonly",width=11).pack(side="left",padx=2,ipady=3)
+    self.make_button(row,"SKAN",lambda m=module:_u69_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
+    self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
+    self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
+    def back(m=module):
+        if m in ("CPU","GPU","RAM","DYSK","EKRAN","SECURITY","VRAM"):self.show_module("GPU" if m=="VRAM" else m)
+        elif m=="BATERIA":self.show_battery_or_power()
+        else:self.show_simple_module({"SIEĆ":"SIEĆ / WI-FI / LAN","USB":"USB / URZĄDZENIA","AUDIO":"DŹWIĘK / AUDIO","KLAWIATURA":"KLAWIATURA / TOUCHPAD","KAMERA":"KAMERA"}.get(m,m))
+    self.make_button(row,"WRÓĆ",back,"card",side="left",ipady=4)
+    self._u68_sim_angle=0.0
+    if run_test:self.after(180,lambda m=module,md=mode:_u69_launch_component_test(self,m,md))
+
+def _u69_open_vram_test(self):
+    _u69_open_component_simulator(self,"VRAM",False,"scan")
+
+def _u69_launch_component_test(self,module,mode="benchmark"):
+    if getattr(self,"running",False):
+        messagebox.showwarning("Test komponentu","Inny test jest uruchomiony. Użyj STOP TEST albo poczekaj.");return
+    if module=="GPU" and mode!="scan":
+        _u68_open_gpu_suite(self,auto_start=True);return
+    if module=="VRAM":
+        if mode=="scan":
+            self._refresh_after_worker_view=None
+            self.worker(lambda:_u69_run_component_worker(self,"VRAM","scan"))
+            return
+        self._u41_start_vram_test();return
+    if module=="EKRAN" and mode!="scan" and hasattr(self,"_u37_open_screen_test"):
+        self._u37_open_screen_test();return
+    seconds=_u68_profile_seconds(self)
+    if module=="DYSK" and mode!="scan":
+        mb=_u68_selected_mb(self,"disk");var=getattr(self,"_u69_disk_drive_var",None);drive=str(var.get() if var else _u69_drive_options(self)[0])
+        if mb>=2048 or seconds>=180:
+            if not messagebox.askyesno("Benchmark dysku ULTRA/MAX",f"Test {drive}, plik {mb} MB, do {seconds} s. Wykonuje powtarzane zapisy/odczyty pliku tymczasowego na wybranym woluminie, a następnie go usuwa. Kontynuować?"):return
+    if module=="RAM" and mode!="scan":
+        mb=_u68_selected_mb(self,"ram")
+        if mb>=1024 or seconds>=180:
+            if not messagebox.askyesno("Benchmark RAM ULTRA/MAX",f"Test wzorców/hash SHA-256 w buforze do {mb} MB przez około {seconds} s. Nie testuje całej fizycznej pamięci. Kontynuować?"):return
+    if module=="BATERIA" and mode!="scan" and seconds>=180:
+        if not messagebox.askyesno("Monitor baterii ULTRA/MAX",f"Próbkować baterię do {seconds} s? Wynik będzie jedynie zmianą odczytanego poziomu podczas testu."):return
+    if module=="SIEĆ" and mode!="scan":
+        if not messagebox.askyesno("Speed Test", "Test pobierania/wysyłania może przesłać około 24 MB przez Internet. Uruchomić?"):return
+    self._u69_status_text(self,f"TEST TRWA — {module} • {mode.upper()} • profil {seconds} s")
+    try:self.header_status.config(text="TEST W TOKU — "+module,fg=self.colors()["warn"])
+    except Exception:pass
+    self.worker(lambda:_u69_run_component_worker(self,module,mode))
+
+def _u69_vram_status(self,result):
+    try:
+        if _U69_ORIGINAL_VRAM_STATUS:_U69_ORIGINAL_VRAM_STATUS(self,result)
+    except Exception:pass
+    if str(getattr(self,"current_view","")).startswith("SIM3D_VRAM"):
+        try:_u69_status_text(self,str(result.get("status_text") or result.get("message") or "Test VRAM w toku"))
+        except Exception:pass
+
+def _u69_show_battery_module(self):
+    _U69_ORIGINAL_SHOW_BATTERY(self)
+    _u69_attach_simple_workbench(self,"BATERIA")
+
+def _u69_selftest_component_workbenches():
+    assert callable(_u69_open_component_simulator)
+    assert callable(_u69_launch_component_test)
+    assert callable(_u69_disk_throughput_benchmark)
+    assert callable(_u69_ram_throughput_benchmark)
+    assert callable(_u69_camera_scan)
+    assert "C:" in "".join(_u69_drive_options(type("O",(),{"logical_disks":[{"DeviceID":"C:"}]})()))
+    assert "300 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s")
+    assert all(k in _U69_COMPONENT_LABELS for k in ("CPU","RAM","DYSK","VRAM","GPU","BATERIA","SIEĆ","USB","AUDIO","KLAWIATURA","KAMERA"))
+    print("COMPONENT_WORKBENCH_SELFTEST_OK: independent scans, selected-volume I/O benchmark, verified RAM bandwidth, VRAM page and per-module 3D")
+
+_U69_ORIGINAL_COMPONENT_WORKER=_u68_run_component_worker
+_u68_run_component_worker=_u69_run_component_worker
+_u68_open_component_simulator=_u69_open_component_simulator
+_u68_open_vram_test=_u69_open_vram_test
+_u68_launch_component_test=_u69_launch_component_test
+AppV43.show_module=_u69_show_module
+AppV43.show_simple_module=_u69_show_simple_module
+AppV43.show_battery_or_power=_u69_show_battery_module
+if hasattr(AppV43,"_u41_set_vram_status"):AppV43._u41_set_vram_status=_u69_vram_status
+
 def _u66_selftest_advanced():
     assert len(_U66_SCENES)==36, "Studio must have 36 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
@@ -2007,6 +2470,10 @@ def _u66_selftest_advanced():
     assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)
     assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)
     assert callable(_u68_show_games_advisor)
+    _u69_selftest_component_workbenches()
+    assert AppV43.show_module is _u69_show_module
+    assert AppV43.show_simple_module is _u69_show_simple_module
+    assert len(_U66_SCENES)==36 and all(scene[0] for scene in _U66_SCENES)
     assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps"
