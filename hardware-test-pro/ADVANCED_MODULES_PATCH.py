@@ -4247,8 +4247,11 @@ def _u90_update_3d_scene(self, scene_id, scene, result, index, total):
 
 
 def _u90_run_3d_suite(self, seconds=5):
+    # Compatibility path for callers retained from the original 3D module.
+    # Always delegate to the final runner; never use the pre-v4.3.88 UI wait.
+    return _u88_run_3d_suite(self, max(3, min(60, int(seconds))))
     seconds=max(3,min(900,int(seconds)))
-    _u66_ui_wait(self, lambda: _u90_show_3d_studio(self))
+    _u88_ui_wait(self, lambda: _u90_show_3d_studio(self))
     results=[]
     total=len(_U66_SCENES)
     for i, scene in enumerate(_U66_SCENES,1):
@@ -4498,7 +4501,7 @@ def _u90_selftest_release_fixes():
 # v4.3.88 — final wiring correction: independent component workbenches, safe 3D dispatch,
 # per-scene GPU timing, and a sequential runner that shows a separate screen for every test.
 def _u88_ui_wait(app, callback, timeout=30.0):
-    """Run UI work on the Tk thread without requiring app._u66_ui_wait to exist."""
+    """Run UI work on Tk's thread and surface failures without closing the main window."""
     queue_action = getattr(app, "queue_action", None)
     if not callable(queue_action):
         raise TypeError(
@@ -4513,11 +4516,21 @@ def _u88_ui_wait(app, callback, timeout=30.0):
             outcome["ok"] = True
         except BaseException as exc:
             outcome["error"] = exc
+            try:
+                app.append_log("Błąd zmiany widoku UI: " + f"{type(exc).__name__}: {exc}")
+            except Exception:
+                pass
         finally:
             event.set()
-    queue_action(invoke)
+    try:
+        queue_action(invoke)
+    except Exception as exc:
+        raise RuntimeError(f"Nie udało się przekazać pracy do kolejki Tkinter: {exc}") from exc
     if not event.wait(max(1.0, float(timeout))):
-        raise TimeoutError("Tk UI queue did not process the requested screen update within the timeout.")
+        raise TimeoutError(
+            "Kolejka Tkinter nie obsłużyła zmiany widoku w czasie "
+            f"{timeout} s; okno pozostaje otwarte."
+        )
     if "error" in outcome:
         raise outcome["error"]
     return bool(outcome.get("ok", False))
@@ -4716,6 +4729,19 @@ def _u88_test_state(app, result_keys):
     return "not_reported", "N/D"
 
 
+def _u88_prepare_test_view(app, view, num, total, title):
+    """Every Tk widget operation for a sequence transition runs on the Tk UI thread."""
+    view()
+    _u67_stage_live_panel(app, num, total, title)
+    try:
+        app.header_status.config(text=f"TEST {num}/{total}", fg=app.colors()["warn"])
+    except Exception as exc:
+        try:
+            app.append_log("Nagłówek sekwencji: " + repr(exc))
+        except Exception:
+            pass
+
+
 def _u88_run_selected_diagnostic(app, selected):
     order = [
         ("CPU", "CPU — obciążenie i zegary", lambda: app.show_module("CPU"),
@@ -4775,20 +4801,27 @@ def _u88_run_selected_diagnostic(app, selected):
             break
         try:
             _u66_set_suite_status(app, f"TEST {num}/{total}: {title}")
-            _u88_ui_wait(app, view)
-            _u67_stage_live_panel(app, num, total, title)
-            try:
-                app.header_status.config(text=f"TEST {num}/{total}", fg=app.colors()["warn"])
-            except Exception:
-                pass
+            # IMPORTANT: don't create/destroy Tk widgets from the worker thread.
+            # A cross-thread widget switch can terminate the app exactly when stage 2 starts.
+            _u88_ui_wait(
+                app,
+                lambda view=view, num=num, total=total, title=title:
+                    _u88_prepare_test_view(app, view, num, total, title),
+                timeout=45.0
+            )
             if app._test_should_stop():
                 break
             test_fn()
-            _u88_ui_wait(app, lambda: None)
+            _u88_ui_wait(app, lambda: None, timeout=45.0)
             state, result_key = _u88_test_state(app, result_keys)
         except Exception as exc:
             state, result_key = "error", "N/D"
-            app.queue_log(f"TEST {title}: {type(exc).__name__}: {exc}")
+            detail = f"{type(exc).__name__}: {exc}"
+            try:
+                app.queue_log(f"TEST {title}: {detail}")
+                app.queue_log("Diagnostyka nie zamyka aplikacji; przechodzę do następnego etapu.")
+            except Exception:
+                pass
         item = {
             "stage": title, "key": key, "state": state, "result_key": result_key,
             "time": _U66_datetime.now().isoformat(timespec="seconds")
@@ -4983,6 +5016,10 @@ def _u88_selftest_final_wiring():
     assert AppV43.show_simple_module is _u88_show_simple_module_with_independent_tests
     assert AppV43.show_battery_or_power is _u88_show_battery_with_independent_tests
     assert AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic
+    assert "_u88_prepare_test_view" in _u88_run_selected_diagnostic.__code__.co_names
+    assert "_u67_stage_live_panel" not in _u88_run_selected_diagnostic.__code__.co_names
+    assert "_u88_ui_wait" in _u88_run_selected_diagnostic.__code__.co_names
+    assert "_u88_run_3d_suite" in _u90_run_3d_suite.__code__.co_names
     assert AppV43.full_test is _u88_start_all_tests
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "MAX — 600 s"})()})()) == 60
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "ULTRA — 300 s"})()})()) == 30
