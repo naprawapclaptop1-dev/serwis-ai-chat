@@ -5016,7 +5016,10 @@ def _u88_selftest_final_wiring():
     assert AppV43.show_simple_module is _u88_show_simple_module_with_independent_tests
     assert AppV43.show_battery_or_power is _u88_show_battery_with_independent_tests
     assert AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic
-    assert "_u88_prepare_test_view" in _u88_run_selected_diagnostic.__code__.co_names
+    assert any(
+        "_u88_prepare_test_view" in getattr(code, "co_names", ())
+        for code in _u88_run_selected_diagnostic.__code__.co_consts
+    ), "Sequential test runner must schedule its view transition through the Tk UI queue"
     assert "_u67_stage_live_panel" not in _u88_run_selected_diagnostic.__code__.co_names
     assert "_u88_ui_wait" in _u88_run_selected_diagnostic.__code__.co_names
     assert "_u88_run_3d_suite" in _u90_run_3d_suite.__code__.co_names
