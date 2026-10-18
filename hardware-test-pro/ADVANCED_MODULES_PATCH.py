@@ -3154,7 +3154,7 @@ def _u66_selftest_advanced():
     assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench), "ADVANCED self-test check 20: AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_"
     assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench), "ADVANCED self-test check 21: AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module"
     assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60"
-    assert AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic, "ADVANCED self-test check 23: AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic"
+    assert AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic, "ADVANCED self-test check 23: AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic"
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
     print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 60 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
@@ -4494,16 +4494,514 @@ def _u90_selftest_release_fixes():
     assert _u90_median([100,5,6])==6
     print("RELEASE_4_3_87_SELFTEST_OK: live byte-progress download/upload, median throughput, corrected 3D UI wait, short/medium/long CPU+VRAM profiles, error alarm")
 
+
+# v4.3.88 — final wiring correction: independent component workbenches, safe 3D dispatch,
+# per-scene GPU timing, and a sequential runner that shows a separate screen for every test.
+def _u88_ui_wait(app, callback, timeout=30.0):
+    """Run UI work on the Tk thread without requiring app._u66_ui_wait to exist."""
+    queue_action = getattr(app, "queue_action", None)
+    if not callable(queue_action):
+        raise TypeError(
+            f"UI dispatch expected an AppV43 instance with queue_action; received "
+            f"{type(app).__module__}.{type(app).__name__}"
+        )
+    event = _u66_threading.Event()
+    outcome = {}
+    def invoke():
+        try:
+            callback()
+            outcome["ok"] = True
+        except BaseException as exc:
+            outcome["error"] = exc
+        finally:
+            event.set()
+    queue_action(invoke)
+    if not event.wait(max(1.0, float(timeout))):
+        raise TimeoutError("Tk UI queue did not process the requested screen update within the timeout.")
+    if "error" in outcome:
+        raise outcome["error"]
+    return bool(outcome.get("ok", False))
+
+
+def _u88_profile_name(app):
+    var = getattr(app, "_u68_profile_var", None)
+    try:
+        value = str(var.get()).upper() if var is not None else "ULTRA — 300 S"
+    except Exception:
+        value = "ULTRA — 300 S"
+    return value
+
+
+def _u88_scene_seconds_from_profile(app):
+    """Map benchmark profiles to the supported *per-scene* choices, never to 300/600/900 s."""
+    value = _u88_profile_name(app)
+    if "TEST TERMICZNY" in value or "MAX" in value:
+        return 60
+    if "ULTRA" in value:
+        return 30
+    if "DŁUGI" in value:
+        return 20
+    if "ŚREDNI" in value:
+        return 10
+    return 5
+
+
+def _u88_apply_gpu_profile(app):
+    seconds = _u88_scene_seconds_from_profile(app)
+    try:
+        app._u66_scene_seconds.set(f"{seconds} s")
+    except Exception:
+        pass
+    value = _u88_profile_name(app)
+    resolution = "3840x2160" if ("MAX" in value or "TEST TERMICZNY" in value) else (
+        "2560x1440" if "ULTRA" in value else (
+            "1920x1080" if "DŁUGI" in value or "ŚREDNI" in value else "1280x720"
+        )
+    )
+    try:
+        app._u90_scene_resolution_value = resolution
+        var = getattr(app, "_u90_scene_resolution_var", None)
+        if var is not None:
+            var.set(resolution)
+    except Exception:
+        pass
+    try:
+        app._u66_3d_status.config(
+            text=f"Profil {_u88_profile_name(app)} → {resolution}, {seconds} s/scena; "
+                 f"{len(_U66_SCENES)} scen = około {len(_U66_SCENES)*seconds} s."
+        )
+    except Exception:
+        pass
+    return seconds, resolution
+
+
+_U88_ORIGINAL_OPEN_GPU_SUITE = _u68_open_gpu_suite
+def _u88_open_gpu_suite(app, auto_start=False):
+    # Open the real 3D studio first, then set a duration the scene dropdown actually supports.
+    _U88_ORIGINAL_OPEN_GPU_SUITE(app, auto_start=False)
+    _u88_apply_gpu_profile(app)
+    if auto_start:
+        app.after(300, lambda: _u88_start_3d_all(app))
+
+
+def _u88_start_3d_all(app):
+    try:
+        seconds = int(str(app._u66_scene_seconds.get()).split()[0])
+    except Exception:
+        seconds = _u88_scene_seconds_from_profile(app)
+    seconds = max(3, min(60, seconds))
+    total = len(_U66_SCENES)
+    total_seconds = total * seconds
+    minutes = total_seconds // 60
+    remainder = total_seconds % 60
+    if not messagebox.askyesno(
+        f"{total} scen 3D — ULTRA/MAX",
+        f"Uruchomić {total} osobnych scen renderowania OpenGL, każdą przez {seconds} s, "
+        f"w rozdzielczości {getattr(app, '_u90_scene_resolution_value', '1920x1080')}?\n\n"
+        f"Szacowany czas renderowania: {minutes} min {remainder} s. "
+        "Jeżeli sterownik nie uruchomi renderera, przebieg zatrzyma się przy pierwszym błędzie. "
+        "ESC lub STOP TEST przerywa test."
+    ):
+        return
+    app.worker(lambda: _u88_run_3d_suite(app, seconds))
+
+
+def _u88_run_3d_suite(app, seconds=5):
+    seconds = max(3, min(60, int(seconds)))
+    started = _U66_datetime.now().isoformat(timespec="seconds")
+    results = []
+    total = len(_U66_SCENES)
+    resolution = str(getattr(app, "_u90_scene_resolution_value", "1920x1080"))
+    try:
+        _u88_ui_wait(app, lambda: _u90_show_3d_studio(app))
+        # Re-apply settings after the screen has rebuilt the resolution control.
+        try:
+            app._u66_scene_seconds.set(f"{seconds} s")
+            app._u90_scene_resolution_value = resolution
+            if getattr(app, "_u90_scene_resolution_var", None) is not None:
+                app._u90_scene_resolution_var.set(resolution)
+        except Exception:
+            pass
+    except Exception as exc:
+        app.queue_log(f"3D UI: nie udało się otworzyć studia: {type(exc).__name__}: {exc}")
+        raise
+    consecutive_failures = 0
+    for index, scene in enumerate(_U66_SCENES, 1):
+        if app._test_should_stop():
+            break
+        title = f"3D BENCHMARK {index}/{total} — {scene[0]}"
+        _u66_set_suite_status(app, title)
+        try:
+            result = _u66_execute_gpu_scene(app, index, seconds)
+        except Exception as exc:
+            result = {
+                "state": "warn", "scene_id": index, "scene_name": scene[0],
+                "error": f"{type(exc).__name__}: {exc}",
+                "note": "Nie uruchomiono renderowania dla tej sceny."
+            }
+        result["requested_resolution"] = resolution
+        result["requested_seconds"] = seconds
+        results.append(result)
+        try:
+            _u88_ui_wait(
+                app,
+                lambda sid=index, sc=scene, res=result, n=index, count=total:
+                    _u90_update_3d_scene(app, sid, sc, res, n, count)
+            )
+        except Exception as exc:
+            app.queue_log(f"3D UI aktualizacji wyniku {index}: {type(exc).__name__}: {exc}")
+        if result.get("state") == "good":
+            consecutive_failures = 0
+        elif not result.get("stopped_by_user") and not result.get("stopped"):
+            consecutive_failures += 1
+            _u90_error_alarm(app, f"3D scena {index}: {result.get('error') or result.get('note') or result.get('state')}")
+            # If the render backend failed, do not launch 59 identical failing child processes.
+            app.queue_log("3D: zatrzymano serię po pierwszej scenie bez poprawnego renderowania; to nie jest PASS.")
+            break
+    passed = sum(1 for item in results if item.get("state") == "good")
+    stopped = bool(app._test_should_stop())
+    report = {
+        "state": "good" if results and passed == len(results) and len(results) == total else "warn",
+        "completed": len(results), "total": total, "good": passed,
+        "seconds_per_scene": seconds, "requested_resolution": resolution,
+        "stopped_by_user": stopped, "started": started,
+        "finished": _U66_datetime.now().isoformat(timespec="seconds"),
+        "scenes": results
+    }
+    app.results["3D_SUITE"] = report
+    app.queue_results("3D_SUITE", report)
+    try:
+        folder = _u66_store_dir() / "benchmarks"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / ("3d-benchmark-" + _U66_datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
+        target.write_text(_u66_json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+        report["report_path"] = str(target)
+    except Exception as exc:
+        app.queue_log("Nie udało się zapisać raportu 3D: " + repr(exc))
+    status = (
+        f"3D BENCHMARK: {passed}/{len(results)} udanych scen; {len(results)}/{total} wykonanych; "
+        f"{resolution}; {seconds} s/scena."
+    )
+    app.queue_log(status)
+    try:
+        _u88_ui_wait(app, lambda: _u90_set_3d_final_status(app, status))
+    except Exception as exc:
+        app.queue_log("3D: końcowy status UI: " + repr(exc))
+    return report
+
+
+def _u88_safe_ram_mb(app, maximum=2048):
+    try:
+        available = int(psutil.virtual_memory().available / (1024 * 1024)) if psutil else 0
+    except Exception:
+        available = 0
+    if available <= 0:
+        return 128
+    return max(128, min(int(maximum), 2048, int(available * 0.20)))
+
+
+def _u88_run_vram_quick(app):
+    try:
+        requested = int(str(app._u41_vram_size_var.get()).split()[0])
+    except Exception:
+        requested = 128
+    return _u90_run_vram_profile_worker(app, max(32, min(256, requested)), 15, False)
+
+
+def _u88_test_state(app, result_keys):
+    for key in result_keys:
+        value = (getattr(app, "results", {}) or {}).get(key)
+        if isinstance(value, dict) and value.get("state") in ("good", "warn", "bad", "error"):
+            return value.get("state"), key
+    return "not_reported", "N/D"
+
+
+def _u88_run_selected_diagnostic(app, selected):
+    order = [
+        ("CPU", "CPU — obciążenie i zegary", lambda: app.show_module("CPU"),
+         lambda: app._cpu_test(20), ["CPU"]),
+        ("GPU", "GPU — identyfikacja i sterownik", lambda: app.show_module("GPU"),
+         app._gpu_test, ["GPU", "GPU_WINSAT"]),
+        ("RAM", "RAM — wzorce zapisu / odczytu", lambda: app.show_module("RAM"),
+         lambda: app._ram_test(_u88_safe_ram_mb(app)), ["RAM"]),
+        ("DYSKI", "SSD / HDD / NVMe — pomiar dysku", lambda: app.show_module("DYSK"),
+         lambda: app._disk_test(768), ["DYSK"]),
+        ("MATRYCA", "Matryca — EDID i tryby", lambda: app.show_module("EKRAN"),
+         app._monitor_test, ["EKRAN"]),
+        ("BATERIA", "Bateria / zasilanie", lambda: app.show_battery_or_power(),
+         app._battery_test, ["BATERIA"]),
+        ("KLAWIATURA", "Klawiatura / touchpad", lambda: app.show_simple_module("KLAWIATURA / TOUCHPAD"),
+         lambda: app._peripheral_test("KLAWIATURA"), ["KLAWIATURA", "PERIPHERAL_KLAWIATURA"]),
+        ("AUDIO", "Audio — urządzenia wejścia / wyjścia", lambda: app.show_simple_module("DŹWIĘK / AUDIO"),
+         lambda: app._peripheral_test("AUDIO"), ["AUDIO", "PERIPHERAL_AUDIO"]),
+        ("SIEC", "Internet — osobny Speed Test", lambda: _u90_show_speed_test(app),
+         lambda: _u88_run_live_speed_test(app), ["SPEED_TEST"]),
+        ("SYSTEM_SECURITY", "Windows / bezpieczeństwo", lambda: app.show_module("SECURITY"),
+         app._selected_system_security_test, ["SECURITY", "SYSTEM"]),
+        ("KAMERA", "Kamera — wykrywanie urządzenia", lambda: app.show_simple_module("KAMERA"),
+         lambda: _u69_camera_scan(app), ["CAMERA"]),
+    ]
+    chosen = [item for item in order if item[0] in selected]
+    if not chosen:
+        app.queue_log("Pełna diagnostyka: nie wybrano żadnego modułu.")
+        return
+    expanded = []
+    for item in chosen:
+        expanded.append(item)
+        if item[0] == "GPU":
+            expanded.append((
+                "__3D__", "GPU — 60 scen OpenGL, pomiar FPS",
+                lambda: _u90_show_3d_studio(app),
+                lambda: _u88_run_3d_suite(app, 5), ["3D_SUITE"]
+            ))
+            expanded.append((
+                "__VRAM__", "VRAM — osobny test wzorców / readback",
+                lambda: _u69_open_component_simulator(app, "VRAM", False, "scan"),
+                lambda: _u88_run_vram_quick(app), ["VRAM_TEST"]
+            ))
+        if item[0] == "SIEC":
+            expanded.append((
+                "__USB__", "USB — osobna enumeracja urządzeń",
+                lambda: app.show_simple_module("USB / URZĄDZENIA"),
+                lambda: app._peripheral_test("USB"), ["USB"]
+            ))
+    started = _U66_datetime.now().isoformat(timespec="seconds")
+    summary = []
+    total = len(expanded)
+    app.queue_log("=== START PEŁNEJ DIAGNOSTYKI SEKWENCYJNEJ: " + " → ".join(x[1] for x in expanded) + " ===")
+    for num, (key, title, view, test_fn, result_keys) in enumerate(expanded, 1):
+        if app._test_should_stop():
+            app.queue_log("Pełna diagnostyka: przerwano przez użytkownika.")
+            break
+        try:
+            _u66_set_suite_status(app, f"TEST {num}/{total}: {title}")
+            _u88_ui_wait(app, view)
+            _u67_stage_live_panel(app, num, total, title)
+            try:
+                app.header_status.config(text=f"TEST {num}/{total}", fg=app.colors()["warn"])
+            except Exception:
+                pass
+            if app._test_should_stop():
+                break
+            test_fn()
+            _u88_ui_wait(app, lambda: None)
+            state, result_key = _u88_test_state(app, result_keys)
+        except Exception as exc:
+            state, result_key = "error", "N/D"
+            app.queue_log(f"TEST {title}: {type(exc).__name__}: {exc}")
+        item = {
+            "stage": title, "key": key, "state": state, "result_key": result_key,
+            "time": _U66_datetime.now().isoformat(timespec="seconds")
+        }
+        summary.append(item)
+        app.queue_log(f"=== ETAP {num}/{total}: {title} — {state.upper()} ===")
+        if app._test_should_stop():
+            break
+        _u66_time.sleep(1.0)
+    failed = any(x["state"] in ("bad", "error", "warn", "not_reported") for x in summary)
+    report = {
+        "state": "warn" if failed or app._test_should_stop() or len(summary) != total else "completed",
+        "started": started, "finished": _U66_datetime.now().isoformat(timespec="seconds"),
+        "selected": list(selected), "stages": summary, "completed_stages": len(summary),
+        "total_stages": total
+    }
+    app.results["ALL_TESTS_SEQUENCE"] = report
+    try:
+        folder = _u66_store_dir() / "reports"
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / ("full-diagnostic-" + _U66_datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
+        target.write_text(_u66_json.dumps({"suite": report, "results": app.results}, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        report["report_path"] = str(target)
+    except Exception as exc:
+        app.queue_log("Nie udało się zapisać raportu pełnej diagnostyki: " + repr(exc))
+    app.queue_log(f"=== KONIEC DIAGNOSTYKI: {report['state']} — {len(summary)}/{total} etapów ===")
+    app.queue_action(app.show_report)
+    return report
+
+
+def _u88_run_live_speed_test(app):
+    result = _u90_measure_speed(app)
+    app.results["SPEED_TEST"] = result
+    app.queue_results("SPEED_TEST", result)
+    app.queue_log(
+        f"SPEED TEST: download {result.get('download_mbps', 'N/D')} Mbps / "
+        f"upload {result.get('upload_mbps', 'N/D')} Mbps / "
+        f"latency {result.get('latency_average_ms', 'N/D')} ms."
+    )
+    return result
+
+
+def _u88_start_selected_diagnostic(app):
+    if getattr(app, "running", False):
+        messagebox.showinfo("Pełna diagnostyka", "Test już trwa. Poczekaj albo użyj STOP TEST.")
+        return
+    opts = getattr(app, "full_test_options", None) or {}
+    selected = [key for key, enabled in opts.items() if enabled]
+    if not selected:
+        messagebox.showwarning("Pełna diagnostyka", "Zaznacz co najmniej jeden moduł na pulpicie.")
+        return
+    labels = {
+        "CPU": "CPU", "GPU": "GPU + 60 scen 3D + VRAM", "RAM": "RAM",
+        "DYSKI": "SSD/HDD/NVMe", "MATRYCA": "Matryca", "BATERIA": "Bateria",
+        "KLAWIATURA": "Klawiatura", "AUDIO": "Audio", "SIEC": "Speed Test + USB",
+        "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
+    }
+    message = (
+        "Uruchomić zaznaczone testy po kolei, każdy na osobnym ekranie?\n\n"
+        "Wyniki czujników na żywo, wykresy i raport są aktualizowane w trakcie. "
+        "GPU: 60 scen po 5 s (około 5 minut) oraz osobny test VRAM 15 s. "
+        "RAM wykorzysta bezpieczny bufor maks. 2 GB. STOP TEST przerywa przebieg.\n\n"
+        "Kolejność: " + " → ".join(labels.get(k, k) for k in selected)
+    )
+    if not messagebox.askyesno("Pełna diagnostyka — osobne ekrany", message):
+        return
+    app.worker(lambda: _u88_run_selected_diagnostic(app, selected))
+
+
+def _u88_start_all_tests(app):
+    if getattr(app, "running", False):
+        messagebox.showinfo("Wszystkie testy", "Test już trwa. Poczekaj albo użyj STOP TEST.")
+        return
+    selected = ["CPU", "GPU", "RAM", "DYSKI", "MATRYCA", "BATERIA",
+                "KLAWIATURA", "AUDIO", "SIEC", "SYSTEM_SECURITY", "KAMERA"]
+    message = (
+        "Uruchomić WSZYSTKIE testy po kolei, każdy na osobnym ekranie?\n\n"
+        "Przebieg zawiera CPU, GPU, RAM, dyski, matrycę, baterię, klawiaturę, audio, "
+        "60 scen 3D po 5 s, osobny test VRAM, Speed Test, USB, Windows/bezpieczeństwo i kamerę. "
+        "GPU+VRAM dodają około 5 minut i 15 sekund; Speed Test przesyła około 24 MB. "
+        "Można przerwać przez STOP TEST."
+    )
+    if not messagebox.askyesno("Wszystkie testy — osobne ekrany", message):
+        return
+    app.worker(lambda: _u88_run_selected_diagnostic(app, selected))
+
+
+def _u88_attach_simple_workbench(app, title):
+    key = _u86_module_key(title)
+    if key not in ("SIEĆ", "USB", "AUDIO", "KLAWIATURA", "KAMERA"):
+        return
+    t = app.colors()
+    panel = tk.Frame(app.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
+    children = app.content.winfo_children()
+    try:
+        if len(children) > 1:
+            panel.pack(fill="x", padx=3, pady=4, before=children[1])
+        elif children:
+            panel.pack(fill="x", padx=3, pady=4, before=children[0])
+        else:
+            panel.pack(fill="x", padx=3, pady=4)
+    except Exception:
+        panel.pack(fill="x", padx=3, pady=4)
+    app._u88_simple_workbench_panel = panel
+    tk.Label(panel, text=f"TEST NIEZALEŻNY — {_U86_MODULE_TITLES.get(key, key)}",
+             bg=t["panel"], fg=t["accent"], font=app.fnt(9, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
+    row = tk.Frame(panel, bg=t["panel"]); row.pack(fill="x", padx=5, pady=(0, 5))
+    app.make_button(row, "SKAN", lambda k=key: app.worker(lambda: _u69_run_component_worker(app, k, "scan")),
+                    "card", side="left", ipady=4)
+    if key == "SIEĆ":
+        app.make_button(row, "SPEED TEST DOWNLOAD / UPLOAD", app.show_speed_test, "accent", side="left", ipady=4)
+    else:
+        app.make_button(row, "TEST FUNKCJONALNY", lambda k=key: app.worker(lambda: _u69_run_component_worker(app, k, "benchmark")),
+                        "accent", side="left", ipady=4)
+    app.make_button(row, "SYMULATOR 3D", lambda k=key: _u69_open_component_simulator(app, k, False, "scan"),
+                    "good", side="left", ipady=4)
+    app.make_button(row, "STOP TEST", app.stop_current_test, "bad", side="left", ipady=4)
+
+
+_U88_ORIGINAL_SHOW_MODULE = AppV43.show_module
+def _u88_show_module_with_independent_tests(app, module):
+    if str(module or "").strip().upper() == "VRAM":
+        _u69_open_component_simulator(app, "VRAM", False, "scan")
+        return
+    _U88_ORIGINAL_SHOW_MODULE(app, module)
+    key = _u86_module_key(module)
+    if key in ("CPU", "GPU", "RAM", "DYSK", "EKRAN", "SECURITY"):
+        # The later GPU/live-monitor wrappers had bypassed this earlier component workbench.
+        # Re-attach it to the final screen so each module actually has its own scan/benchmark/3D buttons.
+        _u68_attach_component_workbench(app, key)
+
+
+_U88_ORIGINAL_SHOW_SIMPLE_MODULE = AppV43.show_simple_module
+def _u88_show_simple_module_with_independent_tests(app, title):
+    _U88_ORIGINAL_SHOW_SIMPLE_MODULE(app, title)
+    _u88_attach_simple_workbench(app, title)
+
+
+_U88_ORIGINAL_SHOW_BATTERY = AppV43.show_battery_or_power
+def _u88_show_battery_with_independent_tests(app):
+    _U88_ORIGINAL_SHOW_BATTERY(app)
+    t = app.colors()
+    panel = tk.Frame(app.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
+    children = app.content.winfo_children()
+    try:
+        if len(children) > 1:
+            panel.pack(fill="x", padx=3, pady=4, before=children[1])
+        elif children:
+            panel.pack(fill="x", padx=3, pady=4, before=children[0])
+        else:
+            panel.pack(fill="x", padx=3, pady=4)
+    except Exception:
+        panel.pack(fill="x", padx=3, pady=4)
+    app._u88_battery_workbench_panel = panel
+    tk.Label(panel, text="BATERIA — TEST ODDZIELNY / MONITOR", bg=t["panel"], fg=t["accent"],
+             font=app.fnt(9, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
+    row = tk.Frame(panel, bg=t["panel"]); row.pack(fill="x", padx=5, pady=(0, 5))
+    app.make_button(row, "SKAN BATERII", lambda: app.worker(lambda: _u69_run_component_worker(app, "BATERIA", "scan")),
+                    "card", side="left", ipady=4)
+    app.make_button(row, "BENCHMARK BATERII ULTRA/MAX", lambda: app.worker(lambda: _u69_run_component_worker(app, "BATERIA", "benchmark")),
+                    "accent", side="left", ipady=4)
+    app.make_button(row, "SYMULATOR 3D", lambda: _u69_open_component_simulator(app, "BATERIA", False, "scan"),
+                    "good", side="left", ipady=4)
+    app.make_button(row, "STOP TEST", app.stop_current_test, "bad", side="left", ipady=4)
+
+
+# Publish the corrected last-stage routes after all earlier version layers.
+_u66_ui_wait = _u88_ui_wait
+_u66_run_3d_suite = _u88_run_3d_suite
+_u66_start_3d_all = _u88_start_3d_all
+_u68_open_gpu_suite = _u88_open_gpu_suite
+_u67_run_selected_diagnostic = _u88_run_selected_diagnostic
+AppV43._u66_ui_wait = _u88_ui_wait
+AppV43._u66_run_3d_suite = _u88_run_3d_suite
+AppV43._u66_start_3d_all = _u88_start_3d_all
+AppV43._start_selected_diagnostic = _u88_start_selected_diagnostic
+AppV43._run_selected_diagnostic = _u88_run_selected_diagnostic
+AppV43.full_test = _u88_start_all_tests
+AppV43.start_all_tests_sequential = _u88_start_all_tests
+AppV43.show_module = _u88_show_module_with_independent_tests
+AppV43.show_simple_module = _u88_show_simple_module_with_independent_tests
+AppV43.show_battery_or_power = _u88_show_battery_with_independent_tests
+
+
+def _u88_selftest_final_wiring():
+    assert callable(AppV43._u66_ui_wait)
+    assert AppV43._u66_ui_wait is _u88_ui_wait
+    assert _u66_run_3d_suite is _u88_run_3d_suite
+    assert "_u88_ui_wait" in _u88_run_3d_suite.__code__.co_names
+    assert "_u66_ui_wait" not in _u88_run_3d_suite.__code__.co_names
+    assert AppV43.show_module is _u88_show_module_with_independent_tests
+    assert AppV43.show_simple_module is _u88_show_simple_module_with_independent_tests
+    assert AppV43.show_battery_or_power is _u88_show_battery_with_independent_tests
+    assert AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic
+    assert AppV43.full_test is _u88_start_all_tests
+    assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "MAX — 600 s"})()})()) == 60
+    assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "ULTRA — 300 s"})()})()) == 30
+    assert len(_U66_SCENES) == 60
+    assert callable(_u68_attach_component_workbench)
+    print("COMPONENT_INDEPENDENT_WORKBENCH_3D_SUITE_SELFTEST_OK: 13 modules, separate screen per test, 60 scenes, 4K MAX and bounded 3D timing")
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u66_selftest_advanced()
         _u86_selftest_component_ui()
         _u90_selftest_release_fixes()
-        assert AppV43.show_module is _u86_show_module_with_component_workbench
+        _u88_selftest_final_wiring()
+        assert AppV43.show_module is _u88_show_module_with_independent_tests
         assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
         assert callable(_u84_attach_gpu_live_panel)
         assert callable(_u84_gpu_live_tick)
-        assert AppV43.show_module is _u86_show_module_with_component_workbench
+        assert AppV43.show_module is _u88_show_module_with_independent_tests
         assert any("GPU LIVE STUDIO" in str(x) for x in _u84_attach_gpu_live_panel.__code__.co_consts)
         assert _U84_GPU_LIVE_FIELDS and len(_U84_GPU_LIVE_FIELDS) >= 8
         print("GPU_LIVE_PANEL_SELFTEST_OK")
