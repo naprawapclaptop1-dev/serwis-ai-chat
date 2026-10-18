@@ -1271,7 +1271,8 @@ $oldGpuDispatch = '            _u37_gpu_benchmark_child(_u37_output, 30)'
 $newGpuDispatch = @'
             _u66_scene = int(sys.argv[_u37_index + 2]) if _u37_index + 2 < len(sys.argv) else 1
             _u66_seconds = int(sys.argv[_u37_index + 3]) if _u37_index + 3 < len(sys.argv) else 30
-            _u37_gpu_benchmark_child(_u37_output, _u66_seconds, _u66_scene)
+            _u66_resolution = sys.argv[_u37_index + 4] if _u37_index + 4 < len(sys.argv) else "1920x1080"
+            _u37_gpu_benchmark_child(_u37_output, _u66_seconds, _u66_scene, _u66_resolution)
 '@
 if (!$src.Contains($oldGpuDispatch)) { throw "Nie znaleziono punktu wejścia dla scen 3D z parametrem sceny." }
 $src = $src.Replace($oldGpuDispatch,$newGpuDispatch.TrimEnd())
@@ -1281,8 +1282,8 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
     param($m)
     return $advancedPatch + [Environment]::NewLine + $m.Value
 },1)
-if (!$src.Contains("_U66_SCENES") -or !$src.Contains("ADVANCED_MODULES_SELFTEST_OK") -or !$src.Contains("_u66_web_search") -or !$src.Contains("Cloudflare")) {
-    throw "Weryfikacja wstawek AI Reader / Speed Test / 3D Studio nie powiodła się."
+if (!$src.Contains("_U66_SCENES") -or !$src.Contains("ADVANCED_MODULES_SELFTEST_OK") -or !$src.Contains("_u66_web_search") -or !$src.Contains("Cloudflare") -or !$src.Contains("_u88_selftest_final_wiring") -or !$newGpuDispatch.Contains("_u66_resolution")) {
+    throw "Weryfikacja wstawek AI Reader / Speed Test / 3D Studio / testów niezależnych nie powiodła się."
 }
 if (($src | Select-String -Pattern 'ADVANCED_MODULES_PATCH' -AllMatches).Matches.Count -gt 0) {
     # The patch source itself is external; only its contents are added to the generated main program.
