@@ -5006,6 +5006,131 @@ AppV43.show_simple_module = _u88_show_simple_module_with_independent_tests
 AppV43.show_battery_or_power = _u88_show_battery_with_independent_tests
 
 
+# v4.3.90 — final crash guards for the online test sequence and 3D entry points.
+# A test failure must leave the Tk application running and record an explicit ERROR result.
+_U91_ORIGINAL_3D_RUNNER = _u88_run_3d_suite
+def _u91_run_3d_suite_guarded(app, seconds=5):
+    started = _U66_datetime.now().isoformat(timespec="seconds")
+    try:
+        return _U91_ORIGINAL_3D_RUNNER(app, seconds)
+    except BaseException as exc:
+        detail = f"{type(exc).__name__}: {exc}"
+        report = {
+            "state": "error",
+            "started": started,
+            "finished": _U66_datetime.now().isoformat(timespec="seconds"),
+            "completed": 0,
+            "total": len(_U66_SCENES),
+            "good": 0,
+            "seconds_per_scene": max(3, min(60, int(seconds))),
+            "scenes": [],
+            "error": detail,
+            "note": "3D benchmark przerwany bez zamykania aplikacji."
+        }
+        try:
+            app.results["3D_SUITE"] = report
+            app.queue_results("3D_SUITE", report)
+        except Exception:
+            pass
+        try:
+            app.queue_log("3D BENCHMARK — BŁĄD, aplikacja pozostaje otwarta: " + detail)
+        except Exception:
+            pass
+        try:
+            app.queue_action(lambda d=detail: _u90_set_3d_final_status(app, "BŁĄD 3D — " + d[:250]))
+        except Exception:
+            pass
+        return report
+
+
+# All code paths that refer to the historical runner name resolve to the guarded entry point.
+_u88_run_3d_suite = _u91_run_3d_suite_guarded
+_u66_run_3d_suite = _u91_run_3d_suite_guarded
+_u90_run_3d_suite = _u91_run_3d_suite_guarded
+AppV43._u66_run_3d_suite = _u91_run_3d_suite_guarded
+AppV43._u90_run_3d_suite = _u91_run_3d_suite_guarded
+AppV43._u66_ui_wait = _u88_ui_wait
+AppV43._u88_ui_wait = _u88_ui_wait
+
+
+_U91_ORIGINAL_SELECTED_RUNNER = _u88_run_selected_diagnostic
+def _u91_run_selected_diagnostic_guarded(app, selected):
+    started = _U66_datetime.now().isoformat(timespec="seconds")
+    try:
+        return _U91_ORIGINAL_SELECTED_RUNNER(app, selected)
+    except BaseException as exc:
+        detail = f"{type(exc).__name__}: {exc}"
+        report = {
+            "state": "error",
+            "started": started,
+            "finished": _U66_datetime.now().isoformat(timespec="seconds"),
+            "selected": list(selected),
+            "stages": [],
+            "completed_stages": 0,
+            "total_stages": len(selected),
+            "fatal_error": detail
+        }
+        try:
+            app.results["ALL_TESTS_SEQUENCE"] = report
+            app.queue_results("ALL_TESTS_SEQUENCE", report)
+        except Exception:
+            pass
+        try:
+            app.queue_log("DIAGNOSTYKA — błąd zabezpieczony, aplikacja pozostaje otwarta: " + detail)
+        except Exception:
+            pass
+        def show_error(d=detail):
+            try:
+                app.header_status.config(text="TEST PRZERWANY — SZCZEGÓŁY W RAPORCIE", fg=app.colors()["bad"])
+            except Exception:
+                pass
+            try:
+                messagebox.showerror(
+                    "Diagnostyka przerwana — aplikacja nie została zamknięta",
+                    d + "\\n\\nSzczegóły zapisano w dzienniku. Możesz wrócić do pulpitu i uruchomić test oddzielnie."
+                )
+            except Exception:
+                pass
+        try:
+            app.queue_action(show_error)
+        except Exception:
+            pass
+        return report
+
+
+_U91_ORIGINAL_START_SELECTED = _u88_start_selected_diagnostic
+def _u91_start_selected_diagnostic(app):
+    if getattr(app, "running", False):
+        messagebox.showinfo("Pełna diagnostyka", "Test już trwa. Poczekaj albo użyj STOP TEST.")
+        return
+    opts = getattr(app, "full_test_options", None) or {}
+    selected = [key for key, enabled in opts.items() if enabled]
+    if not selected:
+        messagebox.showwarning("Pełna diagnostyka", "Zaznacz co najmniej jeden moduł na pulpicie.")
+        return
+    labels = {
+        "CPU": "CPU", "GPU": "GPU + 60 scen 3D + VRAM", "RAM": "RAM",
+        "DYSKI": "SSD/HDD/NVMe", "MATRYCA": "Matryca", "BATERIA": "Bateria",
+        "KLAWIATURA": "Klawiatura", "AUDIO": "Audio", "SIEC": "Speed Test + USB",
+        "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
+    }
+    if not messagebox.askyesno(
+        "Pełna diagnostyka — online 4.3.90",
+        "Uruchomić zaznaczone testy po kolei, każdy na osobnym ekranie?\\n\\n"
+        "Każdy wyjątek jest zapisywany jako ERROR/N/D — aplikacja ma pozostać otwarta. "
+        "GPU obejmuje osobny benchmark 3D oraz VRAM; STOP TEST przerywa przebieg.\\n\\n"
+        "Kolejność: " + " → ".join(labels.get(k, k) for k in selected)
+    ):
+        return
+    app.worker(lambda: _u91_run_selected_diagnostic_guarded(app, selected))
+
+
+AppV43._start_selected_diagnostic = _u91_start_selected_diagnostic
+AppV43._run_selected_diagnostic = _u91_run_selected_diagnostic_guarded
+AppV43.full_test = _u91_start_selected_diagnostic
+AppV43.start_all_tests_sequential = _u91_start_selected_diagnostic
+
+
 def _u88_selftest_final_wiring():
     assert callable(AppV43._u66_ui_wait)
     assert AppV43._u66_ui_wait is _u88_ui_wait
@@ -5023,7 +5148,12 @@ def _u88_selftest_final_wiring():
     assert "_u67_stage_live_panel" not in _u88_run_selected_diagnostic.__code__.co_names
     assert "_u88_ui_wait" in _u88_run_selected_diagnostic.__code__.co_names
     assert "_u88_run_3d_suite" in _u90_run_3d_suite.__code__.co_names
-    assert AppV43.full_test is _u88_start_all_tests
+    assert AppV43.full_test is _u91_start_selected_diagnostic
+    assert AppV43._start_selected_diagnostic is _u91_start_selected_diagnostic
+    assert AppV43._run_selected_diagnostic is _u91_run_selected_diagnostic_guarded
+    assert _u88_run_3d_suite is _u91_run_3d_suite_guarded
+    assert AppV43._u66_run_3d_suite is _u91_run_3d_suite_guarded
+    assert AppV43._u66_ui_wait is _u88_ui_wait
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "MAX — 600 s"})()})()) == 60
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "ULTRA — 300 s"})()})()) == 30
     assert len(_U66_SCENES) == 60
