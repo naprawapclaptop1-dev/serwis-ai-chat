@@ -3151,10 +3151,10 @@ def _u66_selftest_advanced():
     _u78_selftest_component_lab()
     _u80_selftest_sound_hooks()
     assert AppV43.show_component_lab is _u78_show_component_lab, "ADVANCED self-test check 19: AppV43.show_component_lab is _u78_show_component_lab"
-    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench), "ADVANCED self-test check 20: AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_"
-    assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench), "ADVANCED self-test check 21: AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module"
+    assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench, _u88_show_module_with_independent_tests), "ADVANCED self-test check 20: AppV43.show_module is a supported final view wrapper"
+    assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench, _u88_show_simple_module_with_independent_tests), "ADVANCED self-test check 21: AppV43.show_simple_module is a supported final view wrapper"
     assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60"
-    assert AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic, "ADVANCED self-test check 23: AppV43._start_selected_diagnostic is _u67_start_selected_diagnostic"
+    assert AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic, "ADVANCED self-test check 23: AppV43._start_selected_diagnostic is _u88_start_selected_diagnostic"
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
     print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 60 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
