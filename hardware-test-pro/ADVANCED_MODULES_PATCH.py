@@ -6236,6 +6236,16 @@ def _u93_start_catalog_test(app,module,test_id,title,kind):
       "note":"Brak danych nie będzie oznaczony jako PASS."})
     app.worker(lambda:_u93_finish_test_worker(app,module,test_id,title,kind,settings))
 
+def _u93_deep_code_names(function):
+    import types as _u93_types
+    pending=[function.__code__]
+    names=set()
+    while pending:
+        code=pending.pop()
+        names.update(code.co_names)
+        pending.extend(item for item in code.co_consts if isinstance(item,_u93_types.CodeType))
+    return names
+
 def _u93_selftest_catalog_routing():
     ids=[];kinds=set()
     for module,entries in _U93_TEST_CATALOG.items():
@@ -6246,8 +6256,10 @@ def _u93_selftest_catalog_routing():
     assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
     assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
     assert AppV43.show_component_lab is _u93_show_lab
-    assert "_u93_show_test_detail" in _u93_scroll_rows.__code__.co_names
-    assert "_u93_start_catalog_test" in _u93_show_test_detail.__code__.co_names
+    # The callbacks are lambdas in Tk buttons; inspect nested code objects as well.
+    assert "_u93_show_test_detail" in _u93_deep_code_names(_u93_scroll_rows)
+    assert "_u93_start_catalog_test" in _u93_deep_code_names(_u93_show_test_detail)
+    assert "_u93_execute_catalog_test" in _u93_deep_code_names(_u93_finish_test_worker)
     print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 70 unique tests, isolated detail screen and real operation dispatcher")
 
 AppV43.show_component_lab = _u93_show_lab
