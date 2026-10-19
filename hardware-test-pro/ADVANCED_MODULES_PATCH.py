@@ -2353,6 +2353,7 @@ def _u69_drive_options(self):
     return drives
 
 def _u69_attach_workbench(self,module):
+    """Jeden panel z akcjami wyłącznie dla wybranego podzespołu."""
     try:
         t=self.colors()
         panel=tk.Frame(self.content,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
@@ -2361,42 +2362,42 @@ def _u69_attach_workbench(self,module):
         elif children:panel.pack(fill="x",padx=3,pady=4,before=children[0])
         else:panel.pack(fill="x",padx=3,pady=4)
         self._u69_workbench_panel=panel
-        tk.Label(panel,text="TESTY NIEZALEŻNE • SKAN • BENCHMARK ULTRA/MAX • WIZUALIZACJA 3D",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,2))
-        tk.Label(panel,text="Każdy przycisk uruchamia osobny test. Wykresy są pomiarami bieżącymi; schemat 3D jest wizualizacją, a FPS mierzy tylko rzeczywisty test renderera.",bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,5))
+        title={"CPU":"PROCESOR / CPU","GPU":"KARTA GRAFICZNA / GPU","RAM":"PAMIĘĆ RAM",
+               "DYSK":"SSD / HDD / NVMe","EKRAN":"MATRYCA / MONITOR","SECURITY":"WINDOWS / BEZPIECZEŃSTWO"}.get(module,module)
+        tk.Label(panel,text=title+" — TESTY TEGO PODZESPOŁU",bg=t["panel"],fg=t["accent"],
+                 font=self.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,2))
+        tk.Label(panel,text="Wybierz jeden tryb. Po uruchomieniu otwiera się osobny ekran wybranego testu; inne podzespoły nie są dodawane do tej strony.",
+                 bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,5))
         row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,6))
         self._u68_profile_var=tk.StringVar(value=getattr(self,"_u68_profile_value","ULTRA — 300 s"))
-        cb=ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18);cb.pack(side="left",padx=3,ipady=3)
+        cb=ttk.Combobox(row,textvariable=self._u68_profile_var,values=_U68_PROFILE_CHOICES,state="readonly",width=18)
+        cb.pack(side="left",padx=3,ipady=3)
         cb.bind("<<ComboboxSelected>>",lambda e:setattr(self,"_u68_profile_value",self._u68_profile_var.get()))
         if module=="RAM":
             self._u68_ram_size_var=tk.StringVar(value=getattr(self,"_u68_ram_value","512 MB"))
-            ttk.Combobox(row,textvariable=self._u68_ram_size_var,values=("128 MB","256 MB","512 MB","1024 MB","1536 MB","2048 MB"),state="readonly",width=11).pack(side="left",padx=3,ipady=3)
+            ttk.Combobox(row,textvariable=self._u68_ram_size_var,values=("128 MB","256 MB","512 MB","1024 MB","1536 MB","2048 MB"),
+                         state="readonly",width=11).pack(side="left",padx=3,ipady=3)
         elif module=="DYSK":
             self._u68_disk_size_var=tk.StringVar(value=getattr(self,"_u68_disk_value","512 MB"))
-            ttk.Combobox(row,textvariable=self._u68_disk_size_var,values=("128 MB","256 MB","512 MB","1024 MB","2048 MB","4096 MB"),state="readonly",width=11).pack(side="left",padx=3,ipady=3)
+            ttk.Combobox(row,textvariable=self._u68_disk_size_var,values=("128 MB","256 MB","512 MB","1024 MB","2048 MB","4096 MB"),
+                         state="readonly",width=11).pack(side="left",padx=3,ipady=3)
             drives=_u69_drive_options(self)
             self._u69_disk_drive_var=tk.StringVar(value=getattr(self,"_u69_disk_drive_value",drives[0]))
             if self._u69_disk_drive_var.get() not in drives:self._u69_disk_drive_var.set(drives[0])
             ttk.Combobox(row,textvariable=self._u69_disk_drive_var,values=drives,state="readonly",width=8).pack(side="left",padx=3,ipady=3)
             self._u69_disk_drive_var.trace_add("write",lambda *_:setattr(self,"_u69_disk_drive_value",self._u69_disk_drive_var.get()))
-        self._u69_workbench_status=tk.Label(row,text="Gotowy — wybierz SKAN, BENCHMARK albo SYMULATOR 3D.",bg=t["panel"],fg=t["muted"],font=self.fnt(8,"bold"),anchor="w")
+        self._u69_workbench_status=tk.Label(row,text="Gotowy — wybierz SKAN, BENCHMARK lub SYMULATOR 3D.",
+             bg=t["panel"],fg=t["muted"],font=self.fnt(8,"bold"),anchor="w")
         self._u69_workbench_status.pack(side="left",fill="x",expand=True,padx=8)
-        self.make_button(row,"SKAN + LIVE 3D",lambda m=module:_u69_open_component_simulator(self,m,True,"scan"),"card",side="left",ipady=5)
-        self.make_button(row,"BENCHMARK ULTRA/MAX",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),"accent",side="left",ipady=5)
-        self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),"good",side="left",ipady=5)
-        if module=="GPU":
-            self.make_button(row,"TEST VRAM 3D",lambda:_u69_open_vram_test(self),"card",side="left",ipady=5)
-            self.make_button(row,f"STUDIO GPU {len(_U66_SCENES)} SCEN",lambda:_u68_open_gpu_suite(self),"good",side="left",ipady=5)
-        if module=="EKRAN" and hasattr(self,"_u37_open_screen_test"):
-            self.make_button(row,"TEST PIKSELI",self._u37_open_screen_test,"card",side="left",ipady=5)
-        labrow=tk.Frame(panel,bg=t["panel"]);labrow.pack(fill="x",padx=6,pady=(0,4))
-        self.make_button(labrow,"OTWÓRZ LABORATORIUM — WSZYSTKIE TESTY OSOBNO",self.show_component_lab,"good",side="left",ipady=4)
-        speedrow=tk.Frame(panel,bg=t["panel"]);speedrow.pack(fill="x",padx=6,pady=(0,6))
-        self.make_button(speedrow,"▶ SPEED TEST INTERNETU — DOWNLOAD / UPLOAD / PING",self.show_speed_test,"accent",side="left",ipady=6)
-        self.make_button(speedrow,"MONITOR LIVE — TEMPERATURY / W / V / MHZ",self.show_live_monitor,"card",side="left",ipady=6)
+        self.make_button(row,"SKAN",lambda m=module:_u69_open_component_simulator(self,m,True,"scan"),
+                         "card",side="left",ipady=5)
+        self.make_button(row,"BENCHMARK ULTRA / MAX",lambda m=module:_u69_open_component_simulator(self,m,True,"benchmark"),
+                         "accent",side="left",ipady=5)
+        self.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(self,m,False,"scan"),
+                         "good",side="left",ipady=5)
     except Exception as exc:
-        try:self.append_log("Nie udało się dodać panelu komponentu: "+repr(exc))
+        try:self.append_log("Nie udało się dodać panelu pojedynczego podzespołu: "+repr(exc))
         except Exception:pass
-
 def _u69_show_module(self,module):
     if module in ("DYSKI","DYSKI — SSD / HDD / NVMe","SSD / HDD / NVMe"):module="DYSK"
     _U69_ORIGINAL_SHOW_MODULE(self,module)
@@ -2705,7 +2706,8 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     self.make_button(row,"SKAN",lambda m=module:_u69_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
     self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
-    self.make_button(row,"▶ SPEED TEST",self.show_speed_test,"accent",side="left",ipady=4)
+    if module=="SIEĆ":
+        self.make_button(row,"SPEED TEST DOWNLOAD / UPLOAD",self.show_speed_test,"accent",side="left",ipady=4)
     def back(m=module):
         if getattr(self,"_u78_return_to_component_lab",False):
             self._u78_return_to_component_lab=False
@@ -4943,50 +4945,69 @@ def _u88_attach_simple_workbench(app, title):
 
 _U88_ORIGINAL_SHOW_MODULE = AppV43.show_module
 def _u88_show_module_with_independent_tests(app, module):
-    if str(module or "").strip().upper() == "VRAM":
-        _u69_open_component_simulator(app, "VRAM", False, "scan")
+    name=str(module or "").strip()
+    if name.upper() in ("DYSKI","DYSKI — SSD / HDD / NVME","SSD / HDD / NVME"):
+        name="DYSK"
+    if name.upper()=="VRAM":
+        _u69_open_component_simulator(app,"VRAM",False,"scan")
         return
-    _U88_ORIGINAL_SHOW_MODULE(app, module)
-    key = _u86_module_key(module)
-    if key in ("CPU", "GPU", "RAM", "DYSK", "EKRAN", "SECURITY"):
-        # The later GPU/live-monitor wrappers had bypassed this earlier component workbench.
-        # Re-attach it to the final screen so each module actually has its own scan/benchmark/3D buttons.
-        _u68_attach_component_workbench(app, key)
-
+    # Invalidate pending live-monitor callbacks from the previous page, then render the unwrapped base view.
+    try:
+        app._u86_page_id=int(getattr(app,"_u86_page_id",0))+1
+        app._u86_module_context=None
+    except Exception:
+        pass
+    _U68_ORIGINAL_SHOW_MODULE(app,name)
+    # The full-test runner supplies its own single stage/telemetry panel.
+    if getattr(app,"_u86_suite_active",False):
+        return
+    key=_u86_module_key(name)
+    if key in ("CPU","GPU","RAM","DYSK","EKRAN","SECURITY"):
+        _u69_attach_workbench(app,key)
 
 _U88_ORIGINAL_SHOW_SIMPLE_MODULE = AppV43.show_simple_module
 def _u88_show_simple_module_with_independent_tests(app, title):
-    _U88_ORIGINAL_SHOW_SIMPLE_MODULE(app, title)
-    _u88_attach_simple_workbench(app, title)
-
+    try:
+        app._u86_page_id=int(getattr(app,"_u86_page_id",0))+1
+        app._u86_module_context=None
+    except Exception:
+        pass
+    _U68_ORIGINAL_SHOW_SIMPLE_MODULE(app,title)
+    # Only the selected simple component gets a workbench; do not stack legacy wrappers.
+    if getattr(app,"_u86_suite_active",False):
+        return
+    _u88_attach_simple_workbench(app,title)
 
 _U88_ORIGINAL_SHOW_BATTERY = AppV43.show_battery_or_power
 def _u88_show_battery_with_independent_tests(app):
-    _U88_ORIGINAL_SHOW_BATTERY(app)
-    t = app.colors()
-    panel = tk.Frame(app.content, bg=t["panel"], highlightbackground=t["accent"], highlightthickness=1)
-    children = app.content.winfo_children()
     try:
-        if len(children) > 1:
-            panel.pack(fill="x", padx=3, pady=4, before=children[1])
-        elif children:
-            panel.pack(fill="x", padx=3, pady=4, before=children[0])
-        else:
-            panel.pack(fill="x", padx=3, pady=4)
+        app._u86_page_id=int(getattr(app,"_u86_page_id",0))+1
+        app._u86_module_context=None
     except Exception:
-        panel.pack(fill="x", padx=3, pady=4)
-    app._u88_battery_workbench_panel = panel
-    tk.Label(panel, text="BATERIA — TEST ODDZIELNY / MONITOR", bg=t["panel"], fg=t["accent"],
-             font=app.fnt(9, "bold")).pack(anchor="w", padx=8, pady=(6, 2))
-    row = tk.Frame(panel, bg=t["panel"]); row.pack(fill="x", padx=5, pady=(0, 5))
-    app.make_button(row, "SKAN BATERII", lambda: app.worker(lambda: _u69_run_component_worker(app, "BATERIA", "scan")),
-                    "card", side="left", ipady=4)
-    app.make_button(row, "BENCHMARK BATERII ULTRA/MAX", lambda: app.worker(lambda: _u69_run_component_worker(app, "BATERIA", "benchmark")),
-                    "accent", side="left", ipady=4)
-    app.make_button(row, "SYMULATOR 3D", lambda: _u69_open_component_simulator(app, "BATERIA", False, "scan"),
-                    "good", side="left", ipady=4)
-    app.make_button(row, "STOP TEST", app.stop_current_test, "bad", side="left", ipady=4)
-
+        pass
+    _U69_ORIGINAL_SHOW_BATTERY(app)
+    if getattr(app,"_u86_suite_active",False):
+        return
+    t=app.colors()
+    panel=tk.Frame(app.content,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
+    children=app.content.winfo_children()
+    try:
+        if len(children)>1:panel.pack(fill="x",padx=3,pady=4,before=children[1])
+        elif children:panel.pack(fill="x",padx=3,pady=4,before=children[0])
+        else:panel.pack(fill="x",padx=3,pady=4)
+    except Exception:
+        panel.pack(fill="x",padx=3,pady=4)
+    app._u88_battery_workbench_panel=panel
+    tk.Label(panel,text="BATERIA / ZASILANIE — TEN TEST",bg=t["panel"],fg=t["accent"],
+             font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,2))
+    row=tk.Frame(panel,bg=t["panel"]);row.pack(fill="x",padx=5,pady=(0,5))
+    app.make_button(row,"SKAN BATERII",lambda:_u69_open_component_simulator(app,"BATERIA",True,"scan"),
+                    "card",side="left",ipady=4)
+    app.make_button(row,"BENCHMARK BATERII",lambda:_u69_open_component_simulator(app,"BATERIA",True,"benchmark"),
+                    "accent",side="left",ipady=4)
+    app.make_button(row,"SYMULATOR 3D",lambda:_u69_open_component_simulator(app,"BATERIA",False,"scan"),
+                    "good",side="left",ipady=4)
+    app.make_button(row,"STOP TEST",app.stop_current_test,"bad",side="left",ipady=4)
 
 # Publish the corrected last-stage routes after all earlier version layers.
 _u66_ui_wait = _u88_ui_wait
@@ -5621,9 +5642,48 @@ AppV43._run_selected_diagnostic = _u94_selected_runner_safe
 _u92_selftest_crash_guard = _u94_selftest_crash_guard
 
 
+
+
+# v4.3.96 — clean, isolated component screens.
+# Remove stacked legacy wrappers that were inserting unrelated speed-test, live-monitor and all-tests panels.
+AppV43.show_module = _u88_show_module_with_independent_tests
+AppV43.show_simple_module = _u88_show_simple_module_with_independent_tests
+AppV43.show_battery_or_power = _u88_show_battery_with_independent_tests
+
+# The final guarded full-test runner uses _U91_ORIGINAL_SELECTED_RUNNER, so enable suite mode here.
+_U96_ORIGINAL_SELECTED_RUNNER = _u88_run_selected_diagnostic
+def _u96_run_selected_diagnostic_single_screen(app, selected):
+    prior = bool(getattr(app, "_u86_suite_active", False))
+    app._u86_suite_active = True
+    try:
+        return _U96_ORIGINAL_SELECTED_RUNNER(app, list(selected or []))
+    finally:
+        app._u86_suite_active = prior
+        try:
+            app._u86_module_context = None
+        except Exception:
+            pass
+_U91_ORIGINAL_SELECTED_RUNNER = _u96_run_selected_diagnostic_single_screen
+
+def _u96_selftest_single_test_screens():
+    assert AppV43.show_module is _u88_show_module_with_independent_tests
+    assert AppV43.show_simple_module is _u88_show_simple_module_with_independent_tests
+    assert AppV43.show_battery_or_power is _u88_show_battery_with_independent_tests
+    names = set(_u69_attach_workbench.__code__.co_names)
+    assert "show_component_lab" not in names
+    assert "show_speed_test" not in names
+    assert "show_live_monitor" not in names
+    constants = tuple(str(x) for x in _u69_attach_workbench.__code__.co_consts)
+    assert not any("SPEED TEST INTERNETU" in x or "MONITOR LIVE" in x or "WSZYSTKIE TESTY" in x for x in constants)
+    sim_consts = tuple(str(x) for x in _u69_open_component_simulator.__code__.co_consts)
+    assert "SIEĆ" in sim_consts and "SPEED TEST DOWNLOAD / UPLOAD" in sim_consts
+    assert _U91_ORIGINAL_SELECTED_RUNNER is _u96_run_selected_diagnostic_single_screen
+    print("SINGLE_COMPONENT_TEST_SCREENS_SELFTEST_OK: no stacked/global test panels; sequential mode uses one stage view")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u96_selftest_single_test_screens()
         _u66_selftest_advanced()
         _u86_selftest_component_ui()
         _u90_selftest_release_fixes()
