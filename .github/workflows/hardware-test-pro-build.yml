@@ -86,6 +86,7 @@ jobs:
           $program = ".\NaprawaPC_Hardware_Test_PRO.pyw"
           python -m py_compile $program
           if ($LASTEXITCODE -ne 0) { throw "Python syntax check failed with code $LASTEXITCODE" }
+          # Catch common Tk lifecycle regressions without pretending to replace a physical-device test.
           $checks = @(
             "--selftest-core",
             "--selftest-deep",
