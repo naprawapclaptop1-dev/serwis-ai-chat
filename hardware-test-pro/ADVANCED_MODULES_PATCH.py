@@ -5574,7 +5574,8 @@ def _u94_record_failure(app, scope, exc):
 def _u94_selected_runner_safe(candidate, selected):
     app = _u92_resolve_app(candidate)
     try:
-        return _U94_ORIGINAL_SELECTED_RUNNER(app, list(selected or []))
+        # Use the final isolated-screen dispatcher; the older v4.3.90 runner bypasses this wrapper.
+        return _U91_ORIGINAL_SELECTED_RUNNER(app, list(selected or []))
     except BaseException as exc:
         return _u94_record_failure(app, "Pełna diagnostyka sekwencyjna", exc)
 
@@ -5678,7 +5679,9 @@ def _u96_selftest_single_test_screens():
     sim_consts = tuple(str(x) for x in _u69_open_component_simulator.__code__.co_consts)
     assert "SIEĆ" in sim_consts and "SPEED TEST DOWNLOAD / UPLOAD" in sim_consts
     assert _U91_ORIGINAL_SELECTED_RUNNER is _u96_run_selected_diagnostic_single_screen
-    print("SINGLE_COMPONENT_TEST_SCREENS_SELFTEST_OK: no stacked/global test panels; sequential mode uses one stage view")
+    assert "_U91_ORIGINAL_SELECTED_RUNNER" in _u94_selected_runner_safe.__code__.co_names
+    assert "_U94_ORIGINAL_SELECTED_RUNNER" not in _u94_selected_runner_safe.__code__.co_names
+    print("SINGLE_COMPONENT_TEST_SCREENS_SELFTEST_OK: selected runner uses isolated wrapper; no stacked/global test panels")
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
