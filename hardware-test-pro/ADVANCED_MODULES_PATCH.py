@@ -6404,9 +6404,804 @@ _u93_detail_status_only = _u98_detail_status_only
 _u93_execute_catalog_test = _u98_execute_catalog_test
 _u93_start_catalog_test = _u98_start_catalog_test
 
+
+# v4.3.100 — unique FurMark-style scenes, adaptive real-byte Speed Test, vendor-neutral live sensors.
+_U100_SCENE_TITLES = [
+ "FurMark Style — Futrzasty donut",
+ "FurMark Style — Potrójny futrzasty torus",
+ "FurMark Style — Donut i pas asteroid",
+ "Torus Knot — Pojedynczy węzeł chromatyczny",
+ "Torus Knot — Przeplecione helisy",
+ "Torus Knot — Gęste pole węzłów",
+ "Układ planetarny — orbity",
+ "Układ planetarny — podwójna gwiazda",
+ "Układ planetarny — pierścienie i asteroidy",
+ "Teren 3D — górskie grzbiety",
+ "Teren 3D — kratery i doliny",
+ "Teren 3D — warstwowe wysokości MAX",
+ "Miasto 3D — nocna panorama",
+ "Miasto 3D — gęste centrum",
+ "Miasto 3D — wielopoziomowy stress",
+ "GPU Board — płytka i radiator",
+ "GPU Board — układ trzech wentylatorów",
+ "GPU Board — stos kart i pamięci",
+ "Particle Storm — wir",
+ "Particle Storm — fontanna",
+ "Particle Storm — powłoka cząstek EXTREME",
+ "Ocean 3D — spokojne fale",
+ "Ocean 3D — skrzyżowane fale",
+ "Ocean 3D — wielowarstwowy swell",
+ "Cube Field — przestrzenne instancje",
+ "Cube Field — labirynt sześcianów",
+ "Cube Field — spiralny tunel sześcianów",
+ "Crystal Field — ogród pryzmatów",
+ "Crystal Field — ostre kryształy",
+ "Crystal Field — gęsta siatka shardów",
+ "Mechanics — przekładnia",
+ "Mechanics — pierścienie współosiowe",
+ "Mechanics — wirnik i łopatki",
+ "Molecule Lab — pojedynczy łańcuch",
+ "Molecule Lab — sieć atomów",
+ "Molecule Lab — gęsta struktura molekularna",
+ "Tunnel — perspektywiczny korytarz",
+ "Tunnel — heksagonalne obręcze",
+ "Tunnel — wielowarstwowy tunel MAX",
+ "Helix Lab — podwójna helisa",
+ "Helix Lab — potrójna spirala",
+ "Helix Lab — gęsta cewka 3D",
+ "Triangle Storm — luźne fragmenty",
+ "Triangle Storm — warstwowe arkusze",
+ "Triangle Storm — ekstremalna gęstość",
+ "Fractal Lab — drzewo przestrzenne",
+ "Fractal Lab — rozgałęzienia warstwowe",
+ "Fractal Lab — gęsta fraktalna korona",
+ "Room 3D — komora testowa",
+ "Room 3D — hala z modułami",
+ "Room 3D — kompleks przemysłowy",
+ "Wireframe Lab — pojedyncza klatka",
+ "Wireframe Lab — korytarz siatek",
+ "Wireframe Lab — zagnieżdżone klatki MAX",
+ "Sphere Field — metaliczne kule",
+ "Sphere Field — warstwowe globy",
+ "Sphere Field — gęste pole sfer",
+ "Ultimate Mix — geometria mieszana I",
+ "Ultimate Mix — geometria mieszana II",
+ "Ultimate Mix — geometria mieszana MAX"
+]
+_U66_SCENES = [
+ (f"{i:02d} — {name}", name.split(" — ",1)[0], 1 + (i % 3) * 2)
+ for i,name in enumerate(_U100_SCENE_TITLES,1)
+]
+
+def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1920x1080"):
+    import json as _j
+    import math as _m
+    import random as _r
+    import time as _tm
+    from pathlib import Path as _P
+    result = {"state":"warn","test":"OpenGL distinct 3D scene benchmark","scene_id":int(scene_id)}
+    pg = None
+    display_list = None
+    try:
+        import pygame as pg
+        from OpenGL import GL as gl
+        from OpenGL.GLU import gluPerspective
+        sid = max(1,min(len(_U66_SCENES),int(scene_id)))
+        family = (sid-1)//3
+        variant = (sid-1)%3
+        title = _U100_SCENE_TITLES[sid-1]
+        try:
+            rw,rh=[int(x) for x in str(resolution).lower().split("x",1)]
+            rw=max(640,min(7680,rw)); rh=max(480,min(4320,rh))
+        except Exception:
+            rw,rh=1920,1080
+        seconds=max(3,min(900,int(seconds)))
+        pg.init()
+        try:
+            pg.display.gl_set_attribute(pg.GL_CONTEXT_MAJOR_VERSION,2)
+            pg.display.gl_set_attribute(pg.GL_CONTEXT_MINOR_VERSION,1)
+            pg.display.gl_set_attribute(pg.GL_DOUBLEBUFFER,1)
+            pg.display.gl_set_attribute(pg.GL_DEPTH_SIZE,24)
+        except Exception:
+            pass
+        pg.display.set_mode((rw,rh),pg.OPENGL|pg.DOUBLEBUF|pg.RESIZABLE,vsync=0)
+        renderer=(gl.glGetString(gl.GL_RENDERER) or b"unknown").decode("utf-8","replace")
+        gl_version=(gl.glGetString(gl.GL_VERSION) or b"unknown").decode("utf-8","replace")
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glEnable(gl.GL_NORMALIZE)
+        gl.glEnable(gl.GL_COLOR_MATERIAL)
+        gl.glColorMaterial(gl.GL_FRONT_AND_BACK,gl.GL_AMBIENT_AND_DIFFUSE)
+        gl.glShadeModel(gl.GL_SMOOTH)
+        gl.glEnable(gl.GL_LIGHTING)
+        gl.glEnable(gl.GL_LIGHT0)
+        gl.glLightfv(gl.GL_LIGHT0,gl.GL_POSITION,(3.5,5.0,7.0,1.0))
+        gl.glLightfv(gl.GL_LIGHT0,gl.GL_DIFFUSE,(0.95,0.98,1.0,1.0))
+        gl.glLightfv(gl.GL_LIGHT0,gl.GL_AMBIENT,(0.22,0.22,0.28,1.0))
+        gl.glClearColor(0.006,0.012,0.026,1.0)
+        gl.glViewport(0,0,rw,rh)
+        gl.glMatrixMode(gl.GL_PROJECTION);gl.glLoadIdentity();gluPerspective(52.0,rw/rh,0.1,150.0)
+        gl.glMatrixMode(gl.GL_MODELVIEW)
+        rand=_r.Random(74123+sid*271)
+        complexity=1+variant
+        primitive_counter={"value":0}
+        def color(c):
+            gl.glColor3f(float(c[0]),float(c[1]),float(c[2]))
+        def box(x,y,z,sx,sy,sz,c):
+            gl.glPushMatrix();gl.glTranslatef(x,y,z);gl.glScalef(sx,sy,sz);color(c)
+            gl.glBegin(gl.GL_QUADS)
+            faces=[
+              ((0,0,1),((-0.5,-0.5,0.5),(0.5,-0.5,0.5),(0.5,0.5,0.5),(-0.5,0.5,0.5))),
+              ((0,0,-1),((0.5,-0.5,-0.5),(-0.5,-0.5,-0.5),(-0.5,0.5,-0.5),(0.5,0.5,-0.5))),
+              ((1,0,0),((0.5,-0.5,0.5),(0.5,-0.5,-0.5),(0.5,0.5,-0.5),(0.5,0.5,0.5))),
+              ((-1,0,0),((-0.5,-0.5,-0.5),(-0.5,-0.5,0.5),(-0.5,0.5,0.5),(-0.5,0.5,-0.5))),
+              ((0,1,0),((-0.5,0.5,0.5),(0.5,0.5,0.5),(0.5,0.5,-0.5),(-0.5,0.5,-0.5))),
+              ((0,-1,0),((-0.5,-0.5,-0.5),(0.5,-0.5,-0.5),(0.5,-0.5,0.5),(-0.5,-0.5,0.5)))
+            ]
+            for normal,verts in faces:
+                gl.glNormal3f(*normal)
+                for v in verts:gl.glVertex3f(*v)
+            gl.glEnd();gl.glPopMatrix();primitive_counter["value"]+=12
+        def sphere(x,y,z,r,c,lats=8,lons=14):
+            color(c);gl.glPushMatrix();gl.glTranslatef(x,y,z)
+            for lat in range(max(6,lats)):
+                a0=-_m.pi/2+_m.pi*lat/lats;a1=-_m.pi/2+_m.pi*(lat+1)/lats
+                gl.glBegin(gl.GL_QUAD_STRIP)
+                for lon in range(lons+1):
+                    b=2*_m.pi*lon/lons
+                    for a in (a0,a1):
+                        nx=_m.cos(a)*_m.cos(b);ny=_m.sin(a);nz=_m.cos(a)*_m.sin(b)
+                        gl.glNormal3f(nx,ny,nz);gl.glVertex3f(r*nx,r*ny,r*nz)
+                gl.glEnd()
+            gl.glPopMatrix();primitive_counter["value"]+=lats*lons*2
+        def torus(R,r,c,major=36,minor=12):
+            color(c)
+            for i in range(major):
+                u0=2*_m.pi*i/major;u1=2*_m.pi*(i+1)/major
+                gl.glBegin(gl.GL_QUAD_STRIP)
+                for j in range(minor+1):
+                    v=2*_m.pi*j/minor
+                    for u in (u0,u1):
+                        x=(R+r*_m.cos(v))*_m.cos(u);y=r*_m.sin(v);z=(R+r*_m.cos(v))*_m.sin(u)
+                        nx=_m.cos(v)*_m.cos(u);ny=_m.sin(v);nz=_m.cos(v)*_m.sin(u)
+                        gl.glNormal3f(nx,ny,nz);gl.glVertex3f(x,y,z)
+                gl.glEnd()
+            primitive_counter["value"]+=major*minor*2
+        def line(a,b,c=(0.2,0.8,1.0),width=1.0):
+            gl.glDisable(gl.GL_LIGHTING);color(c);gl.glLineWidth(width);gl.glBegin(gl.GL_LINES);gl.glVertex3f(*a);gl.glVertex3f(*b);gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            primitive_counter["value"]+=1
+        def draw_fur_torus(R,r,count,c):
+            torus(R,r,c,36+complexity*8,12+complexity*3)
+            gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+            for i in range(count):
+                u=rand.random()*2*_m.pi;v=rand.random()*2*_m.pi
+                cu,su,cv,sv=_m.cos(u),_m.sin(u),_m.cos(v),_m.sin(v)
+                radial=R+r*cv
+                x=radial*cu;y=r*sv;z=radial*su
+                nx=cv*cu;ny=sv;nz=cv*su
+                length=0.035+rand.random()*0.18
+                col=(0.15+rand.random()*0.35,0.35+rand.random()*0.45,0.62+rand.random()*0.34)
+                gl.glColor3f(*col);gl.glVertex3f(x,y,z);gl.glVertex3f(x+nx*length,y+ny*length,z+nz*length)
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=count
+        def path_line(points,c=(0.3,0.8,1.0),width=1.5):
+            gl.glDisable(gl.GL_LIGHTING);gl.glLineWidth(width);color(c);gl.glBegin(gl.GL_LINE_STRIP)
+            for p in points:gl.glVertex3f(*p)
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=len(points)
+        def wire_box(cx,cy,cz,s,c):
+            h=s/2
+            verts=[(cx+dx*h,cy+dy*h,cz+dz*h) for dx,dy,dz in ((-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),(-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1))]
+            edges=((0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7))
+            gl.glDisable(gl.GL_LIGHTING);color(c);gl.glBegin(gl.GL_LINES)
+            for a,b in edges:gl.glVertex3f(*verts[a]);gl.glVertex3f(*verts[b])
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=12
+        def build_scene():
+            color_a=(0.04,0.66,0.88);color_b=(0.88,0.29,0.13);color_c=(0.24,0.8,0.42)
+            amount=12+variant*12+(sid%7)*4
+            if family==0:
+                if variant==0:
+                    draw_fur_torus(1.2,0.42,1700,(0.10,0.26,0.82))
+                elif variant==1:
+                    for q in (-1,0,1):
+                        gl.glPushMatrix();gl.glTranslatef(q*1.35,0,0);gl.glRotatef(q*28,0,1,0);draw_fur_torus(0.72,0.27,1100,(0.10,0.62,0.9));gl.glPopMatrix()
+                else:
+                    draw_fur_torus(1.0,0.35,3200,(0.09,0.25,0.68))
+                    for i in range(24):
+                        a=2*_m.pi*i/24;sphere(1.55*_m.cos(a),0.4*_m.sin(a*3),1.55*_m.sin(a),0.07,(0.9,0.35+0.4*rand.random(),0.14),6,10)
+            elif family==1:
+                if variant==0:
+                    pts=[]
+                    for i in range(900):
+                        t=i/899*8*_m.pi;pts.append((1.2*_m.cos(t)+0.45*_m.cos(3*t),0.9*_m.sin(2*t),1.2*_m.sin(t)+0.45*_m.sin(3*t)))
+                    path_line(pts,color_a,2.0)
+                elif variant==1:
+                    for q in range(3):
+                        gl.glPushMatrix();gl.glRotatef(q*120,0,1,0);pts=[]
+                        for i in range(520):
+                            t=i/519*6*_m.pi;pts.append((1.0*_m.cos(t),0.4*_m.sin(3*t+q),1.0*_m.sin(t)))
+                        path_line(pts,(0.2+0.3*q,0.85-0.2*q,0.95),1.5);gl.glPopMatrix()
+                else:
+                    for q in range(5):
+                        gl.glPushMatrix();gl.glTranslatef((q-2)*0.55,0,0);torus(0.55,0.13,(0.25,0.45+q*0.08,0.95),28,10);gl.glPopMatrix()
+            elif family==2:
+                if variant==0:
+                    sphere(0,0,0,0.65,(1.0,0.45,0.05),14,22)
+                    for i in range(7):
+                        r=1.1+i*0.3;line((-r,0,0),(r,0,0),(0.16,0.35,0.75),0.6);torus(r,0.012,(0.15,0.36,0.76),44,4)
+                        a=rand.random()*2*_m.pi;sphere(r*_m.cos(a),0.05*i,r*_m.sin(a),0.07+0.018*i,(0.2+0.1*i,0.6,0.85-0.07*i),7,12)
+                elif variant==1:
+                    sphere(-0.65,0,0,0.5,(1.0,0.27,0.08),12,18);sphere(0.65,0,0,0.5,(0.25,0.55,1.0),12,18)
+                    for i in range(5):
+                        r=0.9+i*0.36;torus(r,0.018,(0.15,0.75,0.92),38,5)
+                        sphere(r*_m.cos(i*1.4),0.2*_m.sin(i),r*_m.sin(i*1.4),0.085,(0.85,0.8,0.3),7,12)
+                else:
+                    gl.glDisable(gl.GL_LIGHTING);gl.glPointSize(3);gl.glBegin(gl.GL_POINTS)
+                    for i in range(3600):
+                        a=rand.random()*2*_m.pi;r=1.2+rand.random()*1.5;y=(rand.random()-0.5)*0.75
+                        gl.glColor3f(0.3+0.65*rand.random(),0.35+0.5*rand.random(),0.6+0.35*rand.random());gl.glVertex3f(r*_m.cos(a),y,r*_m.sin(a))
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING);torus(0.8,0.25,(0.95,0.45,0.08),32,12)
+            elif family==3:
+                grid=32+variant*18
+                for row in range(grid):
+                    z0=-3+6*row/grid;z1=-3+6*(row+1)/grid
+                    gl.glBegin(gl.GL_TRIANGLE_STRIP)
+                    for col in range(grid+1):
+                        x=-3+6*col/grid
+                        for z in (z0,z1):
+                            h=0.55*_m.sin(x*1.9+sid)*_m.cos(z*1.5-variant)+0.23*_m.sin((x+z)*4.1)
+                            gl.glColor3f(0.05+0.15*(h+1),0.24+0.22*(h+1),0.16+0.1*(h+1));gl.glNormal3f(-0.2*_m.cos(x),1.0,-0.2*_m.sin(z));gl.glVertex3f(x,h,z)
+                    gl.glEnd()
+                primitive_counter["value"]+=grid*grid*2
+            elif family==4:
+                for i in range(18+variant*22):
+                    x=(i%6-2.5)*0.8;z=(i//6-1.5)*0.8
+                    h=0.45+rand.random()*(1.4+variant*0.5)
+                    box(x,h/2,z,0.48,h,0.48,(0.08+rand.random()*0.12,0.1+rand.random()*0.14,0.22+rand.random()*0.2))
+                    for y in range(1,int(h*8)+1):
+                        if rand.random()>0.38:box(x+0.13,y*0.12,z+0.245,0.055,0.045,0.025,(0.1,0.75,0.95))
+            elif family==5:
+                box(0,0,0,4.4,0.16,2.2,(0.04,0.27,0.16))
+                for i in range(18+variant*14):box((i%12-5.5)*0.32,0.13,(i//12-1)*0.65,0.22,0.12,0.23,(0.14,0.18,0.21))
+                for i in range(18+variant*10):box(-1.5+i*0.17,0.2,0,0.045,0.1,1.45,(0.45,0.52,0.55))
+                fan_count=(1,3,5)[variant]
+                for fan in range(fan_count):
+                    fx=(fan-(fan_count-1)/2)*1.15
+                    torus(0.38,0.06,(0.18,0.65,0.85),24,8)
+                    for blade in range(8):
+                        a=blade*2*_m.pi/8;line((fx,0.32,0),(fx+0.28*_m.cos(a),0.32,0.28*_m.sin(a)),(0.15,0.8,0.96),2)
+                    sphere(fx,0.3,0,0.1,(0.55,0.6,0.66),7,10)
+                for i in range(100+variant*120):box(rand.uniform(-2,2),0.13,rand.uniform(-1,1),0.03,0.015,0.03,(0.1,0.8,0.55))
+            elif family==6:
+                count=(1400,3000,6200)[variant]
+                gl.glDisable(gl.GL_LIGHTING);gl.glPointSize((2,2.5,3)[variant]);gl.glBegin(gl.GL_POINTS)
+                for i in range(count):
+                    t=rand.random()*12*_m.pi
+                    if variant==0:r=0.25+1.9*rand.random();y=(rand.random()-0.5)*2.2
+                    elif variant==1:r=rand.random()*1.8;y=-1.8+3.6*rand.random()
+                    else:r=0.7+rand.random()*1.7;y=1.8*(rand.random()-0.5)
+                    gl.glColor3f(0.1+rand.random()*0.65,0.25+rand.random()*0.6,0.6+rand.random()*0.4)
+                    gl.glVertex3f(r*_m.cos(t),y,r*_m.sin(t))
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=count
+            elif family==7:
+                n=(28,48,68)[variant]
+                for row in range(n):
+                    z0=-3+6*row/n;z1=-3+6*(row+1)/n
+                    gl.glBegin(gl.GL_TRIANGLE_STRIP)
+                    for col in range(n+1):
+                        x=-3+6*col/n
+                        for z in (z0,z1):
+                            h=0.25*_m.sin(x*2.2+sid*0.3)+0.22*_m.cos(z*2.8)+0.12*_m.sin((x+z)*5+variant)
+                            gl.glColor3f(0.02,0.25+0.2*(h+0.4),0.55+0.3*(h+0.4));gl.glNormal3f(0.0,1.0,0.0);gl.glVertex3f(x,h,z)
+                    gl.glEnd()
+                if variant>0:
+                    for i in range(12+variant*14):
+                        x=rand.uniform(-2.8,2.8);z=rand.uniform(-2.8,2.8);sphere(x,0.18,z,0.035,(0.7,0.85,0.95),5,8)
+                primitive_counter["value"]+=n*n*2
+            elif family==8:
+                count=(45,110,230)[variant]
+                for i in range(count):
+                    if variant==0:x=(i%7-3)*0.65;y=(i//7%4-1.5)*0.65;z=(i//28-0.5)*0.75
+                    elif variant==1:
+                        a=i*0.34;r=0.5+0.12*i;x=r*_m.cos(a);y=0.03*(i%9);z=r*_m.sin(a)
+                    else:
+                        a=i*0.26;r=1.4;x=r*_m.cos(a);y=(i%16-8)*0.25;z=r*_m.sin(a)
+                    size=0.13+0.1*rand.random()
+                    box(x,y,z,size,size,size,(0.12+rand.random()*0.3,0.35+rand.random()*0.5,0.55+rand.random()*0.42))
+            elif family==9:
+                count=(18,54,120)[variant]
+                for i in range(count):
+                    x=rand.uniform(-2.5,2.5);z=rand.uniform(-2.5,2.5);h=0.25+rand.random()*(0.6+variant*0.3)
+                    color((0.1+rand.random()*0.2,0.35+rand.random()*0.5,0.65+rand.random()*0.3))
+                    gl.glBegin(gl.GL_TRIANGLES)
+                    gl.glNormal3f(0,1,0);gl.glVertex3f(x,0,z);gl.glVertex3f(x+0.24,h,z);gl.glVertex3f(x,0,z+0.24)
+                    gl.glVertex3f(x,0,z);gl.glVertex3f(x,0,z+0.24);gl.glVertex3f(x-0.24,h,z)
+                    gl.glEnd();primitive_counter["value"]+=2
+            elif family==10:
+                if variant==0:
+                    for i in range(7):
+                        x=(i-3)*0.72;torus(0.3+(i%2)*0.08,0.07,(0.5,0.65,0.76),24,8)
+                        for b in range(12):
+                            a=b*2*_m.pi/12;box(x+0.36*_m.cos(a),0.15,0.36*_m.sin(a),0.12,0.24,0.08,(0.6,0.68,0.74))
+                elif variant==1:
+                    for i in range(12):
+                        gl.glPushMatrix();gl.glRotatef(i*30,0,1,0);torus(0.9,0.065,(0.15+0.04*i,0.45,0.8),28,6);gl.glPopMatrix()
+                else:
+                    for i in range(4):
+                        x=(i-1.5)*0.8;torus(0.55,0.12,(0.2,0.75-0.1*i,0.84),24,8)
+                        for b in range(10):box(x+0.6*_m.cos(b*_m.pi/5),0.04,0.6*_m.sin(b*_m.pi/5),0.12,0.15,0.12,(0.75,0.42,0.12))
+            elif family==11:
+                atoms=[]
+                count=(35,90,180)[variant]
+                for i in range(count):
+                    x=rand.uniform(-2,2);y=rand.uniform(-1.8,1.8);z=rand.uniform(-2,2);atoms.append((x,y,z))
+                    sphere(x,y,z,0.06+0.025*variant,(0.1+rand.random()*0.85,0.3+rand.random()*0.6,0.7+rand.random()*0.3),6,10)
+                gl.glDisable(gl.GL_LIGHTING);gl.glColor3f(0.4,0.7,0.9);gl.glBegin(gl.GL_LINES)
+                for i,a in enumerate(atoms):
+                    for b in atoms[i+1:]:
+                        if sum((a[k]-b[k])**2 for k in range(3))<0.48:
+                            gl.glVertex3f(*a);gl.glVertex3f(*b);primitive_counter["value"]+=1
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            elif family==12:
+                for ring in range(12+variant*8):
+                    z=-3+ring*6/(11+variant*8);r=1.0+0.25*_m.sin(ring*0.8)
+                    gl.glPushMatrix();gl.glTranslatef(0,0,z);torus(r,0.025,(0.15,0.65,0.88),24+variant*5,5);gl.glPopMatrix()
+                    if ring%2==0:wire_box(0,0,z,2.4,(0.22,0.42,0.62))
+            elif family==13:
+                for helix in range(2+variant):
+                    phase=helix*2*_m.pi/(2+variant)
+                    pts=[]
+                    for i in range(650):
+                        t=i/649*5*_m.pi;x=1.1*_m.cos(t+phase);z=1.1*_m.sin(t+phase);y=-2+4*i/649
+                        pts.append((x,y,z))
+                    path_line(pts,(0.12+0.18*helix,0.4+0.2*helix,0.95-0.1*helix),1.5)
+                if variant>0:
+                    for i in range(42+variant*44):
+                        y=-1.9+3.8*i/(42+variant*44);a=i*0.42
+                        line((1.1*_m.cos(a),y,1.1*_m.sin(a)),(1.1*_m.cos(a+_m.pi),y,1.1*_m.sin(a+_m.pi)),(0.15,0.78,0.75),0.7)
+            elif family==14:
+                count=(900,2600,6800)[variant]
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_TRIANGLES)
+                for i in range(count):
+                    x=rand.uniform(-2.8,2.8);y=rand.uniform(-2.1,2.1);z=rand.uniform(-2.8,2.8);size=0.03+rand.random()*0.12
+                    gl.glColor3f(rand.random()*0.7,0.2+rand.random()*0.7,0.35+rand.random()*0.65)
+                    gl.glVertex3f(x,y,z);gl.glVertex3f(x+size,y+size*rand.random(),z);gl.glVertex3f(x-size,y+size,z+size)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=count
+            elif family==15:
+                def branch(x,y,z,length,depth,angle):
+                    if depth<=0:return
+                    ex=x+length*_m.sin(angle);ey=y+length;ez=z+length*_m.cos(angle)
+                    line((x,y,z),(ex,ey,ez),(0.2,0.75-0.05*depth,0.36+0.05*depth),max(0.5,depth*0.32))
+                    branch(ex,ey,ez,length*0.72,depth-1,angle+0.55)
+                    branch(ex,ey,ez,length*0.72,depth-1,angle-0.55)
+                    if variant>1:branch(ex,ey,ez,length*0.62,depth-1,angle+0.15)
+                branch(0,-2,0,1.0,4+variant,0.0)
+                if variant>0:
+                    for i in range(80+variant*90):
+                        x=rand.uniform(-2.5,2.5);y=rand.uniform(0,2.0);z=rand.uniform(-2.5,2.5)
+                        sphere(x,y,z,0.035,(0.13,0.5+rand.random()*0.4,0.24),5,8)
+            elif family==16:
+                box(0,-0.05,0,4.6,0.12,4.6,(0.12,0.16,0.2))
+                for i in range(20+variant*25):
+                    x=rand.uniform(-2,2);z=rand.uniform(-2,2);y=rand.uniform(0.1,1.4)
+                    box(x,y,z,0.25+rand.random()*0.5,0.1+rand.random()*0.25,0.25+rand.random()*0.5,(0.15+rand.random()*0.35,0.25+rand.random()*0.4,0.38+rand.random()*0.4))
+                for i in range(1+variant):
+                    wire_box(0,0.65,0,2.2+i*0.5,(0.25,0.52,0.72))
+            elif family==17:
+                for i in range(1+variant):
+                    wire_box(0,0,0,1.5+i*0.8,(0.15+0.1*i,0.5,0.9))
+                gl.glDisable(gl.GL_LIGHTING);gl.glColor3f(0.1,0.85,0.95);gl.glBegin(gl.GL_LINES)
+                for x in range(-6-variant*4,7+variant*4):
+                    for y in range(-4-variant*2,5+variant*2):
+                        gl.glVertex3f(x*0.26,y*0.26,-2.4);gl.glVertex3f(x*0.26,y*0.26,2.4)
+                        gl.glVertex3f(-2.4,y*0.26,x*0.26);gl.glVertex3f(2.4,y*0.26,x*0.26)
+                        primitive_counter["value"]+=2
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            elif family==18:
+                count=(36,100,220)[variant]
+                for i in range(count):
+                    x=rand.uniform(-2.5,2.5);y=rand.uniform(-1.9,1.9);z=rand.uniform(-2.5,2.5)
+                    sphere(x,y,z,0.06+rand.random()*0.1,(0.12+rand.random()*0.7,0.2+rand.random()*0.7,0.55+rand.random()*0.4),7+variant*2,12+variant*2)
+            else:
+                draw_fur_torus(0.9,0.28,800+variant*1200,(0.08,0.25,0.8))
+                for i in range(80+variant*80):
+                    x=rand.uniform(-2.2,2.2);y=rand.uniform(-1.4,1.4);z=rand.uniform(-2.2,2.2)
+                    if i%3==0:sphere(x,y,z,0.075,(0.85,0.32,0.1),5,8)
+                    else:box(x,y,z,0.11,0.11,0.11,(0.13,0.5,0.85))
+                for i in range(25+variant*30):
+                    wire_box(rand.uniform(-1.5,1.5),rand.uniform(-1,1),rand.uniform(-1.5,1.5),0.25+rand.random()*0.35,(0.12,0.8,0.65))
+        display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()
+        profile = {
+          "scene_id":sid,"scene_name":_U66_SCENES[sid-1][0],"family":_U100_SCENE_TITLES[sid-1],
+          "profile_variant":variant+1,"resolution_requested":f"{rw}x{rh}",
+          "geometry_primitives_estimate":primitive_counter["value"],
+          "gpu_renderer":renderer,"opengl_version":gl_version,
+          "method":"OpenGL real draw calls + display list; synchronized frame presentation with glFinish",
+        }
+        clock=pg.time.Clock(); start=_tm.perf_counter(); last=start; frames=0; bucket_frames=0; fps_samples=[];running=True
+        max_duration=float(seconds)
+        while running and (_tm.perf_counter()-start)<max_duration:
+            for ev in pg.event.get():
+                if ev.type==pg.QUIT:running=False
+                elif ev.type==pg.KEYDOWN and ev.key==pg.K_ESCAPE:running=False
+                elif ev.type==pg.VIDEORESIZE:
+                    rw=max(640,ev.w);rh=max(480,ev.h);gl.glViewport(0,0,rw,rh)
+                    gl.glMatrixMode(gl.GL_PROJECTION);gl.glLoadIdentity();gluPerspective(52.0,rw/rh,0.1,150.0);gl.glMatrixMode(gl.GL_MODELVIEW)
+            elapsed=_tm.perf_counter()-start
+            gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
+            gl.glMatrixMode(gl.GL_MODELVIEW);gl.glLoadIdentity()
+            gl.glTranslatef(0.0,0.0,-8.6 if family<16 else -9.5)
+            gl.glRotatef(elapsed*(22.0+sid%27),0.2,1.0,0.13)
+            gl.glRotatef(11.0+14.0*_m.sin(elapsed*0.63+sid),1.0,0.0,0.2)
+            gl.glCallList(display_list)
+            # Wait for actual GPU completion before counting this frame; avoids queued-frame inflation.
+            gl.glFinish();pg.display.flip();frames+=1;bucket_frames+=1
+            now=_tm.perf_counter()
+            if now-last>=1.0:
+                fps=bucket_frames/(now-last);fps_samples.append(fps);bucket_frames=0;last=now
+                pg.display.set_caption(f"NAPRAWA PC FURMARK STYLE | SCENA {sid}/60 | {title} | FPS {fps:.1f} | {renderer[:65]} | ESC STOP")
+            clock.tick(0)
+        elapsed=max(.001,_tm.perf_counter()-start)
+        avg=frames/elapsed
+        stopped=elapsed<max_duration-0.8
+        result.update(profile)
+        result.update({"state":"good" if frames>0 else "warn","frames":frames,"duration_seconds":round(elapsed,3),
+          "average_fps":round(avg,2),"peak_fps_1s":round(max(fps_samples) if fps_samples else avg,2),
+          "minimum_fps_1s":round(min(fps_samples) if fps_samples else avg,2),
+          "fps_samples":[round(x,2) for x in fps_samples],"stopped_by_user":stopped,
+          "note":"Wynik to pomiar tej sceny OpenGL na wybranej rozdzielczości. Nie jest to wynik z prawdziwej gry ani certyfikacja fizycznej pamięci GPU."})
+    except Exception as exc:
+        result.update({"state":"warn","error":f"{type(exc).__name__}: {exc}",
+          "scene_name":_U100_SCENE_TITLES[max(0,min(59,int(scene_id)-1))],
+          "note":"Renderer nie wystartował poprawnie; brak wyniku nie oznacza usterki GPU."})
+    finally:
+        try:
+            if display_list is not None:
+                from OpenGL import GL as _gl_cleanup
+                _gl_cleanup.glDeleteLists(display_list,1)
+        except Exception:pass
+        try:
+            if pg is not None:
+                pg.display.quit();pg.quit()
+        except Exception:pass
+        try:_P(output_path).write_text(_j.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+        except Exception:pass
+    return result
+
+_U100_ORIGINAL_SPEED_REQUEST = _u90_speed_request
+_U100_ORIGINAL_MEASURE_SPEED = _u90_measure_speed
+def _u100_measure_speed(app):
+    import time as _tm
+    data={"latency_ms":[],"download":[],"upload":[],"started_at":_U66_datetime.now().isoformat(timespec="seconds"),
+          "method":"Adaptacyjny HTTPS speed test; rzeczywiście wysłane/odebrane bajty; mediana i peak raportowane oddzielnie.",
+          "latency_method":"HTTPS round-trip time, nie ICMP ping","profile":"adaptive-standard"}
+    total_data=0
+    def phase(msg):
+        try:app.queue_action(lambda m=msg:_u66_set_speed_status(app,m))
+        except Exception:pass
+        try:app.queue_status(msg)
+        except Exception:pass
+    def run_one(kind,size,index,total):
+        nonlocal total_data
+        if kind=="download":
+            url="https://speed.cloudflare.com/__down?bytes="+str(size)+"&r="+_u66_uuid.uuid4().hex
+            body=None
+        else:
+            url="https://speed.cloudflare.com/__up?r="+_u66_uuid.uuid4().hex
+            body=_u66_os.urandom(size)
+        timeout=180 if size>=30_000_000 else 120 if size>=12_000_000 else 75
+        label=f"{kind.upper()} próbka {index}/{total}: {size/1_000_000:.0f} MB"
+        phase("Speed Test: "+label+" — przesyłanie rzeczywistych bajtów…")
+        try:
+            result=_U100_ORIGINAL_SPEED_REQUEST(url,body,timeout,
+                lambda p,d,t,e,i,a,b=total_data:_u90_emit_speed_progress(app,p,d,t,e,i,a,b),kind)
+            result.update({"requested_bytes":size,"sample_index":index,"sample_count":total,"state":"good","kind":kind})
+            total_data+=int(result.get("bytes",0))
+            return result
+        except Exception as exc:
+            msg=f"{type(exc).__name__}: {exc}"
+            app.queue_log(f"Speed Test {label}: {msg}")
+            return {"requested_bytes":size,"sample_index":index,"sample_count":total,"state":"error","kind":kind,
+                    "bytes":0,"seconds":None,"mbps":None,"error":msg}
+    def valid(rows):
+        return [r for r in rows if r.get("state")=="good" and isinstance(r.get("mbps"),(int,float)) and r.get("bytes",0)>0]
+    for i in range(1,5):
+        phase(f"Speed Test: HTTPS RTT {i}/4…")
+        start=_tm.perf_counter()
+        try:
+            _U100_ORIGINAL_SPEED_REQUEST("https://speed.cloudflare.com/__down?bytes=0&r="+_u66_uuid.uuid4().hex,None,25,None,"ping")
+            data["latency_ms"].append(round((_tm.perf_counter()-start)*1000,2))
+        except Exception as exc:
+            data.setdefault("latency_errors",[]).append(f"{type(exc).__name__}: {exc}")
+    download_sizes=[8_000_000]
+    first=run_one("download",download_sizes[0],1,3)
+    data["download"].append(first)
+    rate=float(first.get("mbps") or 0) if first.get("state")=="good" else 0
+    if rate>=500: rest=(50_000_000,25_000_000)
+    elif rate>=150: rest=(30_000_000,15_000_000)
+    elif rate>=50: rest=(15_000_000,8_000_000)
+    else: rest=(8_000_000,4_000_000)
+    for idx,size in enumerate(rest,2):data["download"].append(run_one("download",size,idx,3))
+    upload_first=4_000_000
+    first_up=run_one("upload",upload_first,1,3)
+    data["upload"].append(first_up)
+    rate_up=float(first_up.get("mbps") or 0) if first_up.get("state")=="good" else 0
+    if rate_up>=500: up_rest=(30_000_000,15_000_000)
+    elif rate_up>=150: up_rest=(16_000_000,8_000_000)
+    elif rate_up>=50: up_rest=(8_000_000,4_000_000)
+    else: up_rest=(4_000_000,2_000_000)
+    for idx,size in enumerate(up_rest,2):data["upload"].append(run_one("upload",size,idx,3))
+    down=valid(data["download"]);up=valid(data["upload"])
+    down_rates=[float(x["mbps"]) for x in down];up_rates=[float(x["mbps"]) for x in up]
+    data["download_mbps"]=round(_u90_median(down_rates),2) if down_rates else None
+    data["upload_mbps"]=round(_u90_median(up_rates),2) if up_rates else None
+    data["download_peak_mbps"]=round(max(down_rates),2) if down_rates else None
+    data["upload_peak_mbps"]=round(max(up_rates),2) if up_rates else None
+    data["download_min_mbps"]=round(min(down_rates),2) if down_rates else None
+    data["upload_min_mbps"]=round(min(up_rates),2) if up_rates else None
+    data["latency_average_ms"]=round(_u90_median(data["latency_ms"]),2) if data["latency_ms"] else None
+    data["latency_jitter_ms"]=round(max(data["latency_ms"])-min(data["latency_ms"]),2) if len(data["latency_ms"])>1 else None
+    data["data_bytes"]=total_data
+    data["download_samples_valid"]=len(down);data["upload_samples_valid"]=len(up)
+    data["state"]="good" if len(down)>=2 and len(up)>=2 else "warn"
+    data["finished_at"]=_U66_datetime.now().isoformat(timespec="seconds")
+    data["note"]="Wynik podstawowy jest medianą rzeczywistych próbek, a najwyższa próbka jest raportowana oddzielnie. Rozmiary transferu dostosowują się do pierwszego pomiaru."
+    try:
+        folder=_u66_store_dir()/"speedtest";folder.mkdir(parents=True,exist_ok=True)
+        hp=folder/"history.json"
+        try: history=_u66_json.loads(hp.read_text(encoding="utf-8"))
+        except Exception: history=[]
+        history.append(data);hp.write_text(_u66_json.dumps(history[-100:],ensure_ascii=False,indent=2),encoding="utf-8")
+        data["history_path"]=str(hp)
+    except Exception as exc:data["history_warning"]=f"{type(exc).__name__}: {exc}"
+    return data
+
+_U100_ORIGINAL_SENSOR_POLL = _u66_sensor_poll
+def _u100_gpu_from_sensors(probe):
+    rows=(probe or {}).get("sensors") or []
+    candidates={"load":[],"temperature":[],"vram_used":[],"vram_total":[],"clock":[],"memory_clock":[],"power":[],"fan":[]}
+    def num(row):
+        try:
+            x=float(row.get("value"))
+            return x if _u66_math.isfinite(x) and x>=0 else None
+        except Exception:return None
+    for row in rows:
+        if not isinstance(row,dict):continue
+        name=str(row.get("sensor") or row.get("name") or "")
+        hardware=str(row.get("hardware") or row.get("parent") or "")
+        ht=str(row.get("hardwareType") or row.get("hardware_type") or "")
+        label=(ht+" "+hardware+" "+name+" "+str(row.get("parent") or "")).lower()
+        if not (("gpu" in ht.lower()) or any(k in label for k in ("gpu","graphics","geforce","radeon","arc graphics","video card"))):continue
+        value=num(row)
+        if value is None:continue
+        st=str(row.get("sensorType") or row.get("sensor_type") or "").lower()
+        unit=str(row.get("unit") or "").strip().lower()
+        if st=="temperature" or unit in ("°c","c"):
+            pri=3 if any(k in label for k in ("gpu core","gpu temperature","core temperature")) else 2 if "hot spot" in label or "hotspot" in label else 1
+            candidates["temperature"].append((pri,value,name))
+        elif st=="load" or unit=="%":
+            if any(k in label for k in ("gpu core","gpu load","gpu utilization","d3d 3d","gpu usage","graphics load")) and "memory" not in label:
+                candidates["load"].append((2 if "3d" in label or "gpu core" in label else 1,value,name))
+        elif st=="clock" or unit in ("mhz","ghz"):
+            if "memory" in label or "mem clock" in label:
+                candidates["memory_clock"].append((value*1000 if unit=="ghz" else value,name))
+            else:
+                candidates["clock"].append((value*1000 if unit=="ghz" else value,name))
+        elif st=="power" or unit in ("w","watt","watts"):
+            pri=3 if "board" in label or "total" in label else 2 if "chip" in label or "asic" in label else 1
+            candidates["power"].append((pri,value,name))
+        elif st=="fan" or unit=="rpm":
+            candidates["fan"].append((value,name))
+        elif st in ("smalldata","data") or unit in ("mb","gb"):
+            mb=value*1024 if unit=="gb" else value
+            if any(k in label for k in ("memory used","vram used","dedicated memory used","gpu memory usage")):
+                candidates["vram_used"].append((mb,name))
+            elif any(k in label for k in ("memory total","vram total","dedicated memory","memory capacity")) and not any(k in label for k in ("used","usage")):
+                candidates["vram_total"].append((mb,name))
+    def chosen(key):
+        arr=candidates[key]
+        return max(arr,key=lambda x:x[0])[1] if arr and key in ("load","temperature","power") else (arr[0][0] if arr else None)
+    return {
+      "available":bool(rows),"provider":(probe or {}).get("method","LibreHardwareMonitor sensor bridge"),
+      "message":"Odczyty z wszystkich sensorów dostępnych przez bridge; część pól może być N/D.",
+      "gpu_load_percent":chosen("load"),"temperature_c":chosen("temperature"),
+      "vram_used_mb":chosen("vram_used"),"vram_total_mb":chosen("vram_total"),
+      "gpu_clock_mhz":chosen("clock"),"memory_clock_mhz":chosen("memory_clock"),
+      "power_draw_w":chosen("power"),"fan_speed_rpm":chosen("fan"),
+      "sensor_rows":len(rows)
+    }
+
+def _u100_sensor_poll(app):
+    try:
+        if getattr(app,"_u100_sensor_busy",False):
+            app.after(4000,lambda:_u100_sensor_poll(app));return
+        if _u66_time.monotonic()-getattr(app,"_u100_sensor_last",0)>3.5:
+            app._u100_sensor_busy=True;app._u100_sensor_last=_u66_time.monotonic()
+            def job():
+                try:
+                    temps=_u66_sensor_probe()
+                    generic=_u100_gpu_from_sensors(temps)
+                    try:
+                        vendor=_u37_nvidia_telemetry() if "_u37_nvidia_telemetry" in globals() else {}
+                    except Exception as exc:vendor={"available":False,"provider":"NVIDIA telemetry unavailable","error":str(exc)}
+                    gpu=dict(vendor or {})
+                    for key,value in generic.items():
+                        if key in ("sensor_rows","message"):continue
+                        if value is not None and (gpu.get(key) is None or gpu.get(key) is False or gpu.get(key)=="N/D"):
+                            gpu[key]=value
+                    if not gpu.get("provider"):gpu["provider"]=generic.get("provider")
+                    if not gpu.get("available"):gpu["available"]=generic.get("available",False)
+                    gpu["sensor_rows"]=generic.get("sensor_rows",0)
+                    if temps.get("gpu_temp_c") is None and generic.get("temperature_c") is not None:temps["gpu_temp_c"]=generic["temperature_c"]
+                    if temps.get("gpu_power_w") is None and generic.get("power_draw_w") is not None:temps["gpu_power_w"]=generic["power_draw_w"]
+                    snapshot={"gpu":gpu,"temps":temps,"time":_u66_time.monotonic()}
+                    def update():
+                        app._u100_sensor_busy=False;app._u66_sensor_cache=snapshot;app._u84_gpu_last_telemetry=gpu
+                        try:_u100_refresh_sensor_table(app)
+                        except Exception:pass
+                        try:
+                            if getattr(app,"current_view","")=="GPU":_u84_gpu_live_tick(app,schedule=False)
+                            if getattr(app,"current_view","")=="LIVE_MONITOR":_u66_live_tick(app)
+                            if getattr(app,"_u67_stage_panel",None) is not None:_u67_refresh_visible_charts(app)
+                        except Exception:pass
+                    app.queue_action(update)
+                except Exception as exc:
+                    def fail(err=exc):
+                        app._u100_sensor_busy=False
+                        try:app.queue_log("Czujniki: "+str(err))
+                        except Exception:pass
+                    app.queue_action(fail)
+            _u66_threading.Thread(target=job,name="NaprawaPCAllVendorSensorPoll",daemon=True).start()
+    except Exception as exc:
+        try:app._u100_sensor_busy=False;app.queue_log("Czujniki: "+repr(exc))
+        except Exception:pass
+    try:app.after(4000,lambda:_u100_sensor_poll(app))
+    except Exception:pass
+
+def _u100_attach_sensor_table(app,parent,height=10):
+    try:
+        old=getattr(app,"_u100_sensor_panel",None)
+        if old is not None and old.winfo_exists():old.destroy()
+    except Exception:pass
+    try:
+        t=app.colors();panel=app.panel(parent);panel.pack(fill="both",expand=False,padx=3,pady=4)
+        app._u100_sensor_panel=panel
+        top=tk.Frame(panel,bg=t["panel"]);top.pack(fill="x",padx=8,pady=(6,2))
+        tk.Label(top,text="PEŁNA LISTA CZUJNIKÓW SPRZĘTOWYCH — LIVE",bg=t["panel"],fg=t["accent"],font=app.fnt(10,"bold")).pack(side="left")
+        app._u100_sensor_count=tk.Label(top,text="Oczekiwanie na bridge…",bg=t["panel"],fg=t["muted"],font=app.fnt(8));app._u100_sensor_count.pack(side="right")
+        tk.Label(panel,text="Temperatury, obciążenia, zegary, napięcia, wentylatory, moc, pobór prądu, pamięć i pozostałe wartości, które udostępnia sterownik. Lista nie ogranicza się do wybranych kafelków. N/D oznacza brak odczytu.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left").pack(fill="x",padx=8,pady=(0,4))
+        frame=tk.Frame(panel,bg=t["panel"]);frame.pack(fill="both",expand=True,padx=6,pady=(0,6))
+        cols=("type","hardware","sensor","value","unit","source")
+        tree=ttk.Treeview(frame,columns=cols,show="headings",height=max(6,min(16,int(height or 10))))
+        widths={"type":105,"hardware":210,"sensor":250,"value":90,"unit":70,"source":230}
+        labels={"type":"KATEGORIA","hardware":"SPRZĘT","sensor":"CZUJNIK","value":"WARTOŚĆ","unit":"JEDNOSTKA","source":"ŹRÓDŁO"}
+        for col in cols:
+            tree.heading(col,text=labels[col]);tree.column(col,width=widths[col],minwidth=60,stretch=col in ("hardware","sensor","source"))
+        vs=ttk.Scrollbar(frame,orient="vertical",command=tree.yview);hs=ttk.Scrollbar(frame,orient="horizontal",command=tree.xview)
+        tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
+        tree.grid(row=0,column=0,sticky="nsew");vs.grid(row=0,column=1,sticky="ns");hs.grid(row=1,column=0,sticky="ew")
+        frame.grid_rowconfigure(0,weight=1);frame.grid_columnconfigure(0,weight=1)
+        app._u100_sensor_tree=tree;app._u100_sensor_signature=None
+        _u100_refresh_sensor_table(app)
+        return panel
+    except Exception as exc:
+        try:app.queue_log("Tabela czujników: "+repr(exc))
+        except Exception:pass
+        return None
+
+def _u100_refresh_sensor_table(app):
+    tree=getattr(app,"_u100_sensor_tree",None)
+    if tree is None:return
+    try:
+        if not tree.winfo_exists():return
+        cache=getattr(app,"_u66_sensor_cache",{}) or {};temps=cache.get("temps",{}) or {}
+        rows=temps.get("sensors",[]) or []
+        normalized=[]
+        for row in rows:
+            if not isinstance(row,dict):continue
+            name=str(row.get("sensor") or row.get("name") or "N/D")
+            hardware=str(row.get("hardware") or row.get("parent") or "N/D")
+            ht=str(row.get("hardwareType") or row.get("hardware_type") or "")
+            st=str(row.get("sensorType") or row.get("sensor_type") or row.get("type") or "other")
+            unit=str(row.get("unit") or "")
+            try:
+                val=float(row.get("value"))
+                if not _u66_math.isfinite(val):continue
+                shown=f"{val:.3f}".rstrip("0").rstrip(".")
+            except Exception:shown="N/D"
+            source=str(row.get("source") or temps.get("method") or "N/D")
+            normalized.append((st,hardware+" "+ht,name,shown,unit,source))
+        normalized=normalized[:2500]
+        signature=tuple((r[0],r[1],r[2],r[4],r[5]) for r in normalized)
+        old_signature=getattr(app,"_u100_sensor_signature",None)
+        if signature!=old_signature:
+            tree.delete(*tree.get_children())
+            for idx,row in enumerate(normalized):tree.insert("","end",iid=f"sensor{idx}",values=row)
+            app._u100_sensor_signature=signature
+        else:
+            for idx,row in enumerate(normalized):
+                iid=f"sensor{idx}"
+                if tree.exists(iid):tree.item(iid,values=row)
+        counts={}
+        for row in normalized:counts[row[0]]=counts.get(row[0],0)+1
+        label=getattr(app,"_u100_sensor_count",None)
+        if label is not None and label.winfo_exists():
+            stamp=cache.get("time")
+            age=max(0,_u66_time.monotonic()-stamp) if isinstance(stamp,(int,float)) else None
+            label.config(text=f"{len(normalized)} czujników • "+", ".join(f"{k}:{v}" for k,v in sorted(counts.items()))+ (f" • próbka {age:.0f}s temu" if age is not None else " • N/D"))
+    except Exception as exc:
+        try:app.queue_log("Aktualizacja pełnej listy sensorów: "+repr(exc))
+        except Exception:pass
+
+_U100_ORIGINAL_ATTACH_GPU_PANEL = _u84_attach_gpu_live_panel
+def _u100_attach_gpu_panel(app):
+    _U100_ORIGINAL_ATTACH_GPU_PANEL(app)
+    try:
+        _u100_attach_sensor_table(app,app.content,height=8)
+    except Exception:pass
+
+_U100_ORIGINAL_SHOW_SPEED_TEST = AppV43.show_speed_test
+def _u100_show_speed_test(app):
+    _U100_ORIGINAL_SHOW_SPEED_TEST(app)
+    try:
+        def walk(parent):
+            for child in parent.winfo_children():
+                if isinstance(child,tk.Label):
+                    val=str(child.cget("text") or "")
+                    if "23,5 MB" in val or "23.5 MB" in val:
+                        child.config(text="Test adaptacyjny: zwykle kilkanaście MB przy wolnym łączu, do ponad 100 MB przy szybkim. Rozmiar kolejnych próbek dopasowuje się do pierwszego wyniku.")
+                    elif val.strip()=="DOWNLOAD":child.config(text="DOWNLOAD • MEDIANA")
+                    elif val.strip()=="UPLOAD":child.config(text="UPLOAD • MEDIANA")
+                walk(child)
+        walk(app.content)
+    except Exception:pass
+
+# Route all live-monitor callers to the full hardware sensor bridge table and all-vendor snapshotter.
+_u81_attach_sensor_table = _u100_attach_sensor_table
+_u81_refresh_sensor_table = _u100_refresh_sensor_table
+_u66_sensor_poll = _u100_sensor_poll
+_u84_attach_gpu_live_panel = _u100_attach_gpu_panel
+_u90_measure_speed = _u100_measure_speed
+AppV43.show_speed_test = _u100_show_speed_test
+
+def _u100_selftest_adaptive_speed():
+    assert callable(_u90_measure_speed)
+    assert "_U100_ORIGINAL_SPEED_REQUEST" in _u100_measure_speed.__code__.co_names
+    assert "download_peak_mbps" in _u100_measure_speed.__code__.co_names
+    assert "latency_jitter_ms" in _u100_measure_speed.__code__.co_names
+    assert callable(_u100_gpu_from_sensors)
+    synthetic={"sensors":[
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Core","sensorType":"Temperature","value":68,"unit":"°C"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Core","sensorType":"Load","value":93,"unit":"%"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Memory Used","sensorType":"SmallData","value":4096,"unit":"MB"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Memory Total","sensorType":"Data","value":8,"unit":"GB"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Core","sensorType":"Clock","value":2400,"unit":"MHz"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Fan","sensorType":"Fan","value":1600,"unit":"RPM"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Board Power","sensorType":"Power","value":185,"unit":"W"}
+    ]}
+    tele=_u100_gpu_from_sensors(synthetic)
+    assert tele["gpu_load_percent"]==93
+    assert tele["temperature_c"]==68
+    assert tele["vram_used_mb"]==4096 and tele["vram_total_mb"]==8192
+    assert tele["gpu_clock_mhz"]==2400 and tele["fan_speed_rpm"]==1600 and tele["power_draw_w"]==185
+    assert callable(_u100_refresh_sensor_table) and callable(_u100_attach_sensor_table)
+    print("ADAPTIVE_SPEED_AND_ALL_VENDOR_SENSOR_SELFTEST_OK")
+
+def _u100_selftest_unique_gpu_scenes():
+    assert len(_U66_SCENES)==60 and len(_U100_SCENE_TITLES)==60
+    assert len(set(_U100_SCENE_TITLES))==60
+    assert callable(_u37_gpu_benchmark_child)
+    assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
+    assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "FurMark Style" in _U100_SCENE_TITLES[0]
+    assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
+    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 60 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
+
+_u37_gpu_benchmark_child = _u100_gpu_benchmark_child
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u100_selftest_adaptive_speed()
+        _u100_selftest_unique_gpu_scenes()
         _u98_selftest_catalog_safety()
         _u93_selftest_catalog_routing()
         _u96_selftest_single_test_screens()
