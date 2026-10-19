@@ -5503,6 +5503,126 @@ def _u93_show_catalog(app,module):
     app.make_button(row,"CENTRUM SERWISU / SYSTEM REPAIR PRO",lambda: (getattr(app,"show_service_center",None) or app.show_repairs)(),"card",side="left",ipady=4)
     app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=4)
 
+
+
+# v4.3.94 — final UI-dispatch and worker safety layer.
+# Never call a test-dispatch helper on Tk's internal _tkinter.tkapp object.
+_U94_ORIGINAL_UI_WAIT = _U92_ORIGINAL_UI_WAIT
+_U94_ORIGINAL_SELECTED_RUNNER = _u91_run_selected_diagnostic_guarded
+
+def _u94_ui_wait_compat(candidate, callback, timeout=30.0):
+    app = _u92_resolve_app(candidate)
+    return _U94_ORIGINAL_UI_WAIT(app, callback, timeout=timeout)
+
+def _u94_record_failure(app, scope, exc):
+    detail = f"{type(exc).__name__}: {exc}"
+    report = {
+        "state": "error",
+        "scope": str(scope),
+        "message": detail,
+        "time": _U66_datetime.now().isoformat(timespec="seconds"),
+        "note": "Test przerwany przez wyjątek. Główne okno aplikacji powinno pozostać otwarte."
+    }
+    try:
+        app.results["UNHANDLED_TEST_ERROR"] = report
+    except Exception:
+        pass
+    try:
+        app.queue_log(f"{scope}: BŁĄD ZABEZPIECZONY — {detail}")
+        app.queue_results("UNHANDLED_TEST_ERROR", report)
+    except Exception:
+        pass
+    def notify(message=detail):
+        try:
+            app.header_status.config(text="TEST PRZERWANY — SPRAWDŹ DZIENNIK", fg=app.colors()["bad"])
+        except Exception:
+            pass
+        try:
+            messagebox.showerror(
+                "Test przerwany — aplikacja pozostaje otwarta",
+                message + "\n\nSzczegóły są w dzienniku. Możesz wrócić do testów i uruchomić moduł osobno."
+            )
+        except Exception:
+            pass
+    try:
+        app.queue_action(notify)
+    except Exception:
+        pass
+    return report
+
+def _u94_selected_runner_safe(candidate, selected):
+    app = _u92_resolve_app(candidate)
+    try:
+        return _U94_ORIGINAL_SELECTED_RUNNER(app, list(selected or []))
+    except BaseException as exc:
+        return _u94_record_failure(app, "Pełna diagnostyka sekwencyjna", exc)
+
+def _u94_3d_runner_safe(candidate, seconds=5):
+    app = _u92_resolve_app(candidate)
+    try:
+        # Use the original standalone runner; it dispatches UI callbacks through _u88_ui_wait.
+        # Do not invoke helpers through app.tk / _tkinter.tkapp.
+        return _U91_ORIGINAL_3D_RUNNER(app, seconds)
+    except BaseException as exc:
+        return _u94_record_failure(app, "Benchmark 3D", exc)
+
+def _u94_selftest_crash_guard():
+    assert callable(_u94_ui_wait_compat)
+    assert callable(_u94_selected_runner_safe)
+    assert callable(_u94_3d_runner_safe)
+    assert AppV43._u66_ui_wait is _u92_ui_wait_safe
+    assert AppV43._u88_ui_wait is _u92_ui_wait_safe
+    class _U94FakeApp:
+        def __init__(self):
+            self.results = {}
+            self.log = []
+        def queue_action(self, callback):
+            callback()
+        def queue_results(self, key, value):
+            self.results[key] = value
+        def worker(self, callback):
+            callback()
+        def append_log(self, message):
+            self.log.append(message)
+    fake = _U94FakeApp()
+    class _U94TkappLike:
+        pass
+    _U94TkappLike.__module__ = "_tkinter"
+    candidate = _U94TkappLike()
+    ran = []
+    global _U92_APP_INSTANCE
+    previous = _U92_APP_INSTANCE
+    try:
+        _U92_APP_INSTANCE = fake
+        _u94_ui_wait_compat(candidate, lambda: ran.append("resolved-from-tkapp"), timeout=1.0)
+        assert ran == ["resolved-from-tkapp"]
+    finally:
+        _U92_APP_INSTANCE = previous
+    assert AppV43._u66_ui_wait is _u92_ui_wait_safe
+    assert AppV43._run_selected_diagnostic is _u91_run_selected_diagnostic_guarded
+    assert AppV43._u66_run_3d_suite is _u91_run_3d_suite_guarded
+    assert "_U91_ORIGINAL_3D_RUNNER" in _u94_3d_runner_safe.__code__.co_names
+    print("TKINTER_TEST_CRASH_GUARD_V4394_SELFTEST_OK")
+
+# Publish these aliases after all historical/versioned layers.
+_u92_ui_wait_safe = _u94_ui_wait_compat
+_u88_ui_wait = _u94_ui_wait_compat
+_u66_ui_wait = _u94_ui_wait_compat
+_u91_run_selected_diagnostic_guarded = _u94_selected_runner_safe
+_u91_run_3d_suite_guarded = _u94_3d_runner_safe
+_u88_run_selected_diagnostic = _u94_selected_runner_safe
+_u67_run_selected_diagnostic = _u94_selected_runner_safe
+_u88_run_3d_suite = _u94_3d_runner_safe
+_u90_run_3d_suite = _u94_3d_runner_safe
+_u66_run_3d_suite = _u94_3d_runner_safe
+AppV43._u66_ui_wait = _u94_ui_wait_compat
+AppV43._u88_ui_wait = _u94_ui_wait_compat
+AppV43._u66_run_3d_suite = _u94_3d_runner_safe
+AppV43._u90_run_3d_suite = _u94_3d_runner_safe
+AppV43._run_selected_diagnostic = _u94_selected_runner_safe
+_u92_selftest_crash_guard = _u94_selftest_crash_guard
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
