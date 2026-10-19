@@ -6394,7 +6394,8 @@ def _u98_selftest_catalog_safety():
     assert _u93_start_catalog_test is _u98_start_catalog_test
     assert _u93_detail_status_only is _u98_detail_status_only
     assert "_U98_ORIGINAL_EXECUTE_CATALOG_TEST" in _u98_execute_catalog_test.__code__.co_names
-    assert "Win32_VideoController" in _u98_execute_catalog_test.__code__.co_consts or "WmiMonitorListedSupportedSourceModes" in _u98_execute_catalog_test.__code__.co_consts
+    mode_code = str(_u98_execute_catalog_test.__code__.co_consts)
+    assert "Win32_VideoController" in mode_code and "WmiMonitorListedSupportedSourceModes" in mode_code
     assert "audio_mic" in _u98_start_catalog_test.__code__.co_consts
     assert "audio_output" in _u98_start_catalog_test.__code__.co_consts
     print("CATALOG_MODE_AND_AUDIO_CONSENT_SELFTEST_OK: display mode test is separate from EDID, microphone/speaker tests require confirmation")
