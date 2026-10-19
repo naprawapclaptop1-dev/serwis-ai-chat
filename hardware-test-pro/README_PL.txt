@@ -1,37 +1,42 @@
 NAPRAWA PC HARDWARE TEST PRO — PAKIET ŹRÓDŁOWY
-==============================================
+================================================
 
-DOKUMENTACJA PAKIETU Z KODEM — NIE JEST TO NUMER WERSJI APLIKACJI
-Aktualny publiczny kanał stable należy sprawdzać w updates/hardware-test-pro/latest.json.
-Na dzień 2026-10-19 manifest stable wskazuje wydanie 4.3.94.
+WERSJA / KANAŁ STABLE
+To repozytorium źródłowe i materiały do lokalnego builda. Aktualną wersję publiczną odczytuj z updates/hardware-test-pro/latest.json. Ostatnie zweryfikowane wydanie przed tą aktualizacją dokumentacji: 4.3.98 (19.10.2026). Numer następnego builda online jest nadawany automatycznie — nie wpisuj go ręcznie.
 
-WERSJA WYDANIA 4.3.94 — FUNKCJE ZINTEGROWANE
-- 125 skórek graficznych w jednym programie: 10 dotychczasowych i 115 nowych motywów.
-- Wyszukiwarka skórek, podgląd wektorowy dashboardu, zastosowanie całej palety i zapamiętywanie wyboru.
-- Skórki różnią się paletą UI: tło, panele, karty, akcenty, statusy oraz grafika pulpitu.
-- Aktualizator globalny HTTPS sprawdza rozmiar, SHA-256 i nagłówek PE. Wydania zgodne ze starszymi wersjami używają osobnego pomocnika, który weryfikuje instalator, pokazuje postęp i zapisuje log instalacji.
-- Wersja zawiera osobne testy CPU/GPU/RAM/VRAM/dysków/ekranu/peryferiów, sekwencyjny przebieg zaznaczonych testów, panel telemetrii, Speed Test, AI Reader online i centrum serwisu/System Repair PRO. Wyniki czujników nieobsługiwanych muszą pokazywać N/D.
-- GPU ma 60 nazwanych scen OpenGL; liczba FPS zależy od faktycznego renderera, sterownika i ustawień.
-- Pomiary aplikacyjne RAM/VRAM nie gwarantują sprawdzenia każdej fizycznej komórki.
+ZAKRES FUNKCJI
+- 125 motywów UI; wyszukiwarka i podgląd skórki.
+- 13 grup laboratoriów i 70 niezależnych pozycji katalogu testów:
+  CPU (7), RAM (7), GPU (8), VRAM (6), dyski (7), ekran/EDID (5),
+  bezpieczeństwo Windows (4), bateria (5), sieć (5), USB (4), audio (5),
+  klawiatura/touchpad (4), kamera (3).
+- Każdy wpis katalogu prowadzi do oddzielnego ekranu testu, własnego uruchomienia i raportu.
+- CPU: skan, obciążenie i przepustowość SHA-256 single/multi-thread.
+- RAM: skan stanu systemu i wzorce/benchmark bufora z kontrolą danych; nie dowodzi to sprawdzenia wszystkich fizycznych komórek.
+- GPU: 60 nazwanych scen OpenGL, pojedyncza scena i zestawy benchmarkowe. FPS zależy od GPU, sterownika i rozdzielczości.
+- VRAM: inwentarz i testy alokacji/readback tekstur; ograniczenia sterownika są raportowane.
+- Dyski: skan woluminu, dostępne dane reliability/SMART i benchmark plikowy z tymczasowym plikiem usuwanym po teście.
+- Ekran: skan EDID oraz oddzielny odczyt bieżących/udostępnionych trybów ekranu.
+- Sieć: adaptery, DNS/HTTPS, transfer download/upload i pomiary opóźnień opisane zgodnie z metodą.
+- Peryferia: USB, audio, klawiatura/touchpad i kamera; testy interaktywne wskazują potrzebne potwierdzenie.
+- Centrum Serwis Ultimate / System Repair PRO, raporty, aktualizator globalny HTTPS i pomocniczy Sensor Bridge.
 
-BUDOWANIE ŹRÓDEŁ
-1. Rozpakuj cały pakiet.
-2. Uruchom SELFTEST_ALL.bat.
-3. BUILD_WINDOWS.bat uruchamiaj na Windows 10/11 x64 z Python x64 i Inno Setup; skrypt przygotowania wydania odtwarza źródło i grafikę z fragmentów Base64 oraz dołącza ADVANCED_MODULES_PATCH.py.
-4. EXE i Setup są zapisywane do folderu dist.
-5. Publikacja nowego wydania wymaga sukcesu wszystkich testów oraz weryfikacji rozmiaru i SHA-256 instalatora. Manifest latest.json należy aktualizować dopiero po poprawnej publikacji obu assetów.
-
-AKTUALIZACJE Z INNEGO KOMPUTERA
-- Zainstalowana aplikacja sprawdza manifest latest.json przez HTTPS i pobiera opublikowany instalator.
-- Należy weryfikować wersję, rozmiar oraz SHA-256 względem manifestu i nie ogłaszać aktualizacji jako opublikowanej, zanim istnieje rzeczywisty plik instalatora.
-- Windows może wyświetlić monit UAC przy uruchamianiu instalatora.
+BUDOWANIE LOKALNE
+1. Wypakuj pełne repozytorium źródłowe. Wymagane są: NaprawaPC_Hardware_Test_PRO.pyw, ui_reference.png, app_icon.png, app.ico, SUITE_SETUP.iss, folder SensorBridge i powiązane zasoby.
+2. Na Windows 10/11 x64 zainstaluj Python 3 x64, .NET SDK 10 i Inno Setup 6/7.
+3. Uruchom BUILD_WINDOWS.bat. Skrypt odczytuje wersję ze źródła, uruchamia selftesty, buduje Sensor Bridge, EXE, Setup oraz pakiet ALL-IN-ONE.
+4. Lokalny skrypt NIE publikuje do GitHub ani NIE zmienia manifestu stable. Publikację wersji online wykonuje zweryfikowany workflow GitHub Actions.
+5. Wyniki trafiają do folderu dist, a log do BUILD_LOCAL.log. W razie niepowodzenia skrypt zwraca kod błędu.
 
 TESTY I GRANICE
-- SELFTEST_ALL.bat uruchamia składnię Python oraz testy core, deep, updatera, launchera, antywirusa, motywów, centrum serwisowego, ścieżki aktualizacji i modułów zaawansowanych.
-- Sukces GitHub Actions potwierdza kroki automatycznego builda i testy zapisane w workflow. Nie potwierdza, że każdy czujnik działa na każdym fizycznym komputerze.
-- Temperatury, moc, zegary, wentylatory, VRAM oraz GPU utilization zależą od sprzętu, sterowników i Sensor Bridge. Brak wiarygodnego odczytu musi być N/D, nie wartością zgadywaną.
-- Testy urządzeń wejścia/wyjścia zależą od dostępności urządzenia i interakcji użytkownika. Brak odpowiedzi nie powinien być przedstawiany jako zaliczony test funkcjonalny.
-- Test sieci wykonuje rzeczywisty transfer i zużywa dane; jest uzależniony od dostępności endpointów i sieci.
+- Sukces CI potwierdza wyłącznie kroki i selftesty zapisane w workflow. Nie zastępuje testu sprzętu użytkownika.
+- Temperatura, moc, zegary, wentylatory, VRAM i użycie GPU zależą od czujników, sterowników i Sensor Bridge. Brak danych musi pozostać N/D, bez zgadywania.
+- RAM/VRAM testowane z poziomu procesu nie są pełnym testem wszystkich fizycznych komórek.
+- Test audio, kamery, klawiatury i matrycy może wymagać potwierdzenia operatora. Samo wykrycie urządzenia nie potwierdza sprawności fizycznej.
+- Speed Test przesyła rzeczywiste dane i zależy od sieci oraz endpointu.
+- Schemat 3D jest wizualizacją edukacyjną; nie jest benchmarkiem, jeśli dany test nie wykonuje rzeczywistego pomiaru.
 
-LABORATORIUM PODZESPOŁÓW
-Otwórz Centrum Testów i wybierz „LABORATORIUM PODZESPOŁÓW — 13 MODUŁÓW”. Moduły mają niezależne przyciski SKAN, TEST/BENCHMARK i SYMULATOR 3D. Profile obejmują 15, 60, 180, 300, 600 i 900 sekund. Wizualizacja 3D jest odrębna od wyniku rzeczywistego pomiaru. Zobacz CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md.
+KANAŁ ONLINE
+Manifest stable: updates/hardware-test-pro/latest.json
+Wydania i instalatory: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases
+Manifest aktualizuje workflow wyłącznie po poprawnych testach, kompilacji Setup.exe i publikacji assetów.
