@@ -1,17 +1,17 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.95",
+  "version": "4.3.96",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.95.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.95/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.95.exe",
-  "sha256": "2d1c8bc962b326a138f58b6c86a9b52b79337cfa6d15febf947874b8cd45cdb6",
-  "size": 141512118,
-  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.95.exe",
-  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.95/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.95.exe",
-  "installer_sha256": "2d1c8bc962b326a138f58b6c86a9b52b79337cfa6d15febf947874b8cd45cdb6",
-  "installer_size": 141512118,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.96.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.96/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.96.exe",
+  "sha256": "f7b9167c98461c5bf8b0bbda399eb3e63e78d5cc3c7e7ea21087d09e3fa0b974",
+  "size": 141510876,
+  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.96.exe",
+  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.96/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.96.exe",
+  "installer_sha256": "f7b9167c98461c5bf8b0bbda399eb3e63e78d5cc3c7e7ea21087d09e3fa0b974",
+  "installer_size": 141510876,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.95: zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
-  "published_at": "2026-10-19T14:18:29.046Z"
+  "notes": "Wydanie 4.3.96: zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+  "published_at": "2026-10-19T15:08:54.310Z"
 }
