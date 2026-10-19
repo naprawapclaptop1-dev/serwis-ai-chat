@@ -83,6 +83,21 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           Set-Location "${{ github.workspace }}\hardware-test-pro"
+          # Parse the standalone local build script before shipping it.
+          $localBuild = ".\BUILD_LOCAL.ps1"
+          if (!(Test-Path -LiteralPath $localBuild)) { throw "BUILD_LOCAL.ps1 is missing." }
+          $parseTokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath $localBuild).Path, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error $_.Message }
+            throw "BUILD_LOCAL.ps1 has PowerShell syntax errors."
+          }
+          $localBat = [IO.File]::ReadAllText((Resolve-Path -LiteralPath ".\BUILD_WINDOWS.bat").Path)
+          if ($localBat -match "4\.3\.44" -or $localBat -notmatch "BUILD_LOCAL\.ps1") {
+            throw "BUILD_WINDOWS.bat must call the version-aware local builder and must not hard-code 4.3.44."
+          }
+          Write-Host "LOCAL_BUILD_SCRIPT_SYNTAX_OK"
           $program = ".\NaprawaPC_Hardware_Test_PRO.pyw"
           python -m py_compile $program
           if ($LASTEXITCODE -ne 0) { throw "Python syntax check failed with code $LASTEXITCODE" }

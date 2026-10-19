@@ -1,38 +1,47 @@
-RAPORT TESTÓW WYDANIA — NAPRAWA PC HARDWARE TEST PRO 4.3.94
-==============================================================
+RAPORT WERYFIKACJI WYDANIA — NAPRAWA PC HARDWARE TEST PRO 4.3.98
+=================================================================
 
-Weryfikacja online repozytorium i publicznego wydania: 2026-10-19.
+Data weryfikacji online: 2026-10-19
+GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39310567796
+Commit wydania: f338f255b303e4eede88abca920af14437b2be1a
+Status całego workflow: success
 
-POTWIERDZONE W GITHUB ACTIONS
-Workflow: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39234258125
-Commit: f7b6fe44c413dcbfbe45b534a1fbbaba79d3b1fb
-[OK] Środowisko Windows x64 + Python.
-[OK] Publikacja Hardware Sensor Bridge .NET jako samodzielnego EXE.
-[OK] Odtworzenie źródła i grafiki z fragmentów Base64.
-[OK] Skrypt przygotowania wersji i integracja patcha modułów zaawansowanych.
+POTWIERDZONE PRZEZ CI
+[OK] Środowisko Windows x64 i Python.
+[OK] Budowa self-contained Hardware Sensor Bridge (.NET 10).
+[OK] Odtworzenie głównego źródła i zasobów graficznych.
+[OK] Przygotowanie numeru wersji i modyfikacji motywów.
 [OK] Instalacja zależności Python.
-[OK] Krok składni i wbudowanych testów zakończony statusem sukcesu.
-[OK] Budowa głównego EXE przez PyInstaller.
-[OK] Instalacja Inno Setup.
+[OK] py_compile i wbudowane testy: core, deep, updater, launcher, antivirus, themes, service center, update flow i advanced modules.
+[OK] Selftest katalogu: 70 unikalnych pozycji, oddzielny ekran i dispatcher testów.
+[OK] Budowa aplikacji EXE przez PyInstaller.
 [OK] Kompilacja i weryfikacja Setup.exe.
-[OK] Publikacja assetów wydania 4.3.94.
-[OK] Publikacja manifestu aktualizacji po poprawnym wydaniu.
+[OK] Publikacja ZIP ALL-IN-ONE oraz instalatora.
+[OK] Aktualizacja manifestu stable po poprawnej publikacji.
 
-AKTUALNE ASSETY ONLINE
-Setup: NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.94.exe
-Rozmiar: 141510802 bajtów
-SHA-256: 13e562ae6229adac39e5eb7a9f4361fb2c87b09624d1b0c249516820ac1d6e15
-ALL-IN-ONE: NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.94.zip
-Rozmiar: 283567569 bajtów
-SHA-256: d55b8de6d0f2ad608e9792b821a4a13fb4622f5fc25dfa4a43cf98459af67122
-Manifest: updates/hardware-test-pro/latest.json wskazuje stable 4.3.94.
+PLIKI OPUBLIKOWANE DLA 4.3.98
+Installer: NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.98.exe
+Rozmiar: 141,549,687 bajtów
+SHA-256: 84ff4f5c99bc1804f22f623d0115374fe00b9593719ae356866c53b89c0822f8
+URL: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.98/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.98.exe
 
-OGRANICZENIA — NIE NALEŻY ICH UKRYWAĆ
-- Sukces GitHub Actions potwierdza kroki CI/builda. Nie jest dowodem, że wszystkie fizyczne czujniki działają na każdym komputerze.
-- Temperatury, moc, zegary, wentylatory, VRAM i wykorzystanie GPU zależą od sterowników, Sensor Bridge i sprzętu; brak odczytu musi pozostać N/D.
-- Testy bufora RAM i VRAM nie gwarantują sprawdzenia każdej fizycznej komórki pamięci.
-- Testy klawiatury, touchpada, audio, kamery, matrycy i baterii mogą wymagać fizycznego urządzenia albo interakcji operatora.
-- Speed Test wykorzystuje rzeczywisty transfer danych i może być ograniczony przez sieć lub endpointy.
+ALL-IN-ONE: NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.98.zip
+Rozmiar: 283,652,271 bajtów
+SHA-256: 06d7e2b2502a76a627daea5b0134c798e0146bbe2804a042f8e8cf273fd9410b
+URL: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.98/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.98.zip
 
-KOREKTA DOKUMENTACJI
-Poprzedni README zawierał nagłówek 4.3.44, a wcześniejszy raport 4.3.42. Te numery nie opisują aktualnego publicznego instalatora. Raport rozdziela wynik automatycznego builda od sprzętowych testów, których nie przeprowadzono na komputerze użytkownika.
+GIT TAG: hardware-test-pro-v4.3.98
+Manifest stable wskazywał release_ready=true i te same dane instalatora.
+
+DALSZE WERYFIKACJE
+[ ] Test uruchomienia GUI na fizycznym komputerze użytkownika.
+[ ] Potwierdzenie czujników na rzeczywistym sprzęcie.
+[ ] Weryfikacja audio, kamery, klawiatury, ekranu i USB na urządzeniach fizycznych.
+[ ] Test instalacji i aktualizacji nad istniejącą instalacją.
+
+OGRANICZENIA
+- CI używa maszyny buildowej Windows; nie oznacza to testu wszystkich fizycznych komputerów.
+- Odczyty czujników zależą od sterownika i sprzętu; N/D nie jest wynikiem pozytywnym.
+- Testy pamięci aplikacyjnej nie udowadniają sprawdzenia wszystkich komórek RAM/VRAM.
+- Benchmarki syntetyczne/OpenGL nie przeliczają się bezpośrednio na FPS w konkretnej grze.
+- Raport dokumentuje stan 4.3.98; bieżący stable sprawdzaj w updates/hardware-test-pro/latest.json.
