@@ -5306,6 +5306,203 @@ AppV43._u88_ui_wait = _u92_ui_wait_safe
 AppV43._worker_wrap = _u92_worker_wrap_safe
 AppV43.report_callback_exception = _u92_report_callback_exception
 
+
+
+# v4.3.93 — isolated one-test-per-screen component laboratory.
+_U93_MODULES = [
+ ("CPU","CPU / PROCESOR"),("RAM","RAM / PAMIĘĆ"),("GPU","GPU / KARTA GRAFICZNA"),
+ ("VRAM","VRAM / PAMIĘĆ KARTY"),("DYSK","SSD / HDD / NVMe"),("EKRAN","MATRYCA / MONITOR"),
+ ("SECURITY","WINDOWS / BEZPIECZEŃSTWO"),("BATERIA","BATERIA / ZASILANIE"),("SIEĆ","SIEĆ / WI-FI / LAN"),
+ ("USB","USB / URZĄDZENIA"),("AUDIO","AUDIO / MIKROFON / GŁOŚNIKI"),("KLAWIATURA","KLAWIATURA / TOUCHPAD"),("KAMERA","KAMERA / WEBCAM")
+]
+# id, title, description, executor kind
+_U93_TEST_CATALOG = {
+ "CPU":[
+  ("cpu_scan","Skan CPU — model/rdzenie/wątki","Identyfikacja CPU i topologii bez obciążenia.","cpu_scan"),
+  ("cpu_single","Benchmark CPU — jeden wątek","Rzeczywiste operacje SHA-256/s w jednym wątku.","cpu_single"),
+  ("cpu_multi","Benchmark CPU — wielowątkowy","Rzeczywiste operacje SHA-256/s w równoległych wątkach.","cpu_multi"),
+  ("cpu_load60","Obciążenie CPU — 60 s","Osobny test obciążeniowy procesora.","cpu_load60"),
+  ("cpu_max","Stabilność CPU — ULTRA 300 s","Dłuższe obciążenie CPU; można przerwać przyciskiem STOP.","cpu_load300"),
+  ("cpu_sensor","Czujniki CPU — temperatura/moc/zegar","Odczytuje tylko wartości faktycznie udostępnione przez sterownik.","cpu_sensor"),
+  ("cpu_sim","Symulator 3D CPU","Schemat rdzeni; nie jest wynikiem FPS.","sim")
+ ],
+ "RAM":[
+  ("ram_scan","Skan RAM — użycie/dostępność","Odczyt pamięci całkowitej, wolnej i zajętej.","ram_scan"),
+  ("ram_512","Test wzorców RAM — 512 MB","Zapis i weryfikacja bufora przydzielonego przez Windows.","ram_pattern"),
+  ("ram_1024","Test wzorców RAM — 1024 MB","Wzorce pamięci; rozmiar jest ograniczany dostępną pamięcią.","ram_pattern"),
+  ("ram_2048","Test wzorców RAM — do 2048 MB","Większy bufor; nie deklaruje testu całej fizycznej pamięci.","ram_pattern"),
+  ("ram_bw","Benchmark przepustowości RAM — 60 s","Zapis i odczyt zweryfikowany SHA-256, rzeczywiste MB/s.","ram_bw"),
+  ("ram_max","Stabilność/przepustowość RAM — 300 s","Powtarza bezpieczny test bufora RAM.","ram_bw_max"),
+  ("ram_sim","Symulator 3D RAM","Schemat bloków pamięci — pomiar wykonywany oddzielnie.","sim")
+ ],
+ "GPU":[
+  ("gpu_scan","Skan GPU — karta i sterownik","Identyfikacja adaptera/sterownika Windows.","gpu_scan"),
+  ("gpu_scene","Jedna scena OpenGL — wybór 1–60","Mierzy FPS/klatki jednej wskazanej sceny i zapisuje renderer.","gpu_scene"),
+  ("gpu_std","Benchmark 60 scen — STANDARD","60 scen po 10 sekund każda, rzeczywiste FPS.","gpu_suite10"),
+  ("gpu_ultra","Benchmark 60 scen — ULTRA","60 scen po 30 sekund każda, około 30 min renderowania.","gpu_suite30"),
+  ("gpu_max","Benchmark 60 scen — MAX","60 scen po 60 sekund każda, około 60 min renderowania.","gpu_suite60"),
+  ("gpu_sensor","Czujniki GPU — temperatura/VRAM/zegar/moc","N/D gdy sterownik nie udostępnia pomiaru.","gpu_sensor"),
+  ("gpu_games","Doradca gier — ustawienia grafiki","Oddziela pomiary syntetyczne od szacunków FPS w grach.","games"),
+  ("gpu_sim","Symulator 3D GPU","Schemat karty; FPS mierzą tylko testy renderowania.","sim")
+ ],
+ "VRAM":[
+  ("vram_scan","Skan VRAM — pojemność","Inwentarz VRAM, nie test komórek pamięci.","vram_scan"),
+  ("vram_64","Test VRAM — 64 MB/readback","Zapis/odczyt zwrotny tekstur i wzorce OpenGL.","vram_test"),
+  ("vram_128","Test VRAM — 128 MB/readback","Osobny test bufora 128 MB.","vram_test"),
+  ("vram_256","Test VRAM — 256 MB/readback","Osobny test bufora do 256 MB.","vram_test"),
+  ("vram_max","Stabilność VRAM — 300 s","Powtarza pełne przebiegi wzorców w VRAM.","vram_max"),
+  ("vram_sim","Symulator 3D VRAM","Schemat kości pamięci, wynik readback pokazuje test osobny.","sim")
+ ],
+ "DYSK":[
+  ("disk_scan","Skan dysku/woluminu","Wybór konkretnego woluminu, pojemność i wolne miejsce.","disk_scan"),
+  ("disk_smart","SMART/niezawodność nośnika","Pokazuje dostępne rekordy; brak SMART to N/D, nie PASS.","disk_smart"),
+  ("disk_512","Benchmark wybranego dysku — 512 MB","Zapis/odczyt pliku tymczasowego na wybranym woluminie.","disk_bench"),
+  ("disk_2048","Benchmark wybranego dysku — 2 GB","Większy test plikowy z weryfikacją i usuwaniem pliku.","disk_bench"),
+  ("disk_4096","Benchmark wybranego dysku — MAX 4 GB","Wymaga wolnego miejsca i potwierdzenia operatora.","disk_bench_max"),
+  ("disk_max","Przepustowość dysku — 180 s","Powtarzany zapis/odczyt na wybranym woluminie.","disk_bench_long"),
+  ("disk_sim","Symulator 3D SSD/HDD/NVMe","Schemat operacji I/O; benchmark mierzy operacje plikowe.","sim")
+ ],
+ "EKRAN":[
+  ("screen_edid","Skan matrycy — EDID","Informacje monitora i tryby udostępnione przez Windows.","screen_edid"),
+  ("screen_modes","Rozdzielczość i odświeżanie","Wyświetla parametry raportowane przez system.","screen_modes"),
+  ("screen_patterns","Test wizualny — 20 wzorców","Otwiera osobny ekran wzorców; ocena martwych pikseli wymaga wzroku.","screen_patterns"),
+  ("screen_rgb","Test wizualny RGB/gradienty","Otwiera wzorce kolorów bez udawania automatycznego wykrycia wad.","screen_patterns"),
+  ("screen_sim","Symulator 3D matrycy","Wizualizacja schematyczna panelu.","sim")
+ ],
+ "SECURITY":[
+  ("sec_scan","Skan bezpieczeństwa Windows","Uruchamia istniejący moduł bezpieczeństwa.","security_scan"),
+  ("sec_startup","Audyt autostartu","Zbiera stan systemowego audytu bezpieczeństwa/autostartu.","security_startup"),
+  ("sec_events","Diagnostyka Windows","Uruchamia wybraną diagnostykę systemową; brak raportu to N/D.","security_system"),
+  ("sec_sim","Symulator 3D bezpieczeństwa","Schemat edukacyjny, nie wynik skanu.","sim")
+ ],
+ "BATERIA":[
+  ("bat_scan","Skan baterii/zasilania","Odczyt poziomu, stanu ładowania i danych kontrolera.","battery_scan"),
+  ("bat_180","Monitor ładowania/rozładowania — 180 s","Zapisuje próbki procentu i stanu zasilania.","battery_monitor"),
+  ("bat_600","Monitor baterii — MAX 600 s","Dłuższa obserwacja; nie jest pełnym pomiarem czasu pracy.","battery_max"),
+  ("bat_report","Raport baterii powercfg","Tworzy raport HTML Windows i pokazuje ścieżkę.","battery_report"),
+  ("bat_sim","Symulator 3D baterii","Schemat ogniw; poziom pochodzi z kontrolera.","sim")
+ ],
+ "SIEĆ":[
+  ("net_scan","Skan kart Wi-Fi/LAN","Odczyt adapterów i stanu sieci.","network_scan"),
+  ("net_dns","Test DNS + HTTPS","Sprawdza rozwiązywanie nazw i łączność HTTPS.","network_dns"),
+  ("net_speed","Speed Test — download/upload/ping","Rzeczywisty transfer bajtów i pomiar opóźnienia.","network_speed"),
+  ("net_jitter","Test powtarzanych opóźnień","Próbki DNS w czasie; nie jest to RTT ICMP.","network_jitter"),
+  ("net_sim","Symulator 3D sieci","Schemat interfejsów i pakietów.","sim")
+ ],
+ "USB":[
+  ("usb_scan","Skan urządzeń USB","Enumeracja obecnych urządzeń PnP USB.","usb_scan"),
+  ("usb_errors","Kontrola statusu USB","Odrębna lista obecnych urządzeń USB zgłaszających problem.","usb_errors"),
+  ("usb_functional","Test funkcjonalny USB","Uruchamia test urządzeń bez zmian sterowników.","peripheral_usb"),
+  ("usb_sim","Symulator 3D USB","Schemat portów/urządzeń.","sim")
+ ],
+ "AUDIO":[
+  ("audio_scan","Skan urządzeń audio","Lista urządzeń wejścia/wyjścia systemu.","audio_scan"),
+  ("audio_mic","Test mikrofonu — poziom RMS/peak","Po potwierdzeniu pobiera 5 s próbki do RAM, nie zapisuje nagrania.","audio_mic"),
+  ("audio_output","Test głośników — ton 880 Hz","Po potwierdzeniu odtwarza krótki ton.","audio_output"),
+  ("audio_functional","Test funkcjonalny audio","Uruchamia istniejący moduł urządzeń audio.","peripheral_audio"),
+  ("audio_sim","Symulator 3D audio","Schemat urządzeń wejścia/wyjścia.","sim")
+ ],
+ "KLAWIATURA":[
+  ("key_scan","Skan klawiatury/touchpada","Urządzenia wejścia wykryte przez system.","keyboard_scan"),
+  ("key_press","Test klawiszy — rejestracja","Liczy naciśnięcia; nie zapisuje treści wpisanych znaków.","keyboard_input"),
+  ("key_functional","Test funkcjonalny klawiatury/touchpada","Uruchamia moduł urządzeń wejścia.","peripheral_keyboard"),
+  ("key_sim","Symulator 3D klawiatury","Schemat klawiszy/touchpada.","sim")
+ ],
+ "KAMERA":[
+  ("cam_scan","Skan kamery/webcam","Wykrywanie urządzeń bez automatycznego uruchamiania obrazu.","camera_scan"),
+  ("cam_preview","Podgląd kamery — 10 s","Po potwierdzeniu pokazuje klatki w osobnym oknie bez zapisu.","camera_preview"),
+  ("cam_sim","Symulator 3D kamery","Schemat kamery, nie pomiar FPS sensora.","sim")
+ ]
+}
+_U93_ALIASES={"CPU":"CPU","PROCESOR":"CPU","RAM":"RAM","PAMIĘĆ":"RAM","PAMIEC":"RAM","GPU":"GPU","VRAM":"VRAM",
+ "DYSK":"DYSK","DYSKI":"DYSK","SSD":"DYSK","HDD":"DYSK","NVME":"DYSK","EKRAN":"EKRAN","MATRYCA":"EKRAN","MONITOR":"EKRAN",
+ "SECURITY":"SECURITY","BEZPIECZEŃSTWO":"SECURITY","SYSTEM":"SECURITY","BATERIA":"BATERIA","ZASILANIE":"BATERIA",
+ "SIEĆ":"SIEĆ","SIEC":"SIEĆ","WI-FI":"SIEĆ","WIFI":"SIEĆ","LAN":"SIEĆ","USB":"USB","AUDIO":"AUDIO",
+ "KLAWIATURA":"KLAWIATURA","TOUCHPAD":"KLAWIATURA","KAMERA":"KAMERA","WEBCAM":"KAMERA"}
+
+def _u93_norm(module):
+    raw=str(module or "").upper()
+    for token,key in _U93_ALIASES.items():
+        if token in raw: return key
+    return "CPU"
+
+def _u93_find_test(module,test_id):
+    module=_u93_norm(module)
+    for item in _U93_TEST_CATALOG.get(module,[]):
+        if item[0]==test_id:return item
+    raise KeyError("Nie znaleziono testu "+str(test_id)+" dla "+module)
+
+def _u93_add_entry(app,module):
+    try:
+        t=app.colors();row=tk.Frame(app.content,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
+        children=app.content.winfo_children()
+        if children:row.pack(fill="x",padx=3,pady=(0,4),before=children[0])
+        else:row.pack(fill="x",padx=3,pady=4)
+        tk.Label(row,text=f"LABORATORIUM {module} — {len(_U93_TEST_CATALOG[module])} TESTÓW NIEZALEŻNYCH",
+                 bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(side="left",padx=7,pady=5)
+        app.make_button(row,"KATALOG — WYBIERZ JEDEN TEST",lambda m=module:_u93_show_catalog(app,m),"accent",side="left",ipady=4)
+        app.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=4)
+        if module=="GPU":app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=4)
+    except Exception as exc:
+        try:app.append_log("Nie udało się otworzyć laboratorium "+module+": "+repr(exc))
+        except Exception:pass
+
+def _u93_show_lab(app):
+    app.current_view="COMPONENT_TESTS";app.clear();t=app.colors()
+    app.header_title.config(text="LABORATORIUM — WYBIERZ JEDEN PODZESPÓŁ")
+    head=app.panel(app.content);head.pack(fill="x",pady=(0,5))
+    tk.Label(head,text="ODDZIELNE TESTY — JEDEN TEST NA JEDNYM EKRANIE",bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=10,pady=(8,2))
+    tk.Label(head,text="Wybierz komponent. Następnie otwórz jeden konkretny test — jego ustawienia, metryki, wykresy i raport nie będą mieszane z innymi testami.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    grid=tk.Frame(app.content,bg=t["bg"]);grid.pack(fill="both",expand=True)
+    for i,(key,label) in enumerate(_U93_MODULES):
+        r,c=divmod(i,3);card=tk.Frame(grid,bg=t["card"],highlightbackground=t["accent2"],highlightthickness=1)
+        card.grid(row=r,column=c,sticky="nsew",padx=4,pady=4)
+        tk.Label(card,text=label,bg=t["card"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,2))
+        tk.Label(card,text=f"{len(_U93_TEST_CATALOG[key])} osobnych testów",bg=t["card"],fg=t["good"],font=app.fnt(8,"bold")).pack(anchor="w",padx=8)
+        app.make_button(card,"OTWÓRZ KATALOG",lambda m=key:_u93_show_catalog(app,m),"accent",side="left",ipady=4)
+        app.make_button(card,"SYMULATOR 3D",lambda m=key:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=4)
+    for c in range(3):grid.grid_columnconfigure(c,weight=1)
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=3)
+    def center():
+        fn=getattr(app,"show_service_center",None)
+        fn() if callable(fn) else app.show_repairs()
+    app.make_button(row,"CENTRUM SERWISU ULTIMATE / SYSTEM REPAIR PRO",center,"card",side="left",ipady=5)
+    app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=5)
+    app.make_button(row,"← TESTY",app.show_tests_hub,"card",side="left",ipady=5)
+
+def _u93_scroll_rows(app,parent,module):
+    shell=tk.Frame(parent,bg=app.colors()["bg"]);shell.pack(fill="both",expand=True,padx=3,pady=3)
+    canvas=tk.Canvas(shell,bg=app.colors()["bg"],highlightthickness=0)
+    scroll=ttk.Scrollbar(shell,orient="vertical",command=canvas.yview)
+    body=tk.Frame(canvas,bg=app.colors()["bg"]);win=canvas.create_window((0,0),window=body,anchor="nw")
+    body.bind("<Configure>",lambda e,c=canvas:c.configure(scrollregion=c.bbox("all")))
+    canvas.bind("<Configure>",lambda e,c=canvas,w=win:c.itemconfigure(w,width=e.width))
+    canvas.configure(yscrollcommand=scroll.set);canvas.pack(side="left",fill="both",expand=True);scroll.pack(side="right",fill="y")
+    t=app.colors()
+    for n,item in enumerate(_U93_TEST_CATALOG[module],1):
+        test_id,title,desc,kind=item
+        card=tk.Frame(body,bg=t["card"],highlightbackground=t["accent2"],highlightthickness=1);card.pack(fill="x",padx=3,pady=3)
+        row=tk.Frame(card,bg=t["card"]);row.pack(fill="x",padx=8,pady=(4,1))
+        tk.Label(row,text=f"{n:02d}. {title}",bg=t["card"],fg=t["accent"],font=app.fnt(9,"bold"),anchor="w").pack(side="left",fill="x",expand=True)
+        app.make_button(row,"OTWÓRZ TEN TEST",lambda m=module,k=test_id:_u93_show_test_detail(app,m,k),"accent",side="right",ipady=3)
+        tk.Label(card,text=desc,bg=t["card"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left",anchor="w").pack(fill="x",padx=8,pady=(0,4))
+
+def _u93_show_catalog(app,module):
+    module=_u93_norm(module);app.current_view="COMPONENT_TEST_CATALOG_"+module;app.clear();t=app.colors()
+    label=next((x[1] for x in _U93_MODULES if x[0]==module),module)
+    app.header_title.config(text=label+" — KATALOG TESTÓW")
+    head=app.panel(app.content);head.pack(fill="x",pady=(0,4))
+    tk.Label(head,text=f"{label} — {len(_U93_TEST_CATALOG[module])} ODDZIELNYCH TESTÓW",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,2))
+    tk.Label(head,text="Otwórz jeden wiersz. Każdy test ma osobny ekran, własne ustawienia i wynik. Brak czujnika lub wyniku będzie oznaczony N/D/OSTRZEŻENIE — nie jako PASS.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=10,pady=(0,6))
+    _u93_scroll_rows(app,app.content,module)
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=3)
+    app.make_button(row,"SYMULATOR 3D TEGO PODZESPOŁU",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=4)
+    if module=="GPU":
+        app.make_button(row,"TESTY VRAM",lambda:_u93_show_catalog(app,"VRAM"),"card",side="left",ipady=4)
+        app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=4)
+    app.make_button(row,"CENTRUM SERWISU / SYSTEM REPAIR PRO",lambda: (getattr(app,"show_service_center",None) or app.show_repairs)(),"card",side="left",ipady=4)
+    app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=4)
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
