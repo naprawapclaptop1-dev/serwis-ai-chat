@@ -5115,7 +5115,7 @@ def _u91_start_selected_diagnostic(app):
         "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
     }
     if not messagebox.askyesno(
-        "Pełna diagnostyka — online 4.3.90",
+        "Pełna diagnostyka — online 4.3.92",
         "Uruchomić zaznaczone testy po kolei, każdy na osobnym ekranie?\\n\\n"
         "Każdy wyjątek jest zapisywany jako ERROR/N/D — aplikacja ma pozostać otwarta. "
         "GPU obejmuje osobny benchmark 3D oraz VRAM; STOP TEST przerywa przebieg.\\n\\n"
@@ -5162,8 +5162,153 @@ def _u88_selftest_final_wiring():
     print("COMPONENT_INDEPENDENT_WORKBENCH_3D_SUITE_SELFTEST_OK: 13 modules, separate screen per test, 60 scenes, 4K MAX and bounded 3D timing")
 
 
+
+# v4.3.92 — harden all test-worker/UI dispatch paths against Tkinter tkapp attribute errors.
+_U92_APP_INSTANCE = None
+_U92_ORIGINAL_INIT = AppV43.__init__
+_U92_ORIGINAL_WORKER_WRAP = AppV43._worker_wrap
+_U92_ORIGINAL_REPORT_CALLBACK_EXCEPTION = AppV43.report_callback_exception
+_U92_ORIGINAL_UI_WAIT = _u88_ui_wait
+
+def _u92_is_real_app(candidate):
+    return (
+        candidate is not None
+        and callable(getattr(candidate, "queue_action", None))
+        and callable(getattr(candidate, "worker", None))
+        and isinstance(getattr(candidate, "results", None), dict)
+    )
+
+def _u92_resolve_app(candidate):
+    if _u92_is_real_app(candidate):
+        return candidate
+    registered = _U92_APP_INSTANCE
+    if _u92_is_real_app(registered):
+        return registered
+    root = getattr(candidate, "_root", None)
+    if callable(root):
+        try:
+            rooted = root()
+            if _u92_is_real_app(rooted):
+                return rooted
+        except Exception:
+            pass
+    raise TypeError(
+        "Nie można odnaleźć obiektu aplikacji AppV43 dla testu. "
+        f"Otrzymano {type(candidate).__module__}.{type(candidate).__name__}; "
+        "test został zabezpieczony, główne okno pozostaje otwarte."
+    )
+
+def _u92_register_app_instance(self, *args, **kwargs):
+    global _U92_APP_INSTANCE
+    _U92_ORIGINAL_INIT(self, *args, **kwargs)
+    _U92_APP_INSTANCE = self
+
+def _u92_ui_wait_safe(candidate, callback, timeout=30.0):
+    app = _u92_resolve_app(candidate)
+    return _U92_ORIGINAL_UI_WAIT(app, callback, timeout=timeout)
+
+def _u92_worker_wrap_safe(candidate, fn):
+    app = _u92_resolve_app(candidate)
+    def guarded_fn():
+        try:
+            return fn()
+        except Exception as exc:
+            detail = f"{type(exc).__name__}: {exc}"
+            record = {
+                "state": "error",
+                "message": detail,
+                "time": _U66_datetime.now().isoformat(timespec="seconds"),
+                "scope": "worker/test",
+                "note": "Test przerwany przez wyjątek; aplikacja pozostaje otwarta."
+            }
+            try:
+                app.results["UNHANDLED_TEST_ERROR"] = record
+            except Exception:
+                pass
+            try:
+                app.queue_log("BŁĄD TESTU ZABEZPIECZONY — aplikacja pozostaje otwarta: " + detail)
+                app.queue_results("UNHANDLED_TEST_ERROR", record)
+            except Exception:
+                pass
+            def notify(error=detail):
+                try:
+                    app.header_status.config(
+                        text="TEST PRZERWANY — SPRAWDŹ DZIENNIK",
+                        fg=app.colors()["bad"]
+                    )
+                except Exception:
+                    pass
+                try:
+                    messagebox.showerror(
+                        "Test przerwany — aplikacja nadal działa",
+                        error + "\\n\\nSzczegóły zapisano w dzienniku. Wróć do pulpitu i uruchom ten test osobno."
+                    )
+                except Exception:
+                    pass
+            try:
+                app.queue_action(notify)
+            except Exception:
+                pass
+            return None
+    return _U92_ORIGINAL_WORKER_WRAP(app, guarded_fn)
+
+def _u92_report_callback_exception(self, exc, value, traceback_obj):
+    try:
+        app = _u92_resolve_app(self)
+        detail = f"{getattr(exc, '__name__', str(exc))}: {value}"
+        app.queue_log("BŁĄD WYDARZENIA UI — aplikacja pozostaje otwarta: " + detail)
+        try:
+            app.header_status.config(text="BŁĄD TESTU/UI — SZCZEGÓŁY W DZIENNIKU", fg=app.colors()["bad"])
+        except Exception:
+            pass
+    except Exception:
+        pass
+    try:
+        return _U92_ORIGINAL_REPORT_CALLBACK_EXCEPTION(self, exc, value, traceback_obj)
+    except Exception:
+        return None
+
+def _u92_selftest_crash_guard():
+    assert callable(_u92_resolve_app)
+    assert callable(_u92_ui_wait_safe)
+    assert callable(_u92_worker_wrap_safe)
+    assert AppV43._u66_ui_wait is _u92_ui_wait_safe
+    assert AppV43._u88_ui_wait is _u92_ui_wait_safe
+    fake_log = []
+    class _U92FakeApp:
+        def __init__(self):
+            self.results = {}
+        def queue_action(self, callback):
+            callback()
+        def worker(self, callback):
+            callback()
+        def append_log(self, message):
+            fake_log.append(message)
+    fake = _U92FakeApp()
+    ran = []
+    _u92_ui_wait_safe(fake, lambda: ran.append("direct"), timeout=1.0)
+    assert ran == ["direct"]
+    global _U92_APP_INSTANCE
+    old_instance = _U92_APP_INSTANCE
+    try:
+        _U92_APP_INSTANCE = fake
+        _u92_ui_wait_safe(object(), lambda: ran.append("fallback"), timeout=1.0)
+        assert ran == ["direct", "fallback"]
+    finally:
+        _U92_APP_INSTANCE = old_instance
+    assert "_U92_APP_INSTANCE" in _u92_resolve_app.__code__.co_names
+    print("TKINTER_TEST_CRASH_GUARD_SELFTEST_OK")
+
+AppV43.__init__ = _u92_register_app_instance
+_u88_ui_wait = _u92_ui_wait_safe
+AppV43._u66_ui_wait = _u92_ui_wait_safe
+AppV43._u88_ui_wait = _u92_ui_wait_safe
+AppV43._worker_wrap = _u92_worker_wrap_safe
+AppV43.report_callback_exception = _u92_report_callback_exception
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u92_selftest_crash_guard()
         _u66_selftest_advanced()
         _u86_selftest_component_ui()
         _u90_selftest_release_fixes()
