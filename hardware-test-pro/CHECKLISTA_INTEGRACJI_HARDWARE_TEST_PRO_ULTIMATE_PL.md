@@ -1,27 +1,37 @@
 # CHECKLISTA INTEGRACJI — NAPRAWA PC HARDWARE TEST PRO ULTIMATE
 
-Cel: następne wydanie po opublikowanym 4.3.77; skrypt wydania wyznaczy numer automatycznie.
+## Zweryfikowany stan wydania
+- [x] Wydanie 4.3.98 opublikowane przez GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39310567796
+- [x] Setup.exe i ALL-IN-ONE ZIP opublikowane.
+- [x] Manifest stable zaktualizowany dopiero po poprawnej kompilacji i publikacji.
+- [x] Windows CI zaliczył składnię, selftesty, budowę EXE i weryfikację Inno Setup.
+- [x] Katalog ma 70 unikalnych pozycji i oddzielne ekrany uruchamiania testów.
+- [x] Test „Tryby ekranu” jest oddzielony od skanu EDID.
+- [x] Mikrofon i głośniki wymagają potwierdzenia przed odczytem próbek lub odtworzeniem tonu.
+- [x] Wyniki rozróżniają stan, ostrzeżenie, błąd i brak danych.
 
-## Funkcje potwierdzone w kodzie źródłowym
-- [x] Jedna strona „Laboratorium podzespołów” dostępna z Centrum Testów oraz ekranów poszczególnych modułów.
-- [x] 13 niezależnych modułów: CPU, RAM, GPU, VRAM, SSD/HDD/NVMe, matryca/EDID, bezpieczeństwo Windows, bateria/zasilanie, sieć, USB, audio, klawiatura/touchpad i kamera.
-- [x] Każdy moduł ma trzy oddzielne akcje: „Skan + live 3D”, „Test/benchmark lub test funkcjonalny” i „Sam symulator 3D”.
-- [x] Profile benchmarków SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s.
-- [x] Test CPU wykonuje obciążenie i zapis próbek; brak czujnika temperatury nie jest zamieniany na fikcyjną wartość.
-- [x] Test RAM wykonuje wzorce zapisu/odczytu i weryfikację SHA-256 w ograniczonym buforze; nie deklaruje sprawdzenia całej pamięci fizycznej.
-- [x] Test dysku mierzy zapis/odczyt unikalnego pliku tymczasowego na wybranym woluminie i usuwa plik po teście.
-- [x] Test GPU udostępnia 46 nazwanych scen OpenGL i raportuje zmierzony FPS, renderer oraz czas.
-- [x] Test VRAM ma oddzielny test wzorców/odczytu zwrotnego; inwentarz VRAM jest skanem, nie benchmarkiem.
-- [x] Sieć ma niezależny pomiar download/upload; bateria, matryca, bezpieczeństwo i peryferia mają testy właściwe dla danego typu modułu.
-- [x] Raporty komponentów rozróżniają stan/ostrzeżenie/brak danych; wizualizacja schematyczna 3D nie jest opisywana jako pomiar FPS.
-- [x] Zachowane są istniejące połączenia Centrum Serwisu/System Repair, Czytnika AI i kanału globalnych aktualizacji w jednej aplikacji.
+## Katalog testów
+- [x] CPU — 7 wpisów: identyfikacja, single-thread, multi-thread, obciążenie, stabilność, czujniki i symulator.
+- [x] RAM — 7 wpisów: skan, bufory 512/1024/2048 MB, przepustowość, dłuższy przebieg i symulator.
+- [x] GPU — 8 wpisów: skan, pojedyncza scena, 3 zestawy 60 scen, telemetria, doradca gier i symulator.
+- [x] VRAM — 6 wpisów: inwentarz, testy 64/128/256 MB, stabilność i symulator.
+- [x] Dyski — 7 wpisów: skan, SMART/reliability, 512 MB/2 GB/4 GB, długi benchmark i symulator.
+- [x] Ekran — 5 wpisów: EDID, tryby, wzorce, RGB/gradienty i symulator.
+- [x] Bezpieczeństwo — 4 wpisy: skan, autostart, diagnostyka systemu i symulator.
+- [x] Bateria — 5 wpisów: skan, monitor 180/600 s, raport powercfg i symulator.
+- [x] Sieć — 5 wpisów: adaptery, DNS/HTTPS, Speed Test, zmienność czasów DNS i symulator.
+- [x] USB — 4 wpisy; audio — 5; klawiatura/touchpad — 4; kamera — 3.
 
-## Do potwierdzenia na komputerze użytkownika
-- [ ] Zainstalować najnowsze wydanie i potwierdzić numer wersji w pasku tytułu.
-- [ ] Uruchomić po jednym skanie CPU, RAM, GPU, VRAM, dysku, matrycy, baterii, sieci, USB, audio, klawiatury, kamery i bezpieczeństwa.
-- [ ] Uruchomić benchmarki obsługiwane przez moduły; zachować logi błędów zamiast oznaczać brak pomiaru jako PASS.
-- [ ] Potwierdzić dostępność temperatur/obrotów/zegarów na konkretnych sterownikach — nie każdy komputer udostępnia wszystkie sensory.
-- [ ] Zweryfikować rekomendacje gier na rzeczywistych benchmarkach konkretnych gier. FPS gry nie jest gwarantowany przez scenę syntetyczną.
+## Budowanie lokalne
+- [ ] Pełny build na komputerze użytkownika z Python x64, .NET 10 i Inno Setup.
+- [ ] Uruchomienie GUI na fizycznym komputerze i potwierdzenie nawigacji.
+- [ ] Osobne uruchomienie skanów i benchmarków na realnym sprzęcie.
+- [ ] Potwierdzenie odczytów CPU/GPU/VRAM/fan/power dla faktycznie dostępnych sterowników.
+- [ ] Weryfikacja instalacji oraz aktualizacji nad istniejącą instalacją.
 
 ## Granice pomiaru
-Schemat 3D dla CPU/RAM/dysku/ekranu/peryferiów jest wizualizacją edukacyjną. Tylko testy wykonujące realną operację i zapisujące próbki (np. sceny GPU, RAM, plikowy benchmark dysku, Speed Test) mogą dostarczyć liczbowy wynik benchmarku. Nie jest wykonywany destrukcyjny test sektorów fizycznego dysku ani pełny test całego RAM-u z poziomu procesu Windows.
+- Symulator 3D jest wizualizacją edukacyjną, chyba że uruchomiono odrębny test renderowania.
+- RAM/VRAM testowane z procesu Windows nie obejmują gwarantowanie wszystkich fizycznych komórek.
+- Benchmark dysku korzysta z pliku tymczasowego; nie wykonuje destrukcyjnego testu sektorów.
+- Pusta lista USB/audio/kamery nie dowodzi sprawności fizycznego urządzenia.
+- FPS scen OpenGL nie jest prognozą FPS konkretnej gry.
