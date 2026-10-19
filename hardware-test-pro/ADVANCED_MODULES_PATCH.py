@@ -6264,9 +6264,149 @@ def _u93_selftest_catalog_routing():
 
 AppV43.show_component_lab = _u93_show_lab
 
+
+# v4.3.98 — separate current display modes from EDID and require explicit consent for audio I/O tests.
+_U98_ORIGINAL_DETAIL_STATUS_ONLY = _u93_detail_status_only
+_U98_ORIGINAL_EXECUTE_CATALOG_TEST = _u93_execute_catalog_test
+_U98_ORIGINAL_START_CATALOG_TEST = _u93_start_catalog_test
+
+def _u98_detail_status_only(app, message):
+    text_value = str(message)
+    try:
+        queue_action = getattr(app, "queue_action", None)
+        if callable(queue_action):
+            queue_action(lambda m=text_value: _U98_ORIGINAL_DETAIL_STATUS_ONLY(app, m))
+            return
+    except Exception:
+        pass
+    _U98_ORIGINAL_DETAIL_STATUS_ONLY(app, text_value)
+
+def _u98_execute_catalog_test(app, module, test_id, kind, settings):
+    if kind != "screen_modes":
+        return _U98_ORIGINAL_EXECUTE_CATALOG_TEST(app, module, test_id, kind, settings)
+    if not is_windows():
+        result = {
+            "state": "warn",
+            "message": "Lista trybów monitora wymaga Windows.",
+            "note": "Ten test nie uruchamia skanu EDID jako zamiennika."
+        }
+        _u93_put_result(app, "SCREEN_MODES_DETAIL", result)
+        return result
+
+    script = r"""
+$ErrorActionPreference = 'SilentlyContinue'
+$controllers = @(Get-CimInstance -ClassName Win32_VideoController |
+  Select-Object Name,VideoModeDescription,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate,DriverVersion)
+$monitors = @()
+try {
+  foreach ($monitor in @(Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorListedSupportedSourceModes -ErrorAction Stop)) {
+    $listedModes = @()
+    foreach ($mode in @($monitor.MonitorSourceModes)) {
+      $listedModes += [pscustomobject]@{
+        width = $mode.HorizontalActivePixels
+        height = $mode.VerticalActivePixels
+        horizontal_refresh_hz = $mode.HorizontalRefreshRate
+        vertical_refresh_hz = $mode.VerticalRefreshRate
+        display_flags = $mode.DisplayFlags
+        timing_flags = $mode.TimingFlags
+      }
+    }
+    $monitors += [pscustomobject]@{
+      instance_name = $monitor.InstanceName
+      active = $monitor.Active
+      mode_count = $listedModes.Count
+      modes = $listedModes
+    }
+  }
+} catch { }
+[pscustomobject]@{ controllers = $controllers; monitors = $monitors } | ConvertTo-Json -Compress -Depth 8
+"""
+    try:
+        raw = ps_json(script, default={})
+        if isinstance(raw, list) and len(raw) == 1 and isinstance(raw[0], dict):
+            raw = raw[0]
+        if not isinstance(raw, dict):
+            raw = {}
+        controllers = _v4319_normalize_items(raw.get("controllers", []))
+        monitors = _v4319_normalize_items(raw.get("monitors", []))
+        listed_count = 0
+        normalized_monitors = []
+        for item in monitors:
+            if not isinstance(item, dict):
+                continue
+            modes = _v4319_normalize_items(item.get("modes", []))
+            listed_count += len(modes)
+            normalized_monitors.append({
+                "instance_name": item.get("instance_name", "N/D"),
+                "active": item.get("active", None),
+                "mode_count": int(item.get("mode_count", len(modes)) or len(modes)),
+                "modes": modes
+            })
+        has_current = any(
+            item.get("CurrentHorizontalResolution") or item.get("CurrentVerticalResolution")
+            for item in controllers if isinstance(item, dict)
+        )
+        result = {
+            "state": "good" if has_current or listed_count else "warn",
+            "video_controllers": controllers,
+            "supported_monitors": normalized_monitors,
+            "supported_mode_count": listed_count,
+            "current_modes_available": bool(has_current),
+            "sampled_at": _U66_datetime.now().isoformat(timespec="seconds"),
+            "note": "To odrębny od EDID odczyt bieżących trybów kontrolera i listy trybów udostępnionej przez WMI. Brak listy WMI oznacza N/D."
+        }
+        if not controllers and not normalized_monitors:
+            result["message"] = "Windows nie zwrócił bieżących trybów ani listy obsługiwanych trybów."
+    except Exception as exc:
+        result = {"state":"warn","error":f"{type(exc).__name__}: {exc}",
+                  "note":"Nie wykonano zastępczego testu EDID; brak danych to ostrzeżenie."}
+    _u93_put_result(app, "SCREEN_MODES_DETAIL", result)
+    app.queue_log(f"TRYBY EKRANU: {result.get('supported_mode_count',0)} trybów WMI; "
+                  f"bieżący tryb kontrolera={'dostępny' if result.get('current_modes_available') else 'N/D'}; "
+                  f"stan={result.get('state')}")
+    return result
+
+def _u98_start_catalog_test(app, module, test_id, title, kind):
+    if kind == "audio_mic":
+        if not messagebox.askyesno(
+            "Test mikrofonu — zgoda na próbki",
+            "Przez 5 sekund aplikacja odczyta próbki z domyślnego mikrofonu do pamięci RAM, aby obliczyć poziom RMS/peak. "
+            "Nie zapisze nagrania ani treści mowy do pliku. Rozpocząć?"
+        ):
+            _u93_update_detail(app, test_id, "ANULOWANO", {
+                "state":"warn","message":"Użytkownik anulował test mikrofonu.",
+                "recording_saved":False,"samples_captured":False
+            })
+            return
+    elif kind == "audio_output":
+        if not messagebox.askyesno(
+            "Test głośników — ton 880 Hz",
+            "Aplikacja odtworzy krótki ton 880 Hz przez domyślne urządzenie wyjściowe. Ustaw bezpieczną głośność. Odtworzyć ton?"
+        ):
+            _u93_update_detail(app, test_id, "ANULOWANO", {
+                "state":"warn","message":"Użytkownik anulował odtwarzanie tonu."
+            })
+            return
+    return _U98_ORIGINAL_START_CATALOG_TEST(app, module, test_id, title, kind)
+
+def _u98_selftest_catalog_safety():
+    assert _u93_execute_catalog_test is _u98_execute_catalog_test
+    assert _u93_start_catalog_test is _u98_start_catalog_test
+    assert _u93_detail_status_only is _u98_detail_status_only
+    assert "_U98_ORIGINAL_EXECUTE_CATALOG_TEST" in _u98_execute_catalog_test.__code__.co_names
+    assert "Win32_VideoController" in _u98_execute_catalog_test.__code__.co_consts or "WmiMonitorListedSupportedSourceModes" in _u98_execute_catalog_test.__code__.co_consts
+    assert "audio_mic" in _u98_start_catalog_test.__code__.co_consts
+    assert "audio_output" in _u98_start_catalog_test.__code__.co_consts
+    print("CATALOG_MODE_AND_AUDIO_CONSENT_SELFTEST_OK: display mode test is separate from EDID, microphone/speaker tests require confirmation")
+
+_u93_detail_status_only = _u98_detail_status_only
+_u93_execute_catalog_test = _u98_execute_catalog_test
+_u93_start_catalog_test = _u98_start_catalog_test
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u98_selftest_catalog_safety()
         _u93_selftest_catalog_routing()
         _u96_selftest_single_test_screens()
         _u66_selftest_advanced()
