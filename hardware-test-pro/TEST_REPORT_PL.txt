@@ -1,23 +1,38 @@
-RAPORT WALIDACJI ŹRÓDEŁ — WERSJA 4.3.42
-========================================
-Wykonane lokalnie w środowisku testowym:
-[OK] Składnia Python (py_compile).
-[OK] Test CPU — faktyczne jednostki pracy.
-[OK] Test RAM — wszystkie 26 wzorców wygenerowane i sprawdzone; pełny test programowego bufora 64 MB.
-[OK] Test pliku dyskowego w środowisku testowym.
-[OK] Test pomocniczy globalnego aktualizatora — walidacja wersji, URL HTTPS i SHA-256.
-[OK] Integralność ZIP.
+RAPORT TESTÓW WYDANIA — NAPRAWA PC HARDWARE TEST PRO 4.3.94
+==============================================================
 
-NIEPOTWIERDZONE bez Windows i fizycznych urządzeń:
-[NIE WYKONANO] Kompilacja PyInstaller/Inno Setup na Windows.
-[NIE WYKONANO] Test rzeczywistego GPU/VRAM — wymaga sterownika OpenGL i fizycznej karty.
-[NIE WYKONANO] Aktualizacja instalatora na innym komputerze po publicznym opublikowaniu Setup.exe.
-[NIE WYKONANO] Pełny test fizycznych komórek RAM/VRAM, klawiatury, myszki, kamery i audio.
+Weryfikacja online repozytorium i publicznego wydania: 2026-10-19.
 
-Test RAM to bufor aplikacji; test VRAM to round-trip tekstur OpenGL, a nie pełne badanie każdej komórki.
-Manifest globalny jest dostępny, lecz aktualizacja wymaga opublikowanego przez właściciela instalatora.
+POTWIERDZONE W GITHUB ACTIONS
+Workflow: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39234258125
+Commit: f7b6fe44c413dcbfbe45b534a1fbbaba79d3b1fb
+[OK] Środowisko Windows x64 + Python.
+[OK] Publikacja Hardware Sensor Bridge .NET jako samodzielnego EXE.
+[OK] Odtworzenie źródła i grafiki z fragmentów Base64.
+[OK] Skrypt przygotowania wersji i integracja patcha modułów zaawansowanych.
+[OK] Instalacja zależności Python.
+[OK] Krok składni i wbudowanych testów zakończony statusem sukcesu.
+[OK] Budowa głównego EXE przez PyInstaller.
+[OK] Instalacja Inno Setup.
+[OK] Kompilacja i weryfikacja Setup.exe.
+[OK] Publikacja assetów wydania 4.3.94.
+[OK] Publikacja manifestu aktualizacji po poprawnym wydaniu.
 
-WERSJA 4.3.42 — POPRAWKA UAC AKTUALIZATORA
-----------------------------------------
-Nowa ścieżka uruchomienia instalatora korzysta z Windows ShellExecuteW z czasownikiem runas,
-a nie z subprocess.Popen/CreateProcess. Dodano test regresyjny kodów błędu ShellExecute.
+AKTUALNE ASSETY ONLINE
+Setup: NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.94.exe
+Rozmiar: 141510802 bajtów
+SHA-256: 13e562ae6229adac39e5eb7a9f4361fb2c87b09624d1b0c249516820ac1d6e15
+ALL-IN-ONE: NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.94.zip
+Rozmiar: 283567569 bajtów
+SHA-256: d55b8de6d0f2ad608e9792b821a4a13fb4622f5fc25dfa4a43cf98459af67122
+Manifest: updates/hardware-test-pro/latest.json wskazuje stable 4.3.94.
+
+OGRANICZENIA — NIE NALEŻY ICH UKRYWAĆ
+- Sukces GitHub Actions potwierdza kroki CI/builda. Nie jest dowodem, że wszystkie fizyczne czujniki działają na każdym komputerze.
+- Temperatury, moc, zegary, wentylatory, VRAM i wykorzystanie GPU zależą od sterowników, Sensor Bridge i sprzętu; brak odczytu musi pozostać N/D.
+- Testy bufora RAM i VRAM nie gwarantują sprawdzenia każdej fizycznej komórki pamięci.
+- Testy klawiatury, touchpada, audio, kamery, matrycy i baterii mogą wymagać fizycznego urządzenia albo interakcji operatora.
+- Speed Test wykorzystuje rzeczywisty transfer danych i może być ograniczony przez sieć lub endpointy.
+
+KOREKTA DOKUMENTACJI
+Poprzedni README zawierał nagłówek 4.3.44, a wcześniejszy raport 4.3.42. Te numery nie opisują aktualnego publicznego instalatora. Raport rozdziela wynik automatycznego builda od sprzętowych testów, których nie przeprowadzono na komputerze użytkownika.
