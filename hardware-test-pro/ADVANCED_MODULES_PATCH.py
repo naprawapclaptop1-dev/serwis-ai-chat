@@ -5676,8 +5676,11 @@ def _u96_selftest_single_test_screens():
     assert "show_live_monitor" not in names
     constants = tuple(str(x) for x in _u69_attach_workbench.__code__.co_consts)
     assert not any("SPEED TEST INTERNETU" in x or "MONITOR LIVE" in x or "WSZYSTKIE TESTY" in x for x in constants)
-    sim_consts = tuple(str(x) for x in _u69_open_component_simulator.__code__.co_consts)
-    assert "SIEĆ" in sim_consts and "SPEED TEST DOWNLOAD / UPLOAD" in sim_consts
+    # Network test action belongs to the network-specific workbench, not to unrelated component pages.
+    assert callable(_u69_open_component_simulator)
+    assert callable(AppV43.show_speed_test)
+    simple_consts = tuple(str(x) for x in _u88_attach_simple_workbench.__code__.co_consts)
+    assert "SPEED TEST DOWNLOAD / UPLOAD" in simple_consts
     assert _U91_ORIGINAL_SELECTED_RUNNER is _u96_run_selected_diagnostic_single_screen
     assert "_U91_ORIGINAL_SELECTED_RUNNER" in _u94_selected_runner_safe.__code__.co_names
     assert "_U94_ORIGINAL_SELECTED_RUNNER" not in _u94_selected_runner_safe.__code__.co_names
