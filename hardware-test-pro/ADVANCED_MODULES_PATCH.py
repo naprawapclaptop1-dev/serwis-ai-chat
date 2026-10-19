@@ -3152,7 +3152,7 @@ def _u66_selftest_advanced():
     _u76_selftest_workbenches()
     _u78_selftest_component_lab()
     _u80_selftest_sound_hooks()
-    assert AppV43.show_component_lab is _u78_show_component_lab, "ADVANCED self-test check 19: AppV43.show_component_lab is _u78_show_component_lab"
+    assert AppV43.show_component_lab is _u93_show_lab, "ADVANCED self-test check 19: final component catalog must be wired"
     assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench, _u88_show_module_with_independent_tests), "ADVANCED self-test check 20: AppV43.show_module is a supported final view wrapper"
     assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench, _u88_show_simple_module_with_independent_tests), "ADVANCED self-test check 21: AppV43.show_simple_module is a supported final view wrapper"
     assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60"
@@ -5686,9 +5686,576 @@ def _u96_selftest_single_test_screens():
     assert "_U94_ORIGINAL_SELECTED_RUNNER" not in _u94_selected_runner_safe.__code__.co_names
     print("SINGLE_COMPONENT_TEST_SCREENS_SELFTEST_OK: selected runner uses isolated wrapper; no stacked/global test panels")
 
+
+# v4.3.97 — make the per-test catalog executable, with an isolated screen and real result per test.
+_U93_SUPPORTED_TEST_KINDS = {
+ "cpu_scan","cpu_single","cpu_multi","cpu_load60","cpu_load300","cpu_sensor","sim",
+ "ram_scan","ram_pattern","ram_bw","ram_bw_max","gpu_scan","gpu_scene","gpu_suite10",
+ "gpu_suite30","gpu_suite60","gpu_sensor","games","vram_scan","vram_test","vram_max",
+ "disk_scan","disk_smart","disk_bench","disk_bench_max","disk_bench_long","screen_edid",
+ "screen_modes","screen_patterns","security_scan","security_startup","security_system",
+ "battery_scan","battery_monitor","battery_max","battery_report","network_scan",
+ "network_dns","network_speed","network_jitter","usb_scan","usb_errors","peripheral_usb",
+ "audio_scan","audio_mic","audio_output","peripheral_audio","keyboard_scan",
+ "keyboard_input","peripheral_keyboard","camera_scan","camera_preview"
+}
+
+def _u93_put_result(app,key,result):
+    if not isinstance(result,dict):
+        result={"state":"warn","message":"Procedura nie zwróciła raportu.","value":str(result)}
+    result.setdefault("sampled_at",_U66_datetime.now().isoformat(timespec="seconds"))
+    try: app.results[str(key)]=result
+    except Exception: pass
+    try: app.queue_results(str(key),result)
+    except Exception: pass
+    return result
+
+def _u93_existing_result(app,keys):
+    data=getattr(app,"results",{}) or {}
+    for key in keys:
+        value=data.get(key)
+        if isinstance(value,dict) and value:return value
+    return {}
+
+def _u93_detail_status_only(app,message):
+    try:
+        label=getattr(app,"_u93_detail_status",None)
+        if label is not None and label.winfo_exists():
+            label.config(text=str(message),fg=app.colors()["warn"])
+    except Exception: pass
+
+def _u93_update_detail(app,test_id,status,result=None):
+    def apply():
+        if getattr(app,"current_view","")!="COMPONENT_TEST_DETAIL_"+str(test_id):return
+        label=getattr(app,"_u93_detail_status",None)
+        try:
+            if label is not None and label.winfo_exists():
+                word=str(status).upper()
+                color=app.colors()["good"] if word in ("GOOD","GOTOWE","WYKRYTO") else app.colors()["bad"] if word in ("ERROR","BŁĄD","FAIL") else app.colors()["warn"]
+                label.config(text=str(status),fg=color)
+        except Exception:pass
+        box=getattr(app,"_u93_detail_report",None)
+        try:
+            if box is not None and box.winfo_exists():
+                box.configure(state="normal");box.delete("1.0","end")
+                body=_u66_json.dumps(result,ensure_ascii=False,indent=2,default=str) if isinstance(result,dict) else str(result or "Brak raportu.")
+                box.insert("1.0",body[:24000]);box.configure(state="disabled")
+        except Exception:pass
+    try:app.queue_action(apply)
+    except Exception:
+        try:apply()
+        except Exception:pass
+
+def _u93_cpu_hash_benchmark(app,multi,seconds):
+    import hashlib as _h
+    import threading as _th
+    import time as _tm
+    seconds=max(5,min(300,int(seconds)));workers=min(32,max(1,os.cpu_count() or 1)) if multi else 1
+    payload=(b"NAPRAWA-PC-HARDWARE-TEST-PRO-CPU-BENCHMARK-"*32768)[:1024*1024]
+    counts=[0]*workers;byte_counts=[0]*workers;halt=_th.Event();started=_tm.perf_counter();deadline=started+seconds
+    def work(i):
+        while not halt.is_set() and _tm.perf_counter()<deadline:
+            if bool(getattr(app,"stop_requested",False)):
+                halt.set();break
+            try:
+                if app._test_should_stop():halt.set();break
+            except Exception:pass
+            _h.sha256(payload).digest();counts[i]+=1;byte_counts[i]+=len(payload)
+    threads=[_th.Thread(target=work,args=(i,),daemon=True,name=f"NPC-CPU-HASH-{i+1}") for i in range(workers)]
+    for th in threads:th.start()
+    last=0
+    while any(th.is_alive() for th in threads):
+        now=_tm.perf_counter()
+        if bool(getattr(app,"stop_requested",False)):halt.set()
+        try:
+            if app._test_should_stop():halt.set()
+        except Exception:pass
+        if now-last>=1:
+            _u93_detail_status_only(app,f"CPU SHA-256: {sum(counts):,} operacji • {now-started:.0f}/{seconds} s");last=now
+        for th in threads:th.join(.05)
+    elapsed=max(.001,_tm.perf_counter()-started);ops=sum(counts);total_bytes=sum(byte_counts)
+    result={"state":"good" if ops else "warn","benchmark":"software SHA-256 throughput; not a physical silicon pass/fail test",
+      "mode":"multi-thread" if multi else "single-thread","workers":workers,"logical_processors":os.cpu_count(),
+      "duration_seconds":round(elapsed,2),"operations":ops,"operations_per_second":round(ops/elapsed,2),
+      "processed_mib":round(total_bytes/1024/1024,2),"throughput_mib_s":round(total_bytes/elapsed/1024/1024,2),
+      "cancelled":bool(getattr(app,"stop_requested",False))}
+    _u93_put_result(app,"CPU_HASH_BENCHMARK",result)
+    app.queue_log(f"CPU HASH: {result['operations_per_second']} SHA-256/s, {workers} worker(s)")
+    return result
+
+def _u93_persist_result(app,module,test_id,title,result,elapsed):
+    report=dict(result or {});report.setdefault("state","warn")
+    report.update({"module":str(module),"test_id":str(test_id),"title":str(title),
+      "elapsed_seconds":round(float(elapsed),2),"finished_at":_U66_datetime.now().isoformat(timespec="seconds")})
+    try:
+        folder=_u66_store_dir()/"reports"/"component-tests";folder.mkdir(parents=True,exist_ok=True)
+        stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+        target=folder/f"{test_id}-{stamp}.json"
+        target.write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+        report["report_path"]=str(target)
+    except Exception as exc:report["report_save_warning"]=f"{type(exc).__name__}: {exc}"
+    return report
+
+def _u93_execute_catalog_test(app,module,test_id,kind,settings):
+    import time as _tm
+    import socket as _sock
+    import urllib.request as _urlreq
+    import statistics as _stats
+    seconds=max(5,min(900,int(settings.get("duration",60) or 60)))
+    result={};keys=[]
+    if kind=="cpu_scan":
+        vm=psutil.virtual_memory() if psutil else None;cpu=getattr(app,"cpu",None) or get_cpu_info() or {}
+        result={"state":"good" if cpu else "warn","cpu":cpu,"logical_processors":os.cpu_count(),
+          "physical_cores":cpu.get("NumberOfCores","N/D"),"ram_total_bytes":vm.total if vm else None}
+        keys=["COMPONENT_SCAN_CPU"]
+    elif kind in ("cpu_single","cpu_multi"):
+        return _u93_cpu_hash_benchmark(app,kind=="cpu_multi",seconds)
+    elif kind in ("cpu_load60","cpu_load300"):
+        _u93_remove_old_results(app,["CPU"]);app._cpu_test(seconds)
+        result=_u93_existing_result(app,["CPU"]) or {"state":"warn","message":"Test CPU nie zwrócił raportu."};keys=["CPU"]
+    elif kind=="cpu_sensor":
+        values={}
+        try:
+            if psutil:
+                values["cpu_load_percent"]=psutil.cpu_percent(interval=.5)
+                freq=psutil.cpu_freq();values["cpu_clock_mhz"]=round(freq.current,1) if freq and freq.current else None
+                temps=psutil.sensors_temperatures() or {};candidates=[]
+                for src,items in temps.items():
+                    for item in items or []:
+                        lab=str(getattr(item,"label","") or src).lower()
+                        if any(k in lab for k in ("cpu","package","tctl","tdie","core")) and getattr(item,"current",None) is not None:
+                            candidates.append({"source":src,"label":getattr(item,"label",""),"temperature_c":item.current})
+                values["temperature_candidates"]=candidates
+        except Exception as exc:values["read_error"]=f"{type(exc).__name__}: {exc}"
+        has=any(values.get(k) is not None for k in ("cpu_load_percent","cpu_clock_mhz")) or bool(values.get("temperature_candidates"))
+        result={"state":"good" if has else "warn",**values,"cpu_power_w":"N/D","cpu_voltage_v":"N/D",
+          "note":"Brak czujnika nie jest zastępowany wartością szacowaną."};keys=["CPU_SENSOR_DETAIL"]
+    elif kind=="ram_scan":
+        vm=psutil.virtual_memory() if psutil else None
+        result={"state":"good" if vm else "warn","total_bytes":vm.total if vm else None,
+          "available_bytes":vm.available if vm else None,"used_bytes":vm.used if vm else None,
+          "used_percent":vm.percent if vm else None,"note":"Skan użycia RAM, nie test komórek pamięci."}
+        keys=["COMPONENT_SCAN_RAM"]
+    elif kind in ("ram_pattern","ram_bw","ram_bw_max"):
+        mb=int(settings.get("memory_mb",512) or 512)
+        if test_id=="ram_512":mb=512
+        elif test_id=="ram_1024":mb=1024
+        elif test_id=="ram_2048":mb=2048
+        result=_u69_ram_throughput_benchmark(app,mb,seconds);keys=["RAM_BENCHMARK"]
+    elif kind=="gpu_scan":
+        _u93_remove_old_results(app,["GPU","GPU_WINSAT"]);app._gpu_test()
+        result=_u93_existing_result(app,["GPU","GPU_WINSAT"]) or {"state":"warn","message":"Skan GPU nie zwrócił raportu."};keys=["GPU","GPU_WINSAT"]
+    elif kind=="gpu_scene":
+        scene=max(1,min(len(_U66_SCENES),int(settings.get("scene_id",1) or 1)))
+        result=_u66_execute_gpu_scene(app,scene,max(3,min(60,int(settings.get("gpu_seconds",10) or 10))))
+        keys=["3D_SCENE_"+str(scene)]
+    elif kind in ("gpu_suite10","gpu_suite30","gpu_suite60"):
+        result=_u88_run_3d_suite(app,{"gpu_suite10":10,"gpu_suite30":30,"gpu_suite60":60}[kind]);keys=["3D_SUITE"]
+    elif kind=="gpu_sensor":
+        tele=getattr(app,"_u84_gpu_last_telemetry",{}) or {};cache=getattr(app,"_u66_sensor_cache",{}) or {};temps=cache.get("temps",{}) if isinstance(cache,dict) else {}
+        fields={"gpu_load_percent":tele.get("gpu_load_percent",tele.get("load_percent")),
+          "temperature_c":tele.get("temperature_c",temps.get("gpu_temp_c") if isinstance(temps,dict) else None),
+          "vram_used_mb":tele.get("vram_used_mb"),"vram_total_mb":tele.get("vram_total_mb"),
+          "gpu_clock_mhz":tele.get("gpu_clock_mhz"),"memory_clock_mhz":tele.get("memory_clock_mhz"),
+          "power_draw_w":tele.get("power_draw_w",tele.get("power_w")),"fan_speed_rpm":tele.get("fan_speed_rpm")}
+        result={"state":"good" if any(v is not None for v in fields.values()) else "warn",
+          "gpu":(primary_gpu(get_gpu_info()) or {}).get("Name","N/D"),**fields,
+          "note":"Migawka czujników faktycznie dostępnych przez sterownik/bridge."};keys=["GPU_SENSOR_DETAIL"]
+    elif kind=="vram_scan":
+        gpus=get_gpu_info();main=primary_gpu(gpus) if gpus else {}
+        result={"state":"good" if main else "warn","gpu":main,"vram_inventory":_u41_vram_inventory_text(main) if main else "N/D",
+          "note":"Inwentarz, nie test fizycznych komórek VRAM."};keys=["COMPONENT_SCAN_VRAM"]
+    elif kind in ("vram_test","vram_max"):
+        mb=int(settings.get("memory_mb",64) or 64)
+        if test_id=="vram_64":mb=64
+        elif test_id=="vram_128":mb=128
+        elif test_id=="vram_256":mb=256
+        dur=300 if kind=="vram_max" else max(15,seconds)
+        result=_u90_run_vram_profile_worker(app,mb,dur,False) or _u93_existing_result(app,["VRAM_TEST"])
+        if not result:result={"state":"warn","message":"Test VRAM nie zwrócił raportu."}
+        keys=["VRAM_TEST"]
+    elif kind in ("disk_scan","disk_smart","disk_bench","disk_bench_max","disk_bench_long"):
+        drives=_u69_drive_options(app);drive=str(settings.get("drive") or "")
+        if drive not in drives and drives:drive=drives[0]
+        if hasattr(app,"_u69_disk_drive_var"):app._u69_disk_drive_var.set(drive)
+        if kind in ("disk_scan","disk_smart"):
+            result=_u76_disk_scan_selected_volume(app)
+            if kind=="disk_smart":
+                reliability=result.get("reliability") or []
+                result={"state":"good" if reliability else "warn","target_volume":result.get("target_volume"),
+                  "reliability":reliability,"physical_devices":result.get("devices",[]),
+                  "note":"Brak rekordów SMART/reliability oznacza N/D, nie PASS."}
+                keys=["DISK_SMART_DETAIL"]
+            else:keys=["COMPONENT_SCAN_DYSK"]
+        else:
+            mb=int(settings.get("memory_mb",512) or 512)
+            if test_id=="disk_512":mb=512
+            elif test_id=="disk_2048":mb=2048
+            elif test_id=="disk_4096":mb=4096
+            duration=180 if kind=="disk_bench_long" else seconds
+            result=_u69_disk_throughput_benchmark(app,mb,duration)
+            keys=["DISK_BENCHMARK"]
+    elif kind in ("screen_edid","screen_modes"):
+        _u93_remove_old_results(app,["EKRAN"]);app._monitor_test()
+        result=_u93_existing_result(app,["EKRAN"]) or {"state":"warn","message":"Moduł monitora nie zwrócił raportu."};keys=["EKRAN"]
+    elif kind in ("security_scan","security_system"):
+        _u93_remove_old_results(app,["SECURITY"]);app._security_test()
+        result=_u93_existing_result(app,["SECURITY"]) or {"state":"warn","message":"Moduł bezpieczeństwa nie zwrócił raportu."}
+        if kind=="security_system":result["note"]="Skan diagnostyczny; nie uruchomiono napraw automatycznych."
+        keys=["SECURITY"]
+    elif kind=="security_startup":
+        if not is_windows():result={"state":"warn","message":"Audyt autostartu wymaga Windows."}
+        else:
+            rows=_v4319_normalize_items(ps_json("Get-CimInstance Win32_StartupCommand -ErrorAction SilentlyContinue | Select-Object Name,Command,Location,User | ConvertTo-Json -Compress",default=[]))
+            result={"state":"good" if rows else "warn","entries":rows,"count":len(rows),"note":"Odczyt autostartu; wpisy nie są zmieniane."}
+        keys=["SECURITY_STARTUP_DETAIL"]
+    elif kind=="battery_scan":
+        _u93_remove_old_results(app,["BATERIA"]);app._battery_test()
+        result=_u93_existing_result(app,["BATERIA"]) or {"state":"warn","message":"Kontroler baterii nie zwrócił raportu."};keys=["BATERIA"]
+    elif kind in ("battery_monitor","battery_max"):
+        result=_u69_battery_monitor(app,600 if kind=="battery_max" else max(15,seconds)) or _u93_existing_result(app,["BATTERY_BENCHMARK"])
+        if not result:result={"state":"warn","message":"Monitor baterii nie zwrócił raportu."}
+        keys=["BATTERY_BENCHMARK"]
+    elif kind=="battery_report":
+        if not is_windows():result={"state":"warn","message":"Raport powercfg wymaga Windows."}
+        else:
+            folder=_u66_store_dir()/"reports"/"battery";folder.mkdir(parents=True,exist_ok=True)
+            target=folder/("batteryreport-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".html")
+            proc=_u66_subprocess.run(["powercfg","/batteryreport","/output",str(target)],capture_output=True,text=True,timeout=45)
+            result={"state":"good" if proc.returncode==0 and target.is_file() else "warn","returncode":proc.returncode,
+              "report_path":str(target) if target.is_file() else None,"stderr":(proc.stderr or "")[-2000:]}
+        keys=["BATTERY_REPORT_DETAIL"]
+    elif kind=="network_scan":
+        rows=[]
+        if psutil:
+            try:
+                stats=psutil.net_if_stats();addrs=psutil.net_if_addrs()
+                rows=[{"name":name,"is_up":bool(st.isup),"speed_mbps":getattr(st,"speed",None),
+                  "addresses":[{"family":str(a.family),"address":a.address} for a in addrs.get(name,[])]}
+                  for name,st in stats.items()]
+            except Exception as exc:result={"state":"warn","error":f"{type(exc).__name__}: {exc}"}
+        if rows:result={"state":"good","interfaces":rows,"count":len(rows)}
+        elif not result:result={"state":"warn","interfaces":[],"count":0,"message":"Brak danych kart sieciowych."}
+        keys=["NETWORK_SCAN_DETAIL"]
+    elif kind=="network_dns":
+        t0=_tm.perf_counter();resolved=_sock.getaddrinfo("speed.cloudflare.com",443,type=_sock.SOCK_STREAM);dns_ms=(_tm.perf_counter()-t0)*1000
+        t0=_tm.perf_counter();req=_urlreq.Request("https://www.cloudflare.com/cdn-cgi/trace",headers={"User-Agent":"NAPRAWA-PC-HARDWARE-TEST-PRO"})
+        with _urlreq.urlopen(req,timeout=12) as response:code=int(response.status);sample=len(response.read(1024))
+        result={"state":"good" if code==200 else "warn","addresses":sorted({x[4][0] for x in resolved}),
+          "dns_resolve_ms":round(dns_ms,2),"https_status":code,"https_total_ms":round((_tm.perf_counter()-t0)*1000,2),
+          "sample_bytes":sample,"endpoint":"https://www.cloudflare.com/cdn-cgi/trace"};keys=["NETWORK_DNS_DETAIL"]
+    elif kind=="network_speed":
+        result=_u66_measure_speed(app) or {"state":"warn","message":"Speed Test nie zwrócił raportu."};keys=["SPEED_TEST"]
+    elif kind=="network_jitter":
+        samples=[]
+        for i in range(12):
+            if bool(getattr(app,"stop_requested",False)):break
+            t0=_tm.perf_counter();_sock.getaddrinfo("speed.cloudflare.com",443,type=_sock.SOCK_STREAM)
+            samples.append(round((_tm.perf_counter()-t0)*1000,2))
+            _u93_detail_status_only(app,f"Próbka DNS {len(samples)}/12 • {samples[-1]:.2f} ms");_tm.sleep(.25)
+        deltas=[abs(samples[i]-samples[i-1]) for i in range(1,len(samples))]
+        result={"state":"good" if len(samples)>=8 else "warn","samples_ms":samples,
+          "minimum_ms":min(samples) if samples else None,"median_ms":round(_stats.median(samples),2) if samples else None,
+          "maximum_ms":max(samples) if samples else None,
+          "dns_jitter_mean_abs_delta_ms":round(sum(deltas)/len(deltas),2) if deltas else None,
+          "note":"Zmienność czasu DNS/resolve; nie jest to RTT ICMP ani jitter pakietowy."};keys=["NETWORK_JITTER_DETAIL"]
+    elif kind in ("usb_scan","usb_errors"):
+        if not is_windows():result={"state":"warn","message":"Skan PnP USB wymaga Windows."}
+        else:
+            rows=_v4319_normalize_items(ps_json("Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Class -eq 'USB' -or $_.InstanceId -like 'USB*' } | Select-Object Class,FriendlyName,Status,InstanceId | ConvertTo-Json -Compress",default=[]))
+            if kind=="usb_errors":
+                bad=[x for x in rows if str(x.get("Status","")).upper() not in ("OK","UNKNOWN")]
+                result={"state":"warn" if bad else ("good" if rows else "warn"),"items":bad,"count":len(bad),"devices_checked":len(rows),
+                  "note":"Pusta lista błędów nie dowodzi działania fizycznego portu."}
+            else:result={"state":"good" if rows else "warn","items":rows,"count":len(rows)}
+        keys=["USB_SCAN_DETAIL" if kind=="usb_scan" else "USB_ERRORS_DETAIL"]
+    elif kind=="peripheral_usb":
+        _u93_remove_old_results(app,["USB"]);app._peripheral_test("USB")
+        result=_u93_existing_result(app,["USB"]) or {"state":"warn","message":"Test USB nie zwrócił raportu."};keys=["USB"]
+    elif kind=="audio_scan":
+        devices=[];err=None
+        try:
+            import sounddevice as _sd
+            devices=[{"index":i,"name":str(d.get("name","N/D")),"max_input_channels":int(d.get("max_input_channels",0)),
+              "max_output_channels":int(d.get("max_output_channels",0)),"default_samplerate":float(d.get("default_samplerate",0) or 0)}
+              for i,d in enumerate(_sd.query_devices())]
+        except Exception as exc:err=f"{type(exc).__name__}: {exc}"
+        result={"state":"good" if devices else "warn","devices":devices,"count":len(devices),"device_query_error":err,
+          "note":"Lista urządzeń; samo wykrycie nie potwierdza słyszalności ani jakości."};keys=["AUDIO_SCAN_DETAIL"]
+    elif kind=="audio_mic":
+        import numpy as _np
+        import sounddevice as _sd
+        dev=_sd.query_devices(kind="input");rate=int(float(dev.get("default_samplerate",44100) or 44100))
+        _u93_detail_status_only(app,"Mikrofon: próbki 5 s w pamięci procesu, bez zapisu pliku…")
+        data=_sd.rec(int(rate*5),samplerate=rate,channels=1,dtype="float32");_sd.wait()
+        rms=float(_np.sqrt(_np.mean(_np.square(data.astype(_np.float64)))));peak=float(_np.max(_np.abs(data)))
+        result={"state":"good" if peak>0 else "warn","samplerate_hz":rate,"sample_seconds":5,"rms":rms,
+          "rms_dbfs":round(20*_U66_math.log10(max(rms,1e-12)),2),"peak":peak,"frames":int(len(data)),
+          "recording_saved":False};keys=["AUDIO_MIC_DETAIL"]
+    elif kind=="audio_output":
+        import numpy as _np
+        import sounddevice as _sd
+        dev=_sd.query_devices(kind="output");rate=int(float(dev.get("default_samplerate",44100) or 44100));duration=1.5
+        x=_np.arange(int(rate*duration),dtype=_np.float64)/rate
+        tone=(.12*_np.sin(2*_U66_math.pi*880*x)).astype("float32");_sd.play(tone,rate);_sd.wait()
+        result={"state":"good","frequency_hz":880,"duration_seconds":duration,"amplitude":.12,"samplerate_hz":rate,
+          "output_device":str(dev.get("name","N/D")),"note":"Program odtworzył ton; słyszalność musi potwierdzić operator."};keys=["AUDIO_OUTPUT_DETAIL"]
+    elif kind=="peripheral_audio":
+        _u93_remove_old_results(app,["AUDIO"]);app._peripheral_test("AUDIO")
+        result=_u93_existing_result(app,["AUDIO"]) or {"state":"warn","message":"Test audio nie zwrócił raportu."};keys=["AUDIO"]
+    elif kind=="keyboard_scan":
+        if not is_windows():result={"state":"warn","message":"Inwentarz PnP klawiatur wymaga Windows."}
+        else:
+            rows=_v4319_normalize_items(ps_json("Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Class -in @('Keyboard','Mouse') } | Select-Object Class,FriendlyName,Status,InstanceId | ConvertTo-Json -Compress",default=[]))
+            result={"state":"good" if rows else "warn","devices":rows,"count":len(rows),
+              "note":"Skan inwentarza; nie testuje mechanicznego działania klawiszy."}
+        keys=["KEYBOARD_SCAN_DETAIL"]
+    elif kind=="peripheral_keyboard":
+        _u93_remove_old_results(app,["INPUTS","KLAWIATURA"]);app._peripheral_test("KLAWIATURA")
+        result=_u93_existing_result(app,["INPUTS","KLAWIATURA"]) or {"state":"warn","message":"Test urządzeń wejścia nie zwrócił raportu."};keys=["INPUTS","KLAWIATURA"]
+    elif kind=="camera_scan":
+        result=_u69_camera_scan(app) or {"state":"warn","message":"Skan kamery nie zwrócił raportu."};keys=["CAMERA"]
+    else:
+        result={"state":"warn","message":"Brak obsługiwanego testu dla wybranego rodzaju.","kind":str(kind),"test_id":str(test_id)}
+        keys=[]
+    if keys:
+        existing=_u93_existing_result(app,keys)
+        if existing and (not result or len(result)<len(existing)):result=existing
+        result.setdefault("state","warn");_u93_put_result(app,keys[0],result)
+    return result
+
+def _u93_finish_test_worker(app,module,test_id,title,kind,settings):
+    import time as _tm
+    start=_tm.monotonic()
+    try:result=_u93_execute_catalog_test(app,module,test_id,kind,settings)
+    except Exception as exc:
+        result={"state":"error","error":f"{type(exc).__name__}: {exc}","module":module,"test_id":test_id,
+          "note":"Test przerwany; brak wyniku nie jest PASS."}
+        app.queue_log(f"TEST KATALOGU {test_id}: {result['error']}")
+    if not isinstance(result,dict):result={"state":"warn","message":"Procedura zakończyła się bez raportu."}
+    report=_u93_persist_result(app,module,test_id,title,result,_tm.monotonic()-start)
+    _u93_put_result(app,"COMPONENT_CATALOG_"+str(test_id),report)
+    _u93_update_detail(app,test_id,str(report.get("state","warn")).upper(),report)
+    app.queue_log(f"KATALOG TESTÓW {test_id}: {str(report.get('state','warn')).upper()}")
+    return report
+
+def _u93_start_keyboard_capture(app):
+    if getattr(app,"_u93_keyboard_capture_active",False):return
+    app._u93_keyboard_capture_active=True;app._u93_keyboard_count=0;app._u93_keyboard_started=_u66_time.monotonic()
+    _u93_detail_status_only(app,"Naciśnij testowane klawisze. Zapisywana jest tylko liczba naciśnięć — nie znaki ani tekst.")
+    try:app.content.configure(takefocus=1);app.content.focus_set()
+    except Exception:pass
+    def on_key(event):
+        if not getattr(app,"_u93_keyboard_capture_active",False):return None
+        app._u93_keyboard_count=int(getattr(app,"_u93_keyboard_count",0))+1
+        elapsed=max(.01,_u66_time.monotonic()-getattr(app,"_u93_keyboard_started",_u66_time.monotonic()))
+        _u93_detail_status_only(app,f"Naciśnięcia: {app._u93_keyboard_count} • {elapsed:.1f} s • znaki nie są zapisywane")
+        return "break"
+    try:app._u93_keyboard_bind_id=app.bind("<KeyPress>",on_key,add="+")
+    except Exception as exc:
+        app._u93_keyboard_capture_active=False;_u93_update_detail(app,"key_press","ERROR",{"state":"error","error":str(exc)})
+
+def _u93_finish_keyboard_capture(app):
+    app._u93_keyboard_capture_active=False
+    try:
+        bind_id=getattr(app,"_u93_keyboard_bind_id",None)
+        if bind_id:app.unbind("<KeyPress>",bind_id)
+    except Exception:pass
+    elapsed=max(.01,_u66_time.monotonic()-getattr(app,"_u93_keyboard_started",_u66_time.monotonic()))
+    result={"state":"good" if getattr(app,"_u93_keyboard_count",0)>0 else "warn",
+      "press_count":int(getattr(app,"_u93_keyboard_count",0)),"duration_seconds":round(elapsed,2),
+      "keys_or_text_saved":False,"note":"Zliczono naciśnięcia, nie zapisano symboli klawiszy ani treści."}
+    _u93_put_result(app,"KEYBOARD_INPUT_DETAIL",result)
+    report=_u93_persist_result(app,"KLAWIATURA","key_press","Test klawiszy — rejestracja",result,elapsed)
+    _u93_update_detail(app,"key_press",str(report["state"]).upper(),report)
+
+def _u93_start_camera_preview(app):
+    if not messagebox.askyesno("Test kamery — 10 s","Otworzyć obraz z domyślnej kamery na 10 sekund? Obraz nie będzie nagrywany ani zapisany."):return
+    try:
+        import cv2 as _cv2
+        from PIL import Image as _Image,ImageTk as _ImageTk
+        cap=_cv2.VideoCapture(0)
+        if not cap.isOpened():cap.release();raise RuntimeError("Nie udało się otworzyć domyślnej kamery.")
+    except Exception as exc:
+        result={"state":"warn","error":f"{type(exc).__name__}: {exc}","recording_saved":False}
+        _u93_put_result(app,"CAMERA_PREVIEW",result);_u93_update_detail(app,"cam_preview","OSTRZEŻENIE",result);return
+    top=tk.Toplevel(app);top.title("NAPRAWA PC — podgląd kamery bez nagrywania");top.geometry("800x560")
+    frame_label=tk.Label(top,text="Uruchamianie…",bg="#07111f",fg="#ffffff");frame_label.pack(fill="both",expand=True,padx=8,pady=8)
+    info=tk.Label(top,text="Podgląd w RAM • automatyczne zatrzymanie po 10 s",anchor="w");info.pack(fill="x",padx=8,pady=(0,6))
+    start=_u66_time.monotonic();stats={"frames":0,"width":None,"height":None,"closed":False}
+    def stop(show=True):
+        if stats["closed"]:return
+        stats["closed"]=True
+        try:cap.release()
+        except Exception:pass
+        try:
+            if top.winfo_exists():top.destroy()
+        except Exception:pass
+        report={"state":"good" if stats["frames"] else "warn","frames_shown":stats["frames"],
+          "duration_seconds":round(max(.01,_u66_time.monotonic()-start),2),"width":stats["width"],"height":stats["height"],
+          "recording_saved":False,"note":"Obraz nie został nagrany ani zapisany."}
+        _u93_put_result(app,"CAMERA_PREVIEW",report)
+        if show:_u93_update_detail(app,"cam_preview",str(report["state"]).upper(),report)
+    def tick():
+        if stats["closed"] or not top.winfo_exists():stop(False);return
+        if _u66_time.monotonic()-start>=10:stop(True);return
+        try:
+            ok,frame=cap.read()
+            if ok:
+                stats["height"],stats["width"]=frame.shape[:2]
+                photo=_ImageTk.PhotoImage(_Image.fromarray(_cv2.cvtColor(frame,_cv2.COLOR_BGR2RGB)))
+                frame_label.config(image=photo,text="");frame_label.image=photo;stats["frames"]+=1
+                info.config(text=f"Klatki: {stats['frames']} • {stats['width']}×{stats['height']} • bez zapisu")
+        except Exception as exc:info.config(text=f"Błąd podglądu: {type(exc).__name__}: {exc}")
+        top.after(40,tick)
+    top.protocol("WM_DELETE_WINDOW",lambda:stop(True));top.after(50,tick)
+
+def _u93_start_screen_patterns(app,test_id):
+    if not messagebox.askyesno("Test matrycy","Otworzyć pełnoekranowe wzorce? Ocena pikseli wymaga obserwacji operatora; aplikacja nie będzie zgłaszać usterek automatycznie."):return
+    fn=getattr(app,"_u37_open_screen_test",None)
+    if callable(fn):
+        try:fn()
+        except Exception as exc:_u93_update_detail(app,test_id,"OSTRZEŻENIE",{"state":"warn","error":f"{type(exc).__name__}: {exc}"})
+    else:_u93_update_detail(app,test_id,"N/D",{"state":"warn","message":"Brak procedury wzorców matrycy."})
+
+def _u93_show_test_detail(app,module,test_id):
+    module=_u93_norm(module);_,title,description,kind=_u93_find_test(module,test_id)
+    if kind not in _U93_SUPPORTED_TEST_KINDS:
+        messagebox.showerror("Brak procedury",f"Test {test_id} nie ma handlera ({kind}).");return
+    if getattr(app,"_u93_keyboard_capture_active",False):_u93_finish_keyboard_capture(app)
+    app.current_view="COMPONENT_TEST_DETAIL_"+str(test_id);app.clear();t=app.colors()
+    app.header_title.config(text=f"{module} — {title}")
+    hero=app.panel(app.content);hero.pack(fill="x",pady=(0,6))
+    tk.Label(hero,text=title,bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold"),anchor="w").pack(fill="x",padx=10,pady=(8,3))
+    tk.Label(hero,text=description,bg=t["panel"],fg=t["fg"],font=app.fnt(9),wraplength=1400,justify="left",anchor="w").pack(fill="x",padx=10,pady=(0,4))
+    notes={"sim":"SYMULATOR EDUKACYJNY — nie jest wynikiem testu sprzętowego ani pomiarem FPS.",
+      "games":"Rekomendacje są heurystyczne; nie są pomiarem FPS z prawdziwej gry.",
+      "keyboard_input":"Test zlicza naciśnięcia bez zapisywania nazw klawiszy, symboli ani treści.",
+      "audio_mic":"Po potwierdzeniu pobierze 5 sekund próbek do RAM. Nie zapisuje nagrania.",
+      "audio_output":"Po potwierdzeniu odtworzy krótki ton 880 Hz. Ustaw bezpieczny poziom głośności.",
+      "camera_preview":"Po potwierdzeniu pokaże 10 sekund obrazu bez nagrywania."}
+    tk.Label(hero,text=notes.get(kind,"Wynik pochodzi z procedury testowej. Brak czujnika/wyniku to N/D lub OSTRZEŻENIE."),
+      bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left",anchor="w").pack(fill="x",padx=10,pady=(0,8))
+    settings=tk.Frame(app.content,bg=t["bg"]);settings.pack(fill="x",pady=(0,5))
+    tk.Label(settings,text="USTAWIENIA TEGO TESTU",bg=t["bg"],fg=t["accent"],font=app.fnt(9,"bold")).pack(side="left",padx=(2,8))
+    default={"cpu_single":"KRÓTKI — 15 s","cpu_multi":"KRÓTKI — 15 s","cpu_load60":"ŚREDNI — 60 s",
+      "cpu_load300":"ULTRA — 300 s","ram_bw":"ŚREDNI — 60 s","ram_bw_max":"ULTRA — 300 s",
+      "disk_bench_long":"DŁUGI — 180 s","battery_monitor":"DŁUGI — 180 s","battery_max":"MAX — 600 s"}.get(kind,"KRÓTKI — 15 s")
+    app._u68_profile_var=tk.StringVar(value=default);app._u68_profile_value=default
+    if kind in ("cpu_single","cpu_multi","cpu_load60","cpu_load300","ram_pattern","ram_bw","ram_bw_max","vram_test","vram_max",
+      "disk_bench","disk_bench_max","disk_bench_long","battery_monitor","battery_max","network_jitter"):
+        cb=ttk.Combobox(settings,textvariable=app._u68_profile_var,values=tuple(_U68_PROFILE_CHOICES),state="readonly",width=20)
+        cb.pack(side="left",padx=4);cb.bind("<<ComboboxSelected>>",lambda e:setattr(app,"_u68_profile_value",app._u68_profile_var.get()))
+    if kind in ("gpu_scene","gpu_suite10","gpu_suite30","gpu_suite60"):
+        val={"gpu_suite10":10,"gpu_suite30":30,"gpu_suite60":60}.get(kind,10)
+        app._u93_gpu_seconds_var=tk.StringVar(value=f"{val} s")
+        ttk.Combobox(settings,textvariable=app._u93_gpu_seconds_var,values=("5 s","10 s","15 s","30 s","60 s"),state="readonly",width=10).pack(side="left",padx=4)
+    if kind in ("ram_pattern","ram_bw","ram_bw_max"):
+        val={"ram_512":512,"ram_1024":1024,"ram_2048":2048}.get(test_id,512)
+        app._u93_memory_mb_var=tk.StringVar(value=f"{val} MB")
+        ttk.Combobox(settings,textvariable=app._u93_memory_mb_var,values=("128 MB","256 MB","512 MB","1024 MB","1536 MB","2048 MB"),state="readonly",width=12).pack(side="left",padx=4)
+    elif kind in ("vram_test","vram_max"):
+        val={"vram_64":64,"vram_128":128,"vram_256":256}.get(test_id,128)
+        app._u93_memory_mb_var=tk.StringVar(value=f"{val} MB")
+        ttk.Combobox(settings,textvariable=app._u93_memory_mb_var,values=("32 MB","64 MB","128 MB","192 MB","256 MB"),state="readonly",width=12).pack(side="left",padx=4)
+    elif kind in ("disk_bench","disk_bench_max","disk_bench_long","disk_scan","disk_smart"):
+        val={"disk_512":512,"disk_2048":2048,"disk_4096":4096}.get(test_id,512)
+        app._u93_memory_mb_var=tk.StringVar(value=f"{val} MB")
+        ttk.Combobox(settings,textvariable=app._u93_memory_mb_var,values=("128 MB","256 MB","512 MB","1024 MB","2048 MB","4096 MB"),state="readonly",width=12).pack(side="left",padx=4)
+        drives=_u69_drive_options(app);app._u93_drive_var=tk.StringVar(value=drives[0] if drives else "N/D")
+        ttk.Combobox(settings,textvariable=app._u93_drive_var,values=drives or ("N/D",),state="readonly",width=10).pack(side="left",padx=4)
+    if kind=="gpu_scene":
+        names=[f"{i:02d} — {scene[0]}" for i,scene in enumerate(_U66_SCENES,1)]
+        app._u93_scene_var=tk.StringVar(value=names[0])
+        ttk.Combobox(settings,textvariable=app._u93_scene_var,values=names,state="readonly",width=30).pack(side="left",padx=4)
+    box=app.panel(app.content);box.pack(fill="both",expand=True,pady=(0,5))
+    app._u93_detail_status=tk.Label(box,text="GOTOWY — wybrano jeden test.",bg=t["panel"],fg=t["muted"],font=app.fnt(9,"bold"),anchor="w")
+    app._u93_detail_status.pack(fill="x",padx=10,pady=(7,3))
+    app._u93_detail_report=tk.Text(box,height=13,wrap="word",bg=t["card"],fg=t["fg"],insertbackground=t["fg"],
+      relief="flat",font=("Consolas",9),padx=8,pady=6)
+    app._u93_detail_report.pack(fill="both",expand=True,padx=7,pady=(0,7))
+    app._u93_detail_report.insert("1.0","Wynik pojawi się po uruchomieniu. Brak wyniku nie oznacza zaliczenia testu.")
+    app._u93_detail_report.configure(state="disabled")
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=(0,5))
+    if kind=="sim":app.make_button(row,"OTWÓRZ SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+    elif kind=="games":app.make_button(row,"OTWÓRZ DORADCĘ GIER",lambda:_u68_show_games_advisor(app),"accent",side="left",ipady=5)
+    elif kind=="keyboard_input":
+        app.make_button(row,"START REJESTRACJI KLAWISZY",lambda:_u93_start_keyboard_capture(app),"accent",side="left",ipady=5)
+        app.make_button(row,"ZAKOŃCZ I ZAPISZ LICZNIK",lambda:_u93_finish_keyboard_capture(app),"good",side="left",ipady=5)
+    elif kind=="camera_preview":app.make_button(row,"URUCHOM PODGLĄD 10 S",lambda:_u93_start_camera_preview(app),"accent",side="left",ipady=5)
+    elif kind=="screen_patterns":app.make_button(row,"OTWÓRZ TEST WZORCÓW MATRYCY",lambda:_u93_start_screen_patterns(app,test_id),"accent",side="left",ipady=5)
+    else:
+        app.make_button(row,"URUCHOM TEN TEST",lambda:_u93_start_catalog_test(app,module,test_id,title,kind),"accent",side="left",ipady=5)
+        app.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+    if kind not in ("keyboard_input","sim","games","camera_preview","screen_patterns"):
+        app.make_button(row,"STOP TEST",app.stop_current_test,"bad",side="left",ipady=5)
+    nav=tk.Frame(app.content,bg=t["bg"]);nav.pack(fill="x")
+    app.make_button(nav,"← KATALOG TESTÓW",lambda m=module:_u93_show_catalog(app,m),"card",side="left",ipady=4)
+    app.make_button(nav,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=4)
+
+def _u93_start_screen_patterns(app,test_id):
+    if not messagebox.askyesno("Test matrycy","Otworzyć wzorce pełnoekranowe? Ocena pikseli wymaga obserwacji operatora; aplikacja nie zgłosi ich automatycznie."):return
+    fn=getattr(app,"_u37_open_screen_test",None)
+    if callable(fn):
+        try:fn()
+        except Exception as exc:_u93_update_detail(app,test_id,"OSTRZEŻENIE",{"state":"warn","error":f"{type(exc).__name__}: {exc}"})
+    else:_u93_update_detail(app,test_id,"N/D",{"state":"warn","message":"Brak procedury wzorców matrycy."})
+
+def _u93_start_catalog_test(app,module,test_id,title,kind):
+    if getattr(app,"running",False):
+        messagebox.showinfo("Test w toku","Zakończ lub zatrzymaj bieżący test przed uruchomieniem kolejnego.");return
+    try:
+        duration=int(str(app._u93_gpu_seconds_var.get() if kind in ("gpu_scene","gpu_suite10","gpu_suite30","gpu_suite60") else app._u68_profile_var.get()).split()[0])
+    except Exception:duration={"gpu_suite10":10,"gpu_suite30":30,"gpu_suite60":60,"cpu_load60":60,"cpu_load300":300,
+      "ram_bw":60,"ram_bw_max":300,"disk_bench_long":180,"battery_monitor":180,"battery_max":600,"vram_max":300}.get(kind,15)
+    try:app._u68_profile_value=str(app._u68_profile_var.get())
+    except Exception:pass
+    mb=512
+    try:mb=int(str(app._u93_memory_mb_var.get()).split()[0])
+    except Exception:mb=int({"ram_512":512,"ram_1024":1024,"ram_2048":2048,"disk_512":512,"disk_2048":2048,"disk_4096":4096,
+      "vram_64":64,"vram_128":128,"vram_256":256}.get(test_id,512))
+    drive=""
+    try:drive=str(app._u93_drive_var.get())
+    except Exception:pass
+    scene=1
+    try:scene=int(str(app._u93_scene_var.get()).split("—",1)[0].strip())
+    except Exception:pass
+    settings={"duration":duration,"memory_mb":mb,"drive":drive,"scene_id":scene,"gpu_seconds":duration}
+    if kind in ("disk_bench","disk_bench_max") and (mb>=2048 or kind=="disk_bench_max"):
+        if not messagebox.askyesno("Benchmark dysku",f"Zapis/odczyt pliku tymczasowego {mb} MB na {drive}, po teście plik zostanie usunięty. Kontynuować?"):return
+    if kind=="disk_bench_long" and not messagebox.askyesno("Długi benchmark dysku",f"Powtarzany zapis/odczyt przez do {duration} s na {drive}. Kontynuować?"):return
+    if kind in ("ram_pattern","ram_bw","ram_bw_max") and (mb>=1024 or duration>=180):
+        if not messagebox.askyesno("Test RAM",f"Bufor do {mb} MB przez około {duration} s; nie testuje całej fizycznej pamięci. Kontynuować?"):return
+    if kind in ("vram_test","vram_max") and (mb>=128 or duration>=180):
+        if not messagebox.askyesno("Test VRAM",f"Alokacja do {mb} MB przez do {duration} s. Sterownik może ograniczyć pamięć. Kontynuować?"):return
+    if kind in ("gpu_suite10","gpu_suite30","gpu_suite60"):
+        total=len(_U66_SCENES)*duration
+        if not messagebox.askyesno("Benchmark GPU",f"{len(_U66_SCENES)} scen OpenGL po {duration} s. Szacowany czas {total//60} min {total%60} s. Kontynuować?"):return
+    if kind=="network_speed" and not messagebox.askyesno("Speed Test","Test Cloudflare przesyła około 24 MB łącznie. Kontynuować?"):return
+    _u93_update_detail(app,test_id,"TEST W TOKU",{"state":"running","test_id":test_id,"module":module,"settings":settings,
+      "note":"Brak danych nie będzie oznaczony jako PASS."})
+    app.worker(lambda:_u93_finish_test_worker(app,module,test_id,title,kind,settings))
+
+def _u93_selftest_catalog_routing():
+    ids=[];kinds=set()
+    for module,entries in _U93_TEST_CATALOG.items():
+        assert entries,f"Pusty katalog {module}"
+        for test_id,title,description,kind in entries:
+            ids.append(test_id);kinds.add(kind);assert title and description
+    assert len(ids)==70 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
+    assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
+    assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
+    assert AppV43.show_component_lab is _u93_show_lab
+    assert "_u93_show_test_detail" in _u93_scroll_rows.__code__.co_names
+    assert "_u93_start_catalog_test" in _u93_show_test_detail.__code__.co_names
+    print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 70 unique tests, isolated detail screen and real operation dispatcher")
+
+AppV43.show_component_lab = _u93_show_lab
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u93_selftest_catalog_routing()
         _u96_selftest_single_test_screens()
         _u66_selftest_advanced()
         _u86_selftest_component_ui()
