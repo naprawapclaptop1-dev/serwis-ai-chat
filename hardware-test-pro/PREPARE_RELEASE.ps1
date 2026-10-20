@@ -655,6 +655,14 @@ def _u443_skin_dashboard_image(app):
             im=_I.blend(im,_I.new("RGB",im.size,"#101720"),0.18)
         elif style=="aurora":
             im=_I.blend(_IE.Color(im).enhance(1.3),_I.new("RGB",im.size,t.get("accent2","#55d8ff")),0.14)
+        elif style=="glass":
+            im=_I.blend(_IE.Contrast(im).enhance(1.35),_I.new("RGB",im.size,"#9adfff"),0.19)
+        elif style=="wave":
+            im=_I.blend(_IO.colorize(gray,black="#071427",mid=t.get("accent","#1aa7ff"),white="#e7f8ff"),_I.new("RGB",im.size,t.get("accent2","#55d8ff")),0.11)
+        elif style=="blueprint":
+            im=_IO.colorize(gray,black="#06152c",mid="#174775",white="#c3eaff")
+        elif style=="plasma":
+            im=_IO.colorize(gray,black="#10051d",mid="#6f238c",white="#ffd7ff")
         elif style=="angular":
             im=_I.blend(_IE.Contrast(im).enhance(1.18),_I.new("RGB",im.size,t.get("accent","#1aa7ff")),0.13)
         else:
@@ -665,14 +673,45 @@ def _u443_skin_dashboard_image(app):
         accent=tuple(int(t.get("accent","#1aa7ff").lstrip("#")[i:i+2],16) for i in (0,2,4))
         accent2=tuple(int(t.get("accent2","#55d8ff").lstrip("#")[i:i+2],16) for i in (0,2,4))
         boxes=[(263,78,963,219),(972,78,1567,219),(263,221,1567,290),(257,386,831,539),(836,386,1567,539),(255,661,666,911),(671,661,1237,911),(1242,661,1567,911)]
-        sid=int(t.get("_skin_id",0))
+        sid=int(t.get("_skin_id",0)); shape=t.get("_skin_shape","rounded")
+        texture=t.get("_skin_texture","grid"); layout=t.get("_skin_layout","sidebar")
+        seed=int(t.get("_skin_visual_seed",sid)); step=max(14,int(t.get("_skin_spacing",8))*4)
+        bg_alpha=max(8,min(52,int(t.get("_skin_background_alpha",24))))
         for idx,box in enumerate(boxes):
             x0,y0,x1,y1=box
-            if style=="angular":
-                cut=12
-                points=[x0+cut,y0,x1-cut,y0,x1,y0+cut,x1,y1-cut,x1-cut,y1,x0+cut,y1,x0,y1-cut,x0,y0+cut]
-                d.line(points+[points[0]],fill=(*accent2,235),width=3 if sid%4==2 else 2,joint="curve")
-                for xx,yy in ((x0+5,y0+5),(x1-5,y0+5),(x0+5,y1-5),(x1-5,y1-5)): d.ellipse((xx-2,yy-2,xx+2,yy+2),fill=(*accent,245))
+            cut=5+((seed+idx*7)%22)
+            width=1+((seed+idx)%3)
+            if shape in ("angular","notched","hex","technical"):
+                if shape=="hex":
+                    points=[x0+cut,y0,(x0+x1)//2,y0+cut,x1-cut,y0,x1,y0+cut,(x0+x1)//2,y1-cut,x0,y1-cut]
+                else:
+                    points=[x0+cut,y0,x1-cut,y0,x1,y0+cut,x1,y1-cut,x1-cut,y1,x0+cut,y1,x0,y1-cut,x0,y0+cut]
+                d.line(points+[points[0]],fill=(*accent2,210),width=width+1,joint="curve")
+                if shape=="technical":
+                    d.line((x0+cut+4,y0+4,x0+min(x1-x0-4,cut+90),y0+4),fill=(*accent,220),width=2)
+                for xx,yy in ((x0+5,y0+5),(x1-5,y0+5),(x0+5,y1-5),(x1-5,y1-5)):
+                    d.ellipse((xx-2,yy-2,xx+2,yy+2),fill=(*accent,210))
+            elif shape in ("corners","circuit"):
+                arm=max(12,min(42,(x1-x0)//5))
+                for ax,ay,dx,dy in ((x0,y0,1,1),(x1,y0,-1,1),(x0,y1,1,-1),(x1,y1,-1,-1)):
+                    d.line((ax,ay,ax+dx*arm,ay),fill=(*accent2,220),width=width+1)
+                    d.line((ax,ay,ax,ay+dy*arm),fill=(*accent2,220),width=width+1)
+                if shape=="circuit":
+                    d.line((x0+arm,y0+5,(x0+x1)//2,y0+5,(x0+x1)//2,y0+14),fill=(*accent,bg_alpha+75),width=2)
+            elif shape in ("double","bevel","inset","outline"):
+                d.rectangle(box,outline=(*accent,210),width=width)
+                inset=3+seed%7
+                d.rectangle((x0+inset,y0+inset,x1-inset,y1-inset),outline=(*accent2,120+seed%65),width=1)
+                if shape=="bevel":
+                    d.line((x0+inset,y0+inset,x1-inset,y0+inset),fill=(255,255,255,90),width=1)
+                    d.line((x0+inset,y1-inset,x1-inset,y1-inset),fill=(0,0,0,100),width=1)
+            elif shape=="minimal":
+                d.line((x0,y0,x1,y0),fill=(*accent2,220),width=width+1)
+                d.line((x0,y0,x0,y1),fill=(*accent,160),width=1)
+            elif shape=="glass":
+                radius=max(3,int(t.get("_skin_corner",12)))
+                d.rounded_rectangle(box,radius=radius,outline=(*accent2,180),width=width)
+                d.line((x0+radius,y0+2,x1-radius,y0+2),fill=(*accent,120),width=1)
             elif style in ("matrix","retro"):
                 d.rectangle(box,outline=(*accent,220),width=2)
                 d.line((x0+8,y0+5,x0+min(100,x1-x0-8),y0+5),fill=(*accent2,245),width=2)
@@ -680,16 +719,101 @@ def _u443_skin_dashboard_image(app):
                 d.rectangle(box,outline=(165,185,205,180),width=1)
                 d.line((x0+7,y0+7,x1-7,y0+7),fill=(235,245,255,70),width=1)
             else:
-                radius=16 if style in ("neon","hologram","aurora") else 3
-                d.rounded_rectangle(box,radius=radius,outline=(*accent,190 if style=="neon" else 150),width=3 if sid in (0,5,6,10) else 2)
-                if style in ("neon","hologram","aurora"): d.line((x0+radius,y0+2,x1-radius,y0+2),fill=(*accent2,125),width=1)
+                radius=max(3,int(t.get("_skin_corner",12)))
+                d.rounded_rectangle(box,radius=radius,outline=(*accent,150+seed%70),width=width)
+                if idx%2==sid%2:
+                    d.line((x0+radius,y0+2,x1-radius,y0+2),fill=(*accent2,90+seed%90),width=1)
+        # A per-skin texture layer makes the dashboard composition distinct beyond hue: grid, circuit, radial, dots, waves, hex, dashes and more.
+        start_x=255+(seed%step); start_y=70+((seed//7)%step); tex_col=(*accent2,bg_alpha)
+        if texture=="grid":
+            for xx in range(start_x,rgba.width,step): d.line((xx,72,xx,rgba.height-8),fill=tex_col,width=1)
+            for yy in range(start_y,rgba.height,step): d.line((255,yy,rgba.width-8,yy),fill=tex_col,width=1)
+        elif texture=="diagonal":
+            for offset in range(-rgba.height,rgba.width,step):
+                d.line((max(255,offset),max(70,-offset),min(rgba.width-8,offset+rgba.height),min(rgba.height-8,rgba.height-offset)),fill=tex_col,width=1)
+        elif texture=="dots":
+            dot=1+(seed%3)
+            for yy in range(start_y,rgba.height-8,step):
+                for xx in range(start_x,rgba.width-8,step):
+                    d.ellipse((xx-dot,yy-dot,xx+dot,yy+dot),fill=tex_col)
+        elif texture=="circuit":
+            for yy in range(start_y,rgba.height-12,step*2):
+                xx=start_x
+                while xx<rgba.width-24:
+                    span=min(18+((xx+yy+seed)%50),rgba.width-8-xx)
+                    d.line((xx,yy,xx+span,yy),fill=tex_col,width=1)
+                    d.line((xx+span,yy,xx+span,yy+max(4,step//2)),fill=tex_col,width=1)
+                    d.ellipse((xx+span-2,yy+max(4,step//2)-2,xx+span+2,yy+max(4,step//2)+2),outline=tex_col,width=1)
+                    xx+=max(20,span+step)
+        elif texture=="wave":
+            import math as _u443_math
+            for row in range(0,5):
+                pts=[]
+                for xx in range(255,rgba.width-8,8):
+                    yy=start_y+row*step*2+int(_u443_math.sin((xx+seed+row*31)/(18.0+seed%13))*max(2,step//3))
+                    pts.extend((xx,yy))
+                if len(pts)>=4:d.line(pts,fill=tex_col,width=1)
+        elif texture=="radial" or texture=="rings":
+            cx=1120+(seed%140)-70;cy=450+((seed//3)%80)-40
+            maxrad=min(rgba.width-cx-8,cy-75,rgba.height-cy-8)
+            for radius in range(step,max(1,maxrad),step):
+                if texture=="rings": d.ellipse((cx-radius,cy-radius,cx+radius,cy+radius),outline=tex_col,width=1)
+                else: d.arc((cx-radius,cy-radius,cx+radius,cy+radius),start=(seed%170),end=180+(seed%160),fill=tex_col,width=1)
+        elif texture=="hex":
+            hexw=step;hexh=max(10,int(step*0.86))
+            row=0
+            for yy in range(start_y,rgba.height-hexh,hexh):
+                row+=1
+                for xx in range(start_x+(row%2)*(hexw//2),rgba.width-hexw,hexw):
+                    pts=[xx+hexw//4,yy,xx+3*hexw//4,yy,xx+hexw,yy+hexh//2,xx+3*hexw//4,yy+hexh,xx+hexw//4,yy+hexh,xx,yy+hexh//2]
+                    d.line(pts+[pts[0],pts[1]],fill=tex_col,width=1)
+        elif texture=="scanline" or texture=="dash":
+            dash=step if texture=="dash" else 2
+            for yy in range(start_y,rgba.height-4,dash):
+                d.line((255,yy,rgba.width-8,yy),fill=tex_col,width=1)
+        elif texture=="matrix":
+            for col in range(start_x,rgba.width-8,step):
+                for k in range(2+(seed+col)%7):
+                    yy=start_y+k*(4+seed%5)
+                    if yy<rgba.height-8:d.line((col,yy,col,yy+2+((seed+k)%7)),fill=tex_col,width=1)
+        elif texture=="crosshair":
+            for yy in range(start_y,rgba.height-8,step*2):
+                for xx in range(start_x,rgba.width-8,step*2):
+                    arm=max(2,step//7);d.line((xx-arm,yy,xx+arm,yy),fill=tex_col,width=1);d.line((xx,yy-arm,xx,yy+arm),fill=tex_col,width=1)
+        else: # stars / technical markers
+            for yy in range(start_y,rgba.height-8,step):
+                for xx in range(start_x,rgba.width-8,step):
+                    arm=2+(seed+xx+yy)%4
+                    d.line((xx-arm,yy,xx+arm,yy),fill=tex_col,width=1)
+                    d.line((xx,yy-arm,xx,yy+arm),fill=tex_col,width=1)
         if t.get("_scanlines"):
-            for yy in range(2,rgba.height,4): d.line((0,yy,rgba.width,yy),fill=(0,0,0,32),width=1)
-        if t.get("_skin_layout")=="topbar":
-            d.rectangle((255,0,rgba.width-1,71),fill=(*accent,32))
-            d.line((255,70,rgba.width-1,70),fill=(*accent2,230),width=3)
-        elif t.get("_skin_layout")=="terminal":
-            for xx in range(260,rgba.width,34): d.line((xx,75,xx,rgba.height-2),fill=(*accent,22),width=1)
+            for yy in range(2,rgba.height,3+(sid%4)): d.line((0,yy,rgba.width,yy),fill=(0,0,0,22+sid%22),width=1)
+        if layout=="topbar":
+            d.rectangle((255,0,rgba.width-1,71),fill=(*accent,bg_alpha))
+            d.line((255,70,rgba.width-1,70),fill=(*accent2,200),width=2+sid%3)
+        elif layout=="terminal":
+            for xx in range(260,rgba.width,18+(sid%28)): d.line((xx,75,xx,rgba.height-2),fill=(*accent,16+sid%22),width=1)
+        elif layout=="split":
+            split_x=880+(sid%81)-40
+            d.line((split_x,72,split_x,rgba.height-8),fill=(*accent2,130),width=2)
+            d.line((split_x+4,72,split_x+4,rgba.height-8),fill=(*accent,bg_alpha),width=1)
+        elif layout=="radial":
+            d.ellipse((900+(sid%70),230,1450+(sid%70),780),outline=(*accent2,bg_alpha+30),width=2)
+            d.ellipse((980+(sid%70),310,1370+(sid%70),700),outline=(*accent,bg_alpha),width=1)
+        elif layout=="dock":
+            d.rectangle((255,rgba.height-72,rgba.width-1,rgba.height-1),fill=(*accent,bg_alpha))
+            d.line((255,rgba.height-73,rgba.width-1,rgba.height-73),fill=(*accent2,200),width=3)
+        elif layout=="instrument":
+            for j in range(3):
+                cx=305+j*150;cy=480+(sid%31)
+                d.ellipse((cx-42,cy-42,cx+42,cy+42),outline=(*accent2,120+sid%90),width=2)
+                d.arc((cx-33,cy-33,cx+33,cy+33),start=190,end=350,fill=(*accent,bg_alpha+30),width=3)
+        elif layout=="wide":
+            d.rectangle((255,75,rgba.width-8,300),outline=(*accent2,bg_alpha+45),width=2)
+            d.line((255,302,rgba.width-8,302),fill=(*accent,120+sid%80),width=2)
+        elif layout=="stacked":
+            for yy in (300,470,640,810):
+                if yy<rgba.height-10:d.line((255,yy,rgba.width-8,yy),fill=(*accent2,bg_alpha),width=2)
         out=_I.alpha_composite(rgba,overlay).convert("RGB")
         if len(cache)>24: cache={}
         cache[key]=out
@@ -780,14 +904,21 @@ AppV43.clear = _u443_clear_all_with_hover
 def _u443_draw_theme_preview(self,canvas):
     t=self.colors()
     try:
-        from math import sin
+        from math import sin, cos, pi
         canvas.delete("all"); canvas.update_idletasks()
         w=max(660,canvas.winfo_width()); h=max(190,canvas.winfo_height())
-        family=int(t.get("_skin_id",0)); layout=t.get("_skin_layout","sidebar"); relief=t.get("_panel_relief","flat")
+        variant=int(t.get("_skin_variant",0)); layout=t.get("_skin_layout","sidebar"); relief=t.get("_panel_relief","flat")
+        shape=t.get("_skin_shape","rounded"); chart=t.get("_skin_chart_style","line"); texture=t.get("_skin_texture","grid")
+        density=int(t.get("_skin_density",0)); spacing=int(t.get("_skin_spacing",8)); scale=float(t.get("_font_scale",1.0))
         canvas.configure(bg=t["bg"])
-        canvas.create_rectangle(4,4,w-4,h-4,fill=t["bg"],outline=t["accent"],width=max(1,int(t.get("_panel_highlight",1))))
-        if t.get("_scanlines"):
-            for yy in range(7,h,5): canvas.create_line(6,yy,w-6,yy,fill=t["panel"])
+        borderw=max(1,int(t.get("_panel_highlight",1)))
+        canvas.create_rectangle(4,4,w-4,h-4,fill=t["bg"],outline=t["accent"],width=borderw)
+        if texture in ("grid","blueprint","crosshair"):
+            step=max(8,spacing*2)
+            for xx in range(6+(variant%step),w-6,step):canvas.create_line(xx,6,xx,h-6,fill=t["panel"],width=1)
+            for yy in range(6+((variant//5)%step),h-6,step):canvas.create_line(6,yy,w-6,yy,fill=t["panel"],width=1)
+        elif texture in ("scanline","matrix","dash"):
+            for yy in range(6,h-6,max(2,2+spacing//2)):canvas.create_line(6,yy,w-6,yy,fill=t["panel"],width=1)
         if layout=="topbar":
             canvas.create_rectangle(16,14,w-16,49,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_bd",0))))
             canvas.create_text(28,31,text="NAPRAWA PC / HARDWARE TEST PRO",fill=t["accent"],anchor="w",font=self.fnt(10,"bold"))
@@ -795,49 +926,132 @@ def _u443_draw_theme_preview(self,canvas):
                 canvas.create_text(round(w*.56)+i*75,31,text=name,fill=t["accent2"] if i==0 else t["fg"],font=self.fnt(7,"bold"))
             main_x=16; y_cards=61
         elif layout=="terminal":
-            canvas.create_rectangle(16,14,185,h-14,fill=t["panel"],outline=t["accent"],width=2)
+            navw=max(125,int(t.get("_skin_nav_width",145)))
+            canvas.create_rectangle(16,14,navw,h-14,fill=t["panel"],outline=t["accent"],width=2)
             canvas.create_text(28,31,text="> SYSTEM / STATUS",fill=t["accent"],anchor="w",font=self.fnt(9,"bold"))
             for i,name in enumerate(("CPU","GPU","RAM","NVME","SECURITY")):
                 canvas.create_text(30,53+i*22,text="[+] "+name,fill=t["accent2"] if i==0 else t["fg"],anchor="w",font=self.fnt(8,"normal"))
-            main_x=198; y_cards=71
+            main_x=navw+14; y_cards=71
+        elif layout=="grid":
+            main_x=16;y_cards=22
+        elif layout=="wide":
+            main_x=16;y_cards=64
+        elif layout=="radial":
+            main_x=16;y_cards=57
+            cx=w-100;cy=h*.47
+            for r in (24,38,52,66):
+                canvas.create_oval(cx-r,cy-r,cx+r,cy+r,outline=t["accent2"] if r==38 else t["panel"],width=2 if r==38 else 1)
+            canvas.create_line(cx-67,cy,cx+67,cy,fill=t["accent"],width=1)
+            canvas.create_line(cx,cy-67,cx,cy+67,fill=t["accent"],width=1)
+        elif layout=="instrument":
+            navw=125
+            canvas.create_rectangle(16,14,navw,h-14,fill=t["panel"],outline=t["accent"],width=2)
+            for i in range(3):
+                cy=55+i*53; r=17
+                canvas.create_oval(37,cy-r,37+2*r,cy+r,outline=t["accent2"],width=2)
+                canvas.create_line(37+r,cy,37+r+7,cy-7-i*2,fill=t["accent"],width=2)
+            main_x=navw+12;y_cards=25
+        elif layout=="split":
+            main_x=16;y_cards=60
+            split=round(w*.51)
+            canvas.create_rectangle(16,14,split-6,h-14,fill=t["panel"],outline=t["accent"],width=1)
+            canvas.create_rectangle(split+2,14,w-16,h-14,fill=t["bg"],outline=t["accent2"],width=1)
+        elif layout=="compact":
+            navw=max(82,int(t.get("_skin_nav_width",110)))
+            canvas.create_rectangle(16,14,navw,h-14,fill=t["panel"],outline=t["accent"],width=1)
+            for i,name in enumerate(("PC","CPU","GPU","RAM","SSD","TEST","LOG")):
+                y=35+i*19;canvas.create_rectangle(21,y,navw-6,y+14,fill=t["accent"] if i==0 else t["card"],outline=t["panel"])
+                canvas.create_text(28,y+7,text=name,fill=t["fg"],anchor="w",font=self.fnt(7,"bold"))
+            main_x=navw+10;y_cards=37
+        elif layout=="dock":
+            main_x=16;y_cards=24
+            dock_y=h-33
+            for i,name in enumerate(("PULPIT","CPU","GPU","RAM","DYSKI","RAPORTY")):
+                x=20+i*((w-40)//6)
+                canvas.create_rectangle(x,dock_y,x+(w-40)//6-4,h-12,fill=t["panel"],outline=t["accent"],width=1)
+                canvas.create_text(x+8,dock_y+9,text=name,fill=t["accent2"] if i==0 else t["fg"],anchor="w",font=self.fnt(7,"bold"))
+        elif layout=="stacked":
+            main_x=16;y_cards=25
+            for i in range(3):
+                yy=18+i*52
+                canvas.create_rectangle(16,yy,w-16,yy+43,fill=t["panel"],outline=t["accent"],width=1)
+                canvas.create_text(28,yy+12,text=("SYSTEM / HARDWARE","LIVE METRICS","TEST QUEUE")[i],fill=t["accent2"],anchor="w",font=self.fnt(8,"bold"))
+        elif layout=="cards":
+            main_x=16;y_cards=22
+        elif layout=="hybrid":
+            main_x=125;y_cards=48
+            canvas.create_rectangle(16,14,112,h-14,fill=t["panel"],outline=t["accent"],width=1)
+            for i in range(5):canvas.create_line(25,43+i*27,102,43+i*27,fill=t["accent2"] if i==0 else t["card"],width=3)
         else:
-            canvas.create_rectangle(16,14,160,h-14,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_highlight",1))))
+            navw=max(110,int(t.get("_skin_nav_width",145)))
+            canvas.create_rectangle(16,14,navw,h-14,fill=t["panel"],outline=t["accent"],width=borderw)
             canvas.create_text(27,32,text="NAPRAWA PC",fill=t["accent"],anchor="w",font=self.fnt(10,"bold"))
             for i,name in enumerate(("PULPIT","CPU","GPU","RAM","DYSK","TESTY","RAPORTY")):
                 y=55+i*22
-                canvas.create_rectangle(22,y,150,y+17,fill=t["accent"] if i==0 else t["card"],outline=t["accent2"] if i==0 else t["panel"])
+                canvas.create_rectangle(22,y,navw-10,y+17,fill=t["accent"] if i==0 else t["card"],outline=t["accent2"] if i==0 else t["panel"])
                 canvas.create_text(30,y+8,text=name,fill="#ffffff" if i==0 else t["fg"],anchor="w",font=self.fnt(7,"bold"))
-            main_x=170; y_cards=71
-        available=max(430,w-main_x-18); hero_h=max(36,int(h*.19))
-        if layout!="topbar":
+            main_x=navw+10;y_cards=71
+        available=max(360,w-main_x-18); hero_h=max(34,int(h*(.16+(variant%5)*.015)))
+        if layout not in ("topbar","grid","cards","radial","dock","stacked","split","compact"):
             canvas.create_rectangle(main_x,15,main_x+available,15+hero_h,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_bd",0))+1))
-            canvas.create_text(main_x+12,28,text=t.get("_skin_family","DIAGNOSTYKA"),fill=t["accent"],anchor="w",font=self.fnt(11,"bold"))
+            canvas.create_text(main_x+12,28,text=t.get("_skin_family","DIAGNOSTYKA"),fill=t["accent"],anchor="w",font=self.fnt(10,"bold"))
             canvas.create_text(main_x+12,45,text="MONITORING NA ŻYWO • TESTY • WYNIKI",fill=t["muted"],anchor="w",font=self.fnt(7,"bold"))
-        count=4 if family%3==0 else (3 if family%3==1 else 5)
-        gap=8; cw=max(62,(available-gap*(count-1))//count)
+        count=max(3,min(6,int(t.get("_skin_card_count",3+(variant%4)))))
+        gap=max(4,min(13,spacing)); cw=max(48,(available-gap*(count-1))//count)
         for i in range(count):
-            x=main_x+i*(cw+gap); x1=min(w-17,x+cw)
-            if layout=="grid":
-                pts=[x+5,y_cards,x1,y_cards,x1-5,y_cards+58,x,y_cards+58]
-                canvas.create_polygon(pts,fill=t["card"],outline=t["accent"],width=2)
-            elif relief in ("ridge","raised","groove"):
-                canvas.create_rectangle(x,y_cards,x1,y_cards+58,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_bd",0))+1))
-                canvas.create_line(x+3,y_cards+3,x1-3,y_cards+3,fill=t["accent2"],width=1)
+            if layout in ("grid","cards","stacked"):
+                row=i//3; col=i%3
+                x=main_x+col*(cw+gap); y=y_cards+row*(49+gap)
             else:
-                canvas.create_rectangle(x,y_cards,x1,y_cards+58,fill=t["panel"],outline=t["accent"],width=1)
-            canvas.create_text(x+7,y_cards+13,text=("CPU","GPU","RAM","SSD","VRAM")[i%5],fill=t["accent"],anchor="w",font=self.fnt(7,"bold"))
-            canvas.create_text((x+x1)//2,y_cards+36,text=f"{(12+i*13):02d}%",fill=t["good"] if i%2==0 else t["fg"],font=self.fnt(15,"bold"))
-        gy=min(h-14,y_cards+73)
-        canvas.create_rectangle(main_x,gy,w-18,h-14,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_bd",0))+1))
-        for n in range(1,4):
-            yy=gy+(h-gy-20)*n/4; canvas.create_line(main_x+8,yy,w-25,yy,fill=t["card"],dash=(2,3))
-        pts=[]
-        for xx in range(main_x+10,w-25,8):
-            phase=(xx-main_x)/23+family
-            yy=gy+int((h-gy-18)*(0.5+0.20*sin(phase)+0.10*sin(phase*0.43)))
-            pts.extend((xx,yy))
-        if len(pts)>=4: canvas.create_line(*pts,fill=t["accent2"],width=2,smooth=True)
-        canvas.create_text(main_x+10,h-22,text=f"SKÓRKA {self.theme_id}/125 • {t.get('_skin_family','STYL')} • {relief.upper()} / {layout.upper()}",fill=t["fg"],anchor="w",font=self.fnt(8,"bold"))
+                x=main_x+i*(cw+gap); y=y_cards
+            x1=min(w-17,x+cw); y1=min(h-14,y+43+((variant+i)%3)*5)
+            if shape in ("angular","notched","hex","technical") or layout=="grid":
+                cut=min(8,max(3,spacing//2))
+                pts=[x+cut,y,x1-cut,y,x1,y+cut,x1,y1-cut,x1-cut,y1,x+cut,y1,x,y1-cut,x,y+cut]
+                canvas.create_polygon(pts,fill=t["card"] if layout=="grid" else t["panel"],outline=t["accent"],width=1+variant%2)
+                if shape=="technical":canvas.create_line(x+7,y+4,min(x1-6,x+35+variant%30),y+4,fill=t["accent2"],width=2)
+            elif shape in ("double","bevel","inset") or relief in ("ridge","raised","groove"):
+                canvas.create_rectangle(x,y,x1,y1,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_bd",0))+1))
+                inset=2+variant%5
+                if shape=="double":canvas.create_rectangle(x+inset,y+inset,x1-inset,y1-inset,outline=t["accent2"],width=1)
+                else:canvas.create_line(x+3,y+3,x1-3,y+3,fill=t["accent2"],width=1)
+            elif shape=="glass":
+                canvas.create_oval(x,y,x1,y1,fill=t["panel"],outline=t["accent"],width=2)
+            else:
+                canvas.create_rectangle(x,y,x1,y1,fill=t["panel"],outline=t["accent"],width=1+variant%2)
+            label=("CPU","GPU","RAM","SSD","VRAM","NET")[i%6]
+            value=(12+i*13+variant*3)%100
+            canvas.create_text(x+7,y+12,text=label,fill=t["accent"],anchor="w",font=self.fnt(7,"bold"))
+            canvas.create_text((x+x1)//2,(y+y1)//2+4,text=f"{value:02d}%",fill=t["good"] if i%2==0 else t["fg"],font=self.fnt(max(10,round(14*scale)),"bold"))
+        chart_y=min(h-15,y_cards+(2*(49+gap) if layout in ("grid","cards","stacked") else 53)+max(43,hero_h//2))
+        if layout not in ("radial","dock","stacked"):
+            canvas.create_rectangle(main_x,chart_y,w-18,h-14,fill=t["panel"],outline=t["accent"],width=max(1,int(t.get("_panel_bd",0))+1))
+            for n in range(1,4):
+                yy=chart_y+(h-chart_y-18)*n/4
+                canvas.create_line(main_x+8,yy,w-25,yy,fill=t["card"],dash=(2,2+(variant%4)))
+            points=[]
+            for xx in range(main_x+10,w-25,6):
+                phase=(xx-main_x)/(13+variant%23)+variant*.25
+                yy=chart_y+int((h-chart_y-18)*(0.5+0.20*sin(phase)+0.10*sin(phase*0.43)))
+                points.append((xx,yy))
+            if chart=="bars":
+                for idx,(xx,yy) in enumerate(points[::3]):
+                    canvas.create_rectangle(xx,yy,xx+max(2,spacing//2),h-16,fill=t["accent2"] if idx%2 else t["accent"],outline="")
+            elif chart=="area" and len(points)>1:
+                canvas.create_polygon(points+[(points[-1][0],h-15),(points[0][0],h-15)],fill=t["panel"],outline=t["accent2"],width=2)
+            elif chart in ("steps","spectrum","candles","dots","dual"):
+                for idx,(xx,yy) in enumerate(points):
+                    if chart=="dots":canvas.create_oval(xx-2,yy-2,xx+2,yy+2,fill=t["accent2"],outline="")
+                    elif chart=="candles" and idx%3==0:canvas.create_line(xx,yy-4,xx,yy+6,fill=t["accent2"],width=2)
+                    elif chart=="spectrum":canvas.create_rectangle(xx,yy,xx+2,h-18,fill=t["accent2"],outline="")
+                    elif chart=="dual":canvas.create_line(xx,yy,xx,min(h-18,yy+8+int(4*sin(idx))),fill=t["good"],width=1)
+                    else:
+                        if idx>0:
+                            prev=points[idx-1];canvas.create_line(prev[0],prev[1],xx,prev[1],fill=t["accent2"],width=2)
+                            canvas.create_line(xx,prev[1],xx,yy,fill=t["accent2"],width=2)
+            else:
+                canvas.create_line(*[v for pt in points for v in pt],fill=t["accent2"],width=1+variant%3,smooth=True)
+        canvas.create_text(main_x+10,h-22,text=f"SKÓRKA {self.theme_id}/125 • {t.get('_skin_family','STYL')} • {shape.upper()} / {layout.upper()} / {chart.upper()}",fill=t["fg"],anchor="w",font=self.fnt(8,"bold"))
     except Exception as exc:
         try: canvas.delete("all"); canvas.create_text(12,12,text=f"Błąd podglądu skórki: {exc}",fill=t.get("bad","#ff5063"),anchor="nw")
         except Exception: pass
