@@ -6258,7 +6258,13 @@ def _u93_selftest_catalog_routing():
     assert AppV43.show_component_lab is _u93_show_lab
     # The callbacks are lambdas in Tk buttons; inspect nested code objects as well.
     assert "_u93_show_test_detail" in _u93_deep_code_names(_u93_scroll_rows)
-    assert "_u93_start_catalog_test" in _u93_deep_code_names(_u93_show_test_detail)
+    detail_names = _u93_deep_code_names(_u93_show_test_detail)
+    if "_u93_start_catalog_test" not in detail_names:
+        # RAM progress wrapper delegates to the original screen; inspect that inner screen too.
+        original_detail = globals().get("_U102_ORIGINAL_RAM_DETAIL")
+        assert callable(original_detail)
+        detail_names.update(_u93_deep_code_names(original_detail))
+    assert "_u93_start_catalog_test" in detail_names
     assert "_u93_execute_catalog_test" in _u93_deep_code_names(_u93_finish_test_worker)
     print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 70 unique tests, isolated detail screen and real operation dispatcher")
 
