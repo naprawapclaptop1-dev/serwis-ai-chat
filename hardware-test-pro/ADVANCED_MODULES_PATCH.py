@@ -7633,9 +7633,246 @@ AppV43.show_speed_test=_u101_show_speed_test
 _u100_selftest_adaptive_speed=_u101_selftest_adaptive_speed
 _u100_selftest_unique_gpu_scenes=_u101_selftest_unique_gpu_scenes
 
+
+# v4.3.102 — RAM tests must keep a visible in-app progress screen and never launch a graphics window.
+_U102_ORIGINAL_RAM_EXECUTE = _u93_execute_catalog_test
+_U102_ORIGINAL_RAM_DETAIL = _u93_show_test_detail
+_U102_ORIGINAL_RAM_METHOD = getattr(AppV43, "_ram_test", None)
+
+def _u102_ram_safe_size(requested_mb, available_mb):
+    requested = max(64, min(2048, int(requested_mb or 512)))
+    available = max(0, int(available_mb or 0))
+    # Keep at least 85% of currently available RAM for Windows and the application.
+    # The previous path could reserve up to 25% and gave no per-test progress screen.
+    safe_limit = max(64, min(1024, int(available * 0.15)))
+    return min(requested, safe_limit)
+
+def _u102_ram_progress_update(app, test_id, percent, message, pass_number=1):
+    def apply():
+        if getattr(app, "current_view", "") != "COMPONENT_TEST_DETAIL_" + str(test_id):
+            return
+        try:
+            bar = getattr(app, "_u102_ram_progressbar", None)
+            if bar is not None and bar.winfo_exists():
+                bar.configure(value=max(0, min(100, int(percent))))
+            label = getattr(app, "_u102_ram_progress_label", None)
+            if label is not None and label.winfo_exists():
+                label.configure(text=f"Przebieg {pass_number} • {message}")
+            status = getattr(app, "_u93_detail_status", None)
+            if status is not None and status.winfo_exists():
+                status.configure(text=f"RAM — TEST W TOKU • {int(percent)}%", fg=app.colors()["warn"])
+        except Exception:
+            pass
+    try:
+        app.queue_action(apply)
+    except Exception:
+        try:
+            apply()
+        except Exception:
+            pass
+
+def _u102_show_test_detail(app, module, test_id):
+    _U102_ORIGINAL_RAM_DETAIL(app, module, test_id)
+    try:
+        normalized = _u93_norm(module)
+        _, title, description, kind = _u93_find_test(normalized, test_id)
+    except Exception:
+        return
+    if kind not in ("ram_pattern", "ram_bw", "ram_bw_max"):
+        return
+    try:
+        report = getattr(app, "_u93_detail_report", None)
+        if report is None or not report.winfo_exists():
+            return
+        parent = report.master
+        t = app.colors()
+        bar = ttk.Progressbar(parent, mode="determinate", maximum=100, value=0)
+        bar.pack(fill="x", padx=10, pady=(0, 3), before=report)
+        label = tk.Label(parent, text="Przygotowuję bezpieczny bufor RAM…",
+            bg=t["panel"], fg=t["muted"], font=app.fnt(8), anchor="w", justify="left")
+        label.pack(fill="x", padx=10, pady=(0, 7), before=report)
+        app._u102_ram_progressbar = bar
+        app._u102_ram_progress_label = label
+    except Exception as exc:
+        try:
+            app.queue_log("RAM: nie udało się utworzyć panelu postępu: " + repr(exc))
+        except Exception:
+            pass
+
+def _u102_ram_pattern_suite(app, module, test_id, kind, settings):
+    import time as _u102_time
+    requested = int(settings.get("memory_mb", 512) or 512)
+    vm = psutil.virtual_memory() if psutil else None
+    available_mb = int(vm.available / (1024 * 1024)) if vm else 0
+    if vm and available_mb < 192:
+        result = {
+            "state": "warn", "requested_mb": requested, "tested_mb": 0,
+            "available_mb_at_start": available_mb, "patterns_completed": 0,
+            "patterns_total": len(_U40_RAM_PATTERN_LIST),
+            "message": f"Za mało dostępnej pamięci RAM ({available_mb} MB). Test nie został uruchomiony, aby nie zawiesić Windows.",
+            "note": "Brak testu nie jest zaliczeniem. Zamknij część programów i uruchom ponownie."
+        }
+        _u93_put_result(app, "RAM_BENCHMARK", result)
+        _u93_put_result(app, "RAM", {"state":"warn","size_mb":0,"message":result["message"],"benchmark":result})
+        return result
+
+    safe_mb = _u102_ram_safe_size(requested, available_mb if vm else 512)
+    target_seconds = 0
+    if kind == "ram_bw":
+        target_seconds = max(15, min(60, int(settings.get("duration", 60) or 60)))
+    elif kind == "ram_bw_max":
+        target_seconds = max(15, min(300, int(settings.get("duration", 300) or 300)))
+    start = _u102_time.monotonic()
+    pass_number = 0
+    bytes_written = 0
+    bytes_verified = 0
+    patterns_completed = 0
+    patterns_total = len(_U40_RAM_PATTERN_LIST)
+    last_stats = {}
+    last_message = ""
+    final_state = "warn"
+    requested_mode = kind
+
+    while True:
+        if bool(getattr(app, "stop_requested", False)):
+            final_state = "warn"
+            last_message = "Test RAM zatrzymany przez użytkownika."
+            break
+        pass_number += 1
+        stats = {}
+        pass_start = _u102_time.monotonic()
+        def progress(percent, detail, pn=pass_number):
+            # Queue UI-only work: the RAM worker never calls Tk widgets directly.
+            _u102_ram_progress_update(app, test_id, percent, detail, pn)
+        try:
+            ok, message = ram_pattern_test(
+                safe_mb, 0.0, progress_callback=progress,
+                stop_check=app._test_should_stop, stats_out=stats
+            )
+        except Exception as exc:
+            ok = False
+            message = f"Test RAM przerwany: {type(exc).__name__}: {exc}"
+            stats = {"size_mb":safe_mb,"patterns_total":patterns_total,"patterns_completed":0,
+                     "bytes_written":0,"bytes_verified":0,"elapsed_sec":_u102_time.monotonic()-pass_start}
+        last_stats = stats
+        last_message = str(message)
+        bytes_written += int(stats.get("bytes_written", 0) or 0)
+        bytes_verified += int(stats.get("bytes_verified", 0) or 0)
+        patterns_completed += int(stats.get("patterns_completed", 0) or 0)
+        if not ok:
+            final_state = "warn" if stats.get("stopped") or app._test_should_stop() or stats.get("allocation_failed") else "bad"
+            break
+        final_state = "good"
+        elapsed = _u102_time.monotonic() - start
+        if kind == "ram_pattern" or target_seconds <= 0 or elapsed >= target_seconds:
+            break
+        _u102_ram_progress_update(app, test_id, min(99, int(elapsed * 100 / max(1, target_seconds))),
+                                  f"Zakończono pełny zestaw wzorców; trwa przebieg stabilności {elapsed:.0f}/{target_seconds} s.",
+                                  pass_number + 1)
+
+    elapsed = max(0.001, _u102_time.monotonic() - start)
+    write_mib_s = bytes_written / (1024 * 1024) / elapsed
+    verify_mib_s = bytes_verified / (1024 * 1024) / elapsed
+    result = {
+        "state": final_state, "kind": kind, "requested_mb": requested,
+        "tested_mb": int(last_stats.get("size_mb", safe_mb) or safe_mb),
+        "available_mb_at_start": available_mb if vm else None,
+        "passes_run": pass_number, "patterns_completed": patterns_completed,
+        "patterns_total_per_pass": patterns_total,
+        "duration_seconds": round(elapsed, 2),
+        "bytes_written": bytes_written, "bytes_verified": bytes_verified,
+        "write_mib_s_overall": round(write_mib_s, 2),
+        "verify_mib_s_overall": round(verify_mib_s, 2),
+        "combined_mib_s": round((bytes_written + bytes_verified) / (1024 * 1024) / elapsed, 2),
+        "error_offset": last_stats.get("error_offset"),
+        "stopped": bool(getattr(app, "stop_requested", False) or last_stats.get("stopped")),
+        "message": last_message,
+        "note": "Test zapisuje i weryfikuje prywatny bufor procesu. Nie sprawdza każdej fizycznej komórki RAM. Rozmiar mógł zostać zmniejszony, aby pozostawić pamięć dla Windows."
+    }
+    _u93_put_result(app, "RAM_BENCHMARK", result)
+    _u93_put_result(app, "RAM", {
+        "state": final_state, "size_mb": result["tested_mb"],
+        "message": f"RAM {final_state.upper()}: {result['tested_mb']} MB • {pass_number} przebieg(ów) • zapis {result['write_mib_s_overall']} MiB/s • weryfikacja {result['verify_mib_s_overall']} MiB/s",
+        "benchmark": result
+    })
+    _u102_ram_progress_update(app, test_id, 100 if final_state == "good" else
+        int(min(99, patterns_completed * 100 / max(1, patterns_total * max(1, pass_number)))),
+        f"KONIEC • {final_state.upper()} • {elapsed:.1f} s • testowano {result['tested_mb']} MB.", pass_number)
+    try:
+        app.queue_log(f"RAM KATALOG: {test_id} • {final_state.upper()} • bufor {result['tested_mb']} MB • przebiegi {pass_number} • {elapsed:.1f} s")
+    except Exception:
+        pass
+    return result
+
+def _u102_execute_catalog_test(app, module, test_id, kind, settings):
+    if kind in ("ram_pattern", "ram_bw", "ram_bw_max"):
+        return _u102_ram_pattern_suite(app, module, test_id, kind, settings)
+    return _U102_ORIGINAL_RAM_EXECUTE(app, module, test_id, kind, settings)
+
+def _u102_ram_test_guard(app, mb=512):
+    requested = max(64, min(2048, int(mb or 512)))
+    try:
+        vm = psutil.virtual_memory() if psutil else None
+        available_mb = int(vm.available / (1024 * 1024)) if vm else 0
+        if vm and available_mb < 192:
+            result = {"state":"warn","size_mb":0,"requested_mb":requested,"available_mb_at_start":available_mb,
+                      "message":f"Za mało dostępnego RAM ({available_mb} MB); test nie wystartował, aby nie zawiesić systemu."}
+            app.queue_results("RAM", result)
+            app.queue_log("RAM: " + result["message"])
+            return result
+        safe_mb = _u102_ram_safe_size(requested, available_mb if vm else 512)
+        if safe_mb < requested:
+            app.queue_log(f"RAM: rozmiar ograniczono z {requested} do {safe_mb} MB, aby pozostawić zasoby dla Windows.")
+        result = _U102_ORIGINAL_RAM_METHOD(app, safe_mb) if callable(_U102_ORIGINAL_RAM_METHOD) else None
+        return result
+    except Exception as exc:
+        result = {"state":"warn","size_mb":requested,"message":f"Test RAM przerwany błędem: {type(exc).__name__}: {exc}",
+                  "error":f"{type(exc).__name__}: {exc}"}
+        try:
+            app.queue_results("RAM", result)
+            app.queue_log("RAM: " + result["message"])
+        except Exception:
+            pass
+        return result
+    finally:
+        def refresh_ram_page():
+            try:
+                if getattr(app, "current_view", "") == "RAM":
+                    updater = getattr(app, "_update_ram_module_live", None)
+                    if callable(updater):
+                        updater()
+            except Exception:
+                pass
+        try:
+            app.queue_action(refresh_ram_page)
+        except Exception:
+            pass
+
+def _u102_selftest_ram_visible_progress():
+    assert callable(_u102_ram_safe_size)
+    assert _u102_ram_safe_size(2048, 4096) <= 1024
+    assert _u102_ram_safe_size(512, 1024) <= 153
+    assert callable(_u102_ram_pattern_suite)
+    assert "progress_callback" in _u102_ram_pattern_suite.__code__.co_names
+    assert "ram_pattern_test" in _u102_ram_pattern_suite.__code__.co_names
+    assert "pygame" not in _u102_ram_pattern_suite.__code__.co_names
+    assert _u93_execute_catalog_test is _u102_execute_catalog_test
+    assert _u93_show_test_detail is _u102_show_test_detail
+    assert getattr(AppV43._ram_test, "_u102_ram_guard", False)
+    print("RAM_VISIBLE_PROGRESS_SELFTEST_OK: isolated in-app progress, safe allocation cap, no OpenGL/pygame path")
+
+_u93_execute_catalog_test = _u102_execute_catalog_test
+_u93_show_test_detail = _u102_show_test_detail
+if callable(_U102_ORIGINAL_RAM_METHOD):
+    _u102_ram_test_guard._u102_ram_guard = True
+    # Keep the single start/end sound wrapper active around this RAM operation.
+    _u102_ram_test_guard._u80_sound_wrapped = True
+    AppV43._ram_test = _u102_ram_test_guard
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u102_selftest_ram_visible_progress()
         _u100_selftest_adaptive_speed()
         _u100_selftest_unique_gpu_scenes()
         _u98_selftest_catalog_safety()
