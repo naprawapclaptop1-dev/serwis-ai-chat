@@ -382,20 +382,55 @@ for _u443_tid in range(11,126):
         "warn": _u443_hex(0.12,0.60,0.86),
         "bad": _u443_hex(0.99,0.59,0.88),
     }
+_U443_LAYOUTS = ("sidebar","topbar","grid","terminal","split","compact","wide","instrument","radial","stacked","cards","dock","hybrid")
+_U443_SHAPES = ("angular","rounded","bevel","double","corners","notched","outline","inset","circuit","hex","technical","minimal","glass")
+_U443_TEXTURES = ("grid","diagonal","dots","circuit","wave","radial","hex","scanline","dash","matrix","crosshair","rings","stars")
+_U443_CHARTS = ("line","area","bars","steps","spectrum","radial","wave","candles","dots","dual")
+_U443_FONTS = ("Segoe UI","Bahnschrift","Consolas","Arial","Georgia","Courier New","Trebuchet MS","Tahoma","Verdana","Calibri","Cambria","Lucida Console")
+_U443_PANEL_RELIEFS = ("flat","groove","solid","ridge","raised","sunken")
+_U443_BUTTON_RELIEFS = ("flat","raised","groove","ridge","solid","sunken")
+_U443_IMAGE_STYLES = ("neon","carbon","angular","matrix","ice","hologram","redline","amber","steel","retro","aurora","glass","wave","blueprint","plasma")
+_U443_PANEL_FILLS = ("panel","card","panel","bg","card")
 for _u443_tid, _u443_theme in THEMES.items():
-    _u443_prof = _U443_SKIN_PROFILES[(_u443_tid - 1) % len(_U443_SKIN_PROFILES)]
-    _u443_theme["_skin_family"] = _u443_prof["name"]
-    _u443_theme["_skin_id"] = (_u443_tid - 1) % len(_U443_SKIN_PROFILES)
-    _u443_theme["_panel_relief"] = _u443_prof["panel_relief"]
-    _u443_theme["_panel_bd"] = _u443_prof["panel_bd"]
-    _u443_theme["_panel_highlight"] = _u443_prof["panel_highlight"]
-    _u443_theme["_button_relief"] = _u443_prof["button_relief"]
-    _u443_theme["_button_overrelief"] = _u443_prof["button_overrelief"]
-    _u443_theme["_button_bd"] = _u443_prof["button_bd"]
-    _u443_theme["_font_family"] = _u443_prof["font"]
-    _u443_theme["_image_style"] = _u443_prof["image"]
-    _u443_theme["_skin_layout"] = _u443_prof["layout"]
-    _u443_theme["_scanlines"] = _u443_prof["scanlines"]
+    _u443_n = _u443_tid - 1
+    _u443_prof = _U443_SKIN_PROFILES[_u443_n % len(_U443_SKIN_PROFILES)]
+    _u443_layout = _U443_LAYOUTS[(_u443_n * 7 + _u443_n // 11) % len(_U443_LAYOUTS)]
+    _u443_shape = _U443_SHAPES[(_u443_n * 5 + _u443_n // 13) % len(_U443_SHAPES)]
+    _u443_texture = _U443_TEXTURES[(_u443_n * 7 + _u443_n // 9) % len(_U443_TEXTURES)]
+    _u443_chart = _U443_CHARTS[(_u443_n * 3 + _u443_n // 7) % len(_U443_CHARTS)]
+    _u443_font = _U443_FONTS[(_u443_n * 5 + _u443_n // 13) % len(_U443_FONTS)]
+    _u443_theme["_skin_variant"] = _u443_n
+    _u443_theme["_skin_id"] = _u443_n
+    _u443_theme["_skin_family"] = f"{_u443_prof['name']} / {_u443_layout.upper()} / {_u443_shape.upper()} / {_u443_tid:03d}"
+    _u443_theme["name"] = f"{_u443_prof['name']} • {_u443_layout.upper()} • {_u443_shape.upper()} • {_u443_chart.upper()} • {_u443_tid:03d}"
+    _u443_theme["_skin_layout"] = _u443_layout
+    _u443_theme["_skin_shape"] = _u443_shape
+    _u443_theme["_skin_texture"] = _u443_texture
+    _u443_theme["_skin_chart_style"] = _u443_chart
+    _u443_theme["_panel_relief"] = _U443_PANEL_RELIEFS[(_u443_n * 5 + _u443_n // 4) % len(_U443_PANEL_RELIEFS)]
+    _u443_theme["_panel_bd"] = _u443_n % 4
+    _u443_theme["_panel_highlight"] = 1 + (_u443_n % 4)
+    _u443_theme["_button_relief"] = _U443_BUTTON_RELIEFS[(_u443_n * 3 + _u443_n // 5) % len(_U443_BUTTON_RELIEFS)]
+    _u443_theme["_button_overrelief"] = _U443_BUTTON_RELIEFS[(_u443_n * 5 + 1) % len(_U443_BUTTON_RELIEFS)]
+    _u443_theme["_button_bd"] = _u443_n % 3
+    _u443_theme["_font_family"] = _u443_font
+    _u443_theme["_font_scale"] = round(0.86 + (_u443_n % 13) * 0.024, 3)
+    _u443_theme["_font_slant"] = "italic" if _u443_n % 9 == 0 else "roman"
+    _u443_theme["_font_underline"] = _u443_n % 19 == 0
+    _u443_theme["_image_style"] = _U443_IMAGE_STYLES[(_u443_n * 5 + _u443_n // 9) % len(_U443_IMAGE_STYLES)]
+    _u443_theme["_scanlines"] = (_u443_n % 5 == 0) or _u443_texture == "scanline"
+    _u443_theme["_skin_density"] = _u443_n % 5
+    _u443_theme["_skin_spacing"] = 4 + (_u443_n % 9)
+    _u443_theme["_skin_corner"] = 2 + ((_u443_n * 7) % 22)
+    _u443_theme["_skin_nav_width"] = 92 + ((_u443_n * 5) % 83)
+    _u443_theme["_skin_card_count"] = 3 + (_u443_n % 4)
+    _u443_theme["_skin_chart_variant"] = _u443_n % len(_U443_CHARTS)
+    _u443_theme["_skin_panel_fill"] = _U443_PANEL_FILLS[(_u443_n // 3) % len(_U443_PANEL_FILLS)]
+    _u443_theme["_skin_button_padx"] = 4 + ((_u443_n * 3) % 9)
+    _u443_theme["_skin_button_pady"] = 2 + ((_u443_n * 5) % 7)
+    _u443_theme["_skin_border_mode"] = ("line","double","corners","notched","dots")[_u443_n % 5]
+    _u443_theme["_skin_background_alpha"] = 12 + ((_u443_n * 7) % 34)
+    _u443_theme["_skin_visual_seed"] = (_u443_n * 7919 + 104729) % 1000003
 '@
     $pattern = '(?m)^\}\r?\n\r?\nMODULES = \['
     if ($src -notmatch $pattern) { throw "Cannot find base theme palette insertion point." }
@@ -492,7 +527,7 @@ for _u443_method_name in ("_install_dashboard_controls","_v4321_bind_canvas_rout
 for _u443_tid, _u443_theme in THEMES.items():
     _u443_theme.setdefault("_skin_family", _U443_SKIN_PROFILES[(_u443_tid-1)%len(_U443_SKIN_PROFILES)]["name"])
     _u443_theme.setdefault("_skin_id", (_u443_tid-1)%len(_U443_SKIN_PROFILES))
-    _u443_profile = _U443_SKIN_PROFILES[_u443_theme["_skin_id"]]
+    _u443_profile = _U443_SKIN_PROFILES[(_u443_tid-1)%len(_U443_SKIN_PROFILES)]
     for _u443_key, _u443_profile_key in (("_panel_relief","panel_relief"),("_panel_bd","panel_bd"),("_panel_highlight","panel_highlight"),("_button_relief","button_relief"),("_button_overrelief","button_overrelief"),("_button_bd","button_bd"),("_font_family","font"),("_image_style","image"),("_skin_layout","layout"),("_scanlines","scanlines")):
         _u443_theme.setdefault(_u443_key, _u443_profile[_u443_profile_key])
 
@@ -501,10 +536,22 @@ def _u443_panel_skin(self, parent, bg=None, accent=True):
     frame = _U443_ORIG_PANEL(self, parent, bg, accent)
     t = self.colors()
     try:
-        frame.configure(relief=t.get("_panel_relief","flat"), bd=int(t.get("_panel_bd",0)),
-                        highlightthickness=int(t.get("_panel_highlight",1)),
-                        highlightbackground=t.get("accent","#1aa7ff") if accent else t.get("panel","#0b1c30"),
-                        highlightcolor=t.get("accent2","#55d8ff"))
+        n=int(t.get("_skin_variant",0))
+        relief=t.get("_panel_relief","flat")
+        border=int(t.get("_panel_bd",0))
+        border_mode=t.get("_skin_border_mode","line")
+        if border_mode=="double": border=max(1,border)
+        elif border_mode=="corners": border=max(1,border)
+        elif border_mode=="notched": relief="solid"
+        thickness=max(1,int(t.get("_panel_highlight",1)))
+        frame.configure(relief=relief, bd=border,
+            highlightthickness=thickness,
+            highlightbackground=t.get("accent","#1aa7ff") if accent else t.get("accent2",t.get("panel","#0b1c30")),
+            highlightcolor=t.get("accent2","#55d8ff"),
+            cursor="arrow")
+        # Give each theme its own frame fill and relief combination, while child controls keep their semantic colours.
+        if t.get("_skin_panel_fill") in ("panel","card","bg"):
+            frame.configure(background=t.get(t.get("_skin_panel_fill","panel"),t.get("panel","#0b1c30")))
     except Exception: pass
     return frame
 AppV43.panel = _u443_panel_skin
@@ -514,10 +561,17 @@ def _u443_make_button_skin(self, parent, text, command, kind="card", side=None, 
     button = _U443_ORIG_MAKE_BUTTON(self, parent, text, command, kind, side, fill, ipady)
     t = self.colors()
     try:
-        button.configure(relief=t.get("_button_relief","flat"), overrelief=t.get("_button_overrelief","raised"),
-                         bd=int(t.get("_button_bd",0)), highlightthickness=1 if int(t.get("_button_bd",0)) else 0,
-                         highlightbackground=t.get("accent","#1aa7ff"), highlightcolor=t.get("accent2","#55d8ff"),
-                         activebackground=t.get("accent2","#55d8ff"), activeforeground="#ffffff", cursor="hand2")
+        relief=t.get("_button_relief","flat")
+        over=t.get("_button_overrelief","raised")
+        border=int(t.get("_button_bd",0))
+        scale=float(t.get("_font_scale",1.0))
+        padx=int(t.get("_skin_button_padx",7)); pady=int(t.get("_skin_button_pady",3))
+        button.configure(relief=relief, overrelief=over, bd=border,
+            highlightthickness=1 if border else 0,
+            highlightbackground=t.get("accent","#1aa7ff"), highlightcolor=t.get("accent2","#55d8ff"),
+            activebackground=t.get("accent2","#55d8ff"), activeforeground="#ffffff", cursor="hand2",
+            padx=padx, pady=pady,
+            font=self.fnt(max(7,round(9*scale)), "bold" if int(t.get("_skin_density",0))%2==0 else "normal"))
     except Exception: pass
     return button
 AppV43.make_button = _u443_make_button_skin
@@ -526,10 +580,15 @@ _U443_ORIG_FNT = AppV43.fnt
 def _u443_skin_font(self, size=10, weight="normal"):
     t = self.colors()
     family = t.get("_font_family","Segoe UI")
-    key = ("_u443_skin_font", int(size), str(weight), family)
+    scale=float(t.get("_font_scale",1.0))
+    actual_size=max(7,min(28,round(int(size)*scale)))
+    slant=t.get("_font_slant","roman")
+    underline=bool(t.get("_font_underline",False))
+    key = ("_u443_skin_font", actual_size, str(weight), family, slant, underline)
     try:
         if key not in self.fonts:
-            self.fonts[key] = tkfont.Font(family=family, size=int(size), weight=str(weight))
+            self.fonts[key] = tkfont.Font(family=family, size=actual_size, weight=str(weight),
+                                         slant=slant, underline=underline)
         return self.fonts[key]
     except Exception:
         return _U443_ORIG_FNT(self, size, weight)
@@ -541,16 +600,19 @@ def _u443_apply_ttk_skin(self):
         st=ttk.Style(self)
         try: st.theme_use("clam")
         except Exception: pass
-        st.configure("TCombobox",fieldbackground=t["card"],background=t["panel"],foreground=t["fg"],arrowcolor=t["accent"],bordercolor=t["accent"],padding=5)
+        scale=float(t.get("_font_scale",1.0)); spacing=int(t.get("_skin_spacing",8)); density=int(t.get("_skin_density",0))
+        font_family=t.get("_font_family","Segoe UI")
+        rowheight=max(20,min(40,round((24+density*2)*scale)))
+        st.configure("TCombobox",fieldbackground=t["card"],background=t["panel"],foreground=t["fg"],arrowcolor=t["accent"],bordercolor=t["accent"],padding=(max(2,spacing//2),max(2,spacing//3)),font=(font_family,max(8,round(9*scale))))
         st.map("TCombobox",fieldbackground=[("readonly",t["card"]),("focus",t["panel"])],foreground=[("readonly",t["fg"])],background=[("active",t["accent"])])
         st.configure("TNotebook",background=t["bg"],borderwidth=int(t.get("_panel_bd",0)))
-        st.configure("TNotebook.Tab",background=t["card"],foreground=t["fg"],padding=(12,7),borderwidth=int(t.get("_button_bd",0)))
+        st.configure("TNotebook.Tab",background=t["card"],foreground=t["fg"],padding=(max(6,spacing+4),max(4,spacing//2+3)),borderwidth=int(t.get("_button_bd",0)),font=(font_family,max(8,round(9*scale))))
         st.map("TNotebook.Tab",background=[("selected",t["accent"]),("active",t["accent2"])],foreground=[("selected","#ffffff"),("active","#ffffff")])
-        st.configure("Treeview",background=t["card"],fieldbackground=t["card"],foreground=t["fg"],borderwidth=int(t.get("_panel_bd",0)),rowheight=23 if t.get("_skin_layout")=="terminal" else 28)
+        st.configure("Treeview",background=t["card"],fieldbackground=t["card"],foreground=t["fg"],borderwidth=int(t.get("_panel_bd",0)),rowheight=rowheight,font=(font_family,max(8,round(9*scale))))
         st.map("Treeview",background=[("selected",t["accent"])],foreground=[("selected","#ffffff")])
-        st.configure("Treeview.Heading",background=t["panel"],foreground=t["accent"],relief=t.get("_panel_relief","flat"),borderwidth=int(t.get("_panel_bd",0)))
+        st.configure("Treeview.Heading",background=t["panel"],foreground=t["accent"],relief=t.get("_panel_relief","flat"),borderwidth=int(t.get("_panel_bd",0)),font=(font_family,max(8,round(9*scale)),"bold"))
         st.map("Treeview.Heading",background=[("active",t["accent"])],foreground=[("active","#ffffff")])
-        st.configure("Horizontal.TProgressbar",background=t["accent"],troughcolor=t["card"],bordercolor=t["accent"],lightcolor=t["accent2"],darkcolor=t["panel"],thickness=12 if t.get("_skin_layout")=="terminal" else 16)
+        st.configure("Horizontal.TProgressbar",background=t["accent"],troughcolor=t["card"],bordercolor=t["accent"],lightcolor=t["accent2"],darkcolor=t["panel"],thickness=max(9,min(24,round((11+density*2)*scale))))
     except Exception: pass
 
 _U443_ORIG_BUILD_SHELL = AppV43._build_shell
@@ -786,13 +848,22 @@ def _u443_selftest_visual_skins():
     assert len(set(THEMES[i]["name"] for i in range(1,126)))==125
     required=("name","bg","panel","card","fg","muted","accent","accent2","good","warn","bad","_skin_family","_skin_id","_panel_relief","_button_relief","_font_family","_image_style","_skin_layout")
     assert all(all(k in THEMES[i] for k in required) for i in range(1,126))
-    assert len(set(THEMES[i]["_skin_family"] for i in range(1,126)))>=12
+    design_fields=("_skin_layout","_skin_shape","_skin_texture","_skin_chart_style","_panel_relief","_panel_bd","_button_relief","_button_bd","_font_family","_font_scale","_skin_density","_skin_spacing","_skin_card_count","_skin_border_mode")
+    signatures={tuple(THEMES[i][field] for field in design_fields) for i in range(1,126)}
+    assert len(signatures)==125, f"Każda skórka musi mieć własny profil strukturalny: {len(signatures)}"
+    for i in range(1,126):
+        assert THEMES[i]["_skin_variant"]==i-1
+        assert THEMES[i]["_skin_family"].endswith(f"{i:03d}")
+    assert len(set(THEMES[i]["_skin_layout"] for i in range(1,126)))>=10
+    assert len(set(THEMES[i]["_skin_shape"] for i in range(1,126)))>=10
+    assert len(set(THEMES[i]["_skin_chart_style"] for i in range(1,126)))>=8
+    assert len(set(THEMES[i]["_font_family"] for i in range(1,126)))>=10
     assert callable(_u443_bind_dashboard_button_hover)
     assert callable(AppV43.panel) and callable(AppV43.make_button)
     assert callable(AppV43._theme_reference)
     assert callable(AppV43.draw_theme_preview)
     print("[OK] 125 distinct skin names")
-    print("[OK] 12 structural design systems: panel depth, borders, typography, dashboard style and preview")
+    print("[OK] 125 unique structural profiles: layout, shape, texture, chart, typography, density, spacing, buttons and panels")
     print("[OK] dedicated hover image overlays for image-backed dashboard buttons")
     print("VISUAL_SKINS_AND_HOVER_OK")
 def _u443_selftest_themes():
