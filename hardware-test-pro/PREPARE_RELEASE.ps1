@@ -1057,6 +1057,64 @@ def _u443_draw_theme_preview(self,canvas):
         except Exception: pass
 AppV43.draw_theme_preview = _u443_draw_theme_preview
 
+# _U443_THEME_PROFILE_ENRICH_V2 — make every legacy and generated theme safe for structured rendering.
+if len(THEMES) < 125 or any(_u443_i not in THEMES for _u443_i in range(1,126)):
+    raise RuntimeError(f"Theme profile restore requires ids 1..125; found {len(THEMES)} entries")
+_U443_PROFILE_LAYOUTS_V2 = ("sidebar","topbar","grid","terminal","split","compact","wide","instrument","radial","stacked","cards","dock","hybrid")
+_U443_PROFILE_SHAPES_V2 = ("angular","rounded","bevel","double","corners","notched","outline","inset","circuit","hex","technical","minimal","glass")
+_U443_PROFILE_TEXTURES_V2 = ("grid","diagonal","dots","circuit","wave","radial","hex","scanline","dash","matrix","crosshair","rings","stars")
+_U443_PROFILE_CHARTS_V2 = ("line","area","bars","steps","spectrum","radial","wave","candles","dots","dual")
+_U443_PROFILE_FONTS_V2 = ("Segoe UI","Bahnschrift","Consolas","Arial","Georgia","Courier New","Trebuchet MS","Tahoma","Verdana","Calibri","Cambria","Lucida Console")
+_U443_PROFILE_PANEL_RELIEFS_V2 = ("flat","groove","solid","ridge","raised","sunken")
+_U443_PROFILE_BUTTON_RELIEFS_V2 = ("flat","raised","groove","ridge","solid","sunken")
+_U443_PROFILE_IMAGE_STYLES_V2 = ("neon","carbon","angular","matrix","ice","hologram","redline","amber","steel","retro","aurora","glass","wave","blueprint","plasma")
+_U443_PROFILE_PANEL_FILLS_V2 = ("panel","card","panel","bg","card")
+_U443_PROFILE_BORDER_MODES_V2 = ("line","double","corners","notched","dots")
+for _u443_tid_v2 in range(1,126):
+    _u443_n_v2 = _u443_tid_v2 - 1
+    _u443_theme_v2 = THEMES[_u443_tid_v2]
+    _u443_layout_v2 = _U443_PROFILE_LAYOUTS_V2[(_u443_n_v2*7 + _u443_n_v2//11) % len(_U443_PROFILE_LAYOUTS_V2)]
+    _u443_shape_v2 = _U443_PROFILE_SHAPES_V2[(_u443_n_v2*5 + _u443_n_v2//13) % len(_U443_PROFILE_SHAPES_V2)]
+    _u443_texture_v2 = _U443_PROFILE_TEXTURES_V2[(_u443_n_v2*7 + _u443_n_v2//9) % len(_U443_PROFILE_TEXTURES_V2)]
+    _u443_chart_v2 = _U443_PROFILE_CHARTS_V2[(_u443_n_v2*3 + _u443_n_v2//7) % len(_U443_PROFILE_CHARTS_V2)]
+    _u443_theme_v2["_skin_variant"] = _u443_n_v2
+    _u443_theme_v2["_skin_id"] = _u443_n_v2
+    _u443_theme_v2["_skin_layout"] = _u443_layout_v2
+    _u443_theme_v2["_skin_shape"] = _u443_shape_v2
+    _u443_theme_v2["_skin_texture"] = _u443_texture_v2
+    _u443_theme_v2["_skin_chart_style"] = _u443_chart_v2
+    _u443_theme_v2["_panel_relief"] = _U443_PROFILE_PANEL_RELIEFS_V2[(_u443_n_v2*5 + _u443_n_v2//4) % len(_U443_PROFILE_PANEL_RELIEFS_V2)]
+    _u443_theme_v2["_panel_bd"] = _u443_n_v2 % 4
+    _u443_theme_v2["_panel_highlight"] = 1 + (_u443_n_v2 % 4)
+    _u443_theme_v2["_button_relief"] = _U443_PROFILE_BUTTON_RELIEFS_V2[(_u443_n_v2*3 + _u443_n_v2//5) % len(_U443_PROFILE_BUTTON_RELIEFS_V2)]
+    _u443_theme_v2["_button_overrelief"] = _U443_PROFILE_BUTTON_RELIEFS_V2[(_u443_n_v2*5 + 1) % len(_U443_PROFILE_BUTTON_RELIEFS_V2)]
+    _u443_theme_v2["_button_bd"] = _u443_n_v2 % 3
+    _u443_theme_v2["_font_family"] = _U443_PROFILE_FONTS_V2[(_u443_n_v2*5 + _u443_n_v2//13) % len(_U443_PROFILE_FONTS_V2)]
+    _u443_theme_v2["_font_scale"] = round(0.86 + (_u443_n_v2 % 13)*0.024, 3)
+    _u443_theme_v2["_font_slant"] = "italic" if _u443_n_v2 % 9 == 0 else "roman"
+    _u443_theme_v2["_font_underline"] = _u443_n_v2 % 19 == 0
+    _u443_theme_v2["_image_style"] = _U443_PROFILE_IMAGE_STYLES_V2[(_u443_n_v2*5 + _u443_n_v2//9) % len(_U443_PROFILE_IMAGE_STYLES_V2)]
+    _u443_theme_v2["_scanlines"] = (_u443_n_v2 % 5 == 0) or _u443_texture_v2 == "scanline"
+    _u443_theme_v2["_skin_density"] = _u443_n_v2 % 5
+    _u443_theme_v2["_skin_spacing"] = 4 + (_u443_n_v2 % 9)
+    _u443_theme_v2["_skin_corner"] = 2 + ((_u443_n_v2*7) % 22)
+    _u443_theme_v2["_skin_nav_width"] = 92 + ((_u443_n_v2*5) % 83)
+    _u443_theme_v2["_skin_card_count"] = 3 + (_u443_n_v2 % 4)
+    _u443_theme_v2["_skin_chart_variant"] = _u443_n_v2 % len(_U443_PROFILE_CHARTS_V2)
+    _u443_theme_v2["_skin_panel_fill"] = _U443_PROFILE_PANEL_FILLS_V2[(_u443_n_v2//3) % len(_U443_PROFILE_PANEL_FILLS_V2)]
+    _u443_theme_v2["_skin_button_padx"] = 4 + ((_u443_n_v2*3) % 9)
+    _u443_theme_v2["_skin_button_pady"] = 2 + ((_u443_n_v2*5) % 7)
+    _u443_theme_v2["_skin_border_mode"] = _U443_PROFILE_BORDER_MODES_V2[_u443_n_v2 % len(_U443_PROFILE_BORDER_MODES_V2)]
+    _u443_theme_v2["_skin_background_alpha"] = 12 + ((_u443_n_v2*7) % 34)
+    _u443_theme_v2["_skin_visual_seed"] = (_u443_n_v2*7919 + 104729) % 1000003
+    if not str(_u443_theme_v2.get("_skin_family", "")).endswith(f"{_u443_tid_v2:03d}"):
+        _u443_theme_v2["_skin_family"] = f"STRUCTURED / {_u443_layout_v2.upper()} / {_u443_shape_v2.upper()} / {_u443_tid_v2:03d}"
+# Validate profile uniqueness before exposing the theme catalog.
+_U443_PROFILE_FIELDS_V2 = ("_skin_layout","_skin_shape","_skin_texture","_skin_chart_style","_panel_relief","_panel_bd","_button_relief","_button_bd","_font_family","_font_scale","_skin_density","_skin_spacing","_skin_card_count","_skin_border_mode")
+_U443_PROFILE_SIGNATURES_V2 = {tuple(THEMES[_u443_i][_u443_field] for _u443_field in _U443_PROFILE_FIELDS_V2) for _u443_i in range(1,126)}
+if len(_U443_PROFILE_SIGNATURES_V2) != 125:
+    raise RuntimeError(f"Structured theme profiles must be unique: {len(_U443_PROFILE_SIGNATURES_V2)}/125")
+
 def _u443_selftest_visual_skins():
     assert len(THEMES)>=125,len(THEMES)
     assert len(set(THEMES[i]["name"] for i in range(1,126)))==125
