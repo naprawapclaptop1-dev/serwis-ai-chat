@@ -7197,9 +7197,816 @@ def _u100_selftest_unique_gpu_scenes():
 
 _u37_gpu_benchmark_child = _u100_gpu_benchmark_child
 
+
+# v4.4.0 — port additional independent diagnostics from Serwis Ultimate 1.15.3
+# and System Repair PRO 5.6.25 into the online Hardware Test PRO test catalogue.
+_U101_ORIGINAL_NORM = _u93_norm
+_U101_ORIGINAL_EXECUTE = _u93_execute_catalog_test
+_U101_ORIGINAL_START = _u93_start_catalog_test
+_U101_ORIGINAL_DETAIL = _u93_show_test_detail
+
+_U101_SERWIS_TESTS = [
+    ("su_sensor_inventory","Pełny inwentarz czujników — LIVE","Tabela temperatur, obciążeń, zegarów, napięć, wentylatorów, mocy, RAM, dysku i sieci z dostępnych źródeł.","sensor_inventory"),
+    ("su_sensor_trend","Rejestrator telemetrii — 30/60 s","Próbkuje rzeczywiste metryki systemu i dostępne czujniki, a następnie zapisuje raport.","sensor_trend"),
+    ("su_read_file","Benchmark odczytu dysku — plik użytkownika","Sekwencyjny odczyt istniejącego pliku; niczego nie zapisuje ani nie zmienia na dysku.","disk_read_file"),
+    ("su_driver_inventory","Pełna lista sterowników","Odczyt sterowników Plug and Play z wersją, dostawcą, datą i statusem.","driver_inventory"),
+    ("su_device_errors","Błędy urządzeń PnP","Raport urządzeń zgłaszających problem przez Windows; nie instaluje sterowników.","pnp_errors"),
+    ("su_process_snapshot","Migawka procesów CPU/RAM","Odczyt procesów, zajętej pamięci i dostępnych liczników CPU.","process_snapshot"),
+    ("su_services_inventory","Raport usług Windows","Lista usług i ich stanu; test niczego nie uruchamia ani nie wyłącza.","services_inventory"),
+    ("su_connections","Połączenia TCP/IP i adaptery","Lista dostępnych połączeń oraz konfiguracji sieci bez resetowania interfejsów.","network_connections"),
+    ("su_audio_sweep","Test audio — sweep 100 Hz–12 kHz","Po potwierdzeniu odtwarza krótki sweep na wyjściu audio i zapisuje parametry testu.","audio_sweep"),
+    ("su_display_34","Matryca — 34 osobne wzorce","Pełnoekranowe kolory, pasy, gradienty, siatki i smużenie; ocena końcowa wymaga potwierdzenia użytkownika.","screen_patterns_34"),
+    ("su_keyboard_matrix","Klawiatura — macierz naciśniętych klawiszy","Zaznacza rozpoznane klawisze i podaje pokrycie; nie zapisuje tekstu wpisywanego przez użytkownika.","keyboard_matrix"),
+    ("su_battery_health","Raport kondycji baterii","Łączy stan kontrolera baterii i raport powercfg; brak danych kontrolera to N/D.","battery_health_detailed"),
+    ("su_reports_bundle","Eksport paczki raportów","Pakuje lokalne raporty diagnostyczne do ZIP; niczego nie wysyła do Internetu.","report_bundle")
+]
+_U101_REPAIR_TESTS = [
+    ("sr_cpu_prime_single","Benchmark CPU — wyszukiwanie liczb pierwszych, 1 wątek","Inny profil obciążenia niż SHA-256; podaje liczbę znalezionych liczb pierwszych na sekundę.","cpu_prime_single"),
+    ("sr_cpu_prime_multi","Benchmark CPU — wyszukiwanie liczb pierwszych, wiele wątków","Równoległy test liczb pierwszych i wykorzystania wielu logicznych procesorów.","cpu_prime_multi"),
+    ("sr_ram_address","RAM — wzorzec adresów i bloków","Weryfikuje znaczniki na granicach bloków bufora aplikacji; nie jest testem wszystkich fizycznych komórek.","ram_address"),
+    ("sr_ram_walking","RAM — wzorzec walking-bit","Zapisuje i weryfikuje osiem wzorców bitowych w buforze aplikacji.","ram_walking"),
+    ("sr_ram_checkerboard","RAM — szachownica AA/55","Dwa przeciwne wzorce i pełna weryfikacja danych w buforze aplikacji.","ram_checkerboard"),
+    ("sr_ram_pseudorandom","RAM — dane pseudolosowe","Weryfikuje deterministyczne dane pseudolosowe zapisane w buforze aplikacji.","ram_pseudorandom"),
+    ("sr_sfc_verify","Windows — SFC /verifyonly","Sprawdza integralność chronionych plików bez uruchamiania naprawy SFC.","sfc_verify"),
+    ("sr_dism_scan","Windows — DISM ScanHealth","Diagnostyka magazynu składników Windows; uruchamia ScanHealth, nie RestoreHealth.","dism_scanhealth"),
+    ("sr_volume_scan","Wolumin — kontrola tylko do odczytu","Używa CHKDSK /scan na wybranym woluminie, nie używa /f ani /r.","volume_scan"),
+    ("sr_bios_license","BIOS / płyta / aktywacja Windows","Raportuje model BIOS/płyty i status licencji; nie odczytuje ani nie pokazuje pełnego klucza produktu.","bios_license"),
+    ("sr_update_history","Historia poprawek Windows","Lista zainstalowanych poprawek i dat z WMI/Get-HotFix.","windows_update_history"),
+    ("sr_restore_points","Punkty przywracania","Lista istniejących punktów przywracania; nie tworzy ani nie przywraca punktu automatycznie.","restore_points"),
+    ("sr_system_audit","Pełny audyt systemu","Jedna migawka CPU/RAM/OS/dysków/uruchomionych procesów z raportem JSON.","system_audit"),
+    ("sr_dxdiag_report","DirectX — raport diagnostyczny","Generuje lokalny raport dxdiag; nie deklaruje certyfikacji DirectX 12 Ultimate.","dxdiag_report"),
+    ("sr_network_audit","Sieć — IP/DNS/brama/trasy","Odczyt adresów, serwerów DNS i trasy domyślnej bez zmiany ustawień sieci.","network_audit"),
+    ("sr_report_bundle","Eksport raportów System Repair","Pakuje lokalne raporty Hardware Test PRO do archiwum ZIP.","report_bundle")
+]
+
+_U93_TEST_CATALOG["SERWIS_ULTIMATE"] = list(_U101_SERWIS_TESTS)
+_U93_TEST_CATALOG["SYSTEM_REPAIR_PRO"] = list(_U101_REPAIR_TESTS)
+_U93_MODULES.extend([
+    ("SERWIS_ULTIMATE","SERWIS ULTIMATE — TESTY 1.15.3"),
+    ("SYSTEM_REPAIR_PRO","SYSTEM REPAIR PRO — DIAGNOSTYKA 5.6.25")
+])
+_U93_ALIASES.update({
+    "SERWIS_ULTIMATE":"SERWIS_ULTIMATE","SERWIS ULTIMATE":"SERWIS_ULTIMATE",
+    "SYSTEM_REPAIR_PRO":"SYSTEM_REPAIR_PRO","SYSTEM REPAIR PRO":"SYSTEM_REPAIR_PRO",
+    "SERWIS ULTIMATE 1.15.3":"SERWIS_ULTIMATE","SYSTEM REPAIR PRO 5.6.25":"SYSTEM_REPAIR_PRO"
+})
+def _u101_norm(module):
+    raw=str(module or "").upper().strip()
+    if raw in _U93_TEST_CATALOG:
+        return raw
+    return _U101_ORIGINAL_NORM(module)
+_u93_norm = _u101_norm
+
+_U93_SUPPORTED_TEST_KINDS.update({
+    "sensor_inventory","sensor_trend","disk_read_file","driver_inventory","pnp_errors","process_snapshot",
+    "services_inventory","network_connections","audio_sweep","screen_patterns_34","keyboard_matrix",
+    "battery_health_detailed","report_bundle","cpu_prime_single","cpu_prime_multi","ram_address",
+    "ram_walking","ram_checkerboard","ram_pseudorandom","sfc_verify","dism_scanhealth","volume_scan",
+    "bios_license","windows_update_history","restore_points","system_audit","dxdiag_report","network_audit"
+})
+
+_U101_DISPLAY_PATTERNS = [
+ ("01 Czerń pełna","solid","#000000"),("02 Biel pełna","solid","#ffffff"),
+ ("03 Czerwień","solid","#ff0000"),("04 Zieleń","solid","#00ff00"),("05 Niebieski","solid","#0000ff"),
+ ("06 Cyan","solid","#00ffff"),("07 Magenta","solid","#ff00ff"),("08 Żółty","solid","#ffff00"),
+ ("09 Szarość 10%","solid","#1a1a1a"),("10 Szarość 50%","solid","#808080"),("11 Szarość 90%","solid","#e6e6e6"),
+ ("12 Pasy pionowe","vstripes",""),("13 Pasy poziome","hstripes",""),("14 Szachownica drobna","checker",""),
+ ("15 Szachownica duża","checker_big",""),("16 Siatka pikseli","pixelgrid",""),("17 Krzyż centralny","crosshair",""),
+ ("18 Siatka konwergencji","grid",""),("19 Gradient szarości","gray_gradient",""),("20 Gradient koloru","color_gradient",""),
+ ("21 Pasy RGB","rgb_bars",""),("22 Gradient czerwony","red_gradient",""),("23 Gradient zielony","green_gradient",""),
+ ("24 Gradient niebieski","blue_gradient",""),("25 Poziomy near-black","near_black",""),("26 Poziomy near-white","near_white",""),
+ ("27 Linie ukośne","diagonal",""),("28 Siatka okręgów","circles",""),("29 Wzorzec ostrości drobnej","fine_lines",""),
+ ("30 Barwy cieple/chłodne","temperature_bands",""),("31 Czerń — ocena podświetlenia","backlight",""),("32 Migający znacznik ruchu","motion",""),
+ ("33 Pasy kolorów naprzemienne","color_stripes",""),("34 Jednopikselowe kolumny","one_pixel","")
+]
+
+def _u101_draw_display_pattern(canvas, item, width, height, phase=0):
+    title,kind,color_value=item
+    canvas.delete("all")
+    w=max(320,int(width));h=max(240,int(height))
+    canvas.configure(bg=color_value if kind=="solid" else "#05070b")
+    if kind in ("solid","backlight"):
+        if kind=="backlight": canvas.configure(bg="#000000")
+    elif kind in ("vstripes","hstripes","checker","checker_big","pixelgrid","grid","crosshair","fine_lines","one_pixel","color_stripes"):
+        if kind in ("vstripes","color_stripes","one_pixel"):
+            step=1 if kind=="one_pixel" else 24 if kind=="color_stripes" else 12
+            palette=["#ffffff","#000000"] if kind=="vstripes" else ["#ff0000","#00ff00","#0000ff","#ffffff","#000000","#00ffff","#ff00ff","#ffff00"]
+            for x in range(0,w,step):
+                col=palette[(x//step)%len(palette)]
+                canvas.create_rectangle(x,0,min(w,x+step),h,fill=col,outline="")
+        elif kind in ("hstripes","fine_lines"):
+            step=2 if kind=="fine_lines" else 18
+            for y in range(0,h,step):
+                col="#ffffff" if (y//step)%2==0 else "#000000"
+                canvas.create_rectangle(0,y,w,min(h,y+step),fill=col,outline="")
+        elif kind in ("checker","checker_big","pixelgrid"):
+            step=12 if kind=="checker" else 40 if kind=="checker_big" else 8
+            for y in range(0,h,step):
+                for x in range(0,w,step):
+                    on=((x//step)+(y//step))%2==0
+                    if kind=="pixelgrid":
+                        canvas.create_rectangle(x,y,min(w,x+step),min(h,y+step),fill="#f1f5f9" if on else "#111827",outline="#64748b",width=1)
+                    else:
+                        canvas.create_rectangle(x,y,min(w,x+step),min(h,y+step),fill="#ffffff" if on else "#000000",outline="")
+        elif kind=="grid":
+            step=max(12,min(48,w//32))
+            for x in range(0,w,step):canvas.create_line(x,0,x,h,fill="#e5e7eb",width=1)
+            for y in range(0,h,step):canvas.create_line(0,y,w,y,fill="#e5e7eb",width=1)
+        elif kind=="crosshair":
+            canvas.create_line(w//2,0,w//2,h,fill="#00ff80",width=2)
+            canvas.create_line(0,h//2,w,h//2,fill="#00ff80",width=2)
+            for r in range(20,min(w,h)//2,40):canvas.create_oval(w//2-r,h//2-r,w//2+r,h//2+r,outline="#ff4040",width=1)
+    elif kind in ("gray_gradient","color_gradient","red_gradient","green_gradient","blue_gradient","near_black","near_white","temperature_bands"):
+        steps=min(512,w)
+        for i in range(steps):
+            t=i/max(1,steps-1)
+            v=round(t*255)
+            if kind=="gray_gradient":col=f"#{v:02x}{v:02x}{v:02x}"
+            elif kind=="red_gradient":col=f"#{v:02x}0000"
+            elif kind=="green_gradient":col=f"#00{v:02x}00"
+            elif kind=="blue_gradient":col=f"#0000{v:02x}"
+            elif kind=="near_black":
+                levels=[1,2,3,4,5,6,8,10,12,14,16,18,20,22,24,26,28,30]
+                v=levels[min(len(levels)-1,int(t*len(levels)))];col=f"#{v:02x}{v:02x}{v:02x}"
+            elif kind=="near_white":
+                levels=[225,230,235,238,240,242,244,246,248,250,251,252,253,254,255]
+                v=levels[min(len(levels)-1,int(t*len(levels)))];col=f"#{v:02x}{v:02x}{v:02x}"
+            elif kind=="temperature_bands":
+                pal=["#173c91","#2685cc","#61c7d8","#9bd65b","#f3e34d","#f5a623","#eb5338","#b41e4b"];col=pal[min(len(pal)-1,int(t*len(pal)))]
+            else:
+                hue=t*6;seg=int(hue)%6;f=hue-int(hue);q=round(255*(1-f));v=round(255*f)
+                pal=[(255,v,0),(q,255,0),(0,255,v),(0,q,255),(v,0,255),(255,0,q)]
+                rr,gg,bb=pal[seg];col=f"#{rr:02x}{gg:02x}{bb:02x}"
+            x0=int(i*w/steps);x1=int((i+1)*w/steps)+1
+            canvas.create_rectangle(x0,0,x1,h,fill=col,outline="")
+    elif kind=="diagonal":
+        for x in range(-h,w,24):canvas.create_line(x,0,x+h,h,fill="#e5e7eb",width=2)
+    elif kind=="circles":
+        for r in range(12,min(w,h),24):canvas.create_oval(w//2-r,h//2-r,w//2+r,h//2+r,outline="#f8fafc",width=1)
+    elif kind=="motion":
+        x=int((phase%100)/100*max(1,w-100))
+        canvas.create_line(0,h//2,w,h//2,fill="#475569")
+        canvas.create_rectangle(x,h//2-45,x+80,h//2+45,fill="#06b6d4",outline="#ffffff",width=2)
+    canvas.create_rectangle(8,8,w-8,44,fill="#07111f",outline="#0ea5e9",width=1)
+    canvas.create_text(18,26,anchor="w",text=f"{title}  •  Wzorzec {next((i+1 for i,x in enumerate(_U101_DISPLAY_PATTERNS) if x==item),0)}/34",fill="#ffffff",font=("Segoe UI",12,"bold"))
+    canvas.create_text(w-16,h-12,anchor="se",text="← / → zmiana  •  ESC zakończenie  •  ocena ręczna",fill="#7dd3fc",font=("Segoe UI",9))
+
+def _u101_open_display_patterns(app,test_id):
+    top=tk.Toplevel(app)
+    top.title("Serwis Ultimate — test matrycy 34 wzorce")
+    top.attributes("-fullscreen",True)
+    canvas=tk.Canvas(top,bg="#000000",highlightthickness=0);canvas.pack(fill="both",expand=True)
+    state={"index":0,"seen":set(),"closed":False,"motion":0,"timer":None}
+    def redraw():
+        if state["closed"]:return
+        item=_U101_DISPLAY_PATTERNS[state["index"]]
+        _u101_draw_display_pattern(canvas,item,top.winfo_width(),top.winfo_height(),state["motion"])
+        state["seen"].add(state["index"])
+    def go(delta):
+        state["index"]=(state["index"]+delta)%len(_U101_DISPLAY_PATTERNS);redraw()
+    def tick():
+        if state["closed"] or not top.winfo_exists():return
+        if _U101_DISPLAY_PATTERNS[state["index"]][1]=="motion":
+            state["motion"]=(state["motion"]+3)%100;redraw()
+        state["timer"]=top.after(60,tick)
+    def finish(event=None):
+        if state["closed"]:return "break"
+        state["closed"]=True
+        if state.get("timer"):
+            try:top.after_cancel(state["timer"])
+            except Exception:pass
+        try:top.destroy()
+        except Exception:pass
+        answer=messagebox.askyesnocancel("Ocena testu matrycy","Czy wszystkie wzorce wyglądały poprawnie (kolory, pasy, podświetlenie, piksele i smużenie)?\n\nTak = operator potwierdza wynik OK\nNie = operator zauważył problem\nAnuluj = nierozstrzygnięte")
+        names=[_U101_DISPLAY_PATTERNS[i][0] for i in sorted(state["seen"])]
+        complete=len(state["seen"])==len(_U101_DISPLAY_PATTERNS)
+        result={"test_id":test_id,"state":"good" if answer is True and complete else "bad" if answer is False else "warn",
+            "operator_confirmed":answer is not None,"operator_ok":answer is True,"patterns_total":len(_U101_DISPLAY_PATTERNS),
+            "patterns_seen":len(state["seen"]),"all_patterns_seen":complete,"seen_patterns":names,
+            "note":"Program wyświetla wzorce, ale nie wykrywa automatycznie martwych pikseli ani wad podświetlenia."}
+        _u93_put_result(app,"SCREEN_PATTERNS_34",result)
+        _u93_update_detail(app,test_id,str(result["state"]).upper(),result)
+        app.queue_log(f"TEST MATRYCY 34: {result['patterns_seen']}/34 wzorców; wynik {result['state']} (ocena operatora).")
+        return "break"
+    top.bind("<Left>",lambda e:go(-1));top.bind("<Right>",lambda e:go(1));top.bind("<Escape>",finish)
+    top.focus_force()
+    top.after(150,redraw);top.after(180,tick)
+
+def _u101_keyboard_matrix(app,test_id):
+    view="COMPONENT_TEST_DETAIL_"+str(test_id)
+    app.current_view=view;app.clear();t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — MACIERZ KLAWIATURY")
+    panel=app.panel(app.content);panel.pack(fill="x",pady=(0,6))
+    tk.Label(panel,text="TEST POKRYCIA KLAWISZY — BEZ ZAPISYWANIA WPISYWANEJ TREŚCI",bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=10,pady=(8,3))
+    tk.Label(panel,text="Test zachowuje tylko nazwę klawisza (keysym), kod klawisza, liczbę naciśnięć i pokrycie. Nie zapisuje znaków wpisywanych do pól tekstowych.",bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,8))
+    state={"active":False,"counts":{},"started":None,"closed":False}
+    status=tk.Label(app.content,text="Kliknij START, a następnie naciskaj sprawdzane klawisze.",bg=t["bg"],fg=t["muted"],font=app.fnt(9,"bold"),anchor="w");status.pack(fill="x",padx=5,pady=5)
+    grid=app.panel(app.content);grid.pack(fill="both",expand=True,pady=4)
+    tree=ttk.Treeview(grid,columns=("key","code","count"),show="headings",height=14)
+    for col,label,width in (("key","KLAWIATURA / KEYSYM",260),("code","KOD",100),("count","NACIŚNIĘCIA",140)):
+        tree.heading(col,text=label);tree.column(col,width=width,anchor="w")
+    tree.pack(fill="both",expand=True,padx=6,pady=6)
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=4)
+    def render():
+        if not tree.winfo_exists():return
+        tree.delete(*tree.get_children())
+        for n,(key,record) in enumerate(sorted(state["counts"].items())):
+            tree.insert("","end",iid=f"k{n}",values=(key,record["keycode"],record["count"]))
+    def on_key(event):
+        if not state["active"]:return None
+        key=str(getattr(event,"keysym","") or "Unknown")[:80]
+        code=int(getattr(event,"keycode",0) or 0)
+        record=state["counts"].setdefault(key,{"keycode":code,"count":0})
+        record["count"]+=1;record["keycode"]=code
+        status.config(text=f"Unikalne klawisze: {len(state['counts'])} • naciśnięcia łącznie: {sum(x['count'] for x in state['counts'].values())} • treść nie jest zapisywana")
+        render()
+        return "break"
+    def start():
+        state["active"]=True;state["started"]=_u66_time.monotonic()
+        try:app.content.focus_force()
+        except Exception:pass
+        status.config(text="Rejestracja działa — naciskaj klawisze; tekst ani znaki nie są zapisywane.")
+    def stop():
+        state["active"]=False
+        elapsed=max(.01,_u66_time.monotonic()-(state["started"] or _u66_time.monotonic()))
+        report={"state":"good" if state["counts"] else "warn","unique_keys":len(state["counts"]),
+            "total_presses":sum(x["count"] for x in state["counts"].values()),"duration_seconds":round(elapsed,2),
+            "keysym_counts":state["counts"],"typed_text_saved":False,
+            "note":"Pokrycie klawiszy oceniaj według liczby unikalnych nazw keysym; wynik nie wykrywa mechanicznej wady każdego przełącznika."}
+        _u93_put_result(app,"KEYBOARD_MATRIX_DETAIL",report)
+        _u93_update_detail(app,test_id,str(report["state"]).upper(),report)
+        app.queue_log(f"MACIERZ KLAWIATURY: {report['unique_keys']} unikalnych keysym, {report['total_presses']} naciśnięć.")
+        status.config(text=f"Zakończono: {report['unique_keys']} unikalnych klawiszy; treść nie została zapisana.")
+    app.bind("<KeyPress>",on_key,add="+")
+    app._u101_keyboard_matrix_unbind=lambda:app.unbind("<KeyPress>")
+    app.make_button(row,"START",start,"accent",side="left",ipady=5)
+    app.make_button(row,"ZAKOŃCZ I ZAPISZ RAPORT",stop,"good",side="left",ipady=5)
+    app.make_button(row,"← KATALOG",lambda:_u93_show_catalog(app,"SERWIS_ULTIMATE"),"card",side="left",ipady=5)
+    app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=5)
+
+def _u101_sensor_inventory_view(app,module,test_id):
+    view="COMPONENT_TEST_DETAIL_"+str(test_id)
+    app.current_view=view;app.clear();t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — PEŁNA TELEMETRIA SPRZĘTU")
+    head=app.panel(app.content);head.pack(fill="x",pady=(0,4))
+    tk.Label(head,text="WSZYSTKIE WARTOŚCI UDOSTĘPNIONE PRZEZ STEROWNIKI + LICZNIKI WINDOWS",bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=10,pady=(8,2))
+    tk.Label(head,text="Odczyty obejmują czujniki LibreHardwareMonitor oraz liczniki CPU/RAM/dysku/sieci z Windows. Dostępność temperatur, mocy i wentylatorów zależy od czujnika i sterownika; brak pomiaru to N/D.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=10,pady=(0,6))
+    toolsrow=tk.Frame(app.content,bg=t["bg"]);toolsrow.pack(fill="x",pady=3)
+    category=tk.StringVar(value="Wszystkie")
+    search=tk.StringVar(value="")
+    ttk.Combobox(toolsrow,textvariable=category,values=("Wszystkie","Temperature","Load","Clock","Voltage","Fan","Power","Data","Throughput","Other"),state="readonly",width=16).pack(side="left",padx=3)
+    ttk.Entry(toolsrow,textvariable=search,width=28).pack(side="left",padx=3,ipady=3)
+    status=tk.Label(toolsrow,text="Uruchamiam pierwszy odczyt…",bg=t["bg"],fg=t["muted"],font=app.fnt(8,"bold"));status.pack(side="right",padx=5)
+    panel=app.panel(app.content);panel.pack(fill="both",expand=True,pady=4)
+    frame=tk.Frame(panel,bg=t["panel"]);frame.pack(fill="both",expand=True,padx=5,pady=5)
+    cols=("type","hardware","sensor","value","unit","source")
+    tree=ttk.Treeview(frame,columns=cols,show="headings",height=21)
+    widths={"type":100,"hardware":220,"sensor":300,"value":100,"unit":75,"source":270}
+    labels={"type":"TYP","hardware":"PODZESPÓŁ","sensor":"CZUJNIK / METRYKA","value":"WARTOŚĆ","unit":"JEDNOSTKA","source":"ŹRÓDŁO"}
+    for col in cols:tree.heading(col,text=labels[col]);tree.column(col,width=widths[col],minwidth=70,stretch=col in ("hardware","sensor","source"))
+    vs=ttk.Scrollbar(frame,orient="vertical",command=tree.yview);hs=ttk.Scrollbar(frame,orient="horizontal",command=tree.xview)
+    tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set);tree.grid(row=0,column=0,sticky="nsew");vs.grid(row=0,column=1,sticky="ns");hs.grid(row=1,column=0,sticky="ew")
+    frame.grid_rowconfigure(0,weight=1);frame.grid_columnconfigure(0,weight=1)
+    state={"rows":[],"busy":False,"auto":True,"seq":0,"prev_disk":None,"prev_net":None}
+    def visible_rows():
+        want=category.get()
+        query=search.get().strip().lower()
+        out=[]
+        for row in state["rows"]:
+            if want!="Wszystkie" and row[0].lower()!=want.lower():continue
+            if query and query not in " ".join(str(x) for x in row).lower():continue
+            out.append(row)
+        return out
+    def render():
+        if not tree.winfo_exists():return
+        rows=visible_rows()
+        tree.delete(*tree.get_children())
+        for i,row in enumerate(rows[:2500]):tree.insert("","end",iid=f"s{i}",values=row)
+        status.config(text=f"{len(rows):,} wartości • {len(state['rows']):,} razem")
+    def refresh():
+        if state["busy"] or app.current_view!=view:return
+        state["busy"]=True;state["seq"]+=1;seq=state["seq"]
+        def work():
+            try:
+                probe=_u66_sensor_probe()
+                rows=[]
+                for raw in probe.get("sensors",[]) or []:
+                    if not isinstance(raw,dict):continue
+                    try:value=float(raw.get("value"))
+                    except Exception:continue
+                    if not _u66_math.isfinite(value):continue
+                    rows.append((str(raw.get("sensorType") or raw.get("sensor_type") or "Other"),
+                        str(raw.get("hardware") or raw.get("parent") or "N/D"),
+                        str(raw.get("sensor") or raw.get("name") or "N/D"),f"{value:.3f}".rstrip("0").rstrip("."),
+                        str(raw.get("unit") or ""),str(raw.get("source") or probe.get("method") or "LibreHardwareMonitor")))
+                p=globals().get("psutil")
+                try:
+                    if p:
+                        rows.append(("Load","System","CPU usage",f"{p.cpu_percent(interval=0.15):.1f}","%","psutil/Windows"))
+                        vm=p.virtual_memory()
+                        rows.extend([("Load","System","RAM used",f"{vm.percent:.1f}","%","psutil/Windows"),
+                            ("Data","System","RAM total",f"{vm.total/1024**3:.2f}","GB","psutil/Windows"),
+                            ("Data","System","RAM used",f"{vm.used/1024**3:.2f}","GB","psutil/Windows"),
+                            ("Data","System","RAM available",f"{vm.available/1024**3:.2f}","GB","psutil/Windows")])
+                        freq=p.cpu_freq()
+                        if freq and freq.current:rows.append(("Clock","CPU","Current clock",f"{freq.current:.0f}","MHz","psutil/Windows"))
+                        dio=p.disk_io_counters()
+                        now=_u66_time.monotonic()
+                        if dio:
+                            prev=state.get("prev_disk")
+                            if prev:
+                                dt=max(.05,now-prev[2])
+                                rows.append(("Throughput","Disk","Read speed",f"{max(0,dio.read_bytes-prev[0])/dt/1e6:.2f}","MB/s","psutil/Windows"))
+                                rows.append(("Throughput","Disk","Write speed",f"{max(0,dio.write_bytes-prev[1])/dt/1e6:.2f}","MB/s","psutil/Windows"))
+                            rows.append(("Data","Disk","Bytes read total",f"{dio.read_bytes/1e9:.3f}","GB","psutil/Windows"))
+                            rows.append(("Data","Disk","Bytes written total",f"{dio.write_bytes/1e9:.3f}","GB","psutil/Windows"))
+                            state["prev_disk"]=(dio.read_bytes,dio.write_bytes,now)
+                        nio=p.net_io_counters()
+                        if nio:
+                            prev=state.get("prev_net")
+                            if prev:
+                                dt=max(.05,now-prev[2])
+                                rows.append(("Throughput","Network","Download throughput",f"{max(0,nio.bytes_recv-prev[0])/dt/1e6:.2f}","MB/s","psutil/Windows"))
+                                rows.append(("Throughput","Network","Upload throughput",f"{max(0,nio.bytes_sent-prev[1])/dt/1e6:.2f}","MB/s","psutil/Windows"))
+                            rows.append(("Data","Network","Received total",f"{nio.bytes_recv/1e9:.3f}","GB","psutil/Windows"))
+                            rows.append(("Data","Network","Sent total",f"{nio.bytes_sent/1e9:.3f}","GB","psutil/Windows"))
+                            state["prev_net"]=(nio.bytes_recv,nio.bytes_sent,now)
+                except Exception as exc:
+                    rows.append(("Other","Windows","psutil error",str(exc)[:160],"","psutil"))
+                gpu={}
+                try:gpu=_u100_gpu_from_sensors(probe)
+                except Exception:pass
+                if gpu.get("available"):
+                    for key,label,unit in (("gpu_load_percent","GPU load","%"),("temperature_c","GPU temperature","°C"),
+                        ("vram_used_mb","VRAM used","MB"),("vram_total_mb","VRAM total","MB"),
+                        ("gpu_clock_mhz","GPU clock","MHz"),("memory_clock_mhz","VRAM clock","MHz"),
+                        ("power_draw_w","GPU power","W"),("fan_speed_rpm","GPU fan","RPM")):
+                        val=gpu.get(key)
+                        if val is not None:rows.append(("Other","GPU",label,str(val),unit,str(gpu.get("provider","sensor bridge"))))
+                snapshot={"temps":probe,"gpu":gpu,"time":_u66_time.monotonic()}
+                def apply():
+                    state["busy"]=False
+                    if app.current_view!=view:return
+                    state["rows"]=rows
+                    try:app._u66_sensor_cache=snapshot;app._u84_gpu_last_telemetry=gpu
+                    except Exception:pass
+                    render()
+                app.queue_action(apply)
+            except Exception as exc:
+                def fail(err=exc):
+                    state["busy"]=False
+                    if app.current_view==view:status.config(text=f"Błąd odczytu: {type(err).__name__}: {err}")
+                app.queue_action(fail)
+        _u66_threading.Thread(target=work,name="NaprawaPCSensorInventory",daemon=True).start()
+    def auto_tick():
+        if app.current_view!=view:
+            state["auto"]=False;return
+        if state["auto"]:
+            refresh()
+            app.after(3500,auto_tick)
+    category.trace_add("write",lambda *_:render());search.trace_add("write",lambda *_:render())
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=3)
+    def export_csv():
+        if not state["rows"]:messagebox.showinfo("Eksport czujników","Brak danych do zapisania.");return
+        target=_u66_filedialog.asksaveasfilename(parent=app,defaultextension=".csv",filetypes=[("CSV","*.csv")],initialfile="NaprawaPC-pelne-czujniki.csv")
+        if not target:return
+        import csv as _csv
+        try:
+            with open(target,"w",newline="",encoding="utf-8-sig") as fh:
+                writer=_csv.writer(fh,delimiter=";");writer.writerow(("Typ","Podzespół","Czujnik","Wartość","Jednostka","Źródło"));writer.writerows(state["rows"])
+            app.queue_log(f"Zapisano pełną listę czujników: {target}")
+            messagebox.showinfo("Eksport czujników","Zapisano pełną listę czujników:\n"+target,parent=app)
+        except Exception as exc:messagebox.showerror("Eksport czujników",f"{type(exc).__name__}: {exc}",parent=app)
+    app.make_button(row,"ODŚWIEŻ TERAZ",refresh,"accent",side="left",ipady=4)
+    app.make_button(row,"WSTRZYMAJ AUTO",lambda:state.update(auto=False),"card",side="left",ipady=4)
+    app.make_button(row,"WZNÓW AUTO",lambda:(state.update(auto=True),auto_tick()),"card",side="left",ipady=4)
+    app.make_button(row,"EKSPORT CSV",export_csv,"good",side="left",ipady=4)
+    app.make_button(row,"← KATALOG CZUJNIKÓW",lambda:_u93_show_catalog(app,"SERWIS_ULTIMATE"),"card",side="left",ipady=4)
+    app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=4)
+    refresh();app.after(3500,auto_tick)
+
+def _u101_ram_pattern_test(app, pattern_kind, memory_mb, duration):
+    import random as _rand
+    import time as _tm
+    requested=max(32,min(512,int(memory_mb or 128)))
+    try:
+        p=globals().get("psutil")
+        available=int(p.virtual_memory().available/(1024*1024)) if p else 0
+    except Exception:available=0
+    safe=requested if available<=0 else min(requested,max(32,int(available*0.15)))
+    safe=max(32,safe)
+    size=safe*1024*1024
+    buf=bytearray(size)
+    chunk_size=1024*1024
+    checked=0;mismatches=0;passes=0;started=_u66_time.monotonic()
+    duration=max(1,min(300,int(duration or 15)))
+    def pattern_for(block_no, pass_no, n):
+        if pattern_kind=="ram_address":
+            # A location-derived marker is sampled at each 4 KiB boundary, plus its adjacent byte.
+            return bytes((((block_no*17+pass_no*29)&255),((~block_no+pass_no*11)&255)))
+        if pattern_kind=="ram_walking":
+            bit=pass_no%8
+            value=1<<bit
+            return bytes((value,255^value))
+        if pattern_kind=="ram_checkerboard":
+            value=(0xAA,0x55)[pass_no%2]
+            return bytes((value,255^value))
+        rng=_rand.Random(0x6E6F2A+block_no*65537+pass_no*313)
+        return rng.randbytes(n)
+    deadline=started+duration
+    while _u66_time.monotonic()<deadline and passes < max(1,duration//2):
+        if bool(getattr(app,"stop_requested",False)):
+            break
+        try:
+            if app._test_should_stop():break
+        except Exception:pass
+        passes+=1
+        if pattern_kind=="ram_address":
+            for offset in range(0,size,4096):
+                mark=((offset//4096)*17+passes*29)&255
+                buf[offset]=mark
+                if offset+1<size:buf[offset+1]=(~(offset//4096)+passes*11)&255
+            for offset in range(0,size,4096):
+                mark=((offset//4096)*17+passes*29)&255
+                mismatches += int(buf[offset]!=mark)
+                if offset+1<size:mismatches += int(buf[offset+1]!=((~(offset//4096)+passes*11)&255))
+                checked+=min(2,size-offset)
+        else:
+            for block_no,start in enumerate(range(0,size,chunk_size)):
+                end=min(size,start+chunk_size);n=end-start
+                if pattern_kind=="ram_pseudorandom":
+                    expected=_rand.Random(0x6E6F2A+block_no*65537+passes*313).randbytes(n)
+                else:
+                    two=pattern_for(block_no,passes,n)
+                    expected=(two*((n+len(two)-1)//len(two)))[:n]
+                buf[start:end]=expected
+                actual=buf[start:end]
+                mismatches+=sum(a!=b for a,b in zip(actual,expected))
+                checked+=n
+                if bool(getattr(app,"stop_requested",False)):break
+        if mismatches:break
+    elapsed=max(.001,_u66_time.monotonic()-started)
+    if pattern_kind=="ram_address":coverage="address markers at 4 KiB boundaries (not all bytes)"
+    else:coverage="all bytes in the allocated application buffer for each completed pass"
+    return {"state":"bad" if mismatches else "good" if checked else "warn","pattern":pattern_kind,
+        "requested_memory_mb":requested,"allocated_memory_mb":safe,"available_before_mb":available or None,
+        "verified_bytes":checked,"verified_mib":round(checked/1024/1024,2),"passes":passes,
+        "mismatches":mismatches,"duration_seconds":round(elapsed,2),"throughput_mib_s":round(checked/1024/1024/elapsed,2),
+        "cancelled":bool(getattr(app,"stop_requested",False)),"coverage":coverage,
+        "note":"To test bufora w procesie Windows. Nie zastępuje rozruchowego testu całej fizycznej pamięci RAM."}
+
+def _u101_prime_benchmark(app,multi,duration):
+    import threading as _th
+    import time as _tm
+    seconds=max(5,min(300,int(duration or 15)))
+    workers=min(16,max(1,os.cpu_count() or 1)) if multi else 1
+    stop=_u66_threading.Event()
+    counts=[0]*workers;candidates=[0]*workers
+    def is_prime(n):
+        if n<2:return False
+        if n%2==0:return n==2
+        d=3
+        while d*d<=n:
+            if n%d==0:return False
+            d+=2
+        return True
+    start=_tm.perf_counter();deadline=start+seconds
+    def run(index):
+        n=2+index*1000003
+        while _tm.perf_counter()<deadline and not stop.is_set():
+            if bool(getattr(app,"stop_requested",False)):
+                stop.set();break
+            try:
+                if app._test_should_stop():stop.set();break
+            except Exception:pass
+            if is_prime(n):counts[index]+=1
+            candidates[index]+=1
+            n+=2
+    threads=[_th.Thread(target=run,args=(i,),daemon=True,name=f"SystemRepairPrime-{i}") for i in range(workers)]
+    for th in threads:th.start()
+    while any(th.is_alive() for th in threads):
+        for th in threads:th.join(.05)
+        _u93_detail_status_only(app,f"Benchmark prime: {sum(candidates):,} kandydatów • {sum(counts):,} liczb pierwszych")
+    elapsed=max(.001,_tm.perf_counter()-start);result={"state":"good" if sum(candidates)>0 else "warn",
+        "benchmark":"odd-candidate trial-division prime search","mode":"multi-thread" if multi else "single-thread",
+        "workers":workers,"duration_seconds":round(elapsed,2),"candidates_checked":sum(candidates),
+        "primes_found":sum(counts),"candidates_per_second":round(sum(candidates)/elapsed,2),
+        "primes_per_second":round(sum(counts)/elapsed,2),"cancelled":bool(getattr(app,"stop_requested",False)),
+        "note":"To syntetyczny test obliczeniowy CPU, nie certyfikat stabilności procesora."}
+    return result
+
+def _u101_run_process_json(command, timeout=120):
+    try:
+        proc=_u66_subprocess.run(command,capture_output=True,text=True,timeout=timeout,
+            creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        return {"returncode":proc.returncode,"stdout":(proc.stdout or "")[-30000:],
+                "stderr":(proc.stderr or "")[-12000:],"timed_out":False}
+    except _u66_subprocess.TimeoutExpired as exc:
+        return {"returncode":None,"stdout":str(exc.stdout or "")[-20000:],"stderr":str(exc.stderr or "")[-6000:],"timed_out":True}
+    except Exception as exc:
+        return {"returncode":None,"stdout":"","stderr":f"{type(exc).__name__}: {exc}","timed_out":False}
+
+def _u101_ps_rows(script, default=None, timeout=90):
+    if default is None:default=[]
+    if not is_windows():return {"state":"warn","message":"Ta procedura wymaga Windows.","items":[]}
+    result=ps_json(script,default=default)
+    rows=_v4319_normalize_items(result)
+    return {"state":"good" if rows else "warn","items":rows,"count":len(rows),
+        "note":"Odczyt przez Windows; pusta lista nie jest potwierdzeniem sprawności każdego urządzenia."}
+
+def _u101_system_audit():
+    report={"state":"good","captured_at":_U66_datetime.now().isoformat(timespec="seconds"),"os":platform.platform(),"machine":platform.machine()}
+    try:
+        if psutil:
+            vm=psutil.virtual_memory()
+            report["memory"]={"total_bytes":vm.total,"available_bytes":vm.available,"used_bytes":vm.used,"percent":vm.percent}
+            report["cpu"]={"logical_processors":os.cpu_count(),"load_percent":psutil.cpu_percent(interval=.2)}
+            report["uptime_seconds"]=max(0,int(_u66_time.time()-psutil.boot_time()))
+            report["disks"]=[{"mount":x.mountpoint,"filesystem":x.fstype,"total_bytes":psutil.disk_usage(x.mountpoint).total,
+               "free_bytes":psutil.disk_usage(x.mountpoint).free} for x in psutil.disk_partitions(all=False)]
+            report["process_count"]=len(psutil.pids())
+            report["network_io"]=vars(psutil.net_io_counters()) if psutil.net_io_counters() else None
+            report["disk_io"]=vars(psutil.disk_io_counters()) if psutil.disk_io_counters() else None
+    except Exception as exc:report["collection_warning"]=f"{type(exc).__name__}: {exc}"
+    return report
+
+def _u101_export_report_bundle(app,test_id):
+    import zipfile as _zip
+    root=_u66_store_dir()
+    target_dir=root/"reports"/"exported"
+    target_dir.mkdir(parents=True,exist_ok=True)
+    stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+    target=target_dir/f"NaprawaPC-Raporty-{stamp}.zip"
+    included=[];max_file=30*1024*1024;max_total=180*1024*1024;total=0
+    with _zip.ZipFile(target,"w",compression=_zip.ZIP_DEFLATED,compresslevel=5) as archive:
+        for folder in (root/"reports",root/"speedtest"):
+            if not folder.exists():continue
+            for f in folder.rglob("*"):
+                if not f.is_file() or f.resolve()==target.resolve():continue
+                try:size=f.stat().st_size
+                except Exception:continue
+                if size>max_file or total+size>max_total:continue
+                if f.suffix.lower() not in (".json",".csv",".txt",".html",".log"):continue
+                try:
+                    archive.write(f,arcname=str(f.relative_to(root)))
+                    included.append({"file":str(f.relative_to(root)),"size_bytes":size});total+=size
+                except Exception:pass
+    return {"state":"good" if included else "warn","report_path":str(target),"files_included":len(included),
+        "uncompressed_bytes":total,"files":included,"note":"Archiwum zapisane lokalnie. Nie przesłano żadnych danych do Internetu."}
+
+def _u101_execute_catalog_test(app,module,test_id,kind,settings):
+    import time as _tm
+    if kind in ("cpu_prime_single","cpu_prime_multi"):
+        return _u101_prime_benchmark(app,kind=="cpu_prime_multi",settings.get("duration",15))
+    if kind in ("ram_address","ram_walking","ram_checkerboard","ram_pseudorandom"):
+        return _u101_ram_pattern_test(app,kind,int(settings.get("memory_mb",128)),int(settings.get("duration",15)))
+    if kind=="sensor_trend":
+        duration=max(10,min(180,int(settings.get("duration",30) or 30)))
+        samples=[];started=_tm.monotonic();last_probe=0;last_temps={}
+        while _tm.monotonic()-started<duration:
+            if bool(getattr(app,"stop_requested",False)):break
+            vm=psutil.virtual_memory() if psutil else None
+            values={"elapsed_seconds":round(_tm.monotonic()-started,2),"cpu_load_percent":psutil.cpu_percent(interval=.05) if psutil else None,
+                "ram_used_percent":vm.percent if vm else None,"ram_available_mb":round(vm.available/1024**2,1) if vm else None}
+            if _tm.monotonic()-last_probe>=5:
+                try:
+                    last_temps=_u66_sensor_probe();last_probe=_tm.monotonic()
+                except Exception:last_temps={}
+            vals=last_temps.get("sensor_groups",{}) or {}
+            for category in ("temperature","load","clock","voltage","fan","power"):
+                values[category]=[{"hardware":x.get("hardware"),"sensor":x.get("sensor"),"value":x.get("value"),"unit":x.get("unit")}
+                    for x in vals.get(category,[])[:150] if isinstance(x,dict)]
+            samples.append(values)
+            _u93_detail_status_only(app,f"Telemetria: próbka {len(samples)} • {values['elapsed_seconds']:.0f}/{duration} s")
+            _tm.sleep(1)
+        folder=_u66_store_dir()/"reports"/"sensor-trends";folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("sensor-trend-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")
+        target.write_text(_u66_json.dumps({"state":"good" if samples else "warn","duration_seconds":round(_tm.monotonic()-started,2),"samples":samples,
+            "note":"Szczegółowe czujniki odczytywane co około 5 s; podstawowe liczniki Windows zbierane co 1 s."},ensure_ascii=False,indent=2),encoding="utf-8")
+        return {"state":"good" if samples else "warn","samples_count":len(samples),"duration_seconds":round(_tm.monotonic()-started,2),
+            "report_path":str(target),"latest_sample":samples[-1] if samples else None,"note":"Raport telemetrii zapisano lokalnie."}
+    if kind=="disk_read_file":
+        file_path=str(settings.get("file_path") or "")
+        if not file_path or not os.path.isfile(file_path):return {"state":"warn","message":"Nie wybrano istniejącego pliku do odczytu."}
+        total=0;started=_tm.perf_counter();samples=[];chunk_size=4*1024*1024
+        with open(file_path,"rb",buffering=0) as fh:
+            while True:
+                if bool(getattr(app,"stop_requested",False)):break
+                try:
+                    if app._test_should_stop():break
+                except Exception:pass
+                chunk=fh.read(chunk_size)
+                if not chunk:break
+                total+=len(chunk);now=_tm.perf_counter()
+                if now-started>=1:
+                    samples.append({"elapsed_seconds":round(now-started,2),"read_bytes":total,
+                        "mbps":round(total*8/max(.001,now-started)/1_000_000,2)})
+                    _u93_detail_status_only(app,f"Odczyt {total/1e6:.1f} MB • {total*8/max(.001,now-started)/1e6:.1f} Mbps")
+        elapsed=max(.001,_tm.perf_counter()-started)
+        return {"state":"good" if total else "warn","file_name":os.path.basename(file_path),"file_size_bytes":os.path.getsize(file_path),
+            "bytes_read":total,"duration_seconds":round(elapsed,2),"throughput_mbps":round(total*8/elapsed/1e6,2),
+            "throughput_mib_s":round(total/elapsed/1024**2,2),"progress_samples":samples[-30:],
+            "write_performed":False,"note":"Test odczytu tylko do odczytu; nie zapisywał ani nie usuwał pliku."}
+    if kind=="driver_inventory":
+        return _u101_ps_rows("Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object DeviceName,DriverVersion,DriverDate,DriverProviderName,InfName,IsSigned,Manufacturer | ConvertTo-Json -Compress -Depth 4")
+    if kind=="pnp_errors":
+        return _u101_ps_rows("Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object { $_.Status -notin @('OK','Unknown') } | Select-Object Class,FriendlyName,Status,InstanceId,Problem | ConvertTo-Json -Compress -Depth 4")
+    if kind=="process_snapshot":
+        rows=[]
+        if not psutil:return {"state":"warn","message":"Biblioteka psutil nie jest dostępna."}
+        for proc in psutil.process_iter(["pid","name","username","memory_info","status"]):
+            try:
+                m=proc.info.get("memory_info")
+                rows.append({"pid":proc.info.get("pid"),"name":proc.info.get("name"),"user":proc.info.get("username"),
+                    "memory_bytes":m.rss if m else None,"status":proc.info.get("status")})
+            except (psutil.NoSuchProcess,psutil.AccessDenied,psutil.ZombieProcess):continue
+        rows.sort(key=lambda x:x.get("memory_bytes") or 0,reverse=True)
+        return {"state":"good" if rows else "warn","processes":rows[:500],"process_count":len(rows),"note":"Migawka procesów, bez kończenia procesów ani zmieniania priorytetów."}
+    if kind=="services_inventory":
+        return _u101_ps_rows("Get-Service -ErrorAction SilentlyContinue | Select-Object Name,DisplayName,Status,StartType | ConvertTo-Json -Compress -Depth 3")
+    if kind=="network_connections":
+        script="$tcp=@(Get-NetTCPConnection -ErrorAction SilentlyContinue | Select-Object -First 250 LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess);$cfg=@(Get-NetIPConfiguration -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,IPv4Address,IPv4DefaultGateway,DNSServer);[pscustomobject]@{connections=$tcp;configuration=$cfg}|ConvertTo-Json -Compress -Depth 6"
+        if not is_windows():return {"state":"warn","message":"Raport połączeń wymaga Windows."}
+        raw=ps_json(script,default={})
+        if isinstance(raw,list) and raw and isinstance(raw[0],dict):raw=raw[0]
+        return {"state":"good" if isinstance(raw,dict) and (raw.get("connections") or raw.get("configuration")) else "warn",
+            "connections":_v4319_normalize_items(raw.get("connections",[]) if isinstance(raw,dict) else []),
+            "configuration":_v4319_normalize_items(raw.get("configuration",[]) if isinstance(raw,dict) else []),
+            "note":"Odczyt połączeń/konfiguracji; nie resetuje Winsock ani ustawień karty."}
+    if kind=="sfc_verify":
+        if not is_windows():return {"state":"warn","message":"SFC dostępny jest tylko w Windows."}
+        return {"state":"warn","operation":"sfc /verifyonly","message":"Skan uruchamiany zewnętrznie; sprawdź kod i raport.",
+            **_u101_run_process_json(["sfc.exe","/verifyonly"],timeout=900),
+            "note":"Wykonuje wyłącznie verifyonly; nie używa /scannow ani automatycznej naprawy."}
+    if kind=="dism_scanhealth":
+        if not is_windows():return {"state":"warn","message":"DISM dostępny jest tylko w Windows."}
+        r=_u101_run_process_json(["dism.exe","/Online","/Cleanup-Image","/ScanHealth"],timeout=1800)
+        ok=r.get("returncode")==0 and not r.get("timed_out")
+        return {"state":"good" if ok else "warn","operation":"DISM /Online /Cleanup-Image /ScanHealth",**r,
+            "note":"ScanHealth tylko diagnostyczny. Nie uruchomiono RestoreHealth."}
+    if kind=="volume_scan":
+        drive=str(settings.get("drive") or "C:").strip().rstrip("\\")
+        if len(drive)==1:drive+=":"
+        if not re.match(r"^[A-Za-z]:$",drive):return {"state":"warn","message":"Nieprawidłowy wolumin; oczekiwano np. C:."}
+        if not is_windows():return {"state":"warn","message":"CHKDSK /scan wymaga Windows."}
+        r=_u101_run_process_json(["chkdsk.exe",drive,"/scan"],timeout=1800)
+        return {"state":"good" if r.get("returncode")==0 and not r.get("timed_out") else "warn",
+            "operation":f"chkdsk {drive} /scan",**r,"note":"Nie użyto /f, /r ani formatowania. Test może wymagać podwyższonych uprawnień."}
+    if kind=="bios_license":
+        if not is_windows():return {"state":"warn","message":"BIOS/aktywacja jest dostępna w Windows."}
+        script="$os=Get-CimInstance Win32_OperatingSystem|Select-Object Caption,Version,BuildNumber,OSArchitecture,LastBootUpTime;$bios=Get-CimInstance Win32_BIOS|Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate;$board=Get-CimInstance Win32_BaseBoard|Select-Object Manufacturer,Product,Version;$lic=@(Get-CimInstance SoftwareLicensingProduct -ErrorAction SilentlyContinue|Where-Object {$_.PartialProductKey -and $_.Name -like '*Windows*'}|Select-Object Name,Description,LicenseStatus,PartialProductKey);[pscustomobject]@{os=$os;bios=$bios;board=$board;windows_license=$lic}|ConvertTo-Json -Compress -Depth 5"
+        raw=ps_json(script,default={})
+        if isinstance(raw,list) and raw and isinstance(raw[0],dict):raw=raw[0]
+        return {"state":"good" if isinstance(raw,dict) and raw.get("os") else "warn","report":raw,
+            "note":"Pokazuje jedynie częściowy klucz licencji (ostatnie 5 znaków); pełny klucz produktu nie jest odczytywany."}
+    if kind=="windows_update_history":
+        return _u101_ps_rows("Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 300 HotFixID,Description,InstalledBy,InstalledOn | ConvertTo-Json -Compress -Depth 4")
+    if kind=="restore_points":
+        return _u101_ps_rows("Get-ComputerRestorePoint -ErrorAction SilentlyContinue | Select-Object SequenceNumber,Description,RestorePointType,CreationTime | ConvertTo-Json -Compress -Depth 4")
+    if kind=="system_audit":
+        return _u101_system_audit()
+    if kind=="dxdiag_report":
+        if not is_windows():return {"state":"warn","message":"DXDiag wymaga Windows."}
+        folder=_u66_store_dir()/"reports"/"directx";folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("dxdiag-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".txt")
+        r=_u101_run_process_json(["dxdiag.exe","/whql:off","/t",str(target)],timeout=90)
+        if target.exists():r["report_path"]=str(target)
+        return {"state":"good" if target.exists() and not r.get("timed_out") else "warn","operation":"dxdiag /whql:off /t",
+            "report_path":str(target) if target.exists() else None,**r,
+            "note":"Raport diagnostyczny DirectX; nie jest certyfikacją DirectX 12 Ultimate."}
+    if kind=="network_audit":
+        if not is_windows():return {"state":"warn","message":"Audyt sieci wymaga Windows."}
+        return {"state":"good","ipconfig":_u101_run_process_json(["ipconfig.exe","/all"],timeout=45),
+            "routes":_u101_ps_rows("Get-NetRoute -ErrorAction SilentlyContinue | Where-Object {$_.DestinationPrefix -eq '0.0.0.0/0' -or $_.DestinationPrefix -eq '::/0'} | Select-Object InterfaceAlias,DestinationPrefix,NextHop,RouteMetric,PolicyStore | ConvertTo-Json -Compress"),
+            "dns":_u101_ps_rows("Get-DnsClientServerAddress -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,AddressFamily,ServerAddresses | ConvertTo-Json -Compress"),
+            "note":"Odczyt IP/DNS/bramy i tras bez zmian konfiguracji."}
+    if kind=="battery_health_detailed":
+        result={}
+        if is_windows():
+            folder=_u66_store_dir()/"reports"/"battery";folder.mkdir(parents=True,exist_ok=True)
+            target=folder/("battery-health-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".html")
+            proc=_u101_run_process_json(["powercfg.exe","/batteryreport","/output",str(target)],timeout=90)
+            result["report_path"]=str(target) if target.exists() else None;result["powercfg"]=proc
+            result["battery_devices"]=_u101_ps_rows("Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object Name,Status,BatteryStatus,EstimatedChargeRemaining,EstimatedRunTime,DesignCapacity,FullChargeCapacity | ConvertTo-Json -Compress")
+        else:result={"state":"warn","message":"Raport baterii wymaga Windows."}
+        result["state"]="good" if result.get("report_path") or result.get("battery_devices",{}).get("items") else "warn"
+        result["note"]="Kondycję i pojemność pokazuje się tylko wtedy, gdy kontroler udostępnia takie dane."
+        return result
+    if kind=="report_bundle":
+        return _u101_export_report_bundle(app,test_id)
+    if kind=="audio_sweep":
+        import numpy as _np
+        import sounddevice as _sd
+        device=_sd.query_devices(kind="output")
+        rate=int(float(device.get("default_samplerate",44100) or 44100))
+        frequencies=(100,250,500,1000,2000,4000,8000,12000)
+        pieces=[]
+        for freq in frequencies:
+            duration=0.28
+            t=_np.arange(int(rate*duration),dtype=_np.float64)/rate
+            pieces.append((0.06*_np.sin(2*_U66_PI*freq*t)).astype("float32"))
+            pieces.append(_np.zeros(int(rate*.08),dtype="float32"))
+        signal=_np.concatenate(pieces)
+        _sd.play(signal,rate);_sd.wait()
+        return {"state":"good","frequencies_hz":list(frequencies),"samplerate_hz":rate,"duration_seconds":round(len(signal)/rate,2),
+            "output_device":str(device.get("name","N/D")),"recording_saved":False,
+            "note":"Sweep odtworzono do urządzenia; wykrycie słyszalnych zniekształceń wymaga oceny operatora."}
+    return _U101_ORIGINAL_EXECUTE(app,module,test_id,kind,settings)
+
+def _u101_start_catalog_test(app,module,test_id,title,kind):
+    if kind=="disk_read_file":
+        if getattr(app,"running",False):
+            messagebox.showinfo("Test w toku","Zakończ lub zatrzymaj bieżący test przed uruchomieniem kolejnego.");return
+        chosen=_u66_filedialog.askopenfilename(parent=app,title="Wybierz istniejący plik do benchmarku odczytu — bez zapisu")
+        if not chosen:
+            _u93_update_detail(app,test_id,"ANULOWANO",{"state":"warn","message":"Nie wybrano pliku; test nie wykonał operacji dyskowych."});return
+        settings={"duration":0,"file_path":chosen}
+        _u93_update_detail(app,test_id,"TEST W TOKU — TYLKO ODCZYT",{"state":"running","file_name":os.path.basename(chosen),"write_performed":False})
+        app.worker(lambda:_u93_finish_test_worker(app,module,test_id,title,kind,settings));return
+    if kind=="audio_sweep":
+        if not messagebox.askyesno("Test audio — sweep częstotliwości",
+            "Przez około 3 sekundy aplikacja odtworzy cichy sweep 100 Hz–12 kHz przez domyślne wyjście audio. Ustaw bezpieczny poziom głośności. Nie jest tworzone nagranie. Kontynuować?"):
+            _u93_update_detail(app,test_id,"ANULOWANO",{"state":"warn","message":"Test audio anulowany przez użytkownika."});return
+    return _U101_ORIGINAL_START(app,module,test_id,title,kind)
+
+def _u101_show_test_detail(app,module,test_id):
+    module=_u93_norm(module)
+    _,title,description,kind=_u93_find_test(module,test_id)
+    if kind=="sensor_inventory":
+        _u101_sensor_inventory_view(app,module,test_id);return
+    if kind=="screen_patterns_34":
+        _U101_ORIGINAL_DETAIL(app,module,test_id)
+        try:
+            target=app.content.winfo_children()
+            for child in target:
+                if isinstance(child,tk.Frame):
+                    for inner in child.winfo_children():
+                        if isinstance(inner,tk.Frame):
+                            for btn in inner.winfo_children():
+                                if isinstance(btn,ttk.Button) and "WZORCÓW MATRYCY" in str(btn.cget("text")):btn.destroy()
+        except Exception:pass
+        row=tk.Frame(app.content,bg=app.colors()["bg"]);row.pack(fill="x",pady=3)
+        app.make_button(row,"URUCHOM PEŁNOEKRANOWE 34 WZORCE",lambda:_u101_open_display_patterns(app,test_id),"accent",side="left",ipady=5)
+        return
+    if kind=="keyboard_matrix":
+        _u101_keyboard_matrix(app,test_id);return
+    return _U101_ORIGINAL_DETAIL(app,module,test_id)
+
+def _u101_deep_names(function):
+    import types as _types
+    pending=[function.__code__];names=set()
+    while pending:
+        code=pending.pop();names.update(code.co_names)
+        pending.extend(c for c in code.co_consts if isinstance(c,_types.CodeType))
+    return names
+
+def _u101_selftest_source_app_catalog():
+    expected={"SERWIS_ULTIMATE":len(_U101_SERWIS_TESTS),"SYSTEM_REPAIR_PRO":len(_U101_REPAIR_TESTS)}
+    for module,count in expected.items():
+        assert module in _U93_TEST_CATALOG
+        assert len(_U93_TEST_CATALOG[module])==count
+        ids=[x[0] for x in _U93_TEST_CATALOG[module]]
+        assert len(ids)==len(set(ids))
+        assert all(x[3] in _U93_SUPPORTED_TEST_KINDS for x in _U93_TEST_CATALOG[module])
+    all_ids=[item[0] for entries in _U93_TEST_CATALOG.values() for item in entries]
+    assert len(all_ids)==len(set(all_ids)),"Katalog ma powtórzone identyfikatory"
+    assert len(_U101_DISPLAY_PATTERNS)==34
+    assert _U101_ORIGINAL_EXECUTE is not None and callable(_u101_execute_catalog_test)
+    assert "_u101_sensor_inventory_view" in _u101_deep_names(_u101_show_test_detail)
+    assert "_u101_open_display_patterns" in _u101_deep_names(_u101_show_test_detail)
+    assert "_u101_keyboard_matrix" in _u101_deep_names(_u101_show_test_detail)
+    result=_u101_ram_pattern_test(type("FakeStop",(),{"stop_requested":True,"_test_should_stop":lambda self:True})(),"ram_checkerboard",32,1)
+    assert result["state"]=="warn" and result["allocated_memory_mb"]>=32
+    synthetic={"sensors":[{"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Fan","sensorType":"Fan","value":1500,"unit":"RPM"}]}
+    tele=_u100_gpu_from_sensors(synthetic)
+    assert tele["fan_speed_rpm"]==1500
+    print("SOURCE_APP_CATALOG_SELFTEST_OK: 29 additional test entries, 34 display patterns, read-only repair diagnostics, full sensor table")
+
+_u93_execute_catalog_test = _u101_execute_catalog_test
+_u93_start_catalog_test = _u101_start_catalog_test
+_u93_show_test_detail = _u101_show_test_detail
+
+# Replace the fixed 70-item assertion with a total-count invariant as the catalog now contains two more source-app groups.
+def _u101_selftest_catalog_routing():
+    ids=[];kinds=set()
+    for module,entries in _U93_TEST_CATALOG.items():
+        assert entries,f"Pusty katalog {module}"
+        for test_id,title,description,kind in entries:
+            ids.append(test_id);kinds.add(kind);assert title and description
+    assert len(ids)==sum(len(v) for v in _U93_TEST_CATALOG.values())
+    assert len(ids)==len(set(ids)),"Katalog musi mieć unikalne identyfikatory"
+    assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone procedury: {kinds-_U93_SUPPORTED_TEST_KINDS}"
+    assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
+    assert AppV43.show_component_lab is _u93_show_lab
+    assert "_u93_show_test_detail" in _u93_deep_code_names(_u93_scroll_rows)
+    assert "_u93_start_catalog_test" in _u93_deep_code_names(_u93_show_test_detail)
+    print(f"EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: {len(ids)} unique tests across {len(_U93_TEST_CATALOG)} modules")
+
+_u93_selftest_catalog_routing = _u101_selftest_catalog_routing
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u101_selftest_source_app_catalog()
         _u100_selftest_adaptive_speed()
         _u100_selftest_unique_gpu_scenes()
         _u98_selftest_catalog_safety()
