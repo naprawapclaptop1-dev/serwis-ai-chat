@@ -69,7 +69,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Set-Location "\${{ github.workspace }}\hardware-test-pro"
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
           $sourceFolder = Join-Path (Get-Location) "companion-source"
           $chunks = @(Get-ChildItem -LiteralPath $sourceFolder -Filter "companion_source_zip.*.b64.txt" |
             Where-Object { $_.Name -match '^companion_source_zip\.\d+\.b64\.txt
@@ -460,7 +460,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Set-Location "\${{ github.workspace }}\hardware-test-pro"
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
           $companions = Join-Path (Get-Location) "companions\Companions"
           $dist = Join-Path (Get-Location) "dist"
           $systemProject = Join-Path $companions "SystemRepairPRO\NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_DX12_ULTIMATE_RAM_DASHBOARD.csproj"
