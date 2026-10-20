@@ -8769,7 +8769,7 @@ def _u104_selftest_speed_and_sensors():
     assert any(x["sensor"]=="Core #1" and x["value"]=="65.2" for x in rows)
     assert any(x["sensor"]=="GPU Usage" and x["value"]=="90" for x in rows)
     assert any(x["sensor"]=="Użycie RAM" and x["value"]=="52" for x in rows)
-    assert any("Strefa termiczna" in x["sensor"] for x in rows)
+    assert any(x["category"] == "ACPI" and x["sensor"] == "TZ0" and x["value"] == "42" for x in rows)
     assert callable(_u104_show_all_sensors) and callable(_u104_attach_sensor_table)
     print("ADAPTIVE_LOW_SPEED_TEST_AND_FULL_SENSOR_EXPLORER_SELFTEST_OK")
 
