@@ -7492,9 +7492,16 @@ def _u101_sensor_poll(app):
             if not app.winfo_exists():
                 app._u101_sensor_loop_started=False
                 return
+            sensor_window=getattr(app,"_u104_sensor_window",None)
+            sensor_window_active=False
+            try:
+                sensor_window_active=sensor_window is not None and bool(sensor_window.winfo_exists())
+            except Exception:
+                sensor_window_active=False
             active=(getattr(app,"current_view","") in ("LIVE_MONITOR","GPU")
                 or bool(getattr(app,"running",False))
-                or getattr(app,"_u67_stage_panel",None) is not None)
+                or getattr(app,"_u67_stage_panel",None) is not None
+                or sensor_window_active)
             if active:
                 _u101_sensor_poll_once(app)
             app.after(4000,tick)
@@ -8771,6 +8778,7 @@ def _u104_selftest_speed_and_sensors():
     assert any(x["sensor"]=="Użycie RAM" and x["value"]=="52" for x in rows)
     assert any(x["category"] == "ACPI" and x["sensor"] == "TZ0" and x["value"] == "42" for x in rows)
     assert callable(_u104_show_all_sensors) and callable(_u104_attach_sensor_table)
+    assert "_u104_sensor_window" in _u101_sensor_poll.__code__.co_names
     print("ADAPTIVE_LOW_SPEED_TEST_AND_FULL_SENSOR_EXPLORER_SELFTEST_OK")
 
 
