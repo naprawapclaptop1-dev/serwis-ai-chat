@@ -41,6 +41,8 @@ Type: files; Name: "{app}\NAPRAWA-PC-HARDWARE-TEST-PRO-*.exe"
 [Files]
 Source: "{#SourceDir}\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README_PL.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\components\SystemRepairPRO\*"; DestDir: "{app}\components\SystemRepairPRO"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#SourceDir}\components\SerwisUltimate\*"; DestDir: "{app}\components\SerwisUltimate"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\NAPRAWA PC HARDWARE TEST PRO"; Filename: "{app}\{#ExeName}"
