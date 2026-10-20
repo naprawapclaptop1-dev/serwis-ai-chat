@@ -1271,6 +1271,54 @@ _U55_AUTH_VERIFIER_HEX = "6d7bb55afdd8df9fccbaffe909b27a427654a54686afd7f8749470
 _U55_STORE_SALT_HEX = "4ba031ee5be9863b484ba928153aab0e"
 _U55_PBKDF2_ITERATIONS = 600000
 
+_U55_COMPANION_TARGETS = {
+    "systemrepair": "components/SystemRepairPRO/NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe",
+    "serwisultimate": "components/SerwisUltimate/NAPRAWA_PC_SERWIS_ULTIMATE.exe",
+}
+def _u55_companion_root():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+def _u55_launch_companion(self, key):
+    relative = _U55_COMPANION_TARGETS.get(str(key or "").lower())
+    if not relative:
+        messagebox.showerror("Moduł serwisowy", "Nieznany moduł towarzyszący.", parent=self)
+        return False
+    executable = _u55_companion_root().joinpath(*relative.split("/"))
+    if not executable.is_file():
+        message = (
+            "Nie znaleziono pełnego modułu serwisowego:\n" + str(executable) +
+            "\n\nTen pakiet nie zawiera skompilowanego modułu. Użyj bieżącego instalatora ALL-IN-ONE."
+        )
+        try:
+            messagebox.showerror("Brak modułu serwisowego", message, parent=self)
+        except Exception:
+            pass
+        try:
+            self.queue_log("COMPANION NOT FOUND: " + str(executable))
+        except Exception:
+            pass
+        return False
+    try:
+        process = subprocess.Popen([str(executable)], cwd=str(executable.parent))
+        try:
+            self.queue_log(f"Uruchomiono pełną aplikację towarzyszącą: {executable.name}; PID={process.pid}")
+        except Exception:
+            pass
+        return True
+    except Exception as exc:
+        message = f"Nie udało się uruchomić {executable.name}: {type(exc).__name__}: {exc}"
+        try:
+            messagebox.showerror("Uruchamianie modułu", message, parent=self)
+        except Exception:
+            pass
+        try:
+            self.queue_log(message)
+        except Exception:
+            pass
+        return False
+
 def _u55_ticket_path():
     root = Path(os.environ.get("LOCALAPPDATA") or Path.home()) / "NaprawaPC" / "PrivateServiceData"
     return root / "zgloszenia.npcdata"
@@ -1520,6 +1568,14 @@ def _u55_show_service_center(self):
     top = self.panel(self.content); top.pack(fill="x", padx=10, pady=(8,6))
     tk.Label(top, text="NAPRAWA PC — CENTRUM SERWISU I NAPRAW", bg=t["panel"], fg=t["accent"], font=self.fnt(14,"bold")).pack(anchor="w", padx=14, pady=(10,3))
     tk.Label(top, text="Diagnostyka sprzętu, narzędzia Windows i prywatne zgłoszenia serwisowe. Zgłoszenia są szyfrowane lokalnie.", bg=t["panel"], fg=t["muted"], font=self.fnt(9), wraplength=1250, justify="left").pack(anchor="w", padx=14, pady=(0,8))
+    companion_row = tk.Frame(self.content, bg=t["bg"])
+    companion_row.pack(fill="x", padx=10, pady=(0,6))
+    tk.Label(companion_row, text="PEŁNE APLIKACJE TOWARZYSZĄCE — NIE ZASTĘPUJĄ ICH KAFELKI DIAGNOSTYCZNE",
+             bg=t["bg"], fg=t["muted"], font=self.fnt(8,"bold")).pack(anchor="w", padx=3, pady=(0,3))
+    self.make_button(companion_row, "URUCHOM SYSTEM REPAIR PRO 5.6.25",
+                     lambda: _u55_launch_companion(self,"systemrepair"), "accent", side="left", ipady=7)
+    self.make_button(companion_row, "URUCHOM SERWIS ULTIMATE 1.15.3",
+                     lambda: _u55_launch_companion(self,"serwisultimate"), "good", side="left", ipady=7)
     notebook = ttk.Notebook(self.content)
     notebook.pack(fill="both", expand=True, padx=10, pady=(0,8))
     service = tk.Frame(notebook, bg=t["bg"])
@@ -1571,6 +1627,9 @@ AppV43.show_service_center = _u55_show_service_center
 
 def _u55_selftest_service_center():
     assert callable(AppV43.show_service_center)
+    assert callable(_u55_launch_companion)
+    assert _U55_COMPANION_TARGETS["systemrepair"].endswith("NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe")
+    assert _U55_COMPANION_TARGETS["serwisultimate"].endswith("NAPRAWA_PC_SERWIS_ULTIMATE.exe")
     assert callable(_u55_verify_service_password) and callable(_u55_derive_service_key)
     assert len(bytes.fromhex(_U55_AUTH_SALT_HEX)) == 16
     assert len(bytes.fromhex(_U55_AUTH_VERIFIER_HEX)) == 32
