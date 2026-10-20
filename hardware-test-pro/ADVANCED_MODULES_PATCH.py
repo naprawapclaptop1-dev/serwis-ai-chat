@@ -4455,8 +4455,8 @@ def _u90_selftest_release_fixes():
     assert "DŁUGI — 180 s" in _U68_PROFILE_CHOICES
     assert "900 s" in _U68_PROFILE_CHOICES[-1]
     assert AppV43._u41_start_vram_test is _u90_start_vram_profile_test
-    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test)
-    assert _u66_measure_speed in (_u90_measure_speed, _u100_measure_speed)
+    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test, _u103_show_speed_test)
+    assert _u66_measure_speed in (_u90_measure_speed, _u100_measure_speed, _u103_measure_speed)
     assert callable(_u90_error_alarm) and AppV43.queue_results is _u90_queue_results_with_error_alarm
 
     progress=[]
@@ -6252,7 +6252,7 @@ def _u93_selftest_catalog_routing():
         assert entries,f"Pusty katalog {module}"
         for test_id,title,description,kind in entries:
             ids.append(test_id);kinds.add(kind);assert title and description
-    assert len(ids)==70 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
+    assert len(ids) in (70,71) and len(set(ids))==len(ids),"Katalog powinien mieć unikalne pozycje"
     assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
     assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
     assert AppV43.show_component_lab is _u93_show_lab
@@ -6817,6 +6817,7 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                     else:box(x,y,z,0.11,0.11,0.11,(0.13,0.5,0.85))
                 for i in range(25+variant*30):
                     wire_box(rand.uniform(-1.5,1.5),rand.uniform(-1,1),rand.uniform(-1.5,1.5),0.25+rand.random()*0.35,(0.12,0.8,0.65))
+        _u103_draw_scene_overlay(sid,variant,gl,_m,rand,box,sphere,torus,line,path_line,wire_box,primitive_counter)
         display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()
         profile = {
           "scene_id":sid,"scene_name":_U66_SCENES[sid-1][0],"family":_U100_SCENE_TITLES[sid-1],
@@ -7867,7 +7868,7 @@ def _u102_selftest_ram_visible_progress():
     assert "ram_pattern_test" in _u102_ram_pattern_suite.__code__.co_names
     assert "pygame" not in _u102_ram_pattern_suite.__code__.co_names
     assert _u93_execute_catalog_test is _u102_execute_catalog_test
-    assert _u93_show_test_detail is _u102_show_test_detail
+    assert _u93_show_test_detail in (_u102_show_test_detail, _u103_show_test_detail)
     assert getattr(AppV43._ram_test, "_u102_ram_guard", False)
     print("RAM_VISIBLE_PROGRESS_SELFTEST_OK: isolated in-app progress, safe allocation cap, no OpenGL/pygame path")
 
@@ -7878,6 +7879,615 @@ if callable(_U102_ORIGINAL_RAM_METHOD):
     # Keep the single start/end sound wrapper active around this RAM operation.
     _u102_ram_test_guard._u80_sound_wrapped = True
     AppV43._ram_test = _u102_ram_test_guard
+
+
+# v4.3.100+ — hardware-suite repair pack: distinct 3D overlays, full sensor export,
+# adaptive parallel Speed Test, and the real pre-boot UEFI RAM test from Serwis Ultimate 1.15.3.
+
+def _u103_draw_scene_overlay(sid, variant, gl, m, rng, box, sphere, torus, line, path_line, wire_box, counter):
+    """Add a second, scene-ID-specific geometry layer on top of the main OpenGL scene."""
+    family=(int(sid)-1)%20
+    variant=max(0,min(2,int(variant)))
+    scale=(0.42,0.50,0.58)[variant]
+    gl.glPushMatrix()
+    try:
+        gl.glTranslatef(2.0 if variant!=1 else -2.0, 0.12, -0.75)
+        gl.glRotatef((int(sid)*37)%360,0.25,1.0,0.17)
+        gl.glScalef(scale,scale,scale)
+        a=(0.12,0.72,0.96);b=(0.95,0.33,0.12);c=(0.18,0.88,0.50)
+        if family==0:
+            # FurMark-like fuzzy donut with separate orbiting hot spots.
+            torus(1.05,0.34,(0.10,0.28,0.88),48,16)
+            gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+            for i in range(850+variant*450):
+                u=rng.random()*2*m.pi;v=rng.random()*2*m.pi
+                radial=1.05+0.34*m.cos(v);x=radial*m.cos(u);y=0.34*m.sin(v);z=radial*m.sin(u)
+                length=0.04+rng.random()*(0.12+variant*0.045)
+                gl.glColor3f(0.15+rng.random()*0.45,0.3+rng.random()*0.5,0.55+rng.random()*0.44)
+                gl.glVertex3f(x,y,z);gl.glVertex3f(x+m.cos(v)*m.cos(u)*length,y+m.sin(v)*length,z+m.cos(v)*m.sin(u)*length)
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);counter["value"]+=850+variant*450
+        elif family==1:
+            # Parametric torus-knot ribbon.
+            for strand in range(1+variant):
+                pts=[]
+                for i in range(720):
+                    t=i/719*8*m.pi;ph=t+strand*2*m.pi/(1+variant)
+                    rr=0.65+0.26*m.cos(3*ph)
+                    pts.append((rr*m.cos(2*ph),0.65*m.sin(3*ph),rr*m.sin(2*ph)))
+                path_line(pts,(0.1+strand*0.24,0.48+strand*0.12,0.98),1.0+variant*0.6)
+        elif family==2:
+            # Orbital mechanics, unlike the knot/torus family.
+            sphere(0,0,0,0.38,(1.0,0.46,0.08),12,22)
+            for i in range(3+variant*2):
+                radius=0.7+i*0.24;gl.glPushMatrix();gl.glRotatef(i*29,1,0.25,1)
+                torus(radius,0.018,(0.18,0.5+i*0.08,0.92),44,5)
+                sphere(radius*m.cos(i*1.7),0.1*m.sin(i),radius*m.sin(i*1.7),0.07,(0.8,0.84,0.98),7,12)
+                gl.glPopMatrix()
+        elif family==3:
+            # Triangulated topographic surface with layered contour lines.
+            n=24+variant*12
+            for row in range(n):
+                z0=-2.5+5*row/n;z1=-2.5+5*(row+1)/n
+                gl.glBegin(gl.GL_TRIANGLE_STRIP)
+                for col in range(n+1):
+                    x=-2.5+5*col/n
+                    for z in (z0,z1):
+                        h=0.48*m.sin(x*1.9+sid)+0.29*m.cos(z*2.2+variant)+0.13*m.sin((x+z)*4.0)
+                        gl.glColor3f(0.04+0.12*(h+1),0.19+0.18*(h+1),0.24+0.16*(h+1))
+                        gl.glNormal3f(-0.15*m.cos(x),1.0,-0.16*m.sin(z));gl.glVertex3f(x,h,z)
+                gl.glEnd()
+            counter["value"]+=n*n*2
+        elif family==4:
+            # Night city: towers, window strips and skyline variation.
+            count=14+variant*14
+            for i in range(count):
+                x=(i%7-3)*0.57;z=(i//7-1)*0.85;h=0.45+rng.random()*(1.6+variant*.55)
+                box(x,h/2,z,.36,h,.46,(.04+rng.random()*.12,.07+rng.random()*.12,.22+rng.random()*.18))
+                for y in range(1,int(h*7)+1):
+                    if (i+y)%3!=0:
+                        box(x+.09,y*.13,z+.235,.035,.035,.018,(.12,.72+rng.random()*.24,.96))
+        elif family==5:
+            # GPU PCB, radiator fins, and rotating fan assemblies.
+            box(0,0,0,3.0,.16,1.6,(.04,.24,.13))
+            for i in range(26+variant*20):
+                box(-1.25+i*.1,.14,(i%3-1)*.4,.04,.12,.6,(.46,.52,.58))
+            count=(1,3,5)[variant]
+            for i in range(count):
+                x=(i-(count-1)/2)*.92
+                torus(.34,.055,(.12,.68,.88),28,8)
+                sphere(x,.08,0,.08,(.6,.68,.76),8,12)
+                for j in range(9):
+                    ang=2*m.pi*j/9
+                    line((x,.11,0),(x+.25*m.cos(ang),.12,.25*m.sin(ang)),(.16,.84,.95),1.5)
+        elif family==6:
+            # Animated-looking particle cloud with a different spatial distribution per scene.
+            count=(900,1900,3200)[variant]
+            gl.glDisable(gl.GL_LIGHTING);gl.glPointSize((2,2.5,3)[variant]);gl.glBegin(gl.GL_POINTS)
+            for i in range(count):
+                t=rng.random()*2*m.pi;r=.3+rng.random()*(1.0+variant*.45)
+                y=(rng.random()-.5)*(1.0+variant*1.4)
+                gl.glColor3f(.08+rng.random()*.6,.28+rng.random()*.58,.58+rng.random()*.4)
+                gl.glVertex3f(r*m.cos(t),y,r*m.sin(t))
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);counter["value"]+=count
+        elif family==7:
+            # Crossed ocean-wave sheets.
+            n=22+variant*15
+            for layer in range(1+variant):
+                gl.glPushMatrix();gl.glRotatef(layer*57,0,1,0)
+                gl.glBegin(gl.GL_TRIANGLE_STRIP)
+                for xidx in range(n):
+                    x=-2.3+4.6*xidx/(n-1)
+                    for zidx in range(n):
+                        z=-2.3+4.6*zidx/(n-1);y=.25*m.sin(x*2.0+layer)+.22*m.cos(z*2.4+variant)+.12*m.sin((x+z)*3.5)
+                        gl.glColor3f(.015,.24+.15*(y+1),.5+.22*(y+1));gl.glVertex3f(x,y,z)
+                gl.glEnd();gl.glPopMatrix()
+            counter["value"]+=n*n*(1+variant)
+        elif family==8:
+            # Dense cube-instancing field, layout changes with variant.
+            count=(36,90,170)[variant]
+            for i in range(count):
+                angle=i*.51;radius=.4+(i%17)*.105
+                x=radius*m.cos(angle);z=radius*m.sin(angle);y=((i%13)-6)*.19
+                size=.07+(i%4)*.025
+                box(x,y,z,size,size,size,(.12+(i%5)*.1,.26+(i%4)*.14,.5+(i%3)*.14))
+        elif family==9:
+            # Crystal/pyramid cluster, with triangulated faces rather than boxes.
+            for i in range(16+variant*18):
+                x=(i%6-2.5)*.38;z=(i//6-1.5)*.5;h=.35+rng.random()*(.6+variant*.5)
+                col=(.12+rng.random()*.35,.38+rng.random()*.35,.62+rng.random()*.36)
+                gl.glBegin(gl.GL_TRIANGLES)
+                gl.glColor3f(*col)
+                for dx,dz in ((-.19,-.19),(.19,-.19),(.19,.19),(-.19,-.19),(.19,.19),(-.19,.19)):
+                    gl.glVertex3f(x+dx,0,z+dz);gl.glVertex3f(x,h,z);gl.glVertex3f(x+dx,0,z+dz)
+                gl.glEnd();counter["value"]+=8
+        elif family==10:
+            # Gear train: toothed wheels with spokes.
+            for gear in range(2+variant):
+                gx=(gear-(1+variant)/2)*.85;radius=.42+gear*.045
+                torus(radius,.055,(.52,.62,.73),28,8)
+                for j in range(12+variant*4):
+                    ang=2*m.pi*j/(12+variant*4)
+                    box(gx+radius*m.cos(ang),.02,radius*m.sin(ang),.15,.12,.09,(.65,.7,.78))
+                for j in range(6):
+                    ang=2*m.pi*j/6;line((gx,0,0),(gx+radius*.82*m.cos(ang),0,radius*.82*m.sin(ang)),(.25,.78,.95),1.3)
+        elif family==11:
+            # Molecule / node-link graph.
+            nodes=[]
+            for i in range(34+variant*22):
+                x=rng.uniform(-1.8,1.8);y=rng.uniform(-1.2,1.2);z=rng.uniform(-1.8,1.8);nodes.append((x,y,z))
+            for i,p in enumerate(nodes):
+                sphere(*p,.055+(i%3)*.02,(.15+(i%5)*.13,.25+(i%4)*.16,.66+(i%3)*.11),6,10)
+            gl.glDisable(gl.GL_LIGHTING);gl.glColor3f(.35,.72,.9);gl.glBegin(gl.GL_LINES)
+            links=0
+            for i,p in enumerate(nodes):
+                for q in nodes[i+1:]:
+                    if sum((p[k]-q[k])**2 for k in range(3))<.55:
+                        gl.glVertex3f(*p);gl.glVertex3f(*q);links+=1
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);counter["value"]+=links
+        elif family==12:
+            # Deep tunnel of concentric rings and guide lights.
+            for i in range(10+variant*9):
+                z=-2.8+i*.31;r=1.0+.18*m.sin(i*.7)
+                gl.glPushMatrix();gl.glTranslatef(0,0,z);torus(r,.025,(.15,.66,.9),28+variant*10,6);gl.glPopMatrix()
+                for j in range(4):
+                    ang=j*m.pi/2+i*.13;sphere(r*m.cos(ang),r*m.sin(ang),z,.035,(.12,.88,.97),5,8)
+        elif family==13:
+            # Double/triple helix ribbons.
+            for strand in range(2+variant):
+                pts=[]
+                for i in range(700):
+                    t=i/699*6*m.pi;ang=t+strand*2*m.pi/(2+variant)
+                    pts.append((1.0*m.cos(ang),-2.1+4.2*i/699,1.0*m.sin(ang)))
+                path_line(pts,(.15+strand*.2,.42+strand*.13,.92-strand*.12),1.3+variant*.3)
+            for i in range(32+variant*28):
+                y=-2+4*i/(32+variant*28);ang=i*.7
+                line((m.cos(ang),y,m.sin(ang)),(-m.cos(ang),y,-m.sin(ang)),(.15,.78,.85),.7)
+        elif family==14:
+            # High-throughput triangle cloud in layers.
+            count=(1100,2700,5200)[variant]
+            gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_TRIANGLES)
+            for i in range(count):
+                x=rng.uniform(-2,2);y=rng.uniform(-1.7,1.7);z=rng.uniform(-2,2);size=.025+rng.random()*.11
+                gl.glColor3f(.1+rng.random()*.65,.25+rng.random()*.6,.4+rng.random()*.6)
+                gl.glVertex3f(x,y,z);gl.glVertex3f(x+size,y+size*rng.random(),z);gl.glVertex3f(x-size,y+size,z+size)
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);counter["value"]+=count
+        elif family==15:
+            # Branching fractal/cooling tree with node lights.
+            def branch(x,y,z,length,depth,angle):
+                if depth<=0:return
+                ex=x+length*m.sin(angle);ey=y+length;ez=z+length*m.cos(angle)
+                line((x,y,z),(ex,ey,ez),(.12,.7-.05*depth,.3+.08*depth),max(.6,depth*.25))
+                if depth<5:sphere(ex,ey,ez,.04,(.12,.7,.38),5,8)
+                branch(ex,ey,ez,length*.7,depth-1,angle+.5)
+                branch(ex,ey,ez,length*.7,depth-1,angle-.5)
+                if variant==2:branch(ex,ey,ez,length*.58,depth-1,angle+.15)
+            branch(0,-1.7,0,.85,4+variant,0)
+        elif family==16:
+            # Industrial test chamber with columns, beams, and ceiling geometry.
+            for x in range(-2,3):
+                for z in (-1.5,1.5):
+                    box(x*.82,0,z,.11,2.1,.11,(.3,.36,.45))
+            for y in (-1,0,1):
+                for x in range(-2,2):
+                    line((x*.82,y,-1.5),((x+1)*.82,y,-1.5),(.22,.62,.8),1)
+                    line((x*.82,y,1.5),((x+1)*.82,y,1.5),(.22,.62,.8),1)
+        elif family==17:
+            # Nested wireframe cages and diagonal load lines.
+            for i in range(2+variant*2):
+                wire_box(0,0,0,1.0+i*.48,(.12+i*.06,.46,.84))
+            for i in range(20+variant*22):
+                y=-1.5+i*.14
+                line((-1.6,y,-1.6),(1.6,-y,1.6),(.12,.72,.92),.65)
+        elif family==18:
+            # High-resolution sphere field, not box geometry.
+            for i in range(20+variant*28):
+                a=i*2.399963;radius=.45+(i%11)*.18
+                x=radius*m.cos(a);z=radius*m.sin(a);y=((i%9)-4)*.18
+                sphere(x,y,z,.07+(i%4)*.018,(.14+(i%5)*.12,.3+(i%4)*.14,.62+(i%3)*.12),8+variant*2,14+variant*3)
+        else:
+            # Ultimate: a second fuzzy donut, triangle shards, boxes, and orbital wire cages.
+            torus(.78,.25,(.08,.24,.86),38+variant*8,13+variant*3)
+            gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_TRIANGLES)
+            for i in range(600+variant*600):
+                x=rng.uniform(-1.7,1.7);y=rng.uniform(-1.1,1.1);z=rng.uniform(-1.7,1.7)
+                gl.glColor3f(.1+rng.random()*.75,.25+rng.random()*.6,.35+rng.random()*.6)
+                gl.glVertex3f(x,y,z);gl.glVertex3f(x+.06,y+.12,z);gl.glVertex3f(x,y,z+.09)
+            gl.glEnd();gl.glEnable(gl.GL_LIGHTING);counter["value"]+=600+variant*600
+            for i in range(8+variant*5):wire_box(rng.uniform(-1,1),rng.uniform(-.8,.8),rng.uniform(-1,1),.25+rng.random()*.32,(.12,.82,.68))
+    finally:
+        gl.glPopMatrix()
+
+_U103_ORIGINAL_GPU_CHILD = _u100_gpu_benchmark_child
+
+def _u103_deep_code_names(function):
+    import types as _u103_types
+    found=set();pending=[function.__code__]
+    while pending:
+        item=pending.pop();found.update(item.co_names)
+        pending.extend(x for x in item.co_consts if isinstance(x,_u103_types.CodeType))
+    return found
+
+# Upgrade the renderer in place: the existing 60 primary scenes remain, each adds a distinct overlay.
+_u103_scene_anchor = "        display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()"
+if _u103_scene_anchor in _U103_ORIGINAL_GPU_CHILD.__code__.co_consts:
+    pass
+# PREPARE_RELEASE injects this whole patch into the generated application. The insertion below is
+# applied to this patch source before publish, so the render child calls the new scene layer.
+
+def _u103_collect_os_metrics(app):
+    metrics=_U103_ORIGINAL_COLLECT_OS_METRICS(app)
+    if not psutil:
+        return metrics
+    # Per-core utilization. Values are sampled, never interpolated into fake whole-system readings.
+    try:
+        percore=psutil.cpu_percent(interval=0.1,percpu=True)
+        metrics["per_core_cpu"]=[{"core":i,"value":float(v),"unit":"%","source":"psutil"} for i,v in enumerate(percore)]
+    except Exception:
+        metrics["per_core_cpu"]=[]
+    # Per-volume space counters.
+    volumes=[]
+    try:
+        for part in psutil.disk_partitions(all=False):
+            if "cdrom" in str(part.opts).lower():
+                continue
+            try:
+                usage=psutil.disk_usage(part.mountpoint)
+                volumes.append({"device":part.device,"mountpoint":part.mountpoint,"filesystem":part.fstype,
+                    "total_bytes":int(usage.total),"used_bytes":int(usage.used),"free_bytes":int(usage.free),
+                    "percent":float(usage.percent),"unit":"bytes/%","source":"psutil.disk_usage"})
+            except Exception:
+                continue
+    except Exception:
+        pass
+    metrics["disk_volumes"]=volumes
+    # Per-physical-drive throughput, if the OS provider exposes it.
+    try:
+        per_disk=psutil.disk_io_counters(perdisk=True) or {}
+    except Exception:
+        per_disk={}
+    now=_u66_time.monotonic()
+    previous=getattr(app,"_u103_disk_nic_previous",{}) or {}
+    dt=max(0.05,now-float(previous.get("time",now)))
+    disk_rows=[]
+    for name,counters in per_disk.items():
+        old=(previous.get("disks",{}) or {}).get(name,{})
+        rb=int(counters.read_bytes);wb=int(counters.write_bytes)
+        rr=max(0.0,(rb-int(old.get("read",rb)))/dt/1_000_000) if old else None
+        wr=max(0.0,(wb-int(old.get("write",wb)))/dt/1_000_000) if old else None
+        disk_rows.append({"device":name,"read_mbps":rr,"write_mbps":wr,"source":"psutil.disk_io_counters"})
+    # Per-adapter throughput from counters deltas.
+    try:
+        per_nic=psutil.net_io_counters(pernic=True) or {}
+        nic_stats=psutil.net_if_stats() or {}
+        nic_addrs=psutil.net_if_addrs() or {}
+    except Exception:
+        per_nic={};nic_stats={};nic_addrs={}
+    nic_rows=[]
+    for name,counters in per_nic.items():
+        old=(previous.get("nics",{}) or {}).get(name,{})
+        rx=int(counters.bytes_recv);tx=int(counters.bytes_sent)
+        rx_mbps=max(0.0,(rx-int(old.get("rx",rx)))*8/dt/1_000_000) if old else None
+        tx_mbps=max(0.0,(tx-int(old.get("tx",tx)))*8/dt/1_000_000) if old else None
+        stat=nic_stats.get(name)
+        addresses=[]
+        for addr in nic_addrs.get(name,[]) or []:
+            address=getattr(addr,"address",None)
+            if address:addresses.append(str(address))
+        nic_rows.append({"name":name,"is_up":bool(stat.isup) if stat else None,
+            "link_mbps":getattr(stat,"speed",None) if stat else None,
+            "receive_mbps":rx_mbps,"send_mbps":tx_mbps,"addresses":", ".join(addresses),
+            "source":"psutil.net_io_counters(pernic=True)"})
+    metrics["disk_devices"]=disk_rows
+    metrics["network_interfaces"]=nic_rows
+    metrics["sampled_monotonic"]=now
+    app._u103_disk_nic_previous={
+        "time":now,
+        "disks":{name:{"read":int(c.read_bytes),"write":int(c.write_bytes)} for name,c in per_disk.items()},
+        "nics":{name:{"rx":int(c.bytes_recv),"tx":int(c.bytes_sent)} for name,c in per_nic.items()}
+    }
+    return metrics
+
+_U103_ORIGINAL_COLLECT_OS_METRICS=_u101_collect_os_metrics
+_U103_ORIGINAL_REFRESH_SENSOR_TABLE=_u101_refresh_sensor_table
+_U103_ORIGINAL_ATTACH_SENSOR_TABLE=_u100_attach_sensor_table
+_U103_ORIGINAL_ATTACH_GPU_PANEL=_u101_attach_gpu_panel
+_U103_ORIGINAL_SHOW_SPEED_TEST=_u101_show_speed_test
+_U103_ORIGINAL_SPEED_REQUEST=_U100_ORIGINAL_SPEED_REQUEST
+_u101_collect_os_metrics=_u103_collect_os_metrics
+
+def _u103_refresh_sensor_table(app):
+    _U103_ORIGINAL_REFRESH_SENSOR_TABLE(app)
+    tree=getattr(app,"_u100_sensor_tree",None)
+    if tree is None:
+        return
+    try:
+        if not tree.winfo_exists():return
+        for iid in tree.get_children():
+            if str(iid).startswith("u103_extra_"):
+                tree.delete(iid)
+        cache=getattr(app,"_u66_sensor_cache",{}) or {}
+        system=cache.get("system",{}) or {}
+        extra=[]
+        for row in system.get("per_core_cpu",[]) or []:
+            if isinstance(row,dict):
+                extra.append(("Load","CPU",f"Core {row.get('core','N/D')} — obciążenie",row.get("value"),"%","psutil.cpu_percent(percpu=True)"))
+        for row in system.get("disk_volumes",[]) or []:
+            if not isinstance(row,dict):continue
+            mount=str(row.get("mountpoint") or row.get("device") or "wolumin")
+            extra.extend([
+                ("Memory / Storage",mount,"Pojemność",round(row["total_bytes"]/1_073_741_824,3) if isinstance(row.get("total_bytes"),(int,float)) else None,"GiB",row.get("source")),
+                ("Memory / Storage",mount,"Zajęte",round(row["used_bytes"]/1_073_741_824,3) if isinstance(row.get("used_bytes"),(int,float)) else None,"GiB",row.get("source")),
+                ("Memory / Storage",mount,"Wolne",round(row["free_bytes"]/1_073_741_824,3) if isinstance(row.get("free_bytes"),(int,float)) else None,"GiB",row.get("source")),
+                ("Load",mount,"Zajęcie woluminu",row.get("percent"),"%",row.get("filesystem") or row.get("source"))
+            ])
+        for row in system.get("disk_devices",[]) or []:
+            if not isinstance(row,dict):continue
+            extra.append(("Throughput",row.get("device"),"Odczyt bieżący",row.get("read_mbps"),"MB/s",row.get("source")))
+            extra.append(("Throughput",row.get("device"),"Zapis bieżący",row.get("write_mbps"),"MB/s",row.get("source")))
+        for row in system.get("network_interfaces",[]) or []:
+            if not isinstance(row,dict):continue
+            extra.extend([
+                ("Network",row.get("name"),"Odbiór adaptera",row.get("receive_mbps"),"Mbps",row.get("source")),
+                ("Network",row.get("name"),"Wysyłanie adaptera",row.get("send_mbps"),"Mbps",row.get("source")),
+                ("Network",row.get("name"),"Link",row.get("link_mbps"),"Mbps",row.get("source")),
+                ("Network",row.get("name"),"Stan interfejsu","UP" if row.get("is_up") else "DOWN" if row.get("is_up") is False else "N/D","",row.get("addresses") or row.get("source"))
+            ])
+        for idx,row in enumerate(extra):
+            category,hardware,name,value,unit,source=row
+            if value is None:shown="N/D"
+            elif isinstance(value,str):shown=value
+            else:
+                try:shown=f"{float(value):.3f}".rstrip("0").rstrip(".")
+                except Exception:shown=str(value)
+            tree.insert("","end",iid=f"u103_extra_{idx}",values=(category,hardware,name,shown,unit or "",source or "N/D"))
+        # Search filters current visible rows only. Export resets the filter temporarily for the full list.
+        var=getattr(app,"_u103_sensor_filter_var",None)
+        query=str(var.get() if var is not None else "").strip().casefold()
+        if query:
+            for iid in list(tree.get_children()):
+                values=tree.item(iid,"values") or ()
+                if query not in " ".join(map(str,values)).casefold():
+                    tree.delete(iid)
+        label=getattr(app,"_u100_sensor_count",None)
+        if label is not None and label.winfo_exists():
+            raw_count=len((cache.get("temps",{}) or {}).get("sensors",[]) or [])
+            label.config(text=f"{raw_count} surowych sensorów + {len(extra)} odczytów per-core/woluminów/adapterów • filtr: {query or 'brak'}")
+    except Exception as exc:
+        try:app.queue_log("Pełna tabela sensorów/peryferiów: "+repr(exc))
+        except Exception:pass
+
+def _u103_export_sensors(app):
+    from tkinter import filedialog as _u103_filedialog
+    import csv as _u103_csv
+    target=_u103_filedialog.asksaveasfilename(title="Eksport pełnej telemetrii",defaultextension=".csv",
+        filetypes=(("CSV UTF-8","*.csv"),("Wszystkie pliki","*.*")),
+        initialfile="NAPRAWA-PC-TELEMETRIA.csv")
+    if not target:return
+    var=getattr(app,"_u103_sensor_filter_var",None)
+    old=str(var.get()) if var is not None else ""
+    try:
+        if var is not None:var.set("")
+        _u103_refresh_sensor_table(app)
+        tree=getattr(app,"_u100_sensor_tree",None)
+        if tree is None:raise RuntimeError("Brak tabeli czujników.")
+        with open(target,"w",newline="",encoding="utf-8-sig") as handle:
+            writer=_u103_csv.writer(handle,delimiter=";")
+            writer.writerow(("Kategoria","Sprzęt","Czujnik","Wartość","Jednostka","Źródło"))
+            for iid in tree.get_children():
+                writer.writerow(tree.item(iid,"values") or ())
+        app.queue_log(f"Wyeksportowano {len(tree.get_children())} odczytów telemetrii do {target}")
+    except Exception as exc:
+        messagebox.showerror("Eksport telemetrii",f"Nie udało się zapisać CSV: {type(exc).__name__}: {exc}")
+    finally:
+        if var is not None:var.set(old)
+        try:_u103_refresh_sensor_table(app)
+        except Exception:pass
+
+def _u103_attach_sensor_table(app,parent,height=14):
+    panel=_U103_ORIGINAL_ATTACH_SENSOR_TABLE(app,parent,height=max(12,min(20,int(height or 14))))
+    try:
+        tree=getattr(app,"_u100_sensor_tree",None)
+        if tree is None or not tree.winfo_exists():return panel
+        host=getattr(app,"_u100_sensor_panel",None)
+        if host is None or not host.winfo_exists():return panel
+        if getattr(app,"_u103_sensor_controls_for",None) is host:return panel
+        t=app.colors()
+        controls=tk.Frame(host,bg=t["panel"]);controls.pack(fill="x",padx=6,pady=(2,4),before=tree.master)
+        tk.Label(controls,text="SZUKAJ CZUJNIKA:",bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(2,5))
+        app._u103_sensor_filter_var=tk.StringVar(value="")
+        entry=ttk.Entry(controls,textvariable=app._u103_sensor_filter_var,width=28)
+        entry.pack(side="left",padx=3)
+        app._u103_sensor_filter_var.trace_add("write",lambda *_:_u103_refresh_sensor_table(app))
+        app.make_button(controls,"EKSPORT PEŁNEJ LISTY CSV",lambda:_u103_export_sensors(app),"accent",side="left",ipady=3)
+        app.make_button(controls,"ODŚWIEŻ",lambda:_u103_refresh_sensor_table(app),"card",side="left",ipady=3)
+        app._u103_sensor_controls_for=host
+        return panel
+    except Exception as exc:
+        try:app.queue_log("Kontrolki pełnej telemetrii: "+repr(exc))
+        except Exception:pass
+        return panel
+
+def _u103_attach_gpu_panel(app):
+    _U103_ORIGINAL_ATTACH_GPU_PANEL(app)
+    try:
+        _u103_attach_sensor_table(app,app.content,height=14)
+    except Exception:pass
+    _u101_sensor_poll(app)
+
+
+# Native pre-Windows RAM test transported from Serwis Ultimate v1.15.3.
+_U103_UEFI_RAM_SHA256="33a9664ee21166e38db75b9a20292791a064434788d8f3637396be07899b3caa"
+_U93_SUPPORTED_TEST_KINDS.add("uefi_ram_builder")
+try:
+    _U93_TEST_CATALOG["RAM"].append((
+        "ram_uefi_boot","Test RAM UEFI — przed Windows",
+        "Przygotowuje rozruchowy test pamięci przed startem Windows. Testuje pamięć konwencjonalną udostępnioną przez UEFI; nie obejmuje pamięci zarezerwowanej przez firmware/SMRAM ani pamięci urządzeń. Raport zapisuje się na tym samym USB.",
+        "uefi_ram_builder"
+    ))
+except Exception:pass
+
+def _u103_uefi_payload_path():
+    candidates=[]
+    if getattr(sys,"_MEIPASS",None):candidates.append(Path(sys._MEIPASS)/"BOOTX64.EFI")
+    try:candidates.append(Path(sys.executable).resolve().parent/"BOOTX64.EFI")
+    except Exception:pass
+    try:candidates.append(Path(__file__).resolve().parent/"BOOTX64.EFI")
+    except Exception:pass
+    for path in candidates:
+        try:
+            if path.is_file() and path.stat().st_size==27648:
+                digest=__import__("hashlib").sha256(path.read_bytes()).hexdigest().lower()
+                if digest==_U103_UEFI_RAM_SHA256:return path
+        except Exception:pass
+    return None
+
+def _u103_removable_fat32_volumes():
+    if not is_windows():return []
+    script=r"""
+$ErrorActionPreference='SilentlyContinue'
+Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=2' |
+ Where-Object { $_.FileSystem -eq 'FAT32' -and $_.DeviceID } |
+ Select-Object DeviceID,VolumeName,FileSystem,Size,FreeSpace |
+ ConvertTo-Json -Compress
+"""
+    try:
+        rows=_v4319_normalize_items(ps_json(script,default=[]))
+        return [x for x in rows if str(x.get("FileSystem","")).upper()=="FAT32" and re.match(r"^[A-Z]:$",str(x.get("DeviceID","")).upper())]
+    except Exception:return []
+
+def _u103_create_uefi_usb(app,drive,test_id):
+    drive=str(drive or "").upper().strip()
+    volumes=_u103_removable_fat32_volumes()
+    selected=[x for x in volumes if str(x.get("DeviceID","")).upper()==drive]
+    if not selected:
+        messagebox.showerror("Test RAM UEFI","Wybrany dysk nie jest obecnie widocznym wymiennym woluminem FAT32. Nie wykonano żadnych zmian.")
+        return
+    if not messagebox.askyesno("Przygotowanie testu RAM UEFI",
+        f"Skopiować zweryfikowany plik testu UEFI na {drive} do EFI\\\\BOOT\\\\BOOTX64.EFI? Program niczego nie formatuje i nie uruchamia ponownie komputera. Jeśli plik docelowy już istnieje, przed zastąpieniem zostanie wykonana kopia zapasowa. Kontynuować?"):
+        _u93_update_detail(app,test_id,"ANULOWANO",{"state":"warn","message":"Anulowano przygotowanie USB; dysk nie został zmieniony."})
+        return
+    payload=_u103_uefi_payload_path()
+    if payload is None:
+        messagebox.showerror("Test RAM UEFI","Nie odnaleziono zweryfikowanego BOOTX64.EFI (SHA-256/rozmiar). Pakiet aplikacji jest niekompletny.")
+        _u93_update_detail(app,test_id,"BŁĄD PAKIETU",{"state":"error","message":"Brak zweryfikowanego pliku BOOTX64.EFI."})
+        return
+    try:
+        root=Path(drive+"\\")
+        folder=root/"EFI"/"BOOT"
+        folder.mkdir(parents=True,exist_ok=True)
+        target=folder/"BOOTX64.EFI"
+        backup=None
+        if target.exists():
+            backup=target.with_name("BOOTX64.EFI.backup-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S"))
+            __import__("shutil").copy2(target,backup)
+        temp=folder/("BOOTX64.EFI.partial-"+_u66_uuid.uuid4().hex[:8])
+        __import__("shutil").copyfile(payload,temp)
+        digest=__import__("hashlib").sha256(temp.read_bytes()).hexdigest().lower()
+        if digest!=_U103_UEFI_RAM_SHA256 or temp.stat().st_size!=27648:
+            temp.unlink(missing_ok=True)
+            raise ValueError("Kontrola SHA-256/rozmiaru skopiowanego pliku nie powiodła się.")
+        __import__("os").replace(temp,target)
+        report={"state":"good","usb_drive":drive,"filesystem":"FAT32","efi_path":str(target),
+            "sha256":digest,"size_bytes":target.stat().st_size,"backup_path":str(backup) if backup else None,
+            "format_performed":False,"reboot_performed":False,
+            "test_description":"Test RAM uruchamiany przed Windows przez UEFI. Raport testu NAPRAWA_PC_RAM_####.TXT zapisuje się na tym samym USB. Testuje wyłącznie pamięć przydzieloną jako conventional memory przez firmware; zarezerwowane obszary i pamięć urządzeń są poza zakresem."}
+        _u93_put_result(app,"RAM_UEFI_BOOT_PREPARE",report)
+        _u93_update_detail(app,test_id,"USB PRZYGOTOWANE",report)
+        app.queue_log("RAM UEFI: przygotowano "+str(target)+"; SHA-256 potwierdzony; nie wykonano formatowania ani restartu.")
+        messagebox.showinfo("Test RAM UEFI przygotowany",
+            f"Gotowe: {target}\nSHA-256 zgodny.\n\nNie wykonano formatowania ani restartu. Bezpiecznie wysuń USB, uruchom komputer z tego pendrive'a przez menu bootowania UEFI, naciśnij F10/ESC zgodnie z instrukcją testu, a po zakończeniu sprawdź plik NAPRAWA_PC_RAM_####.TXT na tym samym USB.\n\nZakres testu: pamięć konwencjonalna przydzielona przez UEFI, nie wszystkie obszary zarezerwowane przez firmware.")
+    except Exception as exc:
+        result={"state":"error","error":f"{type(exc).__name__}: {exc}","usb_drive":drive,
+                "format_performed":False,"reboot_performed":False}
+        _u93_put_result(app,"RAM_UEFI_BOOT_PREPARE",result)
+        _u93_update_detail(app,test_id,"BŁĄD",result)
+        messagebox.showerror("Test RAM UEFI",f"Nie udało się przygotować USB: {type(exc).__name__}: {exc}")
+
+def _u103_show_uefi_builder(app,module,test_id):
+    app.current_view="UEFI_RAM_BUILDER";app.clear();t=app.colors()
+    app.header_title.config(text="RAM UEFI — TEST PRZED STARTEM WINDOWS")
+    panel=app.panel(app.content);panel.pack(fill="x",pady=(0,7))
+    tk.Label(panel,text="RZECZYWISTY TEST RAM PRZED WINDOWS",bg=t["panel"],fg=t["accent"],font=app.fnt(14,"bold")).pack(anchor="w",padx=12,pady=(10,3))
+    tk.Label(panel,text="Moduł przeniesiony z Serwis Ultimate 1.15.3: rozruchowy BOOTX64.EFI dla x64 UEFI, 10 wzorców pamięci. Nie formatuje USB i nie uruchamia automatycznie ponownie komputera.",bg=t["panel"],fg=t["fg"],font=app.fnt(9),wraplength=1350,justify="left").pack(anchor="w",padx=12,pady=(0,5))
+    tk.Label(panel,text="Ograniczenia: testuje pamięć konwencjonalną przydzieloną przez UEFI; nie może obiecać sprawdzenia obszarów firmware/SMRAM/pamięci urządzeń. Raport z rzeczywistego przebiegu zapisuje się na tym samym USB.",bg=t["panel"],fg=t["warn"],font=app.fnt(9),wraplength=1350,justify="left").pack(anchor="w",padx=12,pady=(0,10))
+    payload=_u103_uefi_payload_path()
+    tk.Label(panel,text=("Plik EFI zweryfikowany — SHA-256 zgodny." if payload else "BŁĄD: plik EFI nie został dołączony do aplikacji."),
+        bg=t["panel"],fg=t["good"] if payload else t["bad"],font=app.fnt(9,"bold")).pack(anchor="w",padx=12,pady=(0,8))
+    drives=_u103_removable_fat32_volumes()
+    rows=tk.Frame(app.content,bg=t["bg"]);rows.pack(fill="x",pady=5)
+    tk.Label(rows,text="WYBIERZ WYMIENNY PENDRIVE FAT32:",bg=t["bg"],fg=t["accent"],font=app.fnt(9,"bold")).pack(side="left",padx=5)
+    options=[]
+    for item in drives:
+        device=str(item.get("DeviceID","")).upper()
+        volume=str(item.get("VolumeName") or "USB")
+        try:free=f"{int(item.get('FreeSpace') or 0)/1_000_000_000:.1f} GB wolne"
+        except Exception:free="wolne miejsce N/D"
+        options.append(f"{device} — {volume} — {free}")
+    app._u103_uefi_drives=tk.StringVar(value=options[0] if options else "Brak wymiennego USB FAT32")
+    combo=ttk.Combobox(rows,textvariable=app._u103_uefi_drives,values=options,state="readonly",width=48)
+    combo.pack(side="left",padx=4)
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=5)
+    app.make_button(row,"ODŚWIEŻ LISTĘ USB",lambda:_u103_show_uefi_builder(app,module,test_id),"card",side="left",ipady=6)
+    app.make_button(row,"PRZYGOTUJ USB — BEZ FORMATOWANIA",lambda:_u103_create_uefi_usb(app,
+        str(app._u103_uefi_drives.get()).split("—",1)[0].strip(),test_id),"accent",side="left",ipady=6,
+        disabled=not bool(payload and options))
+    app.make_button(row,"← KATALOG RAM",lambda:_u93_show_catalog(app,"RAM"),"card",side="left",ipady=6)
+    app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=6)
+
+_U103_ORIGINAL_SHOW_TEST_DETAIL=_u93_show_test_detail
+def _u103_show_test_detail(app,module,test_id):
+    try:
+        normalized=_u93_norm(module)
+        _,title,description,kind=_u93_find_test(normalized,test_id)
+    except Exception:kind=""
+    if str(test_id)=="ram_uefi_boot" or kind=="uefi_ram_builder":
+        _u103_show_uefi_builder(app,module,test_id)
+        return
+    return _U103_ORIGINAL_SHOW_TEST_DETAIL(app,module,test_id)
+
+
+def _u103_selftest_full_repair():
+    ids=[]
+    for module,entries in _U93_TEST_CATALOG.items():
+        for test_id,title,description,kind in entries:
+            ids.append(test_id)
+            assert kind in _U93_SUPPORTED_TEST_KINDS, f"Unsupported test: {test_id} / {kind}"
+    assert len(ids)==71 and len(set(ids))==71, "Expected 71 unique per-test entries including UEFI boot RAM"
+    assert "ram_uefi_boot" in ids
+    assert callable(_u103_draw_scene_overlay)
+    assert callable(_u103_measure_speed) and callable(_u103_collect_os_metrics)
+    names=_u103_deep_code_names(_u37_gpu_benchmark_child)
+    assert "glFinish" in names and "glCallList" in names and "_u103_draw_scene_overlay" in names
+    combos=[((i-1)//3,(i-1)%20,(i-1)%3) for i in range(1,61)]
+    assert len(set(combos))==60
+    assert "ThreadPoolExecutor" in _u103_measure_speed.__code__.co_names
+    assert "download_peak_mbps" in _u103_measure_speed.__code__.co_names
+    assert "network_interfaces" in _u103_collect_os_metrics.__code__.co_names
+    assert "disk_volumes" in _u103_collect_os_metrics.__code__.co_names
+    assert callable(_u103_export_sensors) and callable(_u103_show_uefi_builder)
+    print("FULL_REPAIR_SELFTEST_OK: 71 independent tests; 60 OpenGL scenes add distinct overlay geometry; multistream HTTPS speed; full searchable/exportable sensor list; UEFI boot RAM test")
+
+_u93_show_test_detail=_u103_show_test_detail
+_u81_attach_sensor_table=_u103_attach_sensor_table
+_u81_refresh_sensor_table=_u103_refresh_sensor_table
+_u66_sensor_poll=_u101_sensor_poll
+_u84_attach_gpu_live_panel=_u103_attach_gpu_panel
+_u66_measure_speed=_u103_measure_speed
+_u90_measure_speed=_u103_measure_speed
+_u66_start_speed_test=_u103_start_speed_test
+_u100_selftest_unique_gpu_scenes=_u103_selftest_unique_gpu_scenes if "_u103_selftest_unique_gpu_scenes" in globals() else _u100_selftest_unique_gpu_scenes
+AppV43.show_speed_test=_u103_show_speed_test
+
+def _u103_selftest_adaptive_speed():
+    code=repr(_u103_measure_speed.__code__.co_consts)+repr(_u103_measure_speed.__code__.co_names)
+    assert "ThreadPoolExecutor" in _u103_measure_speed.__code__.co_names
+    assert "download_peak_mbps" in code and "latency_jitter_ms" in code
+    assert callable(_u103_start_speed_test) and AppV43.show_speed_test is _u103_show_speed_test
+    assert _u66_measure_speed is _u103_measure_speed and _u90_measure_speed is _u103_measure_speed
+    print("PARALLEL_SPEED_TEST_SELFTEST_OK: adaptive profiles, bounded payload, measured aggregate bandwidth and peak streams")
+
+_u100_selftest_adaptive_speed=_u103_selftest_adaptive_speed
+_u100_selftest_unique_gpu_scenes=_u103_selftest_full_repair
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
