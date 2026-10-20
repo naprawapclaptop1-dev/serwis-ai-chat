@@ -65,6 +65,423 @@ jobs:
           }
           if (!(Test-Path ".\NaprawaPC_Hardware_Test_PRO.pyw") -or !(Test-Path ".\ui_reference.png") -or !(Test-Path ".\app_icon.png") -or !(Test-Path ".\app.ico")) { throw "Source/artwork restoration failed." }
 
+      - name: Restore full companion app source bundle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "\${{ github.workspace }}\hardware-test-pro"
+          $sourceFolder = Join-Path (Get-Location) "companion-source"
+          $chunks = @(Get-ChildItem -LiteralPath $sourceFolder -Filter "companion_source_zip.*.b64.txt" |
+            Where-Object { $_.Name -match '^companion_source_zip\.\d+\.b64\.txt
+        id: prepare
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          & ".\PREPARE_RELEASE.ps1"
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller psutil pillow numpy pygame-ce PyOpenGL sounddevice opencv-python cryptography
+
+      - name: Syntax and built-in tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          # Parse the standalone local build script before shipping it.
+          $localBuild = ".\BUILD_LOCAL.ps1"
+          if (!(Test-Path -LiteralPath $localBuild)) { throw "BUILD_LOCAL.ps1 is missing." }
+          $parseTokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath $localBuild).Path, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error $_.Message }
+            throw "BUILD_LOCAL.ps1 has PowerShell syntax errors."
+          }
+          $localBat = [IO.File]::ReadAllText((Resolve-Path -LiteralPath ".\BUILD_WINDOWS.bat").Path)
+          if ($localBat -match "4\.3\.44" -or $localBat -notmatch "BUILD_LOCAL\.ps1") {
+            throw "BUILD_WINDOWS.bat must call the version-aware local builder and must not hard-code 4.3.44."
+          }
+          Write-Host "LOCAL_BUILD_SCRIPT_SYNTAX_OK"
+          $program = ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          python -m py_compile $program
+          if ($LASTEXITCODE -ne 0) { throw "Python syntax check failed with code $LASTEXITCODE" }
+          # Catch common Tk lifecycle regressions without pretending to replace a physical-device test.
+          $checks = @(
+            "--selftest-core",
+            "--selftest-deep",
+            "--selftest-update",
+            "--selftest-launcher",
+            "--selftest-antivirus",
+            "--selftest-themes",
+            "--selftest-service-center",
+            "--selftest-update-flow",
+            "--selftest-advanced-modules"
+          )
+          foreach ($check in $checks) {
+            Write-Host "RUNNING SELFTEST: $check"
+            python $program $check
+            if ($LASTEXITCODE -ne 0) { throw "Self-test $check failed with exit code $LASTEXITCODE" }
+          }
+
+      - name: Build application EXE
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --add-binary "SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")) { throw "PyInstaller did not create the EXE." }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile and verify Setup.exe
+        id: installer
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          $iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue).Source
+          $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+          $pf = [Environment]::GetEnvironmentVariable("ProgramFiles")
+          if (!$iscc -and (Test-Path "$pf86\Inno Setup 6\ISCC.exe")) { $iscc = "$pf86\Inno Setup 6\ISCC.exe" }
+          if (!$iscc -and (Test-Path "$pf\Inno Setup 6\ISCC.exe")) { $iscc = "$pf\Inno Setup 6\ISCC.exe" }
+          if (!$iscc) { throw "ISCC.exe not found." }
+          $dist = (Resolve-Path ".\dist").Path
+          & $iscc "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$dist" "/O$dist" ".\SUITE_SETUP.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+          $installer = Join-Path $dist $env:SETUP_FILENAME
+          if (!(Test-Path $installer) -or (Get-Item $installer).Length -lt 1MB) { throw "Verified Setup.exe is missing or too small." }
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          $size = (Get-Item -LiteralPath $installer).Length
+          "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "size=$size" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
+          if (Test-Path $bundle) { Remove-Item $bundle -Force }
+          $systemCompanion = Join-Path $dist "components\SystemRepairPRO\NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
+          $serviceCompanion = Join-Path $dist "components\SerwisUltimate\NAPRAWA_PC_SERWIS_ULTIMATE.exe"
+          if (!(Test-Path -LiteralPath $systemCompanion) -or !(Test-Path -LiteralPath $serviceCompanion)) { throw "ALL-IN-ONE package requires both full companion executables." }
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw", (Join-Path $dist "components")) -DestinationPath $bundle -CompressionLevel Optimal
+          if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
+          $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          $bundleSize = (Get-Item -LiteralPath $bundle).Length
+          "BUNDLE_SHA256=$bundleHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "BUNDLE_SIZE=$bundleSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Publish release assets
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: hardware-test-pro-v${{ steps.prepare.outputs.app_version }}
+          target_commitish: main
+          name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
+          body: |
+            Wydanie Windows x64. Testy źródeł przed budową instalatora; zintegrowane centrum serwisu i napraw systemu, testy hardware, 125 skórek oraz poprawka zapisu aktualizacji.
+          files: |
+            hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove obsolete separate portable ZIP from release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.prepare.outputs.app_version }}
+        with:
+          script: |
+            const tag = "hardware-test-pro-v" + process.env.APP_VERSION;
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: tag
+            });
+            for (const asset of release.assets) {
+              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-" + process.env.APP_VERSION + ".zip") {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
+            }
+
+      - name: Publish update manifest only after successful release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.prepare.outputs.app_version }}
+          INSTALLER_SHA256: ${{ steps.installer.outputs.sha256 }}
+          INSTALLER_SIZE: ${{ steps.installer.outputs.size }}
+          SETUP_FILENAME: ${{ steps.prepare.outputs.setup_filename }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = "updates/hardware-test-pro/latest.json";
+            const branch = "main";
+            const old = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
+            const version = process.env.APP_VERSION;
+            const manifest = {
+              app: "NAPRAWA PC HARDWARE TEST PRO",
+              channel: "stable",
+              version: version,
+              release_ready: true,
+              // The stable updater downloads the Setup installer directly; no helper EXE is distributed.
+              filename: process.env.SETUP_FILENAME,
+              download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              sha256: process.env.INSTALLER_SHA256,
+              size: Number(process.env.INSTALLER_SIZE),
+              installer_filename: process.env.SETUP_FILENAME,
+              installer_download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              installer_sha256: process.env.INSTALLER_SHA256,
+              installer_size: Number(process.env.INSTALLER_SIZE),
+              minimum_supported_version: "4.3.39",
+              notes: "Wydanie " + version + ": zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+              published_at: new Date().toISOString()
+            };
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: owner,
+              repo: repo,
+              path: path,
+              branch: branch,
+              message: "Publish verified Hardware Test PRO " + version + " update",
+              sha: old.data.sha,
+              content: Buffer.from(JSON.stringify(manifest, null, 2) + "\n", "utf8").toString("base64")
+            });
+
+ } |
+            Sort-Object { [int]([regex]::Match($_.Name, '\.(\d+)\.b64\.txt
+        id: prepare
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          & ".\PREPARE_RELEASE.ps1"
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyinstaller psutil pillow numpy pygame-ce PyOpenGL sounddevice opencv-python cryptography
+
+      - name: Syntax and built-in tests
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          # Parse the standalone local build script before shipping it.
+          $localBuild = ".\BUILD_LOCAL.ps1"
+          if (!(Test-Path -LiteralPath $localBuild)) { throw "BUILD_LOCAL.ps1 is missing." }
+          $parseTokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath $localBuild).Path, [ref]$parseTokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error $_.Message }
+            throw "BUILD_LOCAL.ps1 has PowerShell syntax errors."
+          }
+          $localBat = [IO.File]::ReadAllText((Resolve-Path -LiteralPath ".\BUILD_WINDOWS.bat").Path)
+          if ($localBat -match "4\.3\.44" -or $localBat -notmatch "BUILD_LOCAL\.ps1") {
+            throw "BUILD_WINDOWS.bat must call the version-aware local builder and must not hard-code 4.3.44."
+          }
+          Write-Host "LOCAL_BUILD_SCRIPT_SYNTAX_OK"
+          $program = ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          python -m py_compile $program
+          if ($LASTEXITCODE -ne 0) { throw "Python syntax check failed with code $LASTEXITCODE" }
+          # Catch common Tk lifecycle regressions without pretending to replace a physical-device test.
+          $checks = @(
+            "--selftest-core",
+            "--selftest-deep",
+            "--selftest-update",
+            "--selftest-launcher",
+            "--selftest-antivirus",
+            "--selftest-themes",
+            "--selftest-service-center",
+            "--selftest-update-flow",
+            "--selftest-advanced-modules"
+          )
+          foreach ($check in $checks) {
+            Write-Host "RUNNING SELFTEST: $check"
+            python $program $check
+            if ($LASTEXITCODE -ne 0) { throw "Self-test $check failed with exit code $LASTEXITCODE" }
+          }
+
+      - name: Build application EXE
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --add-binary "SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")) { throw "PyInstaller did not create the EXE." }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+
+      - name: Compile and verify Setup.exe
+        id: installer
+        shell: pwsh
+        run: |
+          Set-Location "${{ github.workspace }}\hardware-test-pro"
+          $iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue).Source
+          $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+          $pf = [Environment]::GetEnvironmentVariable("ProgramFiles")
+          if (!$iscc -and (Test-Path "$pf86\Inno Setup 6\ISCC.exe")) { $iscc = "$pf86\Inno Setup 6\ISCC.exe" }
+          if (!$iscc -and (Test-Path "$pf\Inno Setup 6\ISCC.exe")) { $iscc = "$pf\Inno Setup 6\ISCC.exe" }
+          if (!$iscc) { throw "ISCC.exe not found." }
+          $dist = (Resolve-Path ".\dist").Path
+          & $iscc "/DAppVersion=$env:APP_VERSION" "/DSourceDir=$dist" "/O$dist" ".\SUITE_SETUP.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup compilation failed." }
+          $installer = Join-Path $dist $env:SETUP_FILENAME
+          if (!(Test-Path $installer) -or (Get-Item $installer).Length -lt 1MB) { throw "Verified Setup.exe is missing or too small." }
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          $size = (Get-Item -LiteralPath $installer).Length
+          "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "size=$size" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
+          if (Test-Path $bundle) { Remove-Item $bundle -Force }
+          $systemCompanion = Join-Path $dist "components\SystemRepairPRO\NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
+          $serviceCompanion = Join-Path $dist "components\SerwisUltimate\NAPRAWA_PC_SERWIS_ULTIMATE.exe"
+          if (!(Test-Path -LiteralPath $systemCompanion) -or !(Test-Path -LiteralPath $serviceCompanion)) { throw "ALL-IN-ONE package requires both full companion executables." }
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw", (Join-Path $dist "components")) -DestinationPath $bundle -CompressionLevel Optimal
+          if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
+          $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
+          $bundleSize = (Get-Item -LiteralPath $bundle).Length
+          "BUNDLE_SHA256=$bundleHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "BUNDLE_SIZE=$bundleSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Publish release assets
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: hardware-test-pro-v${{ steps.prepare.outputs.app_version }}
+          target_commitish: main
+          name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
+          body: |
+            Wydanie Windows x64. Testy źródeł przed budową instalatora; zintegrowane centrum serwisu i napraw systemu, testy hardware, 125 skórek oraz poprawka zapisu aktualizacji.
+          files: |
+            hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
+            hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove obsolete separate portable ZIP from release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.prepare.outputs.app_version }}
+        with:
+          script: |
+            const tag = "hardware-test-pro-v" + process.env.APP_VERSION;
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: tag
+            });
+            for (const asset of release.assets) {
+              if (asset.name === "NAPRAWA-PC-HARDWARE-TEST-PRO-PORTABLE-" + process.env.APP_VERSION + ".zip") {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
+            }
+
+      - name: Publish update manifest only after successful release
+        if: github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        env:
+          APP_VERSION: ${{ steps.prepare.outputs.app_version }}
+          INSTALLER_SHA256: ${{ steps.installer.outputs.sha256 }}
+          INSTALLER_SIZE: ${{ steps.installer.outputs.size }}
+          SETUP_FILENAME: ${{ steps.prepare.outputs.setup_filename }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const path = "updates/hardware-test-pro/latest.json";
+            const branch = "main";
+            const old = await github.rest.repos.getContent({ owner, repo, path, ref: branch });
+            const version = process.env.APP_VERSION;
+            const manifest = {
+              app: "NAPRAWA PC HARDWARE TEST PRO",
+              channel: "stable",
+              version: version,
+              release_ready: true,
+              // The stable updater downloads the Setup installer directly; no helper EXE is distributed.
+              filename: process.env.SETUP_FILENAME,
+              download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              sha256: process.env.INSTALLER_SHA256,
+              size: Number(process.env.INSTALLER_SIZE),
+              installer_filename: process.env.SETUP_FILENAME,
+              installer_download_url: "https://github.com/" + owner + "/" + repo + "/releases/download/hardware-test-pro-v" + version + "/" + process.env.SETUP_FILENAME,
+              installer_sha256: process.env.INSTALLER_SHA256,
+              installer_size: Number(process.env.INSTALLER_SIZE),
+              minimum_supported_version: "4.3.39",
+              notes: "Wydanie " + version + ": zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+              published_at: new Date().toISOString()
+            };
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: owner,
+              repo: repo,
+              path: path,
+              branch: branch,
+              message: "Publish verified Hardware Test PRO " + version + " update",
+              sha: old.data.sha,
+              content: Buffer.from(JSON.stringify(manifest, null, 2) + "\n", "utf8").toString("base64")
+            });
+
+).Groups[1].Value) })
+          if ($chunks.Count -lt 2) { throw "Full System Repair PRO + Serwis Ultimate source bundle chunks are missing." }
+          $joined = (($chunks | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() }) -join "")
+          $sourceZip = Join-Path $env:RUNNER_TEMP "NAPRAWA-PC-COMPANION-SOURCES.zip"
+          [IO.File]::WriteAllBytes($sourceZip, [Convert]::FromBase64String($joined))
+          $companionsRoot = Join-Path (Get-Location) "companions"
+          if (Test-Path -LiteralPath $companionsRoot) { Remove-Item -LiteralPath $companionsRoot -Recurse -Force }
+          Expand-Archive -LiteralPath $sourceZip -DestinationPath $companionsRoot -Force
+          $systemProject = Join-Path $companionsRoot "Companions\SystemRepairPRO\NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_DX12_ULTIMATE_RAM_DASHBOARD.csproj"
+          $serviceProject = Join-Path $companionsRoot "Companions\SerwisUltimate\AllInOneUltimate.csproj"
+          if (!(Test-Path -LiteralPath $systemProject) -or !(Test-Path -LiteralPath $serviceProject)) {
+            throw "Companion source restore incomplete: System Repair PRO or Serwis Ultimate project is missing."
+          }
+          Write-Host "COMPANION_SOURCE_RESTORE_OK: System Repair PRO 5.6.25 + Serwis Ultimate 1.15.3"
+
+      - name: Build full System Repair PRO and Serwis Ultimate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "\${{ github.workspace }}\hardware-test-pro"
+          $companions = Join-Path (Get-Location) "companions\Companions"
+          $dist = Join-Path (Get-Location) "dist"
+          $systemProject = Join-Path $companions "SystemRepairPRO\NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_DX12_ULTIMATE_RAM_DASHBOARD.csproj"
+          $serviceProject = Join-Path $companions "SerwisUltimate\AllInOneUltimate.csproj"
+          $systemOut = Join-Path $dist "components\SystemRepairPRO"
+          $serviceOut = Join-Path $dist "components\SerwisUltimate"
+          New-Item -ItemType Directory -Force -Path $systemOut,$serviceOut | Out-Null
+          dotnet publish $systemProject -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o $systemOut
+          if ($LASTEXITCODE -ne 0) { throw "System Repair PRO 5.6.25 build failed." }
+          dotnet publish $serviceProject -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o $serviceOut
+          if ($LASTEXITCODE -ne 0) { throw "Serwis Ultimate 1.15.3 build failed." }
+          $systemExe = Join-Path $systemOut "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
+          $serviceExe = Join-Path $serviceOut "NAPRAWA_PC_SERWIS_ULTIMATE.exe"
+          if (!(Test-Path -LiteralPath $systemExe) -or (Get-Item -LiteralPath $systemExe).Length -lt 10MB) {
+            throw "Full System Repair PRO executable missing/incomplete."
+          }
+          if (!(Test-Path -LiteralPath $serviceExe) -or (Get-Item -LiteralPath $serviceExe).Length -lt 10MB) {
+            throw "Full Serwis Ultimate executable missing/incomplete."
+          }
+          Write-Host ("SYSTEM_REPAIR_PRO_OK bytes=" + (Get-Item $systemExe).Length)
+          Write-Host ("SERWIS_ULTIMATE_OK bytes=" + (Get-Item $serviceExe).Length)
       - name: Prepare version, 125 themes and icon hover effects
         id: prepare
         shell: pwsh
@@ -154,7 +571,10 @@ jobs:
           "size=$size" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
           if (Test-Path $bundle) { Remove-Item $bundle -Force }
-          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw") -DestinationPath $bundle -CompressionLevel Optimal
+          $systemCompanion = Join-Path $dist "components\SystemRepairPRO\NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
+          $serviceCompanion = Join-Path $dist "components\SerwisUltimate\NAPRAWA_PC_SERWIS_ULTIMATE.exe"
+          if (!(Test-Path -LiteralPath $systemCompanion) -or !(Test-Path -LiteralPath $serviceCompanion)) { throw "ALL-IN-ONE package requires both full companion executables." }
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw", (Join-Path $dist "components")) -DestinationPath $bundle -CompressionLevel Optimal
           if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
           $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           $bundleSize = (Get-Item -LiteralPath $bundle).Length
