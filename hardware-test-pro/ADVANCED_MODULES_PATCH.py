@@ -8778,7 +8778,7 @@ def _u104_selftest_speed_and_sensors():
     assert any(x["sensor"]=="Użycie RAM" and x["value"]=="52" for x in rows)
     assert any(x["category"] == "ACPI" and x["sensor"] == "TZ0" and x["value"] == "42" for x in rows)
     assert callable(_u104_show_all_sensors) and callable(_u104_attach_sensor_table)
-    assert "_u104_sensor_window" in _u101_sensor_poll.__code__.co_names
+    assert "_u104_sensor_window" in repr(_u101_sensor_poll.__code__.co_consts)
     print("ADAPTIVE_LOW_SPEED_TEST_AND_FULL_SENSOR_EXPLORER_SELFTEST_OK")
 
 
