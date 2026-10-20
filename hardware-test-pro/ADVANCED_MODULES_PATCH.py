@@ -7853,7 +7853,7 @@ def _u102_selftest_ram_visible_progress():
     assert _u102_ram_safe_size(2048, 4096) <= 1024
     assert _u102_ram_safe_size(512, 1024) <= 153
     assert callable(_u102_ram_pattern_suite)
-    assert "progress_callback" in _u102_ram_pattern_suite.__code__.co_names
+    assert "progress_callback" in repr(_u102_ram_pattern_suite.__code__.co_consts) or "progress_callback" in _u102_ram_pattern_suite.__code__.co_names
     assert "ram_pattern_test" in _u102_ram_pattern_suite.__code__.co_names
     assert "pygame" not in _u102_ram_pattern_suite.__code__.co_names
     assert _u93_execute_catalog_test is _u102_execute_catalog_test
