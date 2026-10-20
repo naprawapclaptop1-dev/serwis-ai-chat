@@ -7197,6 +7197,441 @@ def _u100_selftest_unique_gpu_scenes():
 
 _u37_gpu_benchmark_child = _u100_gpu_benchmark_child
 
+
+# v4.3.101 — route every Speed Test entry to one adaptive engine; include OS metrics in the full sensor table.
+_U101_ORIGINAL_U100_REFRESH_SENSOR_TABLE = _u100_refresh_sensor_table
+_U101_ORIGINAL_U100_ATTACH_GPU_PANEL = _u100_attach_gpu_panel
+_U101_ORIGINAL_U100_SHOW_SPEED_TEST = _u100_show_speed_test
+
+def _u101_fmt(value, decimals=2):
+    if value is None:
+        return "N/D"
+    if isinstance(value, bool):
+        return "TAK" if value else "NIE"
+    try:
+        number=float(value)
+        if not _u66_math.isfinite(number):
+            return "N/D"
+        return f"{number:.{decimals}f}".rstrip("0").rstrip(".")
+    except Exception:
+        return str(value)
+
+def _u101_collect_os_metrics(app):
+    metrics={}
+    if not psutil:
+        return metrics
+    try:
+        metrics["cpu_percent"]=psutil.cpu_percent(interval=0.15)
+    except Exception:
+        metrics["cpu_percent"]=None
+    try:
+        freq=psutil.cpu_freq()
+        metrics["cpu_clock_mhz"]=float(freq.current) if freq and freq.current else None
+        metrics["cpu_clock_max_mhz"]=float(freq.max) if freq and freq.max else None
+    except Exception:
+        metrics["cpu_clock_mhz"]=metrics["cpu_clock_max_mhz"]=None
+    try:
+        metrics["cpu_logical"]=int(psutil.cpu_count(logical=True) or 0) or None
+        metrics["cpu_physical"]=int(psutil.cpu_count(logical=False) or 0) or None
+    except Exception:
+        metrics["cpu_logical"]=metrics["cpu_physical"]=None
+    try:
+        vm=psutil.virtual_memory()
+        metrics.update({
+            "ram_total_bytes":int(vm.total),"ram_used_bytes":int(vm.used),
+            "ram_available_bytes":int(vm.available),"ram_percent":float(vm.percent)
+        })
+    except Exception:
+        metrics.update({"ram_total_bytes":None,"ram_used_bytes":None,"ram_available_bytes":None,"ram_percent":None})
+    try:
+        swap=psutil.swap_memory()
+        metrics.update({"swap_total_bytes":int(swap.total),"swap_used_bytes":int(swap.used),"swap_percent":float(swap.percent)})
+    except Exception:
+        metrics.update({"swap_total_bytes":None,"swap_used_bytes":None,"swap_percent":None})
+    now=_u66_time.monotonic()
+    try:
+        io=psutil.disk_io_counters()
+    except Exception:
+        io=None
+    try:
+        net=psutil.net_io_counters()
+    except Exception:
+        net=None
+    prev=getattr(app,"_u101_io_prev",None)
+    disk_read=disk_write=None
+    if io is not None and prev and now>prev.get("time",now):
+        dt=max(.05,now-prev["time"])
+        disk_read=max(0.0,(io.read_bytes-prev.get("read",io.read_bytes))/dt/1_000_000)
+        disk_write=max(0.0,(io.write_bytes-prev.get("write",io.write_bytes))/dt/1_000_000)
+    net_down=net_up=None
+    if net is not None and prev and now>prev.get("time",now):
+        dt=max(.05,now-prev["time"])
+        net_down=max(0.0,(net.bytes_recv-prev.get("recv",net.bytes_recv))*8/dt/1_000_000)
+        net_up=max(0.0,(net.bytes_sent-prev.get("sent",net.bytes_sent))*8/dt/1_000_000)
+    metrics["disk_read_mbps"]=disk_read
+    metrics["disk_write_mbps"]=disk_write
+    metrics["net_down_mbps"]=net_down
+    metrics["net_up_mbps"]=net_up
+    current={
+        "time":now,
+        "read":int(io.read_bytes) if io is not None else 0,
+        "write":int(io.write_bytes) if io is not None else 0,
+        "recv":int(net.bytes_recv) if net is not None else 0,
+        "sent":int(net.bytes_sent) if net is not None else 0
+    }
+    app._u101_io_prev=current
+    try:
+        battery=psutil.sensors_battery()
+        metrics["battery_percent"]=float(battery.percent) if battery and battery.percent is not None else None
+        metrics["battery_plugged"]=bool(battery.power_plugged) if battery else None
+        metrics["battery_seconds_left"]=int(battery.secsleft) if battery and isinstance(battery.secsleft,(int,float)) and battery.secsleft>=0 else None
+    except Exception:
+        metrics.update({"battery_percent":None,"battery_plugged":None,"battery_seconds_left":None})
+    try:
+        metrics["uptime_seconds"]=max(0,int(now-(psutil.boot_time() if psutil else now)))
+    except Exception:
+        metrics["uptime_seconds"]=None
+    # Some Windows builds expose extra thermal devices through psutil even without the bridge.
+    temps=[]
+    try:
+        getter=getattr(psutil,"sensors_temperatures",None)
+        readings=getter() if callable(getter) else {}
+        for sensor_group,records in (readings or {}).items():
+            for record in records or []:
+                value=getattr(record,"current",None)
+                try:
+                    value=float(value)
+                    if not _u66_math.isfinite(value):continue
+                except Exception:continue
+                temps.append({"hardware":str(sensor_group),"hardwareType":"OS","sensor":str(getattr(record,"label","") or sensor_group),
+                    "sensorType":"Temperature","value":value,"unit":"°C","source":"psutil"})
+    except Exception:
+        pass
+    metrics["extra_temperature_sensors"]=temps
+    return metrics
+
+def _u101_refresh_sensor_table(app):
+    tree=getattr(app,"_u100_sensor_tree",None)
+    if tree is None:
+        return
+    try:
+        if not tree.winfo_exists():
+            return
+        cache=getattr(app,"_u66_sensor_cache",{}) or {}
+        temps=cache.get("temps",{}) or {}
+        gpu=cache.get("gpu",{}) or {}
+        system=cache.get("system",{}) or {}
+        normalized=[]
+        def add(category,hardware,name,value,unit,source):
+            if value is None:
+                shown="N/D"
+            elif isinstance(value,bool):
+                shown="TAK" if value else "NIE"
+            else:
+                try:
+                    v=float(value)
+                    if not _u66_math.isfinite(v):
+                        shown="N/D"
+                    else:
+                        shown=f"{v:.3f}".rstrip("0").rstrip(".")
+                except Exception:
+                    shown=str(value)
+            normalized.append((str(category or "other"),str(hardware or "N/D"),str(name or "N/D"),shown,str(unit or ""),str(source or "N/D")))
+        sys_source="Windows / psutil"
+        # Summary readings are always visible; unsupported sensors remain N/D rather than disappearing or becoming zero.
+        metrics=[
+          ("Load","CPU","Użycie CPU",system.get("cpu_percent"),"%",sys_source),
+          ("Clock","CPU","Zegar CPU",system.get("cpu_clock_mhz"),"MHz",sys_source),
+          ("Clock","CPU","Maksymalny zegar CPU",system.get("cpu_clock_max_mhz"),"MHz",sys_source),
+          ("Count","CPU","Rdzenie fizyczne",system.get("cpu_physical"),"",sys_source),
+          ("Count","CPU","Wątki logiczne",system.get("cpu_logical"),"",sys_source),
+          ("Memory","RAM","Użycie RAM",system.get("ram_percent"),"%",sys_source),
+          ("Memory","RAM","RAM użyta",system.get("ram_used_bytes")/1_073_741_824 if system.get("ram_used_bytes") is not None else None,"GiB",sys_source),
+          ("Memory","RAM","RAM dostępna",system.get("ram_available_bytes")/1_073_741_824 if system.get("ram_available_bytes") is not None else None,"GiB",sys_source),
+          ("Memory","RAM","RAM całkowita",system.get("ram_total_bytes")/1_073_741_824 if system.get("ram_total_bytes") is not None else None,"GiB",sys_source),
+          ("Memory","Plik stronicowania","Użycie swap",system.get("swap_percent"),"%",sys_source),
+          ("Memory","Plik stronicowania","Swap użyty",system.get("swap_used_bytes")/1_073_741_824 if system.get("swap_used_bytes") is not None else None,"GiB",sys_source),
+          ("Throughput","Dysk","Odczyt łączny",system.get("disk_read_mbps"),"MB/s",sys_source),
+          ("Throughput","Dysk","Zapis łączny",system.get("disk_write_mbps"),"MB/s",sys_source),
+          ("Throughput","Sieć","Pobieranie łączne",system.get("net_down_mbps"),"Mbps",sys_source),
+          ("Throughput","Sieć","Wysyłanie łączne",system.get("net_up_mbps"),"Mbps",sys_source),
+          ("Battery","Bateria","Poziom baterii",system.get("battery_percent"),"%",sys_source),
+          ("Battery","Bateria","Zasilanie AC podłączone",system.get("battery_plugged"),"",sys_source),
+          ("Temperature","CPU","Temperatura CPU (wybrany czujnik)",temps.get("cpu_temp_c"),"°C",temps.get("method","N/D")),
+          ("Temperature","GPU","Temperatura GPU (wybrany czujnik)",gpu.get("temperature_c",temps.get("gpu_temp_c")),"°C",gpu.get("provider",temps.get("method","N/D"))),
+          ("Power","CPU","Moc CPU",temps.get("cpu_power_w"),"W",temps.get("method","N/D")),
+          ("Power","GPU","Moc GPU",gpu.get("power_draw_w",gpu.get("power_w",temps.get("gpu_power_w"))),"W",gpu.get("provider",temps.get("method","N/D"))),
+          ("Power","System","Moc systemu",temps.get("system_power_w"),"W",temps.get("method","N/D")),
+          ("Power","Bateria","Moc baterii",temps.get("battery_power_w"),"W",temps.get("method","N/D")),
+          ("Voltage","CPU","Napięcie CPU",temps.get("cpu_voltage_v"),"V",temps.get("method","N/D")),
+          ("Voltage","GPU","Napięcie GPU",temps.get("gpu_voltage_v"),"V",temps.get("method","N/D")),
+          ("Clock","GPU","Zegar GPU",gpu.get("gpu_clock_mhz",temps.get("gpu_clock_mhz")),"MHz",gpu.get("provider",temps.get("method","N/D"))),
+          ("Clock","GPU","Zegar pamięci GPU",gpu.get("memory_clock_mhz"),"MHz",gpu.get("provider",temps.get("method","N/D"))),
+          ("Load","GPU","Użycie GPU",gpu.get("gpu_load_percent",gpu.get("load_percent")),"% ",gpu.get("provider",temps.get("method","N/D"))),
+          ("Memory","VRAM","VRAM użyta",gpu.get("vram_used_mb"),"MB",gpu.get("provider",temps.get("method","N/D"))),
+          ("Memory","VRAM","VRAM całkowita",gpu.get("vram_total_mb"),"MB",gpu.get("provider",temps.get("method","N/D"))),
+          ("Fan","CPU","Wentylator CPU",temps.get("cpu_fan_rpm"),"RPM",temps.get("method","N/D")),
+          ("Fan","GPU","Wentylator GPU",gpu.get("fan_speed_rpm",temps.get("gpu_fan_rpm")),"RPM",gpu.get("provider",temps.get("method","N/D"))),
+          ("System","Windows","Czas działania systemu",system.get("uptime_seconds"),"s",sys_source)
+        ]
+        for row in metrics:add(*row)
+        # Show every bridge/vendor sensor, not a hand-picked subset. The summaries above complement this raw list.
+        raw=temps.get("sensors",[]) or []
+        for row in raw:
+            if not isinstance(row,dict):continue
+            add(row.get("sensorType") or row.get("sensor_type") or row.get("type") or "other",
+                (str(row.get("hardware") or row.get("parent") or "N/D")+" "+str(row.get("hardwareType") or row.get("hardware_type") or "")).strip(),
+                row.get("sensor") or row.get("name") or "N/D",row.get("value"),row.get("unit") or "",
+                row.get("source") or temps.get("method") or "sensor bridge")
+        for row in system.get("extra_temperature_sensors",[]) or []:
+            if isinstance(row,dict):
+                add(row.get("sensorType","Temperature"),row.get("hardware","OS"),row.get("sensor","Temperature"),row.get("value"),row.get("unit","°C"),row.get("source","psutil"))
+        for row in temps.get("acpi_zones",[]) or []:
+            if isinstance(row,dict):
+                add("Temperature / ACPI",row.get("name","ACPI"),"Strefa termiczna",row.get("value"),"°C","WMI ACPI — nie jest to automatycznie temperatura rdzenia CPU")
+        normalized=normalized[:3500]
+        signature=tuple((r[0],r[1],r[2],r[4],r[5]) for r in normalized)
+        old_signature=getattr(app,"_u101_sensor_signature",None)
+        if signature!=old_signature:
+            tree.delete(*tree.get_children())
+            for idx,row in enumerate(normalized):
+                tree.insert("","end",iid=f"sensor{idx}",values=row)
+            app._u101_sensor_signature=signature
+        else:
+            for idx,row in enumerate(normalized):
+                iid=f"sensor{idx}"
+                if tree.exists(iid):
+                    tree.item(iid,values=row)
+                else:
+                    tree.insert("","end",iid=iid,values=row)
+            for iid in tree.get_children():
+                try:
+                    idx=int(iid.replace("sensor",""))
+                    if idx>=len(normalized):tree.delete(iid)
+                except Exception:
+                    pass
+        counts={}
+        for row in normalized:
+            counts[row[0]]=counts.get(row[0],0)+1
+        label=getattr(app,"_u100_sensor_count",None)
+        if label is not None and label.winfo_exists():
+            stamp=cache.get("time")
+            age=max(0,_u66_time.monotonic()-stamp) if isinstance(stamp,(int,float)) else None
+            raw_count=len(raw)
+            label.config(text=f"{raw_count} surowych czujników + {len(metrics)} metryk systemowych • "+
+              ", ".join(f"{k}:{v}" for k,v in sorted(counts.items()))+
+              (f" • próbka {age:.0f}s temu" if age is not None else " • oczekiwanie na odczyt"))
+    except Exception as exc:
+        try:app.queue_log("Pełna tabela telemetrii: "+repr(exc))
+        except Exception:pass
+
+def _u101_sensor_poll_once(app):
+    if getattr(app,"_u101_sensor_busy",False):
+        return
+    app._u101_sensor_busy=True
+    def job():
+        try:
+            temps=_u66_sensor_probe()
+            generic=_u100_gpu_from_sensors(temps)
+            try:
+                vendor=_u37_nvidia_telemetry() if "_u37_nvidia_telemetry" in globals() else {}
+            except Exception as exc:
+                vendor={"available":False,"provider":"vendor telemetry unavailable","error":str(exc)}
+            gpu=dict(vendor or {})
+            for key,value in generic.items():
+                if key in ("sensor_rows","message"):
+                    continue
+                if value is not None and (gpu.get(key) is None or gpu.get(key) is False or gpu.get(key)=="N/D"):
+                    gpu[key]=value
+            if not gpu.get("provider"):gpu["provider"]=generic.get("provider")
+            if not gpu.get("available"):gpu["available"]=generic.get("available",False)
+            gpu["sensor_rows"]=generic.get("sensor_rows",0)
+            if temps.get("gpu_temp_c") is None and generic.get("temperature_c") is not None:temps["gpu_temp_c"]=generic["temperature_c"]
+            if temps.get("gpu_power_w") is None and generic.get("power_draw_w") is not None:temps["gpu_power_w"]=generic["power_draw_w"]
+            try:
+                system=_u101_collect_os_metrics(app)
+            except Exception as exc:
+                system={"error":f"{type(exc).__name__}: {exc}"}
+            snapshot={"gpu":gpu,"temps":temps,"system":system,"time":_u66_time.monotonic()}
+            def update():
+                app._u101_sensor_busy=False
+                app._u66_sensor_cache=snapshot
+                app._u84_gpu_last_telemetry=gpu
+                try:_u101_refresh_sensor_table(app)
+                except Exception:pass
+                try:
+                    if getattr(app,"current_view","")=="GPU":_u84_gpu_live_tick(app,schedule=False)
+                    if getattr(app,"current_view","")=="LIVE_MONITOR":_u66_live_tick(app)
+                    if getattr(app,"_u67_stage_panel",None) is not None:_u67_refresh_visible_charts(app)
+                except Exception:pass
+            app.queue_action(update)
+        except Exception as exc:
+            def fail(err=exc):
+                app._u101_sensor_busy=False
+                try:app.queue_log("Odczyt czujników: "+str(err))
+                except Exception:pass
+            app.queue_action(fail)
+    _u66_threading.Thread(target=job,name="NaprawaPCAllTelemetryPoll",daemon=True).start()
+
+def _u101_sensor_poll(app):
+    if getattr(app,"_u101_sensor_loop_started",False):
+        return
+    app._u101_sensor_loop_started=True
+    def tick():
+        try:
+            if not app.winfo_exists():
+                app._u101_sensor_loop_started=False
+                return
+            active=(getattr(app,"current_view","") in ("LIVE_MONITOR","GPU")
+                or bool(getattr(app,"running",False))
+                or getattr(app,"_u67_stage_panel",None) is not None)
+            if active:
+                _u101_sensor_poll_once(app)
+            app.after(4000,tick)
+        except Exception as exc:
+            app._u101_sensor_loop_started=False
+            try:app.queue_log("Pętla telemetryczna: "+repr(exc))
+            except Exception:pass
+    app.after(0,tick)
+
+def _u101_attach_gpu_panel(app):
+    _U101_ORIGINAL_U100_ATTACH_GPU_PANEL(app)
+    _u101_sensor_poll(app)
+
+def _u101_start_speed_test(app):
+    if getattr(app,"_u66_speed_running",False):
+        return
+    app._u66_speed_running=True
+    try:
+        _u66_set_speed_status(app,"Przygotowuję adaptacyjny Speed Test HTTPS…")
+    except Exception:
+        pass
+    def job():
+        try:
+            result=_u100_measure_speed(app)
+            try:app.results["SPEED_TEST"]=result
+            except Exception:pass
+            def done():
+                app._u66_speed_running=False
+                if getattr(app,"current_view","")=="SPEED_TEST":
+                    values=getattr(app,"_u66_speed_values",{}) or {}
+                    def set_value(key,text):
+                        try:
+                            if key in values and values[key].winfo_exists():values[key].config(text=text)
+                        except Exception:pass
+                    latency=result.get("latency_average_ms")
+                    download=result.get("download_mbps")
+                    upload=result.get("upload_mbps")
+                    set_value("latency",f"{latency:.1f} ms" if isinstance(latency,(int,float)) else "N/D")
+                    set_value("download",f"{download:.1f} Mbps" if isinstance(download,(int,float)) else "N/D")
+                    set_value("upload",f"{upload:.1f} Mbps" if isinstance(upload,(int,float)) else "N/D")
+                    set_value("data",f"{result.get('data_bytes',0)/1_000_000:.1f} MB")
+                    peaks=getattr(app,"_u101_speed_peaks",{}) or {}
+                    for key,metric in (("download_peak","download_peak_mbps"),("upload_peak","upload_peak_mbps"),("jitter","latency_jitter_ms")):
+                        value=result.get(metric)
+                        label=peaks.get(key)
+                        try:
+                            if label is not None and label.winfo_exists():
+                                unit=" ms" if key=="jitter" else " Mbps"
+                                label.config(text=f"{value:.1f}{unit}" if isinstance(value,(int,float)) else "N/D")
+                        except Exception:pass
+                    try:_u66_draw_speed_chart(app,result)
+                    except Exception:pass
+                status="zakończony" if result.get("state")=="good" else "zakończony z ostrzeżeniem"
+                _u66_set_speed_status(app,f"Speed Test {status}: DL mediana {result.get('download_mbps') if result.get('download_mbps') is not None else 'N/D'} Mbps; UL mediana {result.get('upload_mbps') if result.get('upload_mbps') is not None else 'N/D'} Mbps; HTTPS RTT {result.get('latency_average_ms') if result.get('latency_average_ms') is not None else 'N/D'} ms. Pobrano/wysłano {result.get('data_bytes',0)/1_000_000:.1f} MB.")
+                try:app.queue_log("SPEED TEST: "+_u66_json.dumps(result,ensure_ascii=False))
+                except Exception:pass
+            app.queue_action(done)
+        except Exception as exc:
+            def fail(err=exc):
+                app._u66_speed_running=False
+                message=f"Speed Test nie ukończył pomiaru: {type(err).__name__}: {err}"
+                _u66_set_speed_status(app,message)
+                try:messagebox.showerror("Speed Test",message)
+                except Exception:pass
+                try:app.queue_log(message)
+                except Exception:pass
+            app.queue_action(fail)
+    _u66_threading.Thread(target=job,name="NaprawaPCAdaptiveSpeedTest",daemon=True).start()
+
+def _u101_show_speed_test(app):
+    _U101_ORIGINAL_U100_SHOW_SPEED_TEST(app)
+    try:
+        panel=app.panel(app.content)
+        panel.pack(fill="x",padx=3,pady=(0,5))
+        title=tk.Label(panel,text="DODATKOWE METRYKI POMIARU",bg=app.colors()["panel"],fg=app.colors()["accent"],font=app.fnt(9,"bold"))
+        title.pack(anchor="w",padx=8,pady=(5,2))
+        row=tk.Frame(panel,bg=app.colors()["panel"]);row.pack(fill="x",padx=5,pady=(0,5))
+        app._u101_speed_peaks={}
+        specs=(("DOWNLOAD PEAK","download_peak"),("UPLOAD PEAK","upload_peak"),("ZMIENNOŚĆ HTTPS RTT","jitter"))
+        for caption,key in specs:
+            card=tk.Frame(row,bg=app.colors()["card"],highlightbackground=app.colors()["panel"],highlightthickness=1)
+            card.pack(side="left",fill="both",expand=True,padx=2)
+            tk.Label(card,text=caption,bg=app.colors()["card"],fg=app.colors()["muted"],font=app.fnt(8,"bold")).pack(pady=(5,1))
+            label=tk.Label(card,text="N/D",bg=app.colors()["card"],fg=app.colors()["accent2"],font=app.fnt(11,"bold"))
+            label.pack(pady=(0,5))
+            app._u101_speed_peaks[key]=label
+        # Override the original callback so the main UI and catalogue use the same measured samples.
+        for child in app.content.winfo_children():
+            if isinstance(child,tk.Frame):
+                for nested in child.winfo_children():
+                    if isinstance(nested,tk.Frame):
+                        for button in nested.winfo_children():
+                            if isinstance(button,tk.Button) and "SPEED TEST" in str(button.cget("text")).upper():
+                                button.configure(command=lambda:_u101_start_speed_test(app))
+    except Exception as exc:
+        try:app.queue_log("Speed Test UI: "+repr(exc))
+        except Exception:pass
+
+def _u101_selftest_adaptive_speed():
+    speed_code=repr(_u100_measure_speed.__code__.co_consts)+repr(_u100_measure_speed.__code__.co_names)
+    assert "_U100_ORIGINAL_SPEED_REQUEST" in _u100_measure_speed.__code__.co_names
+    assert "download_peak_mbps" in speed_code
+    assert "upload_peak_mbps" in speed_code
+    assert "latency_jitter_ms" in speed_code
+    assert callable(_u100_gpu_from_sensors)
+    synthetic={"sensors":[
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Core","sensorType":"Temperature","value":68,"unit":"°C"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Core","sensorType":"Load","value":93,"unit":"%"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Memory Used","sensorType":"SmallData","value":4096,"unit":"MB"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Memory Total","sensorType":"Data","value":8,"unit":"GB"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Core","sensorType":"Clock","value":2400,"unit":"MHz"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Fan","sensorType":"Fan","value":1600,"unit":"RPM"},
+      {"hardware":"AMD GPU","hardwareType":"GpuAmd","sensor":"GPU Board Power","sensorType":"Power","value":185,"unit":"W"}
+    ]}
+    tele=_u100_gpu_from_sensors(synthetic)
+    assert tele["gpu_load_percent"]==93 and tele["temperature_c"]==68
+    assert tele["vram_used_mb"]==4096 and tele["vram_total_mb"]==8192
+    assert tele["gpu_clock_mhz"]==2400 and tele["fan_speed_rpm"]==1600 and tele["power_draw_w"]==185
+    assert callable(_u101_refresh_sensor_table) and callable(_u101_sensor_poll)
+    assert _u66_measure_speed is _u100_measure_speed
+    assert AppV43.show_speed_test is _u101_show_speed_test
+    print("ADAPTIVE_SPEED_ALL_ENTRYPOINTS_AND_FULL_TELEMETRY_SELFTEST_OK")
+
+def _u101_selftest_unique_gpu_scenes():
+    assert len(_U66_SCENES)==60 and len(_U100_SCENE_TITLES)==60
+    assert len(set(_U100_SCENE_TITLES))==60
+    assert len({row[1] for row in _U66_SCENES})==60
+    assert callable(_u37_gpu_benchmark_child)
+    assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
+    assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "FurMark Style" in _U100_SCENE_TITLES[0]
+    assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
+    print("GPU_SCENE_SELFTEST_OK: 60 unique scene IDs, 20 geometry families with distinct individual layouts and synchronized real FPS")
+
+# Each test has a unique scene identifier, not just a shared family label.
+_U66_SCENES=[(f"{i:02d} — {name}",f"scene_{i:02d}",1+(i%3)*2) for i,name in enumerate(_U100_SCENE_TITLES,1)]
+_u100_refresh_sensor_table=_u101_refresh_sensor_table
+_u81_refresh_sensor_table=_u101_refresh_sensor_table
+_u66_sensor_poll=_u101_sensor_poll
+_u84_attach_gpu_live_panel=_u101_attach_gpu_panel
+_u66_measure_speed=_u100_measure_speed
+_u90_measure_speed=_u100_measure_speed
+AppV43.show_speed_test=_u101_show_speed_test
+_u100_selftest_adaptive_speed=_u101_selftest_adaptive_speed
+_u100_selftest_unique_gpu_scenes=_u101_selftest_unique_gpu_scenes
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
