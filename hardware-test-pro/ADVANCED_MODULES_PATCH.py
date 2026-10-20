@@ -4455,8 +4455,8 @@ def _u90_selftest_release_fixes():
     assert "DŁUGI — 180 s" in _U68_PROFILE_CHOICES
     assert "900 s" in _U68_PROFILE_CHOICES[-1]
     assert AppV43._u41_start_vram_test is _u90_start_vram_profile_test
-    assert AppV43.show_speed_test is _u90_show_speed_test
-    assert _u66_measure_speed is _u90_measure_speed
+    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test)
+    assert _u66_measure_speed in (_u90_measure_speed, _u100_measure_speed)
     assert callable(_u90_error_alarm) and AppV43.queue_results is _u90_queue_results_with_error_alarm
 
     progress=[]
@@ -7288,7 +7288,7 @@ def _u101_collect_os_metrics(app):
     except Exception:
         metrics.update({"battery_percent":None,"battery_plugged":None,"battery_seconds_left":None})
     try:
-        metrics["uptime_seconds"]=max(0,int(now-(psutil.boot_time() if psutil else now)))
+        metrics["uptime_seconds"]=max(0,int(_u66_time.time()-(psutil.boot_time() if psutil else _u66_time.time())))
     except Exception:
         metrics["uptime_seconds"]=None
     # Some Windows builds expose extra thermal devices through psutil even without the bridge.
@@ -7627,6 +7627,7 @@ _u81_refresh_sensor_table=_u101_refresh_sensor_table
 _u66_sensor_poll=_u101_sensor_poll
 _u84_attach_gpu_live_panel=_u101_attach_gpu_panel
 _u66_measure_speed=_u100_measure_speed
+_u66_start_speed_test=_u101_start_speed_test
 _u90_measure_speed=_u100_measure_speed
 AppV43.show_speed_test=_u101_show_speed_test
 _u100_selftest_adaptive_speed=_u101_selftest_adaptive_speed
