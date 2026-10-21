@@ -32,16 +32,17 @@ internal static class Program
                 ReadHardware(hardware, sensors, errors);
             var result = new
             {
-                ok = sensors.Count > 0,
+                ok = sensors.Any(x => x["value"] is not null),
                 timestampUtc = DateTimeOffset.UtcNow,
                 startedAtUtc = started,
                 sensorCount = sensors.Count,
+                valueCount = sensors.Count(x => x["value"] is not null),
                 sensors,
                 errors = errors.Take(30).ToArray(),
                 provider = "LibreHardwareMonitorLib 0.9.6"
             };
             Console.Out.WriteLine(JsonSerializer.Serialize(result, JsonOptions));
-            return sensors.Count > 0 ? 0 : 2;
+            return sensors.Any(x => x["value"] is not null) ? 0 : 2;
         }
         catch (Exception ex)
         {
@@ -51,6 +52,7 @@ internal static class Program
                 timestampUtc = DateTimeOffset.UtcNow,
                 startedAtUtc = started,
                 sensorCount = sensors.Count,
+                valueCount = sensors.Count(x => x["value"] is not null),
                 sensors,
                 errors = errors.Append(ex.GetType().Name + ": " + ex.Message).Take(30).ToArray(),
                 provider = "LibreHardwareMonitorLib 0.9.6"
@@ -71,9 +73,10 @@ internal static class Program
             hardware.Update();
             foreach (var sensor in hardware.Sensors)
             {
-                if (!sensor.Value.HasValue || !float.IsFinite(sensor.Value.Value))
-                    continue;
                 var type = sensor.SensorType.ToString();
+                double? value = sensor.Value.HasValue && float.IsFinite(sensor.Value.Value)
+                    ? Math.Round((double)sensor.Value.Value, 3)
+                    : null;
                 sensors.Add(new Dictionary<string, object?>
                 {
                     ["hardware"] = hardware.Name,
@@ -81,7 +84,8 @@ internal static class Program
                     ["hardwareId"] = hardware.Identifier.ToString(),
                     ["sensor"] = sensor.Name,
                     ["sensorType"] = type,
-                    ["value"] = Math.Round(sensor.Value.Value, 3),
+                    ["value"] = value,
+                    ["valueAvailable"] = value.HasValue,
                     ["unit"] = UnitFor(type),
                     ["identifier"] = sensor.Identifier.ToString()
                 });
