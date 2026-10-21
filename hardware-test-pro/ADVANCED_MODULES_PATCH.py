@@ -9358,6 +9358,7 @@ def _u105_open_component_base(self,module,run_test=False,mode="scan"):
 _U105_ORIGINAL_REFRESH_VISIBLE_CHARTS=_u67_refresh_visible_charts
 def _u105_refresh_visible_charts(self):
     _U105_ORIGINAL_REFRESH_VISIBLE_CHARTS(self)
+    no_data_label="N/D"
     try:
         _u105_draw_live_gauges(self)
         hist=getattr(self,"_u67_hist",{}) or {}
@@ -9365,6 +9366,11 @@ def _u105_refresh_visible_charts(self):
             canvas=getattr(self,attr,None)
             if canvas is not None and canvas.winfo_exists():
                 _u67_draw_history_chart(canvas,series,maximum,title,self)
+                if not any(len(values or []) >= 2 for values in series.values()):
+                    width=max(220,int(canvas.winfo_width() or 500))
+                    height=max(56,int(canvas.winfo_height() or 82))
+                    canvas.create_text(width/2,height-16,text=no_data_label,
+                        fill=self.colors()["muted"],font=self.fnt(8,"bold"))
         draw("_u67_stage_chart_hw",{k:hist.get(k,[]) for k in ("cpu","ram","gpu")},100,"CPU / RAM / GPU  •  %")
         io={k:hist.get(k,[]) for k in ("read","write","down","up")}
         io_values=[v for items in io.values() for v in items]
