@@ -5435,37 +5435,13 @@ _U93_TEST_CATALOG = {
   ("cam_preview","Podgląd kamery — 10 s","Po potwierdzeniu pokazuje klatki w osobnym oknie bez zapisu.","camera_preview"),
   ("cam_sim","Symulator 3D kamery","Schemat kamery, nie pomiar FPS sensora.","sim")
  ]
-,
- "SYSTEM_REPAIR_PRO":[
-  ("sr_os_activation","Windows — wersja i stan licencji","Odczyt wydania Windows i stanu licencji bez ujawniania klucza produktu.","service_probe"),
-  ("sr_bios_uefi","BIOS / UEFI / Secure Boot / TPM","Odczyt wersji BIOS, płyty, stanu Secure Boot i TPM.","service_probe"),
-  ("sr_driver_audit","Audyt sterowników i PnP","Lista urządzeń PnP oraz dostępne kody błędów i wersje sterowników.","service_probe"),
-  ("sr_update_audit","Stan usług Windows Update","Status usług aktualizacji oraz wskaźniki oczekującego restartu.","service_probe"),
-  ("sr_event_errors","Dziennik błędów Windows — 24 h","Zbiera ograniczoną listę ostatnich zdarzeń krytycznych i błędów.","service_probe"),
-  ("sr_service_health","Zdrowie usług krytycznych Windows","Kontrola statusu usług systemowych; niczego nie uruchamia ani nie wyłącza.","service_probe"),
-  ("sr_storage_health","Zdrowie woluminów i nośników","Odczyt wolnego miejsca, statusu woluminów i dostępnej telemetrii fizycznych dysków.","service_probe"),
-  ("sr_recovery_bcd","WinRE / BCD — diagnostyka odczytowa","Odczytuje konfigurację środowiska odzyskiwania i bieżącego wpisu rozruchu.","service_probe"),
-  ("sr_network_services","Usługi sieciowe Windows","Kontrola usług DHCP, DNS, WLAN i NLA.","service_probe"),
-  ("sr_component_store","Magazyn składników DISM — CheckHealth","Odczytowy test DISM /CheckHealth; nie wykonuje naprawy ani RestoreHealth.","service_probe")
- ],
- "SERWIS_ULTIMATE":[
-  ("su_hardware_inventory","Inwentarz sprzętu serwisowego","Zbiera model CPU, GPU, RAM, płyty głównej i BIOS bez numerów seryjnych.","service_probe"),
-  ("su_software_inventory","Inwentarz zainstalowanego oprogramowania","Odczyt listy aplikacji z rejestru Uninstall; nie używa Win32_Product.","service_probe"),
-  ("su_startup_audit","Autostart i zadania przy logowaniu","Audyt poleceń autostartu oraz ograniczonej listy zadań harmonogramu.","service_probe"),
-  ("su_crash_history","Historia awarii aplikacji — 30 dni","Zbiera ograniczoną listę błędów Application Error / Windows Error Reporting.","service_probe"),
-  ("su_network_config","Konfiguracja LAN / Wi-Fi / DNS","Odczyt adresów IP, bramy, DNS i profilu sieciowego dla aktywnych kart.","service_probe"),
-  ("su_wmi_health","Spójność WMI — test odczytowy","Weryfikuje usługę WMI i dostępność zapytań CIM bez naprawiania repozytorium.","service_probe"),
-  ("su_windows_update_history","Lista zainstalowanych aktualizacji","Odczyt ostatnio zainstalowanych poprawek Windows z Get-HotFix.","service_probe"),
-  ("su_system_services","Audyt automatycznych usług Windows","Lista usług z automatycznym startem i tych, które obecnie nie działają.","service_probe"),
-  ("su_report_folder","Raporty lokalne Naprawa PC","Wyszukuje ostatnie raporty w znanych katalogach lokalnych; nie wysyła ich do sieci.","service_probe"),
-  ("su_windows_installations","Wykrywanie instalacji Windows na dyskach","Odczytowo wykrywa katalogi Windows i pliki rejestru offline na widocznych woluminach.","service_probe")
- ]
+
 }
 _U93_ALIASES={"CPU":"CPU","PROCESOR":"CPU","RAM":"RAM","PAMIĘĆ":"RAM","PAMIEC":"RAM","GPU":"GPU","VRAM":"VRAM",
  "DYSK":"DYSK","DYSKI":"DYSK","SSD":"DYSK","HDD":"DYSK","NVME":"DYSK","EKRAN":"EKRAN","MATRYCA":"EKRAN","MONITOR":"EKRAN",
  "SECURITY":"SECURITY","BEZPIECZEŃSTWO":"SECURITY","SYSTEM":"SECURITY","BATERIA":"BATERIA","ZASILANIE":"BATERIA",
  "SIEĆ":"SIEĆ","SIEC":"SIEĆ","WI-FI":"SIEĆ","WIFI":"SIEĆ","LAN":"SIEĆ","USB":"USB","AUDIO":"AUDIO",
- "KLAWIATURA":"KLAWIATURA","TOUCHPAD":"KLAWIATURA","KAMERA":"KAMERA","WEBCAM":"KAMERA", "SYSTEM REPAIR PRO":"SYSTEM_REPAIR_PRO","SYSTEMREPAIRPRO":"SYSTEM_REPAIR_PRO","SYSTEM_REPAIR_PRO":"SYSTEM_REPAIR_PRO","SERWIS ULTIMATE":"SERWIS_ULTIMATE","SERWISULTIMATE":"SERWIS_ULTIMATE","SERWIS_ULTIMATE":"SERWIS_ULTIMATE"}
+ "KLAWIATURA":"KLAWIATURA","TOUCHPAD":"KLAWIATURA","KAMERA":"KAMERA","WEBCAM":"KAMERA"}
 
 def _u93_norm(module):
     raw=str(module or "").upper()
@@ -5723,7 +5699,7 @@ _U93_SUPPORTED_TEST_KINDS = {
  "battery_scan","battery_monitor","battery_max","battery_report","network_scan",
  "network_dns","network_speed","network_jitter","usb_scan","usb_errors","peripheral_usb",
  "audio_scan","audio_mic","audio_output","peripheral_audio","keyboard_scan",
- "keyboard_input","peripheral_keyboard","camera_scan","camera_preview","service_probe"
+ "keyboard_input","peripheral_keyboard","camera_scan","camera_preview"
 }
 
 def _u93_put_result(app,key,result):
@@ -10326,14 +10302,6 @@ _U107_TEST_SCENES = {
     "cam_scan":76, "cam_preview":77, "cam_sim":78
 }
 
-_U107_TEST_SCENES.update({
- "sr_os_activation":66, "sr_bios_uefi":69, "sr_driver_audit":70, "sr_update_audit":71,
- "sr_event_errors":72, "sr_service_health":73, "sr_storage_health":74, "sr_recovery_bcd":75,
- "sr_network_services":79, "sr_component_store":80,
- "su_hardware_inventory":81, "su_software_inventory":82, "su_startup_audit":83, "su_crash_history":84,
- "su_network_config":85, "su_wmi_health":86, "su_windows_update_history":87,
- "su_system_services":88, "su_report_folder":89, "su_windows_installations":90
-})
 
 def _u107_finite_number(value):
     try:
@@ -11428,7 +11396,6 @@ def _u109_service_probe(app, module, test_id, settings):
     script=_U109_SERVICE_PROBES.get(str(test_id))
     if not script:
         return {"state":"error","test_id":test_id,"module":module,"message":"Brak skryptu dla testu serwisowego."}
-    timeout=90 if test_id in ("sr_component_store","sr_event_errors","su_crash_history","su_software_inventory","su_windows_installations") else 35
     try:
         raw=ps_json(script, default=None)
         if isinstance(raw,list) and len(raw)==1 and isinstance(raw[0],dict):
