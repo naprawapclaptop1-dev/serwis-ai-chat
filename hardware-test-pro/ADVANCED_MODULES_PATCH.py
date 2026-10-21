@@ -6404,8 +6404,12 @@ def _u98_selftest_catalog_safety():
     # Verify the active chain instead of requiring an obsolete function identity.
     assert callable(_u93_execute_catalog_test)
     assert ("_U98_ORIGINAL_EXECUTE_CATALOG_TEST" in _u98_execute_catalog_test.__code__.co_names
-            or "_U102_ORIGINAL_RAM_EXECUTE" in _u93_execute_catalog_test.__code__.co_names)
-    assert _u93_start_catalog_test is _u98_start_catalog_test
+            or "_U102_ORIGINAL_RAM_EXECUTE" in _u93_execute_catalog_test.__code__.co_names
+            or "_U109_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names)
+    assert (_u93_start_catalog_test is _u98_start_catalog_test
+            or getattr(_u93_start_catalog_test, "__name__", "") == "_u109_start_catalog_test")
+    if getattr(_u93_start_catalog_test, "__name__", "") == "_u109_start_catalog_test":
+        assert "_U109_ORIGINAL_START_CATALOG_TEST" in _u93_start_catalog_test.__code__.co_names
     assert _u93_detail_status_only is _u98_detail_status_only
     assert "_U98_ORIGINAL_EXECUTE_CATALOG_TEST" in _u98_execute_catalog_test.__code__.co_names
     mode_code = str(_u98_execute_catalog_test.__code__.co_consts)
