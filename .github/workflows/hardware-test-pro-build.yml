@@ -2,9 +2,10 @@ name: Hardware Test PRO — Windows build and UAC-safe updater release
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fix/**"]
     paths:
       - "hardware-test-pro/**"
+      - ".github/workflows/hardware-test-pro-build.yml"
   workflow_dispatch:
 
 permissions:
@@ -118,6 +119,25 @@ jobs:
             python $program $check
             if ($LASTEXITCODE -ne 0) { throw "Self-test $check failed with exit code $LASTEXITCODE" }
           }
+          # Embed a report for this exact successful CI build in the ALL-IN-ONE package.
+          $reportPath = Join-Path (Get-Location) "TEST_REPORT_PL.txt"
+          $reportLines = @(
+            "NAPRAWA PC HARDWARE TEST PRO — RAPORT WALIDACJI",
+            "Wersja: $env:APP_VERSION",
+            "GitHub Actions run: $env:GITHUB_RUN_ID",
+            "Commit źródła: $env:GITHUB_SHA",
+            "Status: PASS — wygenerowano dopiero po przejściu całego zestawu selftestów.",
+            "",
+            "[OK] Składnia Python x64",
+            "[OK] CORE / DEEP / UPDATE / LAUNCHER / ANTIVIRUS / THEMES / SERVICE CENTER / UPDATE FLOW / ADVANCED MODULES",
+            "[OK] 159 unikalnych pozycji katalogu, w tym 90 scen GPU OpenGL z przypisanym ID 01–90",
+            "[OK] Integracja metryk Windows/psutil z surowymi czujnikami Bridge/WMI/GPU",
+            "[OK] Adaptive HTTPS Speed Test; błędy transferu nie są raportowane jako zaliczenie",
+            "[OK] EXE i Setup.exe będą jeszcze kompilowane i weryfikowane w kolejnych krokach.",
+            "",
+            "Ograniczenia: testy CI nie zastępują testu fizycznego komputera. Brak czujnika jest N/D. Testy RAM/VRAM z poziomu procesu nie gwarantują sprawdzenia każdej komórki."
+          )
+          [IO.File]::WriteAllText($reportPath, ($reportLines -join [Environment]::NewLine) + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
 
       - name: Build application EXE
         shell: pwsh
@@ -148,13 +168,18 @@ jobs:
           if (!(Test-Path $installer) -or (Get-Item $installer).Length -lt 1MB) { throw "Verified Setup.exe is missing or too small." }
           $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
           $size = (Get-Item -LiteralPath $installer).Length
+          $reportPath = Join-Path (Get-Location) "TEST_REPORT_PL.txt"
+          if (!(Test-Path -LiteralPath $reportPath)) { throw "CI test report was not generated." }
+          $reportTail = [Environment]::NewLine + "Installer filename: $env:SETUP_FILENAME" + [Environment]::NewLine +
+            "Installer size bytes: $size" + [Environment]::NewLine + "Installer SHA-256: $hash" + [Environment]::NewLine
+          [IO.File]::AppendAllText($reportPath, $reportTail, [Text.UTF8Encoding]::new($false))
           "INSTALLER_SHA256=$hash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "INSTALLER_SIZE=$size" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "sha256=$hash" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "size=$size" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           $bundle = Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-$env:APP_VERSION.zip"
           if (Test-Path $bundle) { Remove-Item $bundle -Force }
-          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw") -DestinationPath $bundle -CompressionLevel Optimal
+          Compress-Archive -Path @($installer, (Join-Path $dist "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe"), ".\README_PL.txt", ".\TEST_REPORT_PL.txt", ".\app.ico", ".\NaprawaPC_Hardware_Test_PRO.pyw") -DestinationPath $bundle -CompressionLevel Optimal
           if (!(Test-Path $bundle) -or (Get-Item $bundle).Length -lt 100MB) { throw "Pakiet All-in-One ZIP nie zawiera wymaganych plików lub jest niekompletny." }
           $bundleHash = (Get-FileHash -LiteralPath $bundle -Algorithm SHA256).Hash.ToLowerInvariant()
           $bundleSize = (Get-Item -LiteralPath $bundle).Length
@@ -169,7 +194,7 @@ jobs:
           target_commitish: main
           name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
           body: |
-            Wydanie Windows x64. Testy źródeł przed budową instalatora; zintegrowane centrum serwisu i napraw systemu, testy hardware, 125 skórek oraz poprawka zapisu aktualizacji.
+            Windows x64. 159 osobnych pozycji katalogu, w tym 90 indywidualnie mapowanych scen benchmarku GPU OpenGL; scalona telemetria czujników i metryk systemu; adaptacyjny Speed Test HTTPS; rozszerzone Centrum Serwisu/System Repair PRO z raportem BIOS/licencji, lokalną bazą PDF, audytem systemu i operacjami naprawczymi z potwierdzeniem. Pakiet ALL-IN-ONE zawiera raport weryfikacji z tego przebiegu CI.
           files: |
             hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
@@ -233,7 +258,7 @@ jobs:
               installer_sha256: process.env.INSTALLER_SHA256,
               installer_size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+              notes: "Wydanie " + version + ": 159 osobnych testów (w tym 90 scen GPU OpenGL), scalona telemetria czujników/metryk systemowych, adaptacyjny Speed Test HTTPS, rozszerzone centrum Serwis Ultimate/System Repair PRO, raport BIOS/licencji, baza PDF/nauka live, audyty Windows, prywatne szyfrowane zgłoszenia i naprawy z potwierdzeniem. Windows x64.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
