@@ -11411,7 +11411,8 @@ def _u110_selftest_scene_and_component_rendering():
     assert _u109_launch_scene_preview is _u110_launch_scene_preview
     assert _u69_open_component_simulator is _u110_open_component_simulator
     assert len(_U100_SCENE_TITLES)==90 and len(set(_U100_SCENE_TITLES))==90
-    assert len(_U109_TEST_SCENES)==69 and len(set(_U109_TEST_SCENES.keys()))==69
+    assert len(_U109_TEST_SCENES)==70 and len(set(_U109_TEST_SCENES.keys()))==70
+    assert len(set(_U109_TEST_SCENES.values()))==70, "Each of the 70 component profiles must map to a distinct base scene"
     assert all(1<=int(scene_id)<=90 for scene_id in _U109_TEST_SCENES.values()), "Every component profile must map to a valid base OpenGL scene"
     assert all(k in _U109_TEST_SCENES for k in ("cpu_sim","ram_sim","gpu_sim","vram_sim","disk_sim","screen_sim","sec_sim","bat_sim","net_sim","usb_sim","audio_sim","key_sim","cam_sim"))
     print("OPENGL_RESULT_COMMIT_AND_UNIQUE_COMPONENT_MODEL_SELFTEST_OK: 90 GPU scenes plus separate animated component-model profiles")
