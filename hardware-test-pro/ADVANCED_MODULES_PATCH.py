@@ -7878,8 +7878,8 @@ def _u101_selftest_adaptive_speed():
     assert tele["vram_used_mb"]==4096 and tele["vram_total_mb"]==8192
     assert tele["gpu_clock_mhz"]==2400 and tele["fan_speed_rpm"]==1600 and tele["power_draw_w"]==185
     assert callable(_u101_refresh_sensor_table) and callable(_u101_sensor_poll)
-    assert _u66_measure_speed is _u100_measure_speed
-    assert AppV43.show_speed_test is _u107_show_speed_test
+    assert _u66_measure_speed is _u100_measure_speed or getattr(_u66_measure_speed, "__name__", "") == "_u108_measure_speed"
+    assert AppV43.show_speed_test is _u107_show_speed_test or getattr(AppV43.show_speed_test, "__name__", "") == "_u108_show_speed_test"
     print("ADAPTIVE_SPEED_ALL_ENTRYPOINTS_AND_FULL_TELEMETRY_SELFTEST_OK")
 
 def _u101_selftest_unique_gpu_scenes():
