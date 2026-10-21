@@ -9221,6 +9221,210 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                         x=-2+((i*13)%47)*4/46;y=.05+(i%10)*.025;z=1+((elapsed*2.4+i*.071)%3.6)
                         gl.glColor3f(.52,.42,.3);gl.glVertex3f(x,y,z);gl.glVertex3f(x+.09,y+.02,z+.14)
                 gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            if sid_local>=60:
+                if sid_local==60:  # Rotating bearing cage with independent spoke motion
+                    gl.glDisable(gl.GL_LIGHTING);gl.glLineWidth(1.35);gl.glBegin(gl.GL_LINES)
+                    for i in range(88):
+                        a=i*2*_m.pi/88+elapsed*(.9+(i%5)*.13);r=.45+(i%7)*.23
+                        gl.glColor3f(*palette[i%6]);gl.glVertex3f(r*_m.cos(a),.35*_m.sin(a*3),r*_m.sin(a))
+                        gl.glVertex3f((r+.34)*_m.cos(a+.16),.35*_m.sin(a*3+.2),(r+.34)*_m.sin(a+.16))
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                    for i in range(12):
+                        a=elapsed*.7+i*2*_m.pi/12
+                        sphere(2.05*_m.cos(a),.28*_m.sin(a*2),2.05*_m.sin(a),.055,palette[i%6],6,8)
+                elif sid_local==61:
+                    particle_lines("cyclone",850)
+                    for layer in range(8):
+                        gl.glPushMatrix();gl.glTranslatef(0,-1.9+layer*.53,0);gl.glRotatef(elapsed*28+layer*19,0,1,0)
+                        torus(.35+layer*.18,.022,(.2,.48,.85),38,5);gl.glPopMatrix()
+                elif sid_local==62:
+                    particle_lines("cyclone",2400)
+                    for arm in range(3):
+                        pts=[]
+                        for j in range(200):
+                            f=j/199;a=elapsed*1.5+f*2*_m.pi*4+arm*2*_m.pi/3;r=.18+1.6*(1-f)
+                            pts.append((r*_m.cos(a),1.8-3.6*f,r*_m.sin(a)))
+                        line_strip(pts,palette[arm],1.0)
+                elif sid_local==63:
+                    gl.glPushMatrix();gl.glRotatef(elapsed*46,0,1,0);torus(1.5,.05,(.08,.49,.9),72,8);gl.glPopMatrix()
+                    gl.glPushMatrix();gl.glRotatef(70+elapsed*29,1,.1,0);torus(1.05,.03,(.18,.78,.95),66,6);gl.glPopMatrix()
+                    points_cloud(440,0)
+                elif sid_local==64:
+                    particle_lines("rain",260)
+                elif sid_local==65:
+                    particle_lines("rain",980)
+                    gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+                    for i in range(260):
+                        x=-3+(i%52)*.115;y=-1.5+((i*7)%33)*.09;z=-2.5+((i*13)%47)*.1
+                        gl.glColor3f(.15,.42,.87);gl.glVertex3f(x,y,z);gl.glVertex3f(x-.35,y-.035,z+.06)
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                elif sid_local==66:
+                    particle_lines("rain",1850)
+                    for arm in range(7):
+                        pts=[]
+                        for j in range(110):
+                            f=j/109;a=elapsed*1.3+f*2*_m.pi*2.8+arm*.9;r=.35+1.45*f
+                            pts.append((r*_m.cos(a),-1.6+arm*.48+.14*_m.sin(a*2),r*_m.sin(a)))
+                        line_strip(pts,(.08,.39,.82),.7)
+                elif sid_local==67:
+                    gl.glDisable(gl.GL_LIGHTING)
+                    for row in range(17):
+                        z=-2.6+row*.32;pts=[]
+                        for i in range(121):
+                            x=-2.9+i*.048
+                            pts.append((x,-.98+.12*_m.sin(x*2.2+elapsed*1.4+row*.35),z))
+                        line_strip(pts,(.015,.25+.018*row,.65),.65)
+                    gl.glEnable(gl.GL_LIGHTING)
+                elif sid_local==68:
+                    for lane in range(13):
+                        z=-1.25+lane*.20;pts=[]
+                        for i in range(120):
+                            x=-2.7+i*.045
+                            pts.append((x,-.72+.08*_m.sin(x*2.7-elapsed*2.1+lane*.6),z))
+                        line_strip(pts,(.02,.39+.015*lane,.86),.8)
+                    particle_lines("rain",90)
+                elif sid_local==69:
+                    for layer in range(24):
+                        y=-1.05+layer*.10;pts=[]
+                        for i in range(120):
+                            x=-2.8+i*.047
+                            z=.3+.37*_m.sin(x*1.6+elapsed*1.2+layer*.2)+.11*_m.sin(x*3.2-layer)
+                            pts.append((x,y+.15*_m.sin(x*1.1+elapsed+layer),z))
+                        line_strip(pts,(.01,.25+.015*layer,.78+.005*layer),.75)
+                    particle_lines("rain",240)
+                elif sid_local==70:
+                    tick=int(elapsed*4.2)
+                    if tick%11 in (0,1,2):
+                        x=.35+.2*_m.sin(tick);z=.1+.14*_m.cos(tick)
+                        line_strip([(x,1.7,z),(x-.25,1.13,z+.04),(x+.12,.72,z+.1),(x-.16,.25,z+.16),(x+.03,-.32,z+.11),(x-.11,-.86,z+.14)],(.76,.89,1.0),3.0)
+                        sphere(x-.11,-.86,z+.14,.2,(.43,.72,1.0),8,12)
+                elif sid_local==71:
+                    tick=int(elapsed*5)
+                    if tick%8 in (0,1,4):
+                        for j in range(3):
+                            x=-1.65+j*1.45;z=-.65+j*.32
+                            pts=[(x,1.5,z),(x-.16,1.05,z+.05),(x+.15,.63,z+.09),(x-.23,.22,z+.16),(x+.04,-.2,z+.11),(x-.12,-.75,z+.18)]
+                            line_strip(pts,(.65,.87,1.0),1.5+(j%2)*.5)
+                            line_strip([pts[2],(x+.52,.48,z+.22),(x+.72,.1,z+.25)],(.40,.68,1.0),1.0)
+                elif sid_local==72:
+                    tick=int(elapsed*7);flash=tick%7 in (0,1,2,5)
+                    for layer in range(9):
+                        gl.glPushMatrix();gl.glTranslatef(.1*_m.sin(layer),.8-layer*.19,0);gl.glRotatef(elapsed*36+layer*18,0,1,0)
+                        torus(.4+layer*.12,.028,(.05,.28,.7),38,5);gl.glPopMatrix()
+                    if flash:
+                        for j in range(6):
+                            x=-2.1+j*.82;z=-.8+.23*(j%3)
+                            line_strip([(x,1.25,z),(x-.15,.82,z+.04),(x+.12,.42,z+.08),(x-.2,.02,z+.14),(x+.03,-.48,z+.12)],(.7,.88,1),1.2)
+                elif sid_local==73:
+                    for i in range(4):
+                        a=elapsed*(.7+i*.08)+i*2*_m.pi/4
+                        vehicle(2.15*_m.cos(a),.22,2.15*_m.sin(a),.27,(.92,.08+.04*i,.12+.05*i),90-a*180/_m.pi)
+                elif sid_local==74:
+                    for i in range(3):
+                        a=elapsed*(.65+i*.11)+i*2*_m.pi/3
+                        vehicle(2.05*_m.sin(a),.22,1.48*_m.sin(a)*_m.cos(a)*2,.28,palette[i],60-a*100/_m.pi)
+                elif sid_local==75:
+                    for i in range(5):
+                        x=((elapsed*(.75+i*.08)+i*1.17)%5.6)-2.8
+                        vehicle(x,.16,-1.2+i*.55,.23,palette[(i+2)%6],90)
+                    for i in range(12):
+                        gl.glPushMatrix();gl.glTranslatef(-2.65+i*.48,.04,1.85);gl.glRotatef(elapsed*36,0,1,0)
+                        torus(.09,.018,(.08,.78,.95),14,4);gl.glPopMatrix()
+                elif sid_local==76:
+                    for i in range(4):
+                        a=elapsed*(.78+i*.09)+i*1.57;x=1.95*_m.sin(a);z=1.50*_m.sin(a)*_m.cos(a)*2
+                        vehicle(x,.20,z,.28,palette[i],40-a*90/_m.pi+17*_m.sin(elapsed*2+i))
+                    particle_lines("dust",230)
+                elif sid_local==77:
+                    for i in range(3):
+                        a=elapsed*(.48+i*.07)+i*2*_m.pi/3;r=1.25+.28*i
+                        vehicle(r*_m.cos(a),.25,r*_m.sin(a),.29,(.86,.38,.06) if i%2==0 else (.08,.40,.85),90-a*180/_m.pi)
+                    particle_lines("dust",130)
+                elif sid_local==78:
+                    for i in range(2):
+                        a=elapsed*(.42+i*.08)+i*1.8
+                        x=1.65*_m.sin(a)+.34*_m.sin(3*a);z=1.4*_m.cos(a)
+                        vehicle(x,.2+.24*_m.sin(a*2),z,.29,palette[(i+1)%6],55-a*75/_m.pi)
+                    particle_lines("dust",190)
+                elif sid_local==79:
+                    for i in range(3):
+                        a=elapsed*(.5+i*.05)+i*2.1
+                        vehicle(2.1*_m.sin(a),.18,1.8*_m.sin(a)*_m.cos(a),.28,palette[i],45-a*80/_m.pi)
+                    particle_lines("dust",270)
+                elif sid_local==80:
+                    phase=(elapsed%3.8)/3.8;x=-2.5+phase*5
+                    y=.22+(.9*4*phase*(1-phase) if .15<phase<.85 else 0)
+                    vehicle(x,y,0,.32,(.92,.35,.05),0)
+                    for i in range(12):
+                        xx=-2.6+i*.47;line((xx,.05,-.35),(xx,.05,.35),(.78,.74,.55),.55)
+                elif sid_local==81:
+                    for i in range(7):
+                        a=elapsed*(.88+i*.018)+i*2*_m.pi/7
+                        vehicle(2.23*_m.cos(a),.25,2.23*_m.sin(a),.22,(.92,.08,.18) if i%2==0 else (.03,.52,.92),90-a*180/_m.pi)
+                        line_strip([(2.23*_m.cos(a+.10),.25,2.23*_m.sin(a+.10)),(2.23*_m.cos(a+.24),.25,2.23*_m.sin(a+.24))],(.08,.76,1.0),1.1)
+                elif sid_local==82:
+                    for i in range(4):
+                        a=elapsed*(.45+i*.11)+i*1.57
+                        vehicle(2.05*_m.sin(a),.19,1.75*_m.sin(a)*_m.cos(a),.25,palette[i],90-a*130/_m.pi)
+                    for i in range(5):
+                        gl.glPushMatrix();gl.glTranslatef(-2+i,1.2,1.8);gl.glRotatef(elapsed*20,0,1,0)
+                        torus(.12,.02,(.06,.70,.96),18,4);gl.glPopMatrix()
+                elif sid_local==83:
+                    for i in range(6):
+                        a=elapsed*(.65+i*.035)+i*2*_m.pi/6
+                        vehicle(1.92*_m.cos(a),.27,1.92*_m.sin(a),.22,palette[i],90-a*180/_m.pi)
+                    gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+                    for i in range(20):
+                        x=-2.4+i*.25
+                        gl.glColor3f(.08,.82,1);gl.glVertex3f(x,.05,-.55);gl.glVertex3f(x,.05,.55)
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                elif sid_local==84:
+                    particle_lines("snow",900)
+                    for i in range(7):
+                        x=-2.4+i*.8;line((x,1.5,-1.6),(x-.35,-.8,-1.3),(.78,.88,1),.8)
+                elif sid_local==85:
+                    particle_lines("snow",1700)
+                    for i in range(18):
+                        a=elapsed*.22+i*2*_m.pi/18
+                        sphere(2.3*_m.cos(a),.35+1.4*_m.sin(a*2),2.0*_m.sin(a),.045,(.72,.86,1.0),5,7)
+                elif sid_local==86:
+                    for i in range(18):
+                        gl.glPushMatrix();gl.glTranslatef(2.1*_m.cos(i*.8+elapsed*.32),.45*_m.sin(i*1.7+elapsed*.6),1.8*_m.sin(i*.8+elapsed*.32))
+                        gl.glRotatef(elapsed*31+i*23,1,.3,1);crystal(0,0,0,.10+(i%4)*.035,(.2,.64,.94));gl.glPopMatrix()
+                    points_cloud(420,1)
+                elif sid_local==87:
+                    particle_lines("snow",3100)
+                    for i in range(9):
+                        pts=[]
+                        for j in range(120):
+                            f=j/119;a=elapsed*.85+f*2*_m.pi*2.7+i*2*_m.pi/9;r=.25+1.7*f
+                            pts.append((r*_m.cos(a),-2.2+4.4*f,r*_m.sin(a)))
+                        line_strip(pts,(.6,.78,1.0),.8)
+                elif sid_local==88:
+                    for layer in range(18):
+                        y=-1.55+layer*.17;pts=[]
+                        for i in range(110):
+                            x=-2.7+i*.05
+                            pts.append((x,y+.20*_m.sin(x*1.6+elapsed*1.35+layer*.15),.3+.25*_m.sin(x*2+layer*.1)))
+                        line_strip(pts,(.015,.33+.02*layer,.83),.8)
+                    particle_lines("rain",220)
+                elif sid_local==89:
+                    for lane in range(20):
+                        z=-2.4+lane*.24;pts=[]
+                        for i in range(120):
+                            x=-2.5+i*.042
+                            pts.append((x,-.88+.08*_m.sin(x*2-elapsed*1.8+lane*.6),z))
+                        line_strip(pts,(.015,.30+.02*lane,.75),.75)
+                    for i in range(60):
+                        x=-2.3+((i*7+int(elapsed*13))%93)*.05;z=-2.3+(i*13%47)*.1
+                        sphere(x,-.78,z,.022,(.46,.82,1.0),4,6)
+                elif sid_local==90:
+                    points_cloud(5200,1)
+                    for i in range(9):
+                        a=elapsed*(.4+i*.06)+i*2*_m.pi/9
+                        sphere(2.0*_m.cos(a),1.0*_m.sin(a*1.6),2.0*_m.sin(a),.10,palette[i%6],7,10)
+                    gl.glPushMatrix();gl.glRotatef(elapsed*48,1,.5,.3);gear(0,0,0,1.45,22,(.10,.82,.9));gl.glPopMatrix()
+                return
             if 61<=sid_local<=63:particle_lines("cyclone",(1000,2400,5200)[v])
             elif 64<=sid_local<=66:particle_lines("rain",(500,1200,2400)[v])
             elif 67<=sid_local<=69:
@@ -9298,7 +9502,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             gl.glRotatef(elapsed*(14+(sid%11)*2.2),.35+(sid%3)*.3,1,.22+(sid%5)*.08)
             gl.glRotatef(10*_m.sin(elapsed*.7+sid),1,0,0)
             gl.glCallList(list_id)
-            if sid>=61:
+            if sid>=60:
                 draw_dynamic_scene(elapsed)
             gl.glFinish()
             pg.display.flip();frames+=1;win_frames+=1;now=_tm.perf_counter()
