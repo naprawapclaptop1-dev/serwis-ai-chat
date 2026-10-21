@@ -1443,16 +1443,18 @@ def _u66_update_suite_label(self,text):
                 lbl.config(text=str(text))
     except Exception: pass
 
-def _u66_execute_gpu_scene(self,scene_id,seconds=5):
+def _u66_execute_gpu_scene(self,scene_id,seconds=5,render_profile=""):
     output=Path(tempfile.gettempdir())/("naprawapc_gpu_scene_"+str(os.getpid())+"_"+str(scene_id)+"_"+_u66_uuid.uuid4().hex[:8]+".json")
     try: output.unlink(missing_ok=True)
     except Exception: pass
     resolution=str(getattr(self,"_u90_scene_resolution_value","1920x1080") or "1920x1080")
     if getattr(sys,"frozen",False):
-        cmd=[sys.executable,"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds)),resolution]
+        cmd=[sys.executable,"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds)),resolution,str(render_profile or "")]
     else:
-        cmd=[sys.executable,str(Path(__file__).resolve()),"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds)),resolution]
-    _u66_set_suite_status(self,f"SCENA 3D {scene_id}/{len(_U66_SCENES)} — {_U66_SCENES[scene_id-1][0]} — uruchamianie OpenGL…")
+        cmd=[sys.executable,str(Path(__file__).resolve()),"--gpu-benchmark",str(output),str(int(scene_id)),str(int(seconds)),resolution,str(render_profile or "")]
+    _u66_set_suite_status(self,(f"MODEL 3D {render_profile.upper()} — uruchamianie OpenGL…" if render_profile else f"SCENA 3D {scene_id}/{len(_U66_SCENES)} — {_U66_SCENES[scene_id-1][0]} — uruchamianie OpenGL…"))
+    try: self.queue_action(lambda: _u110_update_studio_row(self,scene_id,{"state":"RUNNING","note":"Uruchamianie rzeczywistego renderera OpenGL"},render_profile))
+    except Exception: pass
     proc=None
     try:
         proc=_u66_subprocess.Popen(cmd,cwd=tempfile.gettempdir(),creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
@@ -1474,12 +1476,28 @@ def _u66_execute_gpu_scene(self,scene_id,seconds=5):
             result["returncode"]=rc
         try: output.unlink(missing_ok=True)
         except Exception: pass
-        self.queue_results("3D_SCENE_"+str(scene_id),result)
-        self.queue_log(f"3D SCENA {scene_id}: {result.get('state')} | FPS={result.get('average_fps','N/D')} | {result.get('renderer',result.get('error','N/D'))}")
+        result_key=("COMPONENT_SCENE_"+str(render_profile) if render_profile else "3D_SCENE_"+str(scene_id))
+        try:
+            if not isinstance(getattr(self,"results",None),dict): self.results={}
+            self.results[result_key]=result  # synchronous commit before the table refreshes
+        except Exception: pass
+        try: self.queue_results(result_key,result)
+        except Exception: pass
+        try: self.queue_action(lambda r=dict(result): _u110_update_studio_row(self,scene_id,r,render_profile))
+        except Exception: pass
+        self.queue_log(f"3D {'MODEL '+str(render_profile) if render_profile else 'SCENA '+str(scene_id)}: {result.get('state')} | FPS={result.get('average_fps','N/D')} | {result.get('renderer',result.get('gpu_renderer',result.get('error','N/D')))}")
         return result
     except Exception as exc:
         result={"state":"warn","scene_id":scene_id,"scene_name":_U66_SCENES[scene_id-1][0],"error":f"{type(exc).__name__}: {exc}"}
-        self.queue_results("3D_SCENE_"+str(scene_id),result)
+        result_key=("COMPONENT_SCENE_"+str(render_profile) if render_profile else "3D_SCENE_"+str(scene_id))
+        try:
+            if not isinstance(getattr(self,"results",None),dict): self.results={}
+            self.results[result_key]=result
+        except Exception: pass
+        try: self.queue_results(result_key,result)
+        except Exception: pass
+        try: self.queue_action(lambda r=dict(result): _u110_update_studio_row(self,scene_id,r,render_profile))
+        except Exception: pass
         return result
 
 def _u66_show_3d_studio(self):
@@ -8194,7 +8212,7 @@ if callable(_U102_ORIGINAL_RAM_METHOD):
 
 
 # v4.3.103 — ninety individually rendered GPU stress scenes; no shared 3-scenes-per-family renderer.
-def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1920x1080"):
+def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1920x1080", render_profile=""):
     import math as _m, random as _r, time as _tm, json as _j
     from pathlib import Path as _P
     pg = None
@@ -8205,6 +8223,8 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         from OpenGL.GLU import gluPerspective
         sid=max(1,min(90,int(scene_id)))
         title=_U100_SCENE_TITLES[sid-1]
+        render_profile=str(render_profile or "").strip().lower()
+        profile_seed=sum((i+1)*ord(ch) for i,ch in enumerate(render_profile)) & 0xffff
         requested_resolution=str(resolution or "1920x1080")
         desktop_w=desktop_h=0
         resolution_limited=False
@@ -8473,11 +8493,11 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         def draw_scene():
             sid_local=sid
             if sid_local==1:
-                furry_donut(1.28,.48,2400,(.12,.33,.95))
+                furry_donut(1.42,.55,18000,(.12,.33,.95))
             elif sid_local==2:
-                gl.glPushMatrix();gl.glTranslatef(-1.45,0,0);gl.glRotatef(27,1,0,0);furry_donut(.68,.25,700,c);gl.glPopMatrix()
-                gl.glPushMatrix();gl.glTranslatef(1.45,.1,0);gl.glRotatef(68,0,1,0);furry_donut(.68,.25,700,c2);gl.glPopMatrix()
-                gl.glPushMatrix();gl.glTranslatef(0,.5,.25);gl.glRotatef(42,0,0,1);furry_donut(.62,.23,700,c3);gl.glPopMatrix()
+                gl.glPushMatrix();gl.glTranslatef(-1.45,0,0);gl.glRotatef(27,1,0,0);furry_donut(.72,.27,4200,c);gl.glPopMatrix()
+                gl.glPushMatrix();gl.glTranslatef(1.45,.1,0);gl.glRotatef(68,0,1,0);furry_donut(.72,.27,4200,c2);gl.glPopMatrix()
+                gl.glPushMatrix();gl.glTranslatef(0,.5,.25);gl.glRotatef(42,0,0,1);furry_donut(.66,.25,4200,c3);gl.glPopMatrix()
             elif sid_local==3:
                 torus(1.15,.32,c,44,14)
                 for i in range(420):
@@ -8931,8 +8951,262 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                             gl.glColor3f(.02,.28+.05*_m.sin(elapsed+x),.78+.1*_m.cos(z+elapsed));gl.glNormal3f(0,1,0);gl.glVertex3f(x,wave,z)
                 gl.glEnd();particle_lines("rain",(80,180,320)[v])
 
+        def draw_component_profile(profile_id):
+            # Separate 3D hardware model per actual module/test ID; not a generic dashboard schematic.
+            key=str(profile_id or "component").lower()
+            seed=sum((i+1)*ord(ch) for i,ch in enumerate(key)) & 0xffff
+            local=_r.Random(seed)
+            accent=palette[seed%len(palette)]
+            accent2=palette[(seed//3+1)%len(palette)]
+            accent3=palette[(seed//7+4)%len(palette)]
+            detail=6+(seed%7)
+            budget["component_profile"]=key
+            budget["profile_seed"]=seed
+            if "cpu" in key or "proces" in key:
+                box(0,-.16,0,3.7,.18,3.7,(.025,.13,.12))
+                box(0,.02,0,3.2,.16,3.2,(.10,.14,.19))
+                for edge in range(4):
+                    for i in range(18+detail):
+                        v=-1.42+i*(2.84/(17+detail))
+                        if edge==0:x,z=v,-1.53
+                        elif edge==1:x,z=1.53,v
+                        elif edge==2:x,z=v,1.53
+                        else:x,z=-1.53,v
+                        box(x,-.015,z,.055,.055,.12,(.80,.61,.23))
+                box(0,.19,0,2.3,.25,2.3,(.38,.48,.59))
+                box(0,.36,0,1.94,.16,1.94,(.13,.20,.29))
+                box(0,.47,0,1.55,.10,1.55,accent)
+                cores=4+(seed%13)
+                cols=max(2,int(_m.ceil(_m.sqrt(cores))))
+                for i in range(cores):
+                    x=(i%cols-(cols-1)/2)*.39
+                    z=(i//cols-(cores-1)//cols/2)*.39
+                    box(x,.58,z,.29,.10,.29,accent2 if i%2 else accent3)
+                    box(x,.64,z,.19,.035,.19,(.76,.86,.92))
+                for i in range(12):
+                    torus(1.40+i*.014,.014,accent3,28,4)
+                for i in range(180+detail*20):
+                    x=local.uniform(-1.45,1.45);z=local.uniform(-1.45,1.45)
+                    if abs(x)>.85 or abs(z)>.85:box(x,-.04,z,.025,.022,.025,accent)
+            elif "ram" in key or "memory" in key or "pami" in key:
+                box(0,0,0,5.3,.13,1.05,(.025,.24,.17))
+                box(0,.085,0,4.95,.035,.86,(.06,.38,.24))
+                for i in range(76+detail*2):
+                    x=-2.48+i*(4.96/(75+detail*2))
+                    box(x,-.105,-.40,.035,.045,.23,(.92,.65,.22))
+                chips=8+(seed%9)
+                for i in range(chips):
+                    x=-2.18+i*(4.36/max(1,chips-1))
+                    box(x,.14,-.02,.37,.11,.56,(.04,.08,.13))
+                    box(x,.205,-.02,.23,.035,.39,accent if i%2 else accent2)
+                    for j in range(5):
+                        xx=x-.14+j*.07
+                        line((xx,.229,-.19),(xx,.229,.14),accent3,.6)
+                for lane in range(4):
+                    z=-.30+lane*.20
+                    line_strip([(x,.21,z+.035*_m.sin(x*4+lane)) for x in [-2.4+i*.08 for i in range(61)]],accent3,.7)
+                box(0,.235,.34,.82,.07,.10,(.72,.79,.84))
+            elif "gpu" in key or "vram" in key or "graf" in key:
+                box(0,-.19,0,5.1,.20,2.65,(.025,.16,.13))
+                box(0,-.065,0,4.85,.06,2.43,(.045,.27,.20))
+                box(0,.025,0,2.15,.18,1.65,(.10,.14,.20))
+                box(0,.14,0,1.32,.12,1.16,accent)
+                box(0,.225,0,.80,.06,.70,(.81,.86,.91))
+                for i in range(28+detail*2):
+                    x=-1.85+i*(3.7/(27+detail*2))
+                    box(x,.075,0,.04,.12,2.14,(.47,.55,.64))
+                for x in (-1.35,0,1.35):
+                    torus(.53,.075,accent2,36,9)
+                    for blade in range(9):
+                        a=2*_m.pi*blade/9+seed*.001
+                        line((x,.26,0),(x+.43*_m.cos(a),.26,.43*_m.sin(a)),accent3,1.7)
+                    sphere(x,.28,0,.12,(.72,.81,.88),8,12)
+                for i in range(10):
+                    x=-1.95+i*.43
+                    box(x,.065,-1.00,.24,.08,.25,(.12,.17,.23))
+                    box(x,.11,-1.00,.14,.03,.13,accent2)
+                for i in range(32):
+                    box(-2.4+i*.15,-.09,1.15,.07,.07,.11,(.88,.68,.24))
+                for i in range(14):
+                    line((-2.2+i*.32,.015,-.95),(-1.55+.13*i,.03,.80),accent3,.7)
+            elif "disk" in key or "ssd" in key or "hdd" in key or "nvme" in key or "dysk" in key:
+                if "smart" in key or "hdd" in key:
+                    box(0,-.16,0,4.5,.18,3.2,(.19,.24,.31))
+                    box(0,-.04,0,4.15,.10,2.9,(.67,.72,.77))
+                    for i in range(3):
+                        rr=1.08+i*.43
+                        torus(rr,.025,accent if i%2 else accent2,64,6)
+                    sphere(0,.10,0,.27,(.17,.20,.24),16,24)
+                    line((.18,.13,.0),(1.45,.15,.45),accent3,4)
+                    box(1.45,.14,.45,.52,.06,.28,(.84,.88,.91))
+                    for i in range(9):
+                        a=i*2*_m.pi/9
+                        sphere(2.0*_m.cos(a),.06,1.25*_m.sin(a),.06,accent,6,8)
+                else:
+                    box(0,-.14,0,5.1,.14,1.75,(.025,.17,.13))
+                    box(0,-.045,0,4.9,.06,1.58,(.04,.31,.24))
+                    for i in range(6+detail):
+                        x=-2.15+i*(4.30/(5+detail))
+                        box(x,.04,0,.40,.14,.79,(.05,.08,.14))
+                        box(x,.125,0,.25,.025,.61,accent if i%2 else accent2)
+                        for j in range(4):
+                            z=-.21+j*.14
+                            box(x-.09,.145,z,.025,.01,.025,accent3)
+                    box(-2.2,.02,-.48,.55,.12,.12,(.76,.79,.82))
+                    for i in range(30):
+                        box(-2.1+i*.145,-.17,.88,.035,.04,.09,(.9,.65,.21))
+            elif "screen" in key or "edid" in key or "matry" in key or "ekran" in key:
+                box(0,0,-.12,5.4,3.35,.22,(.11,.15,.21))
+                box(0,.02,.02,5.13,3.04,.04,(.015,.025,.039))
+                columns=18+(seed%9);rows=10+(seed%7)
+                for y in range(rows):
+                    for x in range(columns):
+                        xx=-2.48+x*(4.96/max(1,columns-1))
+                        yy=-1.42+y*(2.84/max(1,rows-1))
+                        col=(accent,accent2,accent3,(.16,.22,.30))[(x+y+seed)%4]
+                        box(xx,yy,.065,.18,.115,.018,col)
+                for stripe in range(12):
+                    box(-2.35+stripe*.42,-1.56,.09,.31,.055,.02,palette[(stripe+seed)%6])
+                box(0,-1.83,-.05,1.4,.30,.25,(.25,.31,.38))
+                box(0,-2.02,-.05,2.3,.12,.65,(.16,.20,.28))
+            elif "security" in key or "sec_" in key or "bezpiec" in key:
+                gl.glDisable(gl.GL_LIGHTING);gl.glColor3f(*accent)
+                gl.glBegin(gl.GL_TRIANGLES)
+                gl.glVertex3f(0,1.75,.08);gl.glVertex3f(-1.45,.95,.08);gl.glVertex3f(-1.18,-.55,.08)
+                gl.glVertex3f(0,1.75,.08);gl.glVertex3f(-1.18,-.55,.08);gl.glVertex3f(0,-1.85,.08)
+                gl.glVertex3f(0,1.75,.08);gl.glVertex3f(0,-1.85,.08);gl.glVertex3f(1.18,-.55,.08)
+                gl.glVertex3f(0,1.75,.08);gl.glVertex3f(1.18,-.55,.08);gl.glVertex3f(1.45,.95,.08)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                for i in range(18):
+                    a=2*_m.pi*i/18
+                    sphere(1.75*_m.cos(a),.65*_m.sin(a),-.12,.055,accent2,6,8)
+                    line((1.75*_m.cos(a),.65*_m.sin(a),-.12),(0,0,0),accent3,.5)
+                torus(.60,.09,accent3,48,12);sphere(0,0,.22,.31,(.76,.88,.93),12,18)
+            elif "battery" in key or "bateria" in key or "bat_" in key:
+                box(0,-.20,0,4.8,.28,1.85,(.08,.12,.18))
+                cells=6+(seed%6)
+                for i in range(cells):
+                    x=-2.0+i*(4.0/max(1,cells-1))
+                    box(x,.05,0,.44,.43,1.28,(.12,.18,.25))
+                    box(x,.285,0,.28,.055,.95,accent if i%2 else accent2)
+                    for z in (-.38,.38):sphere(x,.33,z,.055,(.74,.81,.88),6,10)
+                box(-2.25,.12,.92,.30,.18,.25,(.82,.17,.14))
+                box(2.25,.12,.92,.30,.18,.25,(.12,.75,.50))
+                for i in range(20):
+                    x=-1.9+i*.20
+                    line((x,.35,-.72),(x,.35,.72),accent3,.5)
+            elif "network" in key or "net_" in key or "sie" in key or "internet" in key:
+                nodes=8+(seed%8)
+                points=[]
+                for i in range(nodes):
+                    a=i*2*_m.pi/nodes
+                    points.append((2.0*_m.cos(a),1.35*_m.sin(a),.24*_m.sin(i*1.7)))
+                for i,pt in enumerate(points):
+                    sphere(*pt,.18 if i%3 else .25,accent if i%2 else accent2,10,14)
+                    line((0,0,0),pt,accent3,1.2)
+                    line(pt,points[(i+1)%nodes],accent2,.8)
+                sphere(0,0,0,.43,(.70,.82,.92),14,20)
+                for i in range(26+detail*3):
+                    a=(i*.73+seed*.001)%(2*_m.pi)
+                    sphere(1.4*_m.cos(a),.95*_m.sin(a),.18*_m.sin(i),.035,accent3,5,7)
+            elif "usb" in key:
+                box(0,0,0,4.7,.34,1.9,(.10,.16,.22))
+                for i in range(5+(seed%4)):
+                    x=-1.85+i*(3.70/(4+(seed%4)))
+                    box(x,.22,.75,.48,.28,.27,(.65,.70,.76))
+                    box(x,.225,.77,.30,.12,.04,(.04,.06,.08))
+                    for j in range(4):
+                        box(x-.09+j*.06,.245,.805,.022,.04,.012,(.91,.66,.22))
+                    line((x,.06,.60),(x,.06,-.45),accent3,.7)
+                for i in range(18):
+                    line((-2.0+i*.23,-.10,-.7),(2.0-i*.16,.06,.45),accent,.7)
+            elif "audio" in key or "mic" in key or "sound" in key:
+                for x,r in ((-1.25,.72),(1.25,.72)):
+                    gl.glPushMatrix();gl.glTranslatef(x,.15,0);gl.glScalef(1,.35,1);sphere(0,0,0,r,(.08,.13,.19),16,22);gl.glPopMatrix()
+                    for i in range(4):torus(r*.38+i*.12,.025,accent if i%2 else accent2,42,6)
+                    sphere(x,.25,.10,.20,accent3,10,16)
+                pts=[(x,.55*_m.sin(i*.18+seed*.01),.48) for i,x in enumerate([-2.25+i*.03 for i in range(150)])]
+                line_strip(pts,accent,2.0)
+                for i in range(14):
+                    x=-2.2+i*.34
+                    line((x,-.9,-.18),(x,-.7+local.random()*.55,-.18),accent2,1.0)
+            elif "key" in key or "keyboard" in key or "klawi" in key:
+                rows=4+(seed%2);cols=12+(seed%5)
+                for row in range(rows):
+                    for col in range(cols):
+                        x=(col-(cols-1)/2)*.36
+                        z=(row-(rows-1)/2)*.34
+                        h=.12+.025*((row*cols+col+seed)%4)
+                        box(x,.02,z,.29,h,.27,(.06,.10,.16))
+                        box(x,.10+h/2,z,.23,.025,.21,palette[(row*5+col+seed)%6] if (row+col)%7==0 else (.40,.48,.58))
+                        line((x-.07,.13,z),(x+.07,.13,z),accent3,.45)
+                box(0,-.18,0,5.4,.10,1.85,(.08,.12,.18))
+            elif "camera" in key or "cam_" in key or "webcam" in key:
+                box(0,0,0,3.2,1.75,1.0,(.06,.10,.15))
+                box(0,.10,.55,1.4,.86,.22,(.15,.22,.30))
+                for i in range(6):torus(.26+i*.12,.035,accent if i%2 else accent2,48,8)
+                sphere(0,.12,.63,.40,(.02,.04,.07),18,24)
+                sphere(0,.12,.90,.24,accent3,16,24)
+                torus(.86,.05,(.72,.82,.91),48,8)
+                for i in range(8):
+                    a=i*2*_m.pi/8
+                    sphere(1.10*_m.cos(a),.12+1.10*_m.sin(a),.42,.06,accent,7,10)
+            else:
+                count=8+(seed%45)
+                for i in range(count):
+                    a=i*2*_m.pi/count
+                    radius=.55+(i%7)*.24
+                    x=radius*_m.cos(a);y=radius*_m.sin(a);z=(i%5-2)*.22
+                    if (i+seed)%3==0:crystal(x,y,z,.12+(i%4)*.035,palette[(i+seed)%6])
+                    elif (i+seed)%3==1:box(x,y,z,.18,.18,.18,palette[(i+seed)%6])
+                    else:sphere(x,y,z,.11,palette[(i+seed)%6],7,10)
+                for i in range(8):
+                    a=i*2*_m.pi/8
+                    line((0,0,0),(2.0*_m.cos(a),1.5*_m.sin(a),0),accent3,.8)
+            budget["component_profile"]=key
+            budget["component_profile_seed"]=seed
+
+        def draw_component_motion(profile_id, elapsed):
+            key=str(profile_id or "component").lower()
+            seed=sum((i+1)*ord(ch) for i,ch in enumerate(key)) & 0xffff
+            accent=palette[seed%len(palette)]
+            if "cpu" in key or "proces" in key:
+                for i in range(8):
+                    a=elapsed*(1.2+i*.025)+i*2*_m.pi/8
+                    sphere(.96*_m.cos(a),.72*_m.sin(a),.24*_m.sin(a*2),.055,accent,6,8)
+            elif "ram" in key or "memory" in key or "pami" in key:
+                for i in range(14):
+                    x=-2.35+((elapsed*1.7+i*.38)%4.70)
+                    sphere(x,.245,-.02,.04,accent,5,7)
+            elif "disk" in key or "ssd" in key or "hdd" in key or "nvme" in key or "dysk" in key:
+                gl.glPushMatrix();gl.glRotatef(elapsed*145,0,1,0);torus(1.08,.016,accent,64,4);gl.glPopMatrix()
+            elif "gpu" in key or "vram" in key:
+                for i in range(6):
+                    a=elapsed*(1.8+i*.04)+i*2*_m.pi/6
+                    sphere(1.80*_m.cos(a),.20,1.0*_m.sin(a),.055,accent,5,7)
+            elif "network" in key or "net_" in key or "sie" in key or "internet" in key or "usb" in key:
+                for i in range(16):
+                    x=-2.0+((elapsed*2.3+i*.45)%4.0)
+                    line((x,-.10,-.10),(x+.08,.20,.15),accent,1.4)
+            elif "screen" in key or "edid" in key or "matry" in key or "ekran" in key:
+                y=-1.36+((elapsed*.7)%1.0)*2.72
+                line((-2.42,y,.12),(2.42,y,.12),accent,1.6)
+            elif "audio" in key or "mic" in key or "sound" in key:
+                line_strip([(x,.5*_m.sin(x*4.0+elapsed*4.0),.56) for x in [-2.2+i*.04 for i in range(111)]],accent,1.2)
+            elif "camera" in key or "cam_" in key or "webcam" in key:
+                gl.glPushMatrix();gl.glRotatef(elapsed*60,0,0,1);torus(.32,.016,accent,36,5);gl.glPopMatrix()
+            else:
+                for i in range(12):
+                    a=elapsed*(1.0+i*.03)+i*2*_m.pi/12
+                    sphere(1.3*_m.cos(a),.85*_m.sin(a),.12*_m.sin(a*2),.045,accent,5,7)
+
         list_id=gl.glGenLists(1)
-        gl.glNewList(list_id,gl.GL_COMPILE);draw_scene();gl.glEndList()
+        gl.glNewList(list_id,gl.GL_COMPILE)
+        if render_profile:
+            draw_component_profile(render_profile)
+        else:
+            draw_scene()
+        gl.glEndList()
         gl.glFinish()
         start=_tm.perf_counter();frames=0;win_start=start;win_frames=0;peak=0.;samples=[];running=True
         while running and (_tm.perf_counter()-start)<duration:
@@ -8942,30 +9216,38 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                     rw=max(640,event.w);rh=max(480,event.h);gl.glViewport(0,0,rw,rh)
                     gl.glMatrixMode(gl.GL_PROJECTION);gl.glLoadIdentity();gluPerspective(52.0,rw/rh,.1,240.0);gl.glMatrixMode(gl.GL_MODELVIEW)
             elapsed=_tm.perf_counter()-start
-            if 70<=sid<=72 and (int(elapsed*4+sid)%9) in (0,1,5):
+            if not render_profile and 70<=sid<=72 and (int(elapsed*4+sid)%9) in (0,1,5):
                 gl.glClearColor(.22,.30,.47,1.0)
             else:
                 gl.glClearColor(.004,.008,.02,1.0)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
-            gl.glLoadIdentity();gl.glTranslatef(0,-.18,-12)
-            gl.glRotatef(elapsed*(14+(sid%11)*2.2),.35+(sid%3)*.3,1,.22+(sid%5)*.08)
-            gl.glRotatef(10*_m.sin(elapsed*.7+sid),1,0,0)
+            gl.glLoadIdentity()
+            camera_distance=5.25 if render_profile else (5.6 if sid<=3 else 8.6 if family<16 else 9.5)
+            gl.glTranslatef(0,-.05 if render_profile else -.18,-camera_distance)
+            rotation_speed=9.0 if render_profile else (14+(sid%11)*2.2)
+            gl.glRotatef(elapsed*rotation_speed,.35+(sid%3)*.3,1,.22+(sid%5)*.08)
+            gl.glRotatef((6*_m.sin(elapsed*.7+profile_seed*.001)) if render_profile else 10*_m.sin(elapsed*.7+sid),1,0,0)
             gl.glCallList(list_id)
-            if sid>=61:
+            if render_profile:
+                draw_component_motion(render_profile,elapsed)
+            elif sid>=61:
                 draw_dynamic_scene(elapsed)
             gl.glFinish()
             pg.display.flip();frames+=1;win_frames+=1;now=_tm.perf_counter()
             if now-win_start>=1.0:
                 fps=win_frames/(now-win_start);samples.append(round(fps,2));peak=max(peak,fps)
                 win_frames=0;win_start=now
-                pg.display.set_caption(f"NAPRAWA PC • SCENA {sid:02d}/90 • {title} • FPS {fps:.1f} • MAX {peak:.1f} • {renderer[:80]} • ESC = STOP")
+                caption_name=render_profile.upper() if render_profile else title
+                pg.display.set_caption(f"NAPRAWA PC • {'MODUŁ' if render_profile else 'SCENA'} {sid:02d}/90 • {caption_name} • FPS {fps:.1f} • MAX {peak:.1f} • {renderer[:80]} • ESC = STOP")
         elapsed=max(.001,_tm.perf_counter()-start)
         result.update({"state":"good" if frames else "warn","scene_id":sid,"scene_name":title,
             "renderer":renderer,"opengl_version":gl_version,"resolution":f"{rw}x{rh}",
+            "render_profile":render_profile or None,"component_profile_active":bool(render_profile),
             "frames":frames,"duration_seconds":round(elapsed,3),"average_fps":round(frames/elapsed,2),
-            "peak_fps_1s":round(peak,2),"fps_samples":samples,"workload":"separately authored static geometry recipe + real OpenGL display-list rendering; glFinish synchronized per frame",
+            "peak_fps_1s":round(peak,2),"fps_samples":samples,
+            "workload":("distinct 3D hardware model + animated telemetry elements" if render_profile else "separately authored 90-scene OpenGL workload"),
             "geometry_budget":budget,"stopped_by_user":elapsed<duration-.5,
-            "note":"FPS jest zmierzony z faktycznego renderowania OpenGL. Nie jest przewidywaniem FPS w konkretnej grze."})
+            "note":("Model 3D modułu i ruch wizualny nie zastępują pomiaru czujnika lub benchmarku właściwego dla tego podzespołu." if render_profile else "FPS jest zmierzony z rzeczywistego renderowania OpenGL; nie przewiduje FPS w konkretnej grze.")})
         try:gl.glDeleteLists(list_id,1)
         except Exception:pass
         pg.display.quit();pg.quit()
@@ -10904,52 +11186,84 @@ def _u109_show_speed_test(app):
         try:app.queue_log("Speed Test extended UI: "+repr(exc))
         except Exception:pass
 
-def _u109_launch_scene_preview(app,module,test_id,scene_id):
+def _u110_launch_scene_preview(app,module,test_id,scene_id,render_profile=""):
+    render_profile=str(render_profile or "").strip().lower()
     scene_title=_U100_SCENE_TITLES[int(scene_id)-1]
-    if not messagebox.askyesno("Unikalna scena OpenGL",
-        f"Uruchomić własną scenę {int(scene_id):02d}/90 dla testu {test_id}?\n\n"
-        f"{scene_title}\n\n"
-        "To prawdziwe renderowanie OpenGL z pomiarem FPS GPU przez 10 sekund. "
-        "Scena jest przypisana wyłącznie do tego testu, ale FPS nie jest wynikiem sprawności CPU/RAM/dysku. Kontynuować?"):
+    display_title=(f"{str(module).upper()} — {str(test_id).upper()} • MODEL 3D" if render_profile else scene_title)
+    if not messagebox.askyesno("Symulator 3D — model podzespołu",
+        f"Uruchomić niezależny renderer OpenGL dla: {display_title}?\n\n"
+        "Model 3D jest osobną, animowaną geometrią techniczną i mierzy FPS renderera. "
+        "Nie zastępuje odczytu temperatury ani właściwego testu sprzętowego. Kontynuować?"):
         return
     if getattr(app,"running",False):
-        messagebox.showinfo("Test w toku","Poczekaj na zakończenie bieżącego testu albo zatrzymaj go.")
+        messagebox.showinfo("Test w toku","Zatrzymaj bieżący test przed uruchomieniem kolejnego.")
         return
-    _u93_update_detail(app,test_id,"SCENA OPENGL W TOKU",{
-        "state":"running","test_id":test_id,"module":module,"scene_id":int(scene_id),
-        "scene_name":scene_title,"duration_seconds":10,
-        "note":"Unikalny renderer OpenGL. Pomiar FPS dotyczy renderowania GPU; nie zastępuje testu podzespołu w nazwie."
-    })
+    if str(getattr(app,"current_view","")).startswith("COMPONENT_TEST_DETAIL_"):
+        _u93_update_detail(app,test_id,"RENDERER OPENGL W TOKU",{
+            "state":"running","test_id":str(test_id),"module":str(module),"scene_id":int(scene_id),
+            "scene_name":display_title,"render_profile":render_profile or None,"duration_seconds":10,
+            "note":"Prawdziwe renderowanie OpenGL z pomiarem FPS; nie jest to wynik sprawności całego podzespołu."
+        })
+    try:app.queue_log(f"MODEL 3D start: {display_title} • scena={scene_id}/90 • profile={render_profile or 'GPU-BENCHMARK'}")
+    except Exception:pass
     def job():
-        start=_u66_time.monotonic()
+        started=_u66_time.monotonic()
         try:
-            result=_u66_execute_gpu_scene(app,int(scene_id),10)
+            result=_u66_execute_gpu_scene(app,int(scene_id),10,render_profile=render_profile)
             if not isinstance(result,dict):result={"state":"warn","message":"Renderer nie zwrócił raportu."}
         except Exception as exc:
-            result={"state":"error","error":f"{type(exc).__name__}: {exc}"}
+            result={"state":"warn","error":f"{type(exc).__name__}: {exc}","test_id":str(test_id),"render_profile":render_profile or None}
         result.update({"test_id":str(test_id),"module":str(module),"scene_id":int(scene_id),
-            "scene_name":scene_title,"preview_duration_seconds":round(_u66_time.monotonic()-start,2),
-            "note":"Ta scena OpenGL jest unikalna dla wybranego wpisu katalogu. FPS jest wynikiem renderera GPU, nie diagnozą sprawności CPU/RAM/dysku."})
+            "scene_name":display_title,"render_profile":render_profile or None,
+            "preview_duration_seconds":round(_u66_time.monotonic()-started,2),
+            "note":"Wynik FPS dotyczy rzeczywistego renderowania OpenGL. Nie zastępuje pomiarów właściwych dla CPU/RAM/dysku/czujników."})
         try:
-            report=_u93_persist_result(app,module,"scene-"+str(test_id),"Scena OpenGL: "+scene_title,result,
-                _u66_time.monotonic()-start)
+            report=_u93_persist_result(app,module,"scene-"+str(test_id),"Model 3D: "+display_title,result,
+                _u66_time.monotonic()-started)
             _u93_put_result(app,"COMPONENT_SCENE_"+str(test_id),report)
-            _u93_update_detail(app,test_id,"SCENA ZAKOŃCZONA • FPS "+str(result.get("average_fps","N/D")),report)
-            app.queue_log(f"UNIKALNA SCENA TESTU {test_id}: {result.get('state')} • scena {scene_id}/90 • FPS {result.get('average_fps','N/D')}")
+            if str(getattr(app,"current_view","")).startswith("COMPONENT_TEST_DETAIL_"):
+                _u93_update_detail(app,test_id,"RENDERER ZAKOŃCZONY • FPS "+str(result.get("average_fps","N/D")),report)
+            try:app.queue_log(f"MODEL 3D koniec: {display_title} • {result.get('state')} • FPS={result.get('average_fps','N/D')} • {result.get('renderer',result.get('error','N/D'))}")
+            except Exception:pass
         except Exception as exc:
-            app.queue_log(f"Raport sceny {test_id}: {type(exc).__name__}: {exc}")
+            try:app.queue_log(f"Raport modelu 3D: {type(exc).__name__}: {exc}")
+            except Exception:pass
     app.worker(job)
 
-def _u109_open_component_simulator(app,module,fullscreen=False,mode="scan"):
-    # Catalog screens use a dedicated real OpenGL scene; non-catalog callers retain the existing module simulator.
+def _u110_open_component_simulator(app,module,fullscreen=False,mode="scan"):
+    # Replace the old Tk block schematic with a real, animated OpenGL model for direct module views.
     view=str(getattr(app,"current_view","") or "")
     if view.startswith("COMPONENT_TEST_DETAIL_"):
         test_id=view.split("COMPONENT_TEST_DETAIL_",1)[1]
-        scene_id=_u108_catalog_scene_id(test_id,1) if str(test_id).startswith("gpu_scene_") else _U109_TEST_SCENES.get(test_id)
+        is_gpu_scene=str(test_id).startswith("gpu_scene_")
+        scene_id=_u108_catalog_scene_id(test_id,1) if is_gpu_scene else _U109_TEST_SCENES.get(test_id)
         if scene_id is not None:
-            _u109_launch_scene_preview(app,module,test_id,scene_id)
+            _u110_launch_scene_preview(app,module,test_id,scene_id,render_profile="" if is_gpu_scene else test_id)
             return
+    label=str(module or "").strip().lower()
+    module_profiles=(
+        (("cpu","procesor","processor"),"cpu_sim"),
+        (("ram","memory","pamięć","pamiec"),"ram_sim"),
+        (("gpu","grafik"),"gpu_sim"),
+        (("vram","pamięć karty","pamiec karty"),"vram_sim"),
+        (("dysk","disk","ssd","hdd","nvme"),"disk_sim"),
+        (("ekran","screen","matryc"),"screen_sim"),
+        (("security","bezpiec","system repair"),"sec_sim"),
+        (("bateria","battery","power"),"bat_sim"),
+        (("sieć","siec","network","internet","router"),"net_sim"),
+        (("usb","port"),"usb_sim"),
+        (("audio","dźwięk","dzwiek","microphone","sound"),"audio_sim"),
+        (("klawi","keyboard","touchpad","input"),"key_sim"),
+        (("camera","kamera","webcam"),"cam_sim")
+    )
+    for tokens,profile_id in module_profiles:
+        if any(token in label for token in tokens):
+            scene_id=_U109_TEST_SCENES.get(profile_id)
+            if scene_id is not None:
+                _u110_launch_scene_preview(app,module,profile_id,scene_id,render_profile=profile_id)
+                return
     return _U109_ORIGINAL_OPEN_COMPONENT_SIMULATOR(app,module,fullscreen,mode)
+
 
 def _u109_selftest_sensor_inspector():
     class FakeTree:
@@ -11041,9 +11355,64 @@ _u90_measure_speed=_u109_measure_speed
 _u66_measure_speed=_u109_measure_speed
 _u69_open_component_simulator=_u109_open_component_simulator
 AppV43.show_speed_test=_u109_show_speed_test
+
+# v4.3.112 — synchronously commit OpenGL results and provide separate technical models for each component.
+def _u110_update_studio_row(app,scene_id,result,render_profile=""):
+    if render_profile:
+        return
+    try:
+        if str(getattr(app,"current_view",""))!="3D_STUDIO":
+            return
+        tree=getattr(app,"_u66_3d_tree",None)
+        if tree is None or not tree.winfo_exists():
+            return
+        iid=str(int(scene_id))
+        if not tree.exists(iid):
+            return
+        scene=_U66_SCENES[int(scene_id)-1][0]
+        state=str(result.get("state","warn")).upper()
+        avg=result.get("average_fps","N/D")
+        peak=result.get("peak_fps_1s","N/D")
+        frames=result.get("frames","N/D")
+        renderer=result.get("renderer",result.get("gpu_renderer","N/D"))
+        note=result.get("error") or result.get("note") or result.get("workload") or "N/D"
+        tree.item(iid,values=(scene,state,avg,peak,frames,str(renderer)+" / "+str(note)))
+    except Exception as exc:
+        try:app.queue_log("Aktualizacja wiersza 3D Studio: "+repr(exc))
+        except Exception:pass
+
+def _u110_nested_code_names(code):
+    import types as _u110_types
+    names=set(code.co_names)
+    for value in code.co_consts:
+        if isinstance(value,_u110_types.CodeType):
+            names.add(value.co_name)
+            names.update(_u110_nested_code_names(value))
+    return names
+
+_u109_launch_scene_preview=_u110_launch_scene_preview
+_u69_open_component_simulator=_u110_open_component_simulator
+
+def _u110_selftest_scene_and_component_rendering():
+    assert _u104_gpu_benchmark_child.__code__.co_argcount>=5
+    assert "render_profile" in _u104_gpu_benchmark_child.__code__.co_varnames
+    nested=_u110_nested_code_names(_u104_gpu_benchmark_child.__code__)
+    assert "draw_component_profile" in nested and "draw_component_motion" in nested
+    assert "furry_donut" in nested and "glCallList" in nested
+    assert _u66_execute_gpu_scene.__code__.co_argcount>=4
+    assert "render_profile" in _u66_execute_gpu_scene.__code__.co_varnames
+    assert "results" in _u66_execute_gpu_scene.__code__.co_names
+    assert _u109_launch_scene_preview is _u110_launch_scene_preview
+    assert _u69_open_component_simulator is _u110_open_component_simulator
+    assert len(_U100_SCENE_TITLES)==90 and len(set(_U100_SCENE_TITLES))==90
+    assert len(_U109_TEST_SCENES)==69 and len(set(_U109_TEST_SCENES.values()))==69
+    assert all(k in _U109_TEST_SCENES for k in ("cpu_sim","ram_sim","gpu_sim","vram_sim","disk_sim","screen_sim","sec_sim","bat_sim","net_sim","usb_sim","audio_sim","key_sim","cam_sim"))
+    print("OPENGL_RESULT_COMMIT_AND_UNIQUE_COMPONENT_MODEL_SELFTEST_OK: 90 GPU scenes plus separate animated component-model profiles")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u110_selftest_scene_and_component_rendering()
         _u108_selftest_gpu_scene_catalog()
         _u107_selftest_sensor_source_merge()
         _u109_selftest_sensor_inspector()
