@@ -13356,6 +13356,7 @@ def _u119_selftest_furmark_scene():
     while pending:
         code=pending.pop()
         names.update(code.co_names)
+        names.update(code.co_varnames)
         for value in code.co_consts:
             if isinstance(value,_u119_types.CodeType):
                 pending.append(value)
@@ -13369,7 +13370,6 @@ def _u119_selftest_furmark_scene():
     assert 12000 in numbers, "Renderer must create 12,000 hair strands in the real scene code."
     assert "GL_LINES" in names
     print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 12,000 fur strands; animated OpenGL display list; synchronized FPS")
-
 
 
 # v4.3.121 — bring Serwis Ultimate service-job workflow into the main app.
@@ -13603,8 +13603,8 @@ def _u121_selftest_service_jobs():
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
-        _u121_selftest_service_jobs()
         _u119_selftest_furmark_scene()
+        _u121_selftest_service_jobs()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
