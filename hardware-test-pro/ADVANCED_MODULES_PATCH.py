@@ -6500,11 +6500,41 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         family = (sid-1)//3
         variant = (sid-1)%3
         title = _U100_SCENE_TITLES[sid-1]
+        requested_resolution=str(resolution or "1920x1080")
+        desktop_w=desktop_h=0
+        resolution_limited=False
         try:
-            rw,rh=[int(x) for x in str(resolution).lower().split("x",1)]
-            rw=max(640,min(7680,rw)); rh=max(480,min(4320,rh))
+            rw,rh=[int(x) for x in requested_resolution.lower().split("x",1)]
+            rw=max(640,min(7680,rw));rh=max(480,min(4320,rh))
         except Exception:
-            rw,rh=1920,1080
+            requested_resolution="1920x1080";rw,rh=1920,1080
+
+        # Cap initial OpenGL window to usable desktop area; 1920x1080 may be off-screen on small laptops/high-DPI PCs.
+        try:
+            if os.name=="nt":
+                import ctypes as _u105_ctypes
+                desktop_w=int(_u105_ctypes.windll.user32.GetSystemMetrics(0))
+                desktop_h=int(_u105_ctypes.windll.user32.GetSystemMetrics(1))
+                if desktop_w>=640 and desktop_h>=480:
+                    usable_w=max(640,desktop_w-48)
+                    usable_h=max(480,desktop_h-112)
+                    display_scale=min(1.0,usable_w/float(rw),usable_h/float(rh))
+                    if display_scale<0.999:
+                        rw=max(640,int(rw*display_scale))
+                        rh=max(480,int(rh*display_scale))
+                        if rw>usable_w or rh>usable_h:
+                            correction=min(usable_w/float(rw),usable_h/float(rh))
+                            rw=max(640,int(rw*correction))
+                            rh=max(480,int(rh*correction))
+                        resolution_limited=True
+        except Exception:
+            desktop_w=desktop_h=0
+        result.update({
+            "resolution_requested":requested_resolution,
+            "resolution_rendered":f"{rw}x{rh}",
+            "desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
+            "resolution_limited_by_display":resolution_limited
+        })
         seconds=max(3,min(900,int(seconds)))
         pg.init()
         try:
@@ -6820,7 +6850,9 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()
         profile = {
           "scene_id":sid,"scene_name":_U66_SCENES[sid-1][0],"family":_U100_SCENE_TITLES[sid-1],
-          "profile_variant":variant+1,"resolution_requested":f"{rw}x{rh}",
+          "profile_variant":variant+1,"resolution_requested":requested_resolution,"resolution_rendered":f"{rw}x{rh}",
+          "desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
+          "resolution_limited_by_display":resolution_limited,
           "geometry_primitives_estimate":primitive_counter["value"],
           "gpu_renderer":renderer,"opengl_version":gl_version,
           "method":"OpenGL real draw calls + display list; synchronized frame presentation with glFinish",
@@ -7201,6 +7233,9 @@ def _u100_selftest_unique_gpu_scenes():
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
     assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "resolution_limited_by_display" in _u37_gpu_benchmark_child.__code__.co_consts
+    assert "desktop_resolution" in _u37_gpu_benchmark_child.__code__.co_consts
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
     assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
     print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 60 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
@@ -7633,6 +7668,9 @@ def _u101_selftest_unique_gpu_scenes():
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
     assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "resolution_limited_by_display" in _u37_gpu_benchmark_child.__code__.co_consts
+    assert "desktop_resolution" in _u37_gpu_benchmark_child.__code__.co_consts
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
     assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
     print("GPU_SCENE_SELFTEST_OK: 60 unique scene IDs, 20 geometry families with distinct individual layouts and synchronized real FPS")
@@ -8782,9 +8820,613 @@ def _u104_selftest_speed_and_sensors():
     print("ADAPTIVE_LOW_SPEED_TEST_AND_FULL_SENSOR_EXPLORER_SELFTEST_OK")
 
 
+
+# v4.3.105 — visual-quality pass: no progress rectangles; technical component renderers and radial gauges.
+# Preserve the existing theme, navigation, test controls, telemetry sources and result reporting.
+_U105_COLORS = {
+    "bg":"#06101c","panel":"#0a1726","grid":"#14283b","grid_hi":"#203b53",
+    "cyan":"#39e7d0","blue":"#3688ff","violet":"#b77aff","green":"#69efb0",
+    "amber":"#ffbd68","red":"#ff667f","silver":"#b6c9d8","muted":"#6c859a",
+    "white":"#e9f5ff","board":"#0b645b","board_edge":"#34dbc9"
+}
+_U105_PI = _u66_math.pi
+_U66_PI = _u66_math.pi  # compatibility alias used by the renderer's rotating model helpers
+
+def _u105_ring_gauge(canvas, title, value, maximum=100.0, unit="%", color="#39e7d0"):
+    try:
+        if canvas is None or not canvas.winfo_exists():
+            return
+        canvas.delete("all")
+        w=max(96,int(canvas.winfo_width() or 132))
+        h=max(86,int(canvas.winfo_height() or 108))
+        cx=w/2.0; cy=h*0.57
+        radius=min(w*0.34,h*0.34)
+        left=cx-radius; top=cy-radius; right=cx+radius; bottom=cy+radius
+        muted=_U105_COLORS["grid_hi"]
+        canvas.create_text(w/2,8,text=title,fill=_U105_COLORS["muted"],font=("Segoe UI",8,"bold"))
+        canvas.create_arc(left,top,right,bottom,start=135,extent=270,style="arc",outline=muted,width=7)
+        for idx in range(11):
+            angle=_u66_math.radians(135+27*idx)
+            r0=radius+4;r1=radius+9
+            x1=cx+_u66_math.cos(angle)*r0;y1=cy+_u66_math.sin(angle)*r0
+            x2=cx+_u66_math.cos(angle)*r1;y2=cy+_u66_math.sin(angle)*r1
+            canvas.create_line(x1,y1,x2,y2,fill=muted,width=1)
+        numeric=None
+        try:
+            number=float(value)
+            if _u66_math.isfinite(number):numeric=number
+        except Exception:
+            pass
+        if numeric is not None:
+            pct=max(0.0,min(1.0,numeric/max(1.0,float(maximum))))
+            if pct>0:
+                canvas.create_arc(left,top,right,bottom,start=135,extent=270*pct,style="arc",outline=color,width=7)
+            shown=("{:.0f}".format(numeric) if abs(numeric)>=10 else "{:.1f}".format(numeric))
+            canvas.create_text(cx,cy-1,text=shown,fill=_U105_COLORS["white"],font=("Segoe UI",14,"bold"))
+            canvas.create_text(cx,cy+17,text=unit,fill=color,font=("Segoe UI",7,"bold"))
+        else:
+            canvas.create_text(cx,cy-1,text="N/D",fill=_U105_COLORS["muted"],font=("Segoe UI",12,"bold"))
+            canvas.create_text(cx,cy+17,text="brak odczytu",fill=_U105_COLORS["muted"],font=("Segoe UI",7))
+    except Exception:
+        pass
+
+def _u105_draw_live_gauges(app):
+    gauges=getattr(app,"_u105_gauges",None) or getattr(app,"_u105_sim_gauges",None)
+    if not isinstance(gauges,dict) or not gauges:
+        return
+    vals=getattr(app,"_live_values",{}) or {}
+    cache=getattr(app,"_u66_sensor_cache",{}) or {}
+    temps=cache.get("temps",{}) or {}
+    gpu=cache.get("gpu",{}) or {}
+    system=cache.get("system",{}) or {}
+    telemetry=getattr(app,"_u84_gpu_last_telemetry",{}) or {}
+    def number(value):
+        try:
+            result=float(value)
+            return result if _u66_math.isfinite(result) else None
+        except Exception:
+            return None
+    cpu=number(vals.get("cpu"))
+    if cpu is None: cpu=number(system.get("cpu_percent",getattr(app,"_cpu_util",None)))
+    ram=number(vals.get("ram"))
+    if ram is None: ram=number(system.get("ram_percent",getattr(app,"_ram_util",None)))
+    gpu_load=number(gpu.get("gpu_load_percent",gpu.get("load_percent")))
+    if gpu_load is None: gpu_load=number(telemetry.get("gpu_load_percent",telemetry.get("load_percent",getattr(app,"_gpu_util",None))))
+    cpu_temp=number(temps.get("cpu_temp_c"))
+    gpu_temp=number(gpu.get("temperature_c",temps.get("gpu_temp_c")))
+    if gpu_temp is None: gpu_temp=number(telemetry.get("temperature_c"))
+    source={
+        "cpu":(cpu,100.0,"%",_U105_COLORS["cyan"]),
+        "ram":(ram,100.0,"%",_U105_COLORS["violet"]),
+        "gpu":(gpu_load,100.0,"%",_U105_COLORS["blue"]),
+        "temp":(gpu_temp,110.0,"°C",_U105_COLORS["amber"]),
+        "cpu_temp":(cpu_temp,110.0,"°C",_U105_COLORS["amber"]),
+        "gpu_temp":(gpu_temp,110.0,"°C",_U105_COLORS["red"])
+    }
+    for key,canvas in gauges.items():
+        item=source.get(key)
+        if item:
+            _u105_ring_gauge(canvas,{"cpu":"CPU LOAD","ram":"RAM USED","gpu":"GPU LOAD",
+                "temp":"TEMPERATURA","cpu_temp":"TEMP CPU","gpu_temp":"TEMP GPU"}.get(key,key.upper()),
+                item[0],item[1],item[2],item[3])
+
+def _u105_draw_component_scene(app):
+    canvas=getattr(app,"_u68_sim_canvas",None)
+    if canvas is None or not canvas.winfo_exists():
+        return
+    if not str(getattr(app,"current_view","")).startswith("SIM3D_"):
+        return
+    try:
+        w=int(canvas.winfo_width() or 0);h=int(canvas.winfo_height() or 0)
+        if w < 180 or h < 140:
+            return
+        canvas.delete("all")
+        canvas.configure(bg=_U105_COLORS["bg"],highlightthickness=0,bd=0)
+        module=str(app.current_view).replace("SIM3D_","").upper()
+        angle=float(getattr(app,"_u68_sim_angle",0.0))
+        center_x=w*0.50;center_y=h*0.50
+        scale=min(w*0.96,h*1.48)
+        rot=angle*0.62
+        def project(point):
+            x,y,z=point
+            rx=x*_u66_math.cos(rot)-z*_u66_math.sin(rot)
+            rz=x*_u66_math.sin(rot)+z*_u66_math.cos(rot)
+            f=scale/max(2.6,5.6+rz*0.42)
+            return (center_x+rx*f,center_y-y*f+rz*f*0.24)
+        def poly(points,fill,outline=None,width=1):
+            coords=[]
+            for p in points:coords.extend(project(p))
+            canvas.create_polygon(*coords,fill=fill,outline=outline or fill,width=width,smooth=False)
+        def path(points,color,width=1,dash=None):
+            coords=[]
+            for p in points:coords.extend(project(p))
+            opts={"fill":color,"width":width,"smooth":True,"splinesteps":12}
+            if dash:opts["dash"]=dash
+            canvas.create_line(*coords,**opts)
+        def node(point,r,color,outline=None):
+            x,y=project(point)
+            canvas.create_oval(x-r,y-r,x+r,y+r,fill=color,outline=outline or color,width=1)
+        def ring(cx,y,cz,r,color,width=2,phase=0.0,segments=54):
+            pts=[]
+            for i in range(segments+1):
+                a=2*_U105_PI*i/segments+phase
+                pts.append((cx+r*_u66_math.cos(a),y,cz+r*_u66_math.sin(a)))
+            path(pts,color,width)
+        def rounded_board(cx,cy,cz,sx,sz,fill,edge):
+            c=.13
+            pts=[(cx-sx/2+c,cy,cz-sz/2),(cx+sx/2-c,cy,cz-sz/2),
+                 (cx+sx/2,cy,cz-sz/2+c),(cx+sx/2,cy,cz+sz/2-c),
+                 (cx+sx/2-c,cy,cz+sz/2),(cx-sx/2+c,cy,cz+sz/2),
+                 (cx-sx/2,cy,cz+sz/2-c),(cx-sx/2,cy,cz-sz/2+c)]
+            poly(pts,fill,edge,2)
+        def chip(cx,cy,cz,sx,sz,color,edge):
+            rounded_board(cx,cy,cz,sx,sz,color,edge)
+            ring(cx,cy+0.025,cz,min(sx,sz)*.25,edge,1,angle*.6,28)
+            for dx in (-.34,0,.34):
+                for dz in (-.25,.25):
+                    node((cx+dx*sx,cy+0.03,cz+dz*sz),1.2,edge)
+        def fan(cx,cz,r,phase):
+            ring(cx,.16,cz,r,_U105_COLORS["cyan"],2,0,64)
+            ring(cx,.18,cz,r*.78,_U105_COLORS["grid_hi"],1,0,48)
+            ring(cx,.21,cz,r*.20,_U105_COLORS["silver"],2,phase,36)
+            for k in range(9):
+                a=phase+k*2*_U66_math.pi/9
+                def pt(rad,da=0.0,y=.2):
+                    q=a+da
+                    return (cx+rad*_u66_math.cos(q),y,cz+rad*_u66_math.sin(q))
+                poly([pt(r*.20,-.22),pt(r*.90,-.10),pt(r*.72,.17),pt(r*.34,.24)],
+                     "#155e68" if k%2 else "#186b78",_U105_COLORS["cyan"],1)
+            node((cx,.24,cz),r*.11,_U105_COLORS["white"],_U105_COLORS["cyan"])
+        # Background: perspective field, restrained star points and luminous horizon.
+        horizon=h*.69
+        canvas.create_text(18,14,text=_U68_COMPONENT_LABELS.get(module,module).upper(),
+            anchor="nw",fill=_U105_COLORS["white"],font=("Segoe UI",10,"bold"))
+        canvas.create_text(w-18,14,text="PODGLĄD TECHNICZNY 3D  •  LIVE",
+            anchor="ne",fill=_U105_COLORS["cyan"],font=("Segoe UI",8,"bold"))
+        canvas.create_line(18,horizon,w-18,horizon,fill=_U105_COLORS["grid_hi"],width=1)
+        for i in range(1,7):
+            y=horizon+(h-horizon)*(i/7.0)**1.7
+            canvas.create_line(18,y,w-18,y,fill=_U105_COLORS["grid"],width=1)
+        for i in range(-9,10):
+            x=w/2+i*w*.052
+            canvas.create_line(w*.5,horizon,x,h-8,fill=_U105_COLORS["grid"],width=1)
+        for i in range(58):
+            x=(i*137+int(angle*8))%w
+            y=(i*67+17)%(max(50,int(horizon)))
+            r=1 if i%6 else 1.8
+            canvas.create_oval(x-r,y-r,x+r,y+r,fill=_U105_COLORS["grid_hi"],outline="")
+        # A luminous platform is a soft technical silhouette, not a stack of rectangular blocks.
+        ring(0,-.50,0,2.28,_U105_COLORS["grid_hi"],1,-angle*.2,72)
+        ring(0,-.50,0,1.92,_U105_COLORS["cyan"],1,angle*.15,72)
+        mode_phase=angle
+        if module in ("GPU","VRAM"):
+            rounded_board(0,-.12,0,5.05,2.18,_U105_COLORS["board"],_U105_COLORS["board_edge"])
+            rounded_board(0,-.07,0,4.68,1.83,"#0a3e4a","#228f95")
+            # Main GPU die and memory packages have cut corners, inner traces and edge contacts.
+            chip(0,.22,-.05,1.18,.88,"#182b49",_U105_COLORS["violet"])
+            for cx,cz in ((-2.0,-.47),(-1.02,.55),(1.03,.55),(2.0,-.47)):
+                chip(cx,.02,cz,.47,.42,"#16304a",_U105_COLORS["blue"])
+            for k in range(18):
+                z=-.82+k*.095
+                path([(-2.15,.015,z),(-1.55,.015,z),(-1.38,.025,z*.5),(-.66,.025,z*.4)],
+                     "#1cb4a9" if k%2 else "#256f88",1)
+                path([(2.15,.015,-z),(1.55,.015,-z),(1.38,.025,-z*.5),(.66,.025,-z*.4)],
+                     "#1cb4a9" if k%2 else "#256f88",1)
+            for x in [ -2.25+i*.18 for i in range(26) ]:
+                path([(x,-.035,1.1),(x,-.035,1.27)],"#e0b96e",2)
+                path([(x,-.035,-1.1),(x,-.035,-1.27)],"#e0b96e",2)
+            fan(-1.25,-.05,.66,angle*1.6)
+            fan(1.25,-.05,.66,-angle*1.4)
+            canvas.create_text(w/2,h-15,text="RENDER / GEOMETRIA / PAMIĘĆ  •  FPS pochodzi z osobnego testu OpenGL",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="CPU":
+            rounded_board(0,-.12,0,2.62,2.28,"#22394d",_U105_COLORS["silver"])
+            rounded_board(0,-.02,0,2.22,1.90,"#132940",_U105_COLORS["cyan"])
+            rounded_board(0,.16,0,1.45,1.23,"#6a497e",_U105_COLORS["violet"])
+            rounded_board(0,.25,0,1.08,.90,"#192d48",_U105_COLORS["silver"])
+            for k in range(13):
+                a=2*_U66_math.pi*k/13+angle*.28
+                node((1.48*_u66_math.cos(a),.0,1.08*_u66_math.sin(a)),2.3,_U105_COLORS["amber"])
+            for k in range(8):
+                a=2*_U66_math.pi*k/8-angle
+                path([(0,.30,0),(.30*_u66_math.cos(a),.31,.30*_u66_math.sin(a)),
+                      (.45*_u66_math.cos(a),.31,.45*_u66_math.sin(a))],_U105_COLORS["cyan"],2)
+            canvas.create_text(w/2,h-15,text="CPU PACKAGE  •  RDZENIE / ZEGARY / OBCIĄŻENIE",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="RAM":
+            rounded_board(0,-.12,0,4.90,.78,"#07544d",_U105_COLORS["cyan"])
+            path([(-2.25,-.02,-.22),(2.25,-.02,-.22)],"#3c9b8f",2)
+            for i in range(8):
+                x=-1.86+i*.53
+                chip(x,.08,0,.37,.48,"#192d4d",_U105_COLORS["violet"] if i%2 else _U105_COLORS["blue"])
+                ring(x,.10,0,.12,_U105_COLORS["cyan"],1,angle+i,22)
+            for i in range(32):
+                x=-2.35+i*.15
+                path([(x,-.17,.40),(x,-.17,.54)],"#e6bc72",2)
+            for i in range(6):
+                z=-.30+i*.12
+                path([(-2.15,.0,z),(2.15,.0,z)],"#1b887f",1)
+            canvas.create_text(w/2,h-15,text="RAM CHANNELS  •  WZORCE / PRZEPUSTOWOŚĆ / OBCIĄŻENIE",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="DYSK":
+            rounded_board(0,-.10,0,4.85,1.55,"#14283c",_U105_COLORS["cyan"])
+            for x in (-1.55,-.52,.52,1.55):
+                chip(x,.06,0,.70,.55,"#182d48",_U105_COLORS["blue"])
+                path([(x-.25,.10,-.32),(x,.11,-.46),(x+.25,.10,-.32)],_U105_COLORS["cyan"],1)
+            ring(0,.0,0,.70,_U105_COLORS["violet"],2,angle,70)
+            ring(0,.015,0,.49,_U105_COLORS["blue"],2,-angle*1.5,64)
+            ring(0,.03,0,.20,_U105_COLORS["silver"],2,angle*2,40)
+            path([(.10,.12,.1),(1.02,.12,.50),(1.5,.12,.45)],_U105_COLORS["amber"],2)
+            node((1.5,.14,.45),3,_U105_COLORS["white"])
+            canvas.create_text(w/2,h-15,text="SSD / HDD / NVMe  •  ODCZYT / ZAPIS / CZASY",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="EKRAN":
+            rounded_board(0,-.05,0,4.20,2.48,"#172d44",_U105_COLORS["cyan"])
+            rounded_board(0,.02,0,3.92,2.20,"#0b1422",_U105_COLORS["blue"])
+            palette=["#ff5777","#ffb454","#f7df71","#63edac","#36cfda","#418dff","#8d74ff"]
+            for i,col in enumerate(palette):
+                x=-1.68+i*.56
+                poly([(x,.08,-.70),(x+.43,.08,-.70),(x+.43,.08,.70),(x,.08,.70)],col,col,1)
+            path([(-1.6,.10,-.50),(1.6,.10,-.50)],"#ffffff",1)
+            path([(-1.6,.10,0),(1.6,.10,0)],"#ffffff",1)
+            path([(-1.6,.10,.50),(1.6,.10,.50)],"#ffffff",1)
+            ring(0,.14,0,.45,_U105_COLORS["white"],1,angle,50)
+            rounded_board(0,-.30,-1.32,.40,.25,"#2b4155",_U105_COLORS["silver"])
+            canvas.create_text(w/2,h-15,text="MATRYCA  •  KOLORY / GRADIENT / TRYBY / EDID",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module in ("BATERIA","BATTERY"):
+            rounded_board(0,-.08,0,3.35,1.72,"#18374a",_U105_COLORS["cyan"])
+            for i in range(7):
+                x=-1.35+i*.45
+                ring(x,.05,0,.19,_U105_COLORS["green"] if i<5 else _U105_COLORS["amber"],2,angle,34)
+                node((x,.08,0),5,_U105_COLORS["green"] if i<5 else _U105_COLORS["amber"])
+            ring(0,.12,0,1.06,_U105_COLORS["blue"],1,angle*.45,58)
+            path([(-1.85,.12,0),(-1.25,.12,-.36),(-.72,.12,.36),(0,.12,0),(.65,.12,-.35),(1.24,.12,.36),(1.85,.12,0)],
+                 _U105_COLORS["cyan"],2)
+            canvas.create_text(w/2,h-15,text="POWER / BATTERY  •  POJEMNOŚĆ / STAN / CZAS",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module in ("SIEĆ","SIEC","NETWORK"):
+            coords=[(-2.05,0,0),(-1.05,.35,.35),(0,.05,-.25),(1.05,.38,.40),(2.05,0,0)]
+            for i in range(len(coords)-1):
+                path([coords[i],((coords[i][0]+coords[i+1][0])/2,.42,_u66_math.sin(angle*2+i)*.45),coords[i+1]],
+                     _U105_COLORS["cyan"],2)
+            for i,p in enumerate(coords):
+                ring(p[0],p[1],p[2],.26,_U105_COLORS["blue"] if i%2 else _U105_COLORS["violet"],2,angle*(i+1),42)
+                node(p,5,_U105_COLORS["white"])
+            for i in range(20):
+                u=(i/19.0+angle*.12)%1.0
+                seg=min(3,int(u*4));frac=u*4-seg
+                a=coords[seg];b=coords[min(4,seg+1)]
+                node((a[0]+(b[0]-a[0])*frac,.20,a[2]+(b[2]-a[2])*frac),1.8,_U105_COLORS["green"])
+            canvas.create_text(w/2,h-15,text="SIEĆ  •  PAKIETY / OPÓŹNIENIE / TRANSFER",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="AUDIO":
+            ring(-1.18,.10,0,.72,_U105_COLORS["cyan"],2,angle,60)
+            ring(-1.18,.12,0,.43,_U105_COLORS["blue"],2,-angle,52)
+            ring(1.18,.10,0,.72,_U105_COLORS["violet"],2,-angle*.8,60)
+            ring(1.18,.12,0,.43,_U105_COLORS["cyan"],2,angle*.7,52)
+            pts=[]
+            for i in range(61):
+                x=-2.2+i*4.4/60
+                y=.15+.28*_u66_math.sin(i*.48+angle*3)
+                pts.append((x,y,.6))
+            path(pts,_U105_COLORS["green"],2)
+            canvas.create_text(w/2,h-15,text="AUDIO  •  WEJŚCIE / WYJŚCIE / SYGNAŁ",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="KAMERA":
+            ring(0,.12,0,1.0,_U105_COLORS["silver"],3,angle,64)
+            ring(0,.17,0,.78,_U105_COLORS["cyan"],2,-angle*1.4,64)
+            ring(0,.21,0,.50,_U105_COLORS["blue"],3,angle*2,60)
+            ring(0,.25,0,.21,_U105_COLORS["violet"],3,-angle*2,44)
+            for i in range(7):
+                a=2*_U66_PI*i/7+angle*.5
+                poly([(0,.29,0),(.25*_u66_math.cos(a),.29,.25*_u66_math.sin(a)),
+                      (.50*_u66_math.cos(a+.25),.29,.50*_u66_math.sin(a+.25))],
+                     "#203b58",_U105_COLORS["cyan"],1)
+            for i in range(8):
+                a=2*_U66_PI*i/8
+                node((1.18*_u66_math.cos(a),.1,1.18*_u66_math.sin(a)),2,_U105_COLORS["amber"])
+            canvas.create_text(w/2,h-15,text="KAMERA  •  OPTYKA / KLATKI / PODGLĄD",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="USB":
+            path([(-2.4,.15,.25),(-1.3,.15,.25),(-.9,.15,0),(.1,.15,0),(.5,.15,.3),(1.65,.15,.3)],
+                 _U105_COLORS["cyan"],4)
+            for x,z in ((-1.55,.25),(-.75,0),(.30,0),(1.15,.3)):
+                ring(x,.20,z,.25,_U105_COLORS["blue"],2,angle,38)
+                node((x,.23,z),3,_U105_COLORS["white"])
+            rounded_board(2.0,-.03,.3,.72,.55,"#344a60",_U105_COLORS["silver"])
+            for i in range(4):
+                z=.12+i*.12
+                path([(1.70,.02,z),(2.25,.02,z)],_U105_COLORS["amber"],2)
+            canvas.create_text(w/2,h-15,text="USB  •  KONTROLER / ŁĄCZE / URZĄDZENIA",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        elif module=="KLAWIATURA":
+            rounded_board(0,-.10,0,4.65,1.62,"#112d3e",_U105_COLORS["cyan"])
+            for rr in range(4):
+                count=14 if rr<3 else 8
+                for cc in range(count):
+                    x=-2.0+cc*(4.0/max(1,count-1))
+                    z=-.56+rr*.37
+                    a=angle*.25+(rr+cc)*.03
+                    poly([(x-.10,.02,z-.10),(x+.10,.02,z-.10),(x+.13,.02,z+.10),
+                          (x-.08,.02,z+.10)],"#1c3850",_U105_COLORS["blue"] if (rr+cc)%5==0 else "#367b83",1)
+            path([(-1.15,.02,.72),(1.15,.02,.72)],_U105_COLORS["violet"],3)
+            for i in range(20):
+                x=-2.0+i*.21
+                path([(x,.01,-.82),(x,.01,-.68)],"#d9b46f",2)
+            canvas.create_text(w/2,h-15,text="INPUT  •  KLAWISZE / TOUCHPAD / REJESTRACJA",
+                anchor="s",fill=_U105_COLORS["muted"],font=("Segoe UI",8))
+        else:
+            for i in range(13):
+                a=2*_U66_PI*i/13+angle*.3
+                x=1.62*_u66_math.cos(a);z=1.15*_u66_math.sin(a)
+                path([(0,.18,0),(x,.14,z)],_U105_COLORS["grid_hi"],1)
+                ring(x,.15,z,.14,_U105_COLORS["cyan"] if i%2 else _U105_COLORS["violet"],1,angle,28)
+                node((x,.18,z),2,_U105_COLORS["white"])
+            ring(0,.20,0,.65,_U105_COLORS["blue"],2,angle,58)
+        # Bottom telemetry rail: subtle lines only, no filled rectangular status bars.
+        canvas.create_line(18,h-34,w-18,h-34,fill=_U105_COLORS["grid_hi"],width=1)
+        vals=getattr(app,"_live_values",{}) or {}
+        cpu=vals.get("cpu");ram=vals.get("ram")
+        gpu=(getattr(app,"_u66_sensor_cache",{}) or {}).get("gpu",{}) or {}
+        gpu_load=gpu.get("gpu_load_percent",getattr(app,"_gpu_util",None))
+        def fmt(v,unit):
+            try:return "{:.0f}{}".format(float(v),unit)
+            except Exception:return "N/D"
+        summary="CPU "+fmt(cpu,"%")+"     RAM "+fmt(ram,"%")+"     GPU "+fmt(gpu_load,"%")
+        canvas.create_text(20,h-20,text=summary,anchor="w",fill=_U105_COLORS["white"],font=("Segoe UI",8,"bold"))
+        canvas.create_text(w-20,h-20,text="SCHEMAT 3D • NIE ZASTĘPUJE POMIARU",anchor="e",
+            fill=_U105_COLORS["muted"],font=("Segoe UI",7))
+    except Exception as exc:
+        try:app.queue_log("Nowy renderer 3D: "+repr(exc))
+        except Exception:pass
+
+def _u105_stage_live_panel(self,index,total,title):
+    try:
+        old=getattr(self,"_u67_stage_panel",None)
+        if old is not None and old.winfo_exists():old.destroy()
+    except Exception:pass
+    t=self.colors()
+    panel=tk.Frame(self.content,bg=t["panel"],highlightthickness=0,bd=0)
+    children=self.content.winfo_children()
+    after_widget=None
+    for attr in ("_u84_gpu_panel","_u69_workbench_panel","_u69_simple_workbench_panel"):
+        candidate=getattr(self,attr,None)
+        try:
+            if candidate is not None and candidate.winfo_exists():after_widget=candidate;break
+        except Exception:pass
+    try:
+        if after_widget is not None:panel.pack(fill="x",padx=3,pady=(2,5),after=after_widget)
+        elif children:panel.pack(fill="x",padx=3,pady=(2,5),before=children[0])
+        else:panel.pack(fill="x",padx=3,pady=(2,5))
+    except Exception:panel.pack(fill="x",padx=3,pady=(2,5))
+    self._u67_stage_panel=panel
+    top=tk.Frame(panel,bg=t["panel"],bd=0);top.pack(fill="x",padx=4,pady=(4,3))
+    self._u67_stage_title=tk.Label(top,text="TEST {}/{} — {}".format(index,total,title),
+        bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold"),anchor="w")
+    self._u67_stage_title.pack(side="left",fill="x",expand=True)
+    self.make_button(top,"STOP TEST",self.stop_current_test,"bad",side="right",ipady=3)
+    gauges=tk.Frame(panel,bg=t["panel"],bd=0);gauges.pack(fill="x",padx=2,pady=(0,4))
+    self._u105_gauges={}
+    for i,(key,label) in enumerate((("cpu","CPU LOAD"),("ram","RAM USED"),("gpu","GPU LOAD"),("temp","TEMP GPU"))):
+        gauge=tk.Canvas(gauges,width=142,height=104,bg=t["panel"],highlightthickness=0,bd=0)
+        gauge.grid(row=0,column=i,sticky="nsew",padx=7,pady=0)
+        self._u105_gauges[key]=gauge
+        gauges.grid_columnconfigure(i,weight=1)
+    self._u67_stage_values={}
+    hidden=tk.Frame(panel,bg=t["panel"],bd=0)
+    for key in ("cpu","ram","gpu","gpu_temp","cpu_power","gpu_power","system_power","battery_power","cpu_voltage","gpu_voltage","cpu_fan","gpu_fan"):
+        self._u67_stage_values[key]=tk.Label(hidden,text="N/D",bg=t["panel"],fg=t["accent"])
+    specs=[
+        ("TEMP CPU","cpu_temp"),("ZEGAR CPU","cpu_clock"),("ZEGAR GPU","gpu_clock"),
+        ("DYSK ODCZYT","disk_read"),("DYSK ZAPIS","disk_write"),("NET ↓","net_down"),("NET ↑","net_up"),
+        ("MOC CPU","cpu_power"),("MOC GPU","gpu_power"),("MOC SYSTEMU","system_power"),
+        ("NAPIĘCIE CPU","cpu_voltage"),("NAPIĘCIE GPU","gpu_voltage"),("WENTYLATOR CPU","cpu_fan"),
+        ("WENTYLATOR GPU","gpu_fan"),("MOC BATERII","battery_power")]
+    strip=tk.Frame(panel,bg=t["panel"],bd=0);strip.pack(fill="x",padx=7,pady=(0,5))
+    for i,(caption,key) in enumerate(specs):
+        cell=tk.Frame(strip,bg=t["panel"],bd=0)
+        cell.grid(row=i//5,column=i%5,sticky="ew",padx=5,pady=2)
+        tk.Label(cell,text=caption,bg=t["panel"],fg=t["muted"],font=self.fnt(7,"bold"),anchor="w").pack(anchor="w")
+        value=tk.Label(cell,text="N/D",bg=t["panel"],fg=t["accent"],font=self.fnt(9,"bold"),anchor="w")
+        value.pack(anchor="w")
+        self._u67_stage_values[key]=value
+    for col in range(5):strip.grid_columnconfigure(col,weight=1)
+    charts=tk.Frame(panel,bg=t["panel"],bd=0);charts.pack(fill="x",padx=2,pady=(0,5))
+    for name,row,col in (("_u67_stage_chart_hw",0,0),("_u67_stage_chart_io",0,1),
+                         ("_u67_stage_chart_temp",1,0),("_u67_stage_chart_clocks",1,1)):
+        chart=tk.Canvas(charts,height=94,bg=t["bg"],highlightthickness=0,bd=0)
+        chart.grid(row=row,column=col,sticky="nsew",padx=4,pady=3)
+        setattr(self,name,chart)
+    self._u67_stage_chart_power=None
+    self._u67_stage_chart_voltage=None
+    for col in range(2):charts.grid_columnconfigure(col,weight=1)
+    hist=getattr(self,"_u67_hist",{}) or {}
+    for key in _U86_HISTORY_KEYS:hist.setdefault(key,[])
+    self._u67_hist=hist
+    self._u86_result_text=None
+    module=getattr(self,"_u86_module_context",None)
+    if module and not getattr(self,"_u86_suite_active",False):
+        row=tk.Frame(panel,bg=t["panel"],bd=0);row.pack(fill="x",padx=5,pady=(0,3))
+        self.make_button(row,"SKAN TEGO PODZESPOŁU",lambda m=module:_u86_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
+        self.make_button(row,"BENCHMARK ULTRA / MAX",lambda m=module:_u86_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
+        self.make_button(row,"SYMULATOR 3D TEGO PODZESPOŁU",lambda m=module:_u86_launch_component_test(self,m,"visual"),"good",side="left",ipady=4)
+        if module=="GPU":
+            self.make_button(row,"TEST VRAM",lambda:_u86_launch_component_test(self,"VRAM","benchmark"),"card",side="left",ipady=4)
+            self.make_button(row,"60 SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"good",side="left",ipady=4)
+        out=tk.Text(panel,height=3,wrap="word",bg=t["bg"],fg=t["fg"],insertbackground=t["fg"],
+            relief="flat",bd=0,font=("Consolas",8),padx=6,pady=4)
+        out.pack(fill="x",padx=5,pady=(0,4));out.configure(state="disabled");self._u86_result_text=out
+        _u86_render_component_report(self,module)
+    self._u67_hist=getattr(self,"_u67_hist",{}) or {}
+    _u105_refresh_visible_charts(self)
+    return panel
+
+def _u105_open_component_base(self,module,run_test=False,mode="scan"):
+    self.current_view="SIM3D_"+str(module);self.clear();t=self.colors()
+    title=_U68_COMPONENT_LABELS.get(str(module),str(module))
+    self.header_title.config(text=title+" — SYMULATOR TECHNICZNY 3D")
+    head=self.panel(self.content);head.pack(fill="x",pady=(0,4))
+    tk.Label(head,text=title.upper()+"  •  PODGLĄD 3D + LIVE TELEMETRIA",bg=t["panel"],fg=t["accent"],
+        font=self.fnt(11,"bold")).pack(anchor="w",padx=9,pady=(6,1))
+    tk.Label(head,text="Model animowany • dane pochodzą z dostępnych liczników Windows i sterowników • brak czujnika = N/D",
+        bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=9,pady=(0,5))
+    self._u68_sim_status=tk.Label(self.content,text="Gotowy — tryb "+str(mode).upper()+".",
+        bg=t["bg"],fg=t["accent"],font=self.fnt(9,"bold"),anchor="w")
+    self._u68_sim_status.pack(fill="x",padx=5,pady=(2,2))
+    try: screen_h=max(600,int(self.winfo_screenheight()))
+    except Exception: screen_h=900
+    canvas_h=max(220,min(420,int(screen_h*0.34)))
+    gauge_h=max(72,min(98,int(screen_h*0.09)))
+    chart_h=max(56,min(86,int(screen_h*0.08)))
+    self._u68_sim_canvas=tk.Canvas(self.content,height=canvas_h,bg=_U105_COLORS["bg"],highlightthickness=0,bd=0)
+    self._u68_sim_canvas.pack(fill="x",expand=True,padx=2,pady=(0,3))
+    self._u68_sim_canvas.bind("<Configure>",lambda _e:self.after_idle(lambda:_u105_draw_component_scene(self)))
+    gauges=tk.Frame(self.content,bg=t["bg"],bd=0);gauges.pack(fill="x",padx=2,pady=(0,1))
+    self._u105_sim_gauges={}
+    for i,key in enumerate(("cpu","ram","gpu","temp")):
+        gauge=tk.Canvas(gauges,width=136,height=gauge_h,bg=t["bg"],highlightthickness=0,bd=0)
+        gauge.grid(row=0,column=i,sticky="nsew",padx=8)
+        self._u105_sim_gauges[key]=gauge
+        gauges.grid_columnconfigure(i,weight=1)
+    hidden=tk.Frame(self.content,bg=t["bg"],bd=0)
+    self._u67_stage_values={}
+    self._u67_stage_values["cpu"]=tk.Label(hidden,text="N/D")
+    self._u67_stage_values["ram"]=tk.Label(hidden,text="N/D")
+    self._u67_stage_values["gpu"]=tk.Label(hidden,text="N/D")
+    self._u67_stage_values["gpu_temp"]=tk.Label(hidden,text="N/D")
+    specs=[("TEMP CPU","cpu_temp"),("ZEGAR CPU","cpu_clock"),("ZEGAR GPU","gpu_clock"),
+           ("DYSK ODCZYT","disk_read"),("DYSK ZAPIS","disk_write"),("NET ↓","net_down"),("NET ↑","net_up")]
+    strip=tk.Frame(self.content,bg=t["bg"],bd=0);strip.pack(fill="x",padx=6,pady=(0,3))
+    for i,(caption,key) in enumerate(specs):
+        cell=tk.Frame(strip,bg=t["bg"],bd=0);cell.grid(row=i//4,column=i%4,sticky="ew",padx=6,pady=1)
+        tk.Label(cell,text=caption,bg=t["bg"],fg=t["muted"],font=self.fnt(7,"bold"),anchor="w").pack(anchor="w")
+        value=tk.Label(cell,text="N/D",bg=t["bg"],fg=t["accent"],font=self.fnt(9,"bold"),anchor="w")
+        value.pack(anchor="w");self._u67_stage_values[key]=value
+    for c in range(4):strip.grid_columnconfigure(c,weight=1)
+    charts=tk.Frame(self.content,bg=t["bg"],bd=0);charts.pack(fill="x",padx=2,pady=(1,2))
+    self._u67_stage_chart_hw=tk.Canvas(charts,height=chart_h,bg=t["bg"],highlightthickness=0,bd=0)
+    self._u67_stage_chart_hw.grid(row=0,column=0,sticky="nsew",padx=4,pady=2)
+    self._u67_stage_chart_io=tk.Canvas(charts,height=chart_h,bg=t["bg"],highlightthickness=0,bd=0)
+    self._u67_stage_chart_io.grid(row=0,column=1,sticky="nsew",padx=4,pady=2)
+    for c in range(2):charts.grid_columnconfigure(c,weight=1)
+    self._u67_stage_chart_power=None;self._u67_stage_chart_temp=None
+    self._u67_stage_chart_voltage=None;self._u67_stage_chart_clocks=None
+    self._u67_hist=getattr(self,"_u67_hist",{}) or {}
+    for key in _U86_HISTORY_KEYS:self._u67_hist.setdefault(key,[])
+    _u105_draw_component_scene(self);_u105_draw_live_gauges(self)
+    try:self.after(350,lambda:_u68_sim_metrics_tick(self))
+    except Exception:pass
+    # The wrapping v4.3.73 controller removes only this legacy action row and inserts current controls above the model.
+    dummy=tk.Frame(self.content,bg=t["bg"],height=1,bd=0);dummy.pack(fill="x")
+    if run_test:
+        try:self.after(150,lambda m=module,md=mode:_u69_launch_component_test(self,m,md))
+        except Exception:pass
+
+_U105_ORIGINAL_REFRESH_VISIBLE_CHARTS=_u67_refresh_visible_charts
+def _u105_refresh_visible_charts(self):
+    _U105_ORIGINAL_REFRESH_VISIBLE_CHARTS(self)
+    try:
+        _u105_draw_live_gauges(self)
+        hist=getattr(self,"_u67_hist",{}) or {}
+        def draw(attr,series,maximum,title):
+            canvas=getattr(self,attr,None)
+            if canvas is not None and canvas.winfo_exists():
+                _u67_draw_history_chart(canvas,series,maximum,title,self)
+        draw("_u67_stage_chart_hw",{k:hist.get(k,[]) for k in ("cpu","ram","gpu")},100,"CPU / RAM / GPU  •  %")
+        io={k:hist.get(k,[]) for k in ("read","write","down","up")}
+        io_values=[v for items in io.values() for v in items]
+        draw("_u67_stage_chart_io",io,max([1.0]+io_values),"DYSK MB/s  •  SIEĆ Mbps")
+        draw("_u67_stage_chart_temp",{k:hist.get(k,[]) for k in ("cpu_temp","gpu_temp")},
+             max([100.0]+hist.get("cpu_temp",[])+hist.get("gpu_temp",[])),"TEMPERATURA °C")
+        clocks={k:hist.get(k,[]) for k in ("cpu_clock","gpu_clock")}
+        clock_values=[v for items in clocks.values() for v in items]
+        draw("_u67_stage_chart_clocks",clocks,max([1000.0]+clock_values),"ZEGARY MHz")
+    except Exception:
+        pass
+
+
+# GPU LIVE page uses the same DPI-safe radial presentation as the component workbench.
+_U105_ORIGINAL_GPU_PANEL = _u84_attach_gpu_live_panel
+_U105_ORIGINAL_GPU_TICK = _u84_gpu_live_tick
+
+def _u105_attach_gpu_panel(app):
+    _U105_ORIGINAL_GPU_PANEL(app)
+    for key,item in (getattr(app,"_u84_gpu_values",{}) or {}).items():
+        try:
+            _label,_canvas,_unit,_color=item
+            if _canvas is not None and _canvas.winfo_exists():
+                _canvas.configure(height=62,width=86,bg=_U105_COLORS["panel"],highlightthickness=0,bd=0)
+        except Exception:
+            pass
+
+def _u105_gpu_live_tick(app,schedule=True):
+    _U105_ORIGINAL_GPU_TICK(app,schedule=schedule)
+    values=getattr(app,"_u84_gpu_values",{}) or {}
+    telemetry=getattr(app,"_u84_gpu_last_telemetry",None) or {}
+    cache=getattr(app,"_u66_sensor_cache",{}) or {}
+    temps=cache.get("temps",{}) or {}
+    used=_u84_gpu_numeric(telemetry.get("vram_used_mb"))
+    total=_u84_gpu_numeric(telemetry.get("vram_total_mb"))
+    data={
+      "load":(_u84_gpu_numeric(telemetry.get("gpu_load_percent",getattr(app,"_gpu_util",None))),100.0,"%"),
+      "temp":(_u84_gpu_numeric(telemetry.get("temperature_c",temps.get("gpu_temp_c"))),110.0,"°C"),
+      "vram_used":(used,total or 8192.0,"MB"),
+      "vram_total":(total,total or 8192.0,"MB"),
+      "core_clock":(_u84_gpu_numeric(telemetry.get("gpu_clock_mhz")),3500.0,"MHz"),
+      "memory_clock":(_u84_gpu_numeric(telemetry.get("memory_clock_mhz")),3000.0,"MHz"),
+      "power":(_u84_gpu_numeric(telemetry.get("power_draw_w",telemetry.get("power_w",temps.get("gpu_power_w")))),500.0,"W"),
+      "fan":(_u84_gpu_numeric(telemetry.get("fan_speed_rpm",temps.get("gpu_fan_rpm"))),4000.0,"RPM")
+    }
+    captions={"load":"GPU LOAD","temp":"GPU TEMP","vram_used":"VRAM USED",
+      "vram_total":"VRAM TOTAL","core_clock":"CORE MHz","memory_clock":"MEM MHz",
+      "power":"GPU POWER","fan":"FAN RPM"}
+    for key,item in values.items():
+        try:
+            _label,canvas,unit,color=item
+            val,maximum,default_unit=data.get(key,(None,100.0,unit))
+            _u105_ring_gauge(canvas,captions.get(key,key.upper()),val,maximum,default_unit,color)
+        except Exception:
+            pass
+
+_u84_attach_gpu_live_panel=_u105_attach_gpu_panel
+_u84_gpu_live_tick=_u105_gpu_live_tick
+
+def _u105_recursive_code_names(code):
+    import types as _u105_types
+    names=set(code.co_names)
+    for item in code.co_consts:
+        if isinstance(item,_u105_types.CodeType):
+            names.update(_u105_recursive_code_names(item))
+    return names
+
+def _u105_selftest_visual_quality():
+    assert callable(_u105_draw_component_scene)
+    assert callable(_u105_open_component_base)
+    assert callable(_u105_ring_gauge)
+    names=_u105_recursive_code_names(_u105_draw_component_scene.__code__)
+    assert "create_polygon" in names and "create_oval" in names and "create_line" in names
+    assert "create_rectangle" not in names, "The new 3D renderer must not draw the model out of rectangles."
+    assert _U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR is _u105_open_component_base
+    assert _U105_PI > 3.14 and _U66_PI > 3.14
+    assert "max(640" not in _u105_draw_component_scene.__code__.co_consts
+    assert callable(_u105_attach_gpu_panel) and callable(_u105_gpu_live_tick)
+    assert "create_rectangle" not in _u105_gpu_live_tick.__code__.co_names
+    assert _u67_stage_live_panel is _u105_stage_live_panel
+    assert _u67_refresh_visible_charts is _u105_refresh_visible_charts
+    assert all(k in _u105_draw_component_scene.__code__.co_varnames for k in ("project","poly","path","ring","fan","chip"))
+    print("POLISHED_SIMULATOR_UI_SELFTEST_OK: technical component renderers, radial gauges, line charts, no bar/rectangle model")
+
+# Replace only the visual layer; keep the existing theme colors, module dispatch, tests and results.
+_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR=_u105_open_component_base
+_u68_draw_component_scene=_u105_draw_component_scene
+_u67_stage_live_panel=_u105_stage_live_panel
+_u67_refresh_visible_charts=_u105_refresh_visible_charts
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u105_selftest_visual_quality()
         _u104_selftest_speed_and_sensors()
         _u102_selftest_ram_visible_progress()
         _u100_selftest_adaptive_speed()
