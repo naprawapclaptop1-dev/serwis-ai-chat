@@ -5873,8 +5873,10 @@ def _u93_execute_catalog_test(app,module,test_id,kind,settings):
         _u93_remove_old_results(app,["GPU","GPU_WINSAT"]);app._gpu_test()
         result=_u93_existing_result(app,["GPU","GPU_WINSAT"]) or {"state":"warn","message":"Skan GPU nie zwrócił raportu."};keys=["GPU","GPU_WINSAT"]
     elif kind=="gpu_scene":
-        scene=max(1,min(len(_U66_SCENES),int(settings.get("scene_id",1) or 1)))
+        scene=_u108_catalog_scene_id(test_id,settings.get("scene_id",1))
         result=_u66_execute_gpu_scene(app,scene,max(3,min(60,int(settings.get("gpu_seconds",10) or 10))))
+        result["catalog_test_id"]=str(test_id)
+        result["catalog_scene_title"]=_U100_SCENE_TITLES[scene-1]
         keys=["3D_SCENE_"+str(scene)]
     elif kind in ("gpu_suite10","gpu_suite30","gpu_suite60"):
         result=_u88_run_3d_suite(app,{"gpu_suite10":10,"gpu_suite30":30,"gpu_suite60":60}[kind]);keys=["3D_SUITE"]
@@ -6192,9 +6194,15 @@ def _u93_show_test_detail(app,module,test_id):
         drives=_u69_drive_options(app);app._u93_drive_var=tk.StringVar(value=drives[0] if drives else "N/D")
         ttk.Combobox(settings,textvariable=app._u93_drive_var,values=drives or ("N/D",),state="readonly",width=10).pack(side="left",padx=4)
     if kind=="gpu_scene":
-        names=[f"{i:02d} — {scene[0]}" for i,scene in enumerate(_U66_SCENES,1)]
-        app._u93_scene_var=tk.StringVar(value=names[0])
-        ttk.Combobox(settings,textvariable=app._u93_scene_var,values=names,state="readonly",width=30).pack(side="left",padx=4)
+        names=[f"{i:02d} — {title}" for i,title in enumerate(_U100_SCENE_TITLES,1)]
+        if str(test_id).startswith("gpu_scene_"):
+            fixed_scene=_u108_catalog_scene_id(test_id,1)
+            app._u93_scene_var=tk.StringVar(value=names[fixed_scene-1])
+            tk.Label(settings,text=f"SCENA TESTOWA {fixed_scene:02d}/90 — {_U100_SCENE_TITLES[fixed_scene-1]}",
+                bg=t["bg"],fg=t["good"],font=app.fnt(9,"bold")).pack(side="left",padx=5)
+        else:
+            app._u93_scene_var=tk.StringVar(value=names[0])
+            ttk.Combobox(settings,textvariable=app._u93_scene_var,values=names,state="readonly",width=30).pack(side="left",padx=4)
     box=app.panel(app.content);box.pack(fill="both",expand=True,pady=(0,5))
     app._u93_detail_status=tk.Label(box,text="GOTOWY — wybrano jeden test.",bg=t["panel"],fg=t["muted"],font=app.fnt(9,"bold"),anchor="w")
     app._u93_detail_status.pack(fill="x",padx=10,pady=(7,3))
@@ -6212,8 +6220,12 @@ def _u93_show_test_detail(app,module,test_id):
     elif kind=="camera_preview":app.make_button(row,"URUCHOM PODGLĄD 10 S",lambda:_u93_start_camera_preview(app),"accent",side="left",ipady=5)
     elif kind=="screen_patterns":app.make_button(row,"OTWÓRZ TEST WZORCÓW MATRYCY",lambda:_u93_start_screen_patterns(app,test_id),"accent",side="left",ipady=5)
     else:
-        app.make_button(row,"URUCHOM TEN TEST",lambda:_u93_start_catalog_test(app,module,test_id,title,kind),"accent",side="left",ipady=5)
-        app.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+        if kind=="gpu_scene":
+            app.make_button(row,"URUCHOM RZECZYWISTY BENCHMARK OPENGL TEJ SCENY",
+                lambda:_u93_start_catalog_test(app,module,test_id,title,kind),"accent",side="left",ipady=5)
+        else:
+            app.make_button(row,"URUCHOM TEN TEST",lambda:_u93_start_catalog_test(app,module,test_id,title,kind),"accent",side="left",ipady=5)
+            app.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
     if kind not in ("keyboard_input","sim","games","camera_preview","screen_patterns"):
         app.make_button(row,"STOP TEST",app.stop_current_test,"bad",side="left",ipady=5)
     nav=tk.Frame(app.content,bg=t["bg"]);nav.pack(fill="x")
@@ -6279,7 +6291,11 @@ def _u93_selftest_catalog_routing():
         assert entries,f"Pusty katalog {module}"
         for test_id,title,description,kind in entries:
             ids.append(test_id);kinds.add(kind);assert title and description
-    assert len(ids)==70 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
+    assert len(ids)==159 and len(set(ids))==159,"Katalog powinien mieć 159 unikalnych testów"
+    gpu_scene_rows=[entry for entry in _U93_TEST_CATALOG.get("GPU",[]) if str(entry[0]).startswith("gpu_scene_")]
+    assert len(gpu_scene_rows)==90,"GPU musi mieć 90 niezależnych wpisów scen OpenGL"
+    assert [int(entry[0].rsplit("_",1)[-1]) for entry in gpu_scene_rows]==list(range(1,91))
+    assert len({entry[1] for entry in gpu_scene_rows})==90
     assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
     assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
     assert AppV43.show_component_lab is _u93_show_lab
@@ -6293,7 +6309,7 @@ def _u93_selftest_catalog_routing():
         detail_names.update(_u93_deep_code_names(original_detail))
     assert "_u93_start_catalog_test" in detail_names
     assert "_u93_execute_catalog_test" in _u93_deep_code_names(_u93_finish_test_worker)
-    print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 70 unique tests, isolated detail screen and real operation dispatcher")
+    print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 159 unique tests, including 90 fixed-ID unique OpenGL scene benchmarks")
 
 AppV43.show_component_lab = _u93_show_lab
 
@@ -10240,6 +10256,50 @@ _u100_measure_speed=_u106_measure_speed
 _u90_measure_speed=_u106_measure_speed
 _u66_measure_speed=_u106_measure_speed
 
+def _u108_catalog_scene_id(test_id, selected_scene=1):
+    """A named catalog scene always resolves to its own fixed scene ID (1..90)."""
+    scene=selected_scene
+    try:
+        ident=str(test_id or "")
+        if ident.startswith("gpu_scene_"):
+            scene=int(ident.rsplit("_",1)[-1])
+        else:
+            scene=int(selected_scene or 1)
+    except Exception:
+        scene=1
+    return max(1,min(90,int(scene)))
+
+def _u108_expand_gpu_scene_catalog():
+    gpu=_U93_TEST_CATALOG.get("GPU",[])
+    if any(str(item[0]).startswith("gpu_scene_") for item in gpu):
+        return
+    # Replace the old generic scene picker with 90 independent, individually named tests.
+    gpu[:]=[item for item in gpu if item[0]!="gpu_scene"]
+    if len(_U100_SCENE_TITLES)!=90 or len(_U66_SCENES)!=90:
+        raise AssertionError("OpenGL catalog expansion requires exactly 90 defined scenes.")
+    for number,scene_title in enumerate(_U100_SCENE_TITLES,1):
+        ident=f"gpu_scene_{number:02d}"
+        gpu.append((ident,
+            f"GPU OpenGL — Scena {number:02d}: {scene_title}",
+            f"Niezależny pomiar rzeczywistego FPS/klatek dla sceny {number:02d}: {scene_title}. Scena jest przypisana do tego ID i nie uruchomi sceny nr 1 zamiast wybranej.",
+            "gpu_scene"))
+
+def _u108_selftest_gpu_scene_catalog():
+    rows=[item for item in _U93_TEST_CATALOG.get("GPU",[]) if str(item[0]).startswith("gpu_scene_")]
+    assert len(rows)==90
+    assert [int(item[0].rsplit("_",1)[-1]) for item in rows]==list(range(1,91))
+    assert len({item[1] for item in rows})==90
+    for item in rows:
+        scene=_u108_catalog_scene_id(item[0],1)
+        assert scene==int(item[0].rsplit("_",1)[-1])
+        assert item[3]=="gpu_scene"
+        assert item[1].endswith(_U100_SCENE_TITLES[scene-1])
+    assert _u108_catalog_scene_id("gpu_scene_37",1)==37
+    assert _u108_catalog_scene_id("gpu_scene_90",1)==90
+    print("GPU_SCENE_CATALOG_SELFTEST_OK: 90 unique scene IDs mapped 1:1 to 90 distinct OpenGL scene titles")
+
+_u108_expand_gpu_scene_catalog()
+
 def _u107_selftest_sensor_source_merge():
     bridge=[
         {"hardware":"CPU Package","sensor":"CPU Package","sensorType":"Temperature","value":72.0,"unit":"°C","source":"bridge"},
@@ -10320,6 +10380,7 @@ def _u106_selftest_adaptive_speed_payloads():
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u108_selftest_gpu_scene_catalog()
         _u107_selftest_sensor_source_merge()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
