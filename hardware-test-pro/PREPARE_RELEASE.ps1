@@ -1749,7 +1749,10 @@ def _u55_selftest_service_center():
     assert callable(_u107_detect_windows_installations)
     assert callable(_u107_confirm_and_run) and callable(_u107_bcd_backup_path)
     center_constants=repr(AppV43.show_service_center.__code__.co_consts)
-    assert "OFFLINE / BCD / WINRE" in center_constants
+    offline_constants=repr(_u107_add_offline_tab.__code__.co_consts)
+    assert "_u107_add_offline_tab" in AppV43.show_service_center.__code__.co_names
+    assert "OFFLINE / BCD / WINRE" in offline_constants
+    assert "DISM OFFLINE /RESTOREHEALTH" in offline_constants
     assert "SYSTEM REPAIR PRO" in center_constants and "SERWIS ULTIMATE" in center_constants
     # The Windows discovery routine is read-only and searches for the SOFTWARE hive marker.
     assert "System32" in repr(_u107_detect_windows_installations.__code__.co_consts)
