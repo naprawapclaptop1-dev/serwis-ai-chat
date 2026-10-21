@@ -13912,7 +13912,18 @@ def _u122_show_repair_knowledge(app):
         status.set("Ułożono szkic lekcji na podstawie "+str(len(matches))+" lokalnych źródeł. Zweryfikuj procedury przed naprawą.")
     app.make_button(query_row,"SZUKAJ",run_search,"accent",side="left",ipady=4)
     tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=3)
+    def open_source():
+        selection=results.selection()
+        item=found.get(selection[0]) if selection else None
+        if not item:
+            messagebox.showinfo("Źródło wiedzy","Zaznacz wynik wyszukiwania.");return
+        path=item.get("source_path","")
+        try:
+            if _u122_os.path.isfile(path) and hasattr(_u122_os,"startfile"):_u122_os.startfile(path)
+            else:messagebox.showinfo("Źródło wiedzy",path or "Nie zapisano ścieżki źródłowej.")
+        except Exception as exc:messagebox.showerror("Źródło wiedzy",str(exc))
     app.make_button(tools,"IMPORTUJ DOKUMENTY",import_files,"good",side="left",ipady=4)
+    app.make_button(tools,"OTWÓRZ ŹRÓDŁO",open_source,"card",side="left",ipady=4)
     app.make_button(tools,"UŁÓŻ LEKCJĘ",make_lesson,"accent",side="left",ipady=4)
     app.make_button(tools,"WYCZYŚĆ INDEKS",clear_knowledge,"card",side="left",ipady=4)
     app.make_button(tools,"← LABORATORIUM",app.show_component_lab,"card",side="right",ipady=4)
