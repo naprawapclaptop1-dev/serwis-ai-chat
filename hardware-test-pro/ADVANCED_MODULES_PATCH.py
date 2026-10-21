@@ -11466,7 +11466,7 @@ def _u109_service_probe(app, module, test_id, settings):
                 state="warn";warnings.append("Wyjście WinRE/BCD zawiera komunikat błędu; wymagany jest przegląd szczegółów.")
         if test_id=="sr_network_services" and not int(result.get("adapter_count",0) or 0) and not result.get("services"):
             state="warn";warnings.append("Nie uzyskano informacji o kartach ani usługach sieciowych.")
-        if test_id=="sr_component_store" and int(result.get("dism_exit_code",-1) or 0)!=0:
+        if test_id=="sr_component_store" and (result.get("dism_exit_code") is None or int(result.get("dism_exit_code",-1))!=0):
             state="warn";warnings.append("DISM /CheckHealth zwrócił kod inny niż 0; odczytaj szczegóły wyniku.")
         if test_id=="su_hardware_inventory" and not any(result.get(key) for key in ("cpu","gpu","ram","motherboard","bios")):
             state="warn";warnings.append("Nie uzyskano danych inwentarza sprzętu.")
