@@ -8437,8 +8437,388 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                 gl.glVertex3f(x-.1,y+.03,z-.08-rng.random()*.25)
             gl.glEnd();budget["vertices"]+=count*3
 
+        def draw_unique_scene_60_90(scene_id):
+            # 31 individual geometry recipes. No family selector that reuses a shared shape.
+            if scene_id==60:  # Endurance core: gear train, rotor cage and dense surface mesh
+                sphere(0,0,0,.62,(.05,.24,.48),18,28)
+                for i in range(9):
+                    gl.glPushMatrix();gl.glRotatef(i*20,1,.35,.65)
+                    torus(.82+i*.17,.035+.004*(i%3),palette[i%6],54+i*3,8)
+                    gl.glPopMatrix()
+                for i in range(11):
+                    a=2*_m.pi*i/11
+                    gear(1.8*_m.cos(a),.25*_m.sin(2*a),1.8*_m.sin(a),.19+(i%3)*.035,9+i%5,palette[(i+2)%6])
+                mesh_triangles(1700,2);points_cloud(1500,1)
+            elif scene_id==61:  # Cyclone column: narrow chimney and helical wall
+                for layer in range(22):
+                    f=layer/21;r=.20+1.18*f
+                    gl.glPushMatrix();gl.glTranslatef(0,-2.5+5*f,0);gl.glRotatef(layer*24,0,1,0)
+                    torus(r,.04,(.10,.34+.018*layer,.72+.008*layer),46,7);gl.glPopMatrix()
+                for strand in range(7):
+                    pts=[]
+                    for j in range(300):
+                        f=j/299;a=f*2*_m.pi*4+strand*2*_m.pi/7
+                        r=.18+1.24*f
+                        pts.append((r*_m.cos(a),-2.5+5*f,r*_m.sin(a)))
+                    line_strip(pts,palette[strand%6],.95)
+                points_cloud(560,1)
+            elif scene_id==62:  # Tornado funnel: inverted cone of nested horizontal rings
+                for layer in range(31):
+                    f=layer/30;r=.22+1.92*(1-f)**.82
+                    gl.glPushMatrix();gl.glTranslatef(.14*_m.sin(layer*.43),2.2-4.4*f,0)
+                    gl.glRotatef(layer*9,0,1,0);torus(r,.033,(.14,.30+.012*layer,.62+.009*layer),38,6);gl.glPopMatrix()
+                for arm in range(4):
+                    pts=[]
+                    for j in range(260):
+                        f=j/259;a=f*2*_m.pi*5+arm*2*_m.pi/4;r=.22+1.92*(1-f)**.82
+                        pts.append((r*_m.cos(a),2.2-4.4*f,r*_m.sin(a)))
+                    line_strip(pts,palette[arm],1.3)
+                points_cloud(900,0)
+            elif scene_id==63:  # Horizontal vortex: tilted disk, radial spokes and eye
+                for layer in range(15):
+                    r=.22+layer*.13
+                    gl.glPushMatrix();gl.glRotatef(52+layer*4,1,.1,.2)
+                    torus(r,.03,palette[layer%6],50,7);gl.glPopMatrix()
+                for i in range(54):
+                    a=i*2*_m.pi/54
+                    line((.25*_m.cos(a),.1*_m.sin(a),.25*_m.sin(a)),
+                         (2.15*_m.cos(a),.1*_m.sin(a*3),2.15*_m.sin(a)),palette[i%6],.65)
+                sphere(0,0,0,.24,(.70,.82,.96),12,18)
+            elif scene_id==64:  # Rain field: isolated vertical precipitation and impact rings
+                for i in range(7):
+                    sphere(-2.4+i*.8,1.65,.5*_m.sin(i),.43,(.055,.09,.17),9,13)
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+                for i in range(440):
+                    x=-2.8+(i%44)*.13;z=-2.4+((i*17)%39)*.125;y=1.8+((i*7)%23)*.09
+                    gl.glColor3f(.16,.42,.82);gl.glVertex3f(x,y,z);gl.glVertex3f(x-.025,y-.24,z+.01)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                for i in range(12):
+                    gl.glPushMatrix();gl.glTranslatef(-2.25+(i%4)*1.5,-1.62,-1.6+(i//4)*1.45)
+                    gl.glScalef(1,.06,.72);torus(.23,.045,(.04,.22,.43),24,6);gl.glPopMatrix()
+            elif scene_id==65:  # Squall wall: long storm shelf and slanted wind bands
+                for i in range(20):
+                    x=-2.9+i*.30;y=1.38+.18*_m.sin(i*.65);z=.18*_m.cos(i*.42)
+                    sphere(x,y,z,.40+(i%4)*.055,(.055,.085,.15),8,12)
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+                for i in range(760):
+                    x=-3+(i%61)*.1;y=1.75-((i*7)%47)*.075;z=-2.45+((i*19)%49)*.1
+                    gl.glColor3f(.11,.38+.07*(i%4),.86)
+                    gl.glVertex3f(x,y,z);gl.glVertex3f(x-.22,y-.31,z+.06)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                for band in range(7):
+                    y=-1.35+band*.22
+                    line_strip([(-3,y+.07*_m.sin(i*.28+band),-2.4+i*.064) for i in range(88)],(.10,.29,.48),.8)
+            elif scene_id==66:  # Monsoon spiral: nested rising vortices and dense rain streaks
+                for strand in range(11):
+                    pts=[]
+                    for j in range(210):
+                        f=j/209;a=f*2*_m.pi*3.2+strand*.47;r=.42+1.82*f
+                        pts.append((r*_m.cos(a),-1.55+strand*.30+.22*_m.sin(a*1.4),r*_m.sin(a)))
+                    line_strip(pts,(.045,.29+.025*strand,.68+.02*strand),.9)
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_LINES)
+                for i in range(1000):
+                    x=-3+(i%65)*.092;y=2.55-((i*17)%79)*.062;z=-2.6+((i*29)%57)*.092
+                    gl.glColor3f(.16,.47,.91);gl.glVertex3f(x,y,z);gl.glVertex3f(x-.16,y-.22,z+.12)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+                points_cloud(560,2)
+            elif scene_id==67:  # Flooded city grid: vertical buildings, street canyons and water plane
+                for x in range(-4,5):
+                    for z in range(-3,4):
+                        h=.28+(((x*13+z*7)%11)+11)%11*.145
+                        box(x*.57,h/2,z*.62,.37,h,.39,(.045,.10,.19))
+                        for row in range(1,max(2,int(h*4))):
+                            if (x+z+row)%2==0:box(x*.57+.19,row*.14,z*.62+.08,.018,.045,.025,(.07,.76,.98))
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_QUADS)
+                for row in range(24):
+                    z0=-2.7+row*.225;z1=z0+.225
+                    for col in range(34):
+                        x0=-2.8+col*.165;x1=x0+.165
+                        for x,z in ((x0,z0),(x1,z0),(x1,z1),(x0,z1)):
+                            y=-1.05+.06*_m.sin(x*2.2+z*1.3)
+                            gl.glColor3f(.015,.22+.025*row,.55+.04*_m.sin(col+row));gl.glVertex3f(x,y,z)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING);budget["vertices"]+=24*34*4
+            elif scene_id==68:  # Suspension bridge over a river: pylons, stays and moving channel
+                for x in (-2.35,-1.55,-.75,.05,.85,1.65,2.45):
+                    box(x,.32,0,.62,.18,2.55,(.22,.29,.37))
+                    box(x,-.15,-.18,.12,1.25,.14,(.42,.49,.57))
+                    box(x,-.15,.18,.12,1.25,.14,(.42,.49,.57))
+                for x in (-1.85,1.85):
+                    box(x,.97,0,.16,2.0,.16,(.55,.64,.72))
+                    for i in range(15):
+                        xx=-2.5+i*.36
+                        line((x,.95,0),(xx,.43,.08*_m.sin(i)),(.57,.70,.86),.75)
+                for lane in range(18):
+                    z=-1.55+lane*.18
+                    line_strip([(-2.9+i*.048,-.66+.10*_m.sin(i*.18+lane*.39),z) for i in range(121)],
+                               (.01,.30+.025*lane,.78),.9)
+                for i in range(80):
+                    x=-2.65+(i*17%101)*5.3/100;z=-1.42+(i*13%16)*.18
+                    sphere(x,-.60+.035*_m.sin(i),z,.025+(i%3)*.006,(.45,.80,.97),5,7)
+            elif scene_id==69:  # Tsunami front: rising wave wall in front of a coastal skyline
+                for i in range(24):
+                    x=-2.7+(i%8)*.76;z=-2.3+(i//8)*.88;h=.35+((i*7)%9)*.145
+                    box(x,h/2,z,.43,h,.44,(.11,.20,.31))
+                    for j in range(max(1,int(h*3))):
+                        box(x-.12+(j%2)*.20,.18+j*.16,z+.23,.035,.045,.02,(.9,.61,.17))
+                for layer in range(27):
+                    y=-1.05+layer*.09;pts=[]
+                    for i in range(181):
+                        x=-2.9+i*5.8/180
+                        z=.25+.36*_m.sin(x*1.85+layer*.13)+.16*_m.sin(x*3.2-layer*.25)
+                        pts.append((x,y+.19*_m.sin(x*1.2+layer*.3),z))
+                    line_strip(pts,(.01,.23+.015*layer,.66+.008*layer),.9)
+                points_cloud(720,0)
+            elif scene_id==70:  # Single lightning strike: one bolt, shelf cloud and ground flash
+                for i in range(10):
+                    sphere(-2.6+i*.52,1.55+.12*_m.sin(i),-.35+.18*_m.cos(i),.40,(.055,.09,.16),8,12)
+                bolt=[(.35,1.62,0),(.10,1.08,.06),(.48,.72,.13),(-.04,.14,.10),(.18,-.32,.16),(-.14,-.92,.12),(.02,-1.42,.12)]
+                line_strip(bolt,(.65,.85,1.0),2.8)
+                line_strip([bolt[2],(.88,.47,.2),(1.08,.09,.26)],(.38,.68,1.0),1.5)
+                sphere(.02,-1.4,.12,.20,(.34,.63,1.0),8,12)
+            elif scene_id==71:  # Forked lightning: three branching discharge trees
+                for i in range(23):
+                    sphere(-2.8+(i%12)*.51,1.39+(i%4)*.10,-.92+(i//12)*.85,.38,(.05,.08,.16),8,11)
+                for j in range(3):
+                    x=-1.35+j*1.35;z=-.2+j*.31
+                    pts=[(x,1.48,z),(x-.18,1.03,z+.03),(x+.16,.66,z+.09),(x-.22,.23,z+.14),(x+.06,-.17,z+.11),(x-.14,-.64,z+.18)]
+                    line_strip(pts,(.67,.86,1.0),2.0)
+                    line_strip([pts[2],(x+.53,.46,z+.20),(x+.72,.12,z+.28)],(.48,.72,1.0),1.25)
+                    line_strip([pts[4],(x-.54,-.34,z+.24),(x-.78,-.6,z+.30)],(.44,.70,1.0),1.1)
+                for x in (-2,0,2):box(x,-1.55,.22,.5,.08,.48,(.07,.10,.16))
+            elif scene_id==72:  # Supercell storm: rotating cloud vortex, electrical lattice and charged particles
+                for layer in range(13):
+                    r=.34+layer*.135
+                    gl.glPushMatrix();gl.glTranslatef(.12*_m.sin(layer*.7),1.15-layer*.19,0)
+                    gl.glRotatef(layer*19,0,1,0);torus(r,.10,(.06,.09,.17),44,9);gl.glPopMatrix()
+                for j in range(9):
+                    x=-2.5+j*.62;z=-.85+.16*(j%3)
+                    pts=[(x,1.16,z),(x-.15,.68,z+.07),(x+.19,.27,z+.14),(x-.2,-.10,z+.20),(x+.10,-.68,z+.12)]
+                    line_strip(pts,(.66,.83,1.0),1.2+(j%4)*.35)
+                    line_strip([pts[1],(x-.57,.42,z+.30),(x-.76,.08,z+.34)],(.39,.65,1.0),.9)
+                points_cloud(1400,2)
+            elif scene_id==73:  # Oval circuit: elevated tarmac, curb stripes and grandstands
+                torus(2.05,.19,(.12,.14,.16),92,12)
+                torus(2.05,.03,(.92,.92,.86),100,5);torus(2.38,.05,(.93,.13,.05),100,5)
+                for i in range(72):
+                    a=2*_m.pi*i/72;x=2.86*_m.cos(a);z=2.86*_m.sin(a)
+                    box(x,.15,z,.10,.20,.12,(.22,.25,.32))
+                for row in range(5):
+                    box(-2.48,.15+row*.22,-2.28-row*.04,4.8,.12,.30,(.14,.20,.28))
+                    for i in range(18):
+                        box(-4.5*.35+i*.26,.27+row*.22,-2.44-row*.04,.09,.07,.06,palette[(i+row)%6])
+            elif scene_id==74:  # Figure-eight raceway: crossed loops, bridges and tire barriers
+                for scale in (1.0,.82,.64,.46):
+                    pts=[]
+                    for i in range(861):
+                        t=i/860*2*_m.pi
+                        pts.append((2.2*_m.sin(t),.04*scale,1.65*_m.sin(t)*_m.cos(t)*2*scale))
+                    line_strip(pts,(.18+.06*scale,.23,.31),3.2*scale)
+                for i in range(42):
+                    a=i*2*_m.pi/42
+                    box(2.24*_m.sin(a),.16,1.68*_m.sin(a)*_m.cos(a)*2,.095,.26,.10,(.91,.33,.04))
+                for x in (-1.6,0,1.6):
+                    box(x,.38,-.12,.12,.72,.15,(.4,.47,.55))
+                    box(x,.77,-.12,.55,.08,.4,(.65,.7,.76))
+            elif scene_id==75:  # Pit lane: parallel lanes, box garages and overhead pit gantry
+                for lane in range(5):
+                    z=-1.65+lane*.68
+                    box(0,-.12,z,5.7,.12,.58,(.12,.15,.19))
+                    line_strip([(-2.85,.0,z),(2.85,.0,z)],(.82,.84,.88),.85)
+                for i in range(12):
+                    x=-2.6+i*.47
+                    box(x,.35,-2.14,.34,.70,.28,(.09,.16,.26))
+                    box(x,.38,-1.97,.23,.18,.018,palette[i%6])
+                    box(x,1.3,-1.4,.07,.07,.07,(.2,.88,1.0))
+                for x in (-1.85,1.85):
+                    box(x,1.42,0,.10,.95,2.4,(.5,.58,.66))
+                box(0,2.1,0,3.8,.10,.14,(.08,.82,1.0))
+            elif scene_id==76:  # Drift arena: interlaced skid marks, tire stacks and smoke field
+                for scale in (1.0,.76,.51):
+                    pts=[]
+                    for i in range(760):
+                        t=i/759*2*_m.pi
+                        pts.append((2.1*_m.sin(t),.02,.78*_m.sin(2*t)*2*scale))
+                    line_strip(pts,(.26+.03*scale,.32,.39),3.6*scale)
+                for i in range(20):
+                    x=2.0*_m.sin(i*2*_m.pi/20);z=1.55*_m.sin(i*2*_m.pi/20)*_m.cos(i*2*_m.pi/20)*2
+                    for j in range(3):torus(.10,.032,(.035,.04,.05),12,5)
+                    box(x,.12,z,.16,.24,.12,(.92,.31,.04))
+                points_cloud(460,1)
+            elif scene_id==77:  # Rally hairpin: elevated switchbacks, gravel berms and gates
+                for layer in range(4):
+                    y=-1.1+layer*.55;pts=[]
+                    for i in range(321):
+                        t=i/320*2*_m.pi
+                        x=(1.15+layer*.34)*_m.cos(t);z=(1.15+layer*.34)*_m.sin(t)
+                        pts.append((x,y+.15*_m.sin(t*3+layer),z))
+                    line_strip(pts,(.22,.24,.22),4.0-layer*.45)
+                for i in range(40):
+                    x=-2.6+(i%10)*.56;z=-2.15+(i//10)*.52
+                    h=.15+((i*11)%7)*.065;box(x,h/2,z,.22,h,.28,(.22,.18,.13))
+                for side in (-1,1):
+                    for i in range(12):
+                        box(side*2.42,.14,-2.4+i*.43,.13,.27,.18,(.65,.61,.48))
+            elif scene_id==78:  # Mountain rally stage: high road, switchbacks, cliff walls and markers
+                terrain(62,1)
+                for level in range(5):
+                    y=-1.2+level*.55;pts=[]
+                    for i in range(241):
+                        t=i/240*2*_m.pi
+                        r=1.55+.15*_m.sin(level*2+t)
+                        pts.append((r*_m.cos(t+level*.32),y,r*_m.sin(t+level*.32)))
+                    line_strip(pts,(.32,.29,.22),3.0)
+                for i in range(26):
+                    x=-2.7+(i%9)*.66;z=-2.2+(i//9)*.7;h=.28+((i*5)%8)*.12
+                    crystal(x,h,z,.16+(i%3)*.04,(.28,.30,.25))
+                for i in range(30):
+                    x=-2.5+(i%10)*.55;z=-2.45+(i//10)*.78
+                    box(x,.12,z,.06,.24,.06,(.92,.77,.20))
+            elif scene_id==79:  # Off-road obstacle field: rocks, ramps, gates and coarse ground
+                terrain(54,2)
+                for i in range(65):
+                    x=-2.75+(i*17%101)*5.5/100;z=-2.55+(i*31%97)*5.1/96
+                    crystal(x,-.12+(i%5)*.06,z,.10+(i%6)*.055,(.22+.018*(i%4),.22,.23))
+                for lane in range(4):
+                    z=-1.8+lane*1.05
+                    box(0,-.05,z,5.2,.12,.10,(.48,.40,.25))
+                    for i in range(9):
+                        box(-2.3+i*.58,.10,z+.12,.10,.20,.08,(.82,.61,.21))
+            elif scene_id==80:  # Rally jump: two launch ramps, distance gates and landing zone
+                for ramp in (-1.5,1.5):
+                    gl.glPushMatrix();gl.glTranslatef(ramp,-.55,0);gl.glRotatef(-18 if ramp<0 else 18,0,0,1)
+                    box(0,0,0,1.2,.18,2.0,(.25,.24,.20))
+                    for i in range(8):
+                        box(-.52+i*.15,.10,.0,.045,.08,1.6,(.73,.68,.55))
+                    gl.glPopMatrix()
+                for gate in range(9):
+                    x=-2.6+gate*.65
+                    box(x,.45,0,.06,.90,2.5,(.12,.58,.88))
+                    box(x,.92,0,.16,.07,2.5,(.12,.84,1.0))
+                for i in range(28):
+                    x=-2.8+(i%14)*.42;z=-1.25+(i//14)*2.5
+                    sphere(x,-.15,z,.10,(.30,.31,.32),6,9)
+            elif scene_id==81:  # Night F1 oval: neon curbs, light poles and pit buildings
+                torus(2.10,.16,(.025,.045,.09),96,12)
+                torus(2.10,.024,(.02,.86,1.0),100,5);torus(2.44,.032,(.99,.07,.25),100,5)
+                for i in range(30):
+                    a=2*_m.pi*i/30;x=2.85*_m.cos(a);z=2.85*_m.sin(a)
+                    box(x,.42,z,.045,.75,.045,(.05,.38,.72))
+                    sphere(x,.84,z,.07,(.10,.82,1.0),6,8)
+                for i in range(10):
+                    x=-2.7+i*.58;box(x,.32,-2.35,.45,.64,.32,(.08,.12,.20))
+                    box(x,.36,-2.18,.25,.22,.018,(.02,.65,1.0))
+            elif scene_id==82:  # Urban street circuit: canyon buildings around right-angle roads
+                for x in (-2.35,-1.55,-.75,.05,.85,1.65,2.45):
+                    for z in (-2.25,-1.15,.0,1.15,2.25):
+                        h=.45+((int((x+3)*17)+int((z+3)*13))%7)*.22
+                        box(x,h/2,z,.36,h,.38,(.055,.09,.16))
+                        for row in range(max(1,int(h*3))):
+                            if row%2==0:box(x+.185,row*.15,z+.07,.018,.045,.025,(.06,.65,.95))
+                box(0,-.17,0,5.5,.10,1.2,(.13,.15,.18))
+                box(0,-.17,0,1.2,.10,5.5,(.13,.15,.18))
+                for i in range(20):
+                    a=i*.31;x=2.1*_m.cos(a);z=2.1*_m.sin(a)
+                    box(x,.05,z,.20,.12,.18,(.75,.13,.08))
+            elif scene_id==83:  # F1 gantry course: crossing track, elevated bridges and LED panels
+                torus(1.85,.13,(.09,.12,.16),76,10)
+                torus(1.85,.026,(.1,.78,1.0),80,5)
+                for level in range(3):
+                    gl.glPushMatrix();gl.glTranslatef(0,-.42+level*.42,0);gl.glRotatef(90 if level%2 else 0,0,1,0)
+                    box(0,0,0,4.8,.08,.16,(.42,.48,.56))
+                    for i in range(18):box(-2.2+i*.26,.10,0,.09,.12,.04,palette[(i+level)%6])
+                    gl.glPopMatrix()
+                for x in (-2.0,2.0):
+                    for z in (-1.0,1.0):box(x,.48,z,.10,1.0,.10,(.1,.42,.7))
+            elif scene_id==84:  # Snow mountains: three jagged ridge lines and frozen rock columns
+                terrain(58,0)
+                for ridge in range(7):
+                    pts=[]
+                    for i in range(81):
+                        x=-3+i*.075;peak=1.55+.42*_m.sin(i*.37+ridge*.8)
+                        pts.append((x,-.2+ridge*.55,peak-.7*abs(_m.sin(i*.22+ridge))))
+                    line_strip(pts,(.54,.70,.86),1.2)
+                for i in range(32):
+                    x=-2.7+(i%8)*.75;z=-2.2+(i//8)*.66
+                    crystal(x,.1+(i%3)*.12,z,.17+(i%4)*.04,(.57,.74,.88))
+            elif scene_id==85:  # Snow forest: branch-like trees with layered snow caps
+                for i in range(17):
+                    x=(i%6-2.5)*.9;z=(i//6-1)*1.05;height=.8+(i%4)*.22
+                    tree_branch(x,-1.2,z,height,((i%3)-1)*.08,5+(i%3),i%3)
+                    sphere(x,.8+(i%3)*.25,z,.20,(.78,.88,.98),7,10)
+                for i in range(45):
+                    x=-2.8+(i*19%101)*5.6/100;z=-2.3+(i*13%71)*4.6/70
+                    sphere(x,-.85+(i%6)*.07,z,.08,(.68,.82,.94),5,7)
+            elif scene_id==86:  # Ice cavern: faceted crystal pillars, ceiling stalactites and floor facets
+                for i in range(11):
+                    x=-2.7+i*.54;z=-1.0+.65*_m.sin(i*.75);h=.9+(i%5)*.35
+                    crystal(x,-.65+h*.42,z,.20+(i%3)*.05,(.20,.55,.82))
+                    crystal(x,h*.36,z,.16+(i%4)*.04,(.66,.85,1.0))
+                    crystal(x,1.85,z,.12+(i%3)*.035,(.32,.69,.94))
+                for i in range(15):
+                    gl.glPushMatrix();gl.glTranslatef(-2.8+(i%8)*.8,-1.2+(i//8)*1.35,-1.6+(i%4)*.9)
+                    gl.glScalef(1,.18,1);torus(.32+i*.02,.035,(.11,.40,.69),30,6);gl.glPopMatrix()
+            elif scene_id==87:  # Blizzard vortex: tilted snow funnel, crosswinds and layered ice rings
+                for layer in range(21):
+                    f=layer/20;r=.20+1.75*(1-f)**.65
+                    gl.glPushMatrix();gl.glTranslatef(.15*_m.sin(layer),-2.2+4.4*f,0);gl.glRotatef(layer*14,0,1,.25)
+                    torus(r,.025,(.64,.78,.94),38,5);gl.glPopMatrix()
+                for arm in range(7):
+                    pts=[]
+                    for j in range(180):
+                        f=j/179;a=f*2*_m.pi*3.1+arm*2*_m.pi/7;r=.22+1.75*(1-f)**.65
+                        pts.append((r*_m.cos(a),-2.2+4.4*f,r*_m.sin(a)))
+                    line_strip(pts,(.62,.82,1.0),.85)
+                points_cloud(1350,2)
+            elif scene_id==88:  # Ocean tsunami: wide wall, foam crest and submerged pillars
+                for layer in range(33):
+                    y=-1.7+layer*.102;pts=[]
+                    for i in range(181):
+                        x=-2.9+i*5.8/180;z=.15+.28*_m.sin(x*1.4+layer*.16)+.20*_m.sin(x*3.4-layer*.22)
+                        pts.append((x,y+.19*_m.sin(x*1.2+layer*.25),z))
+                    line_strip(pts,(.015,.30+.014*layer,.76+.007*layer),.82)
+                for i in range(17):
+                    x=-2.6+(i%9)*.65;z=-2.3+(i//9)*1.2;h=.25+((i*7)%8)*.16
+                    box(x,h/2,z,.33,h,.34,(.15,.21,.29))
+                points_cloud(680,1)
+            elif scene_id==89:  # Flooded transit tunnel: arches, platform columns and current lanes
+                for layer in range(18):
+                    z=-2.8+layer*.32
+                    pts=[]
+                    for i in range(61):
+                        a=_m.pi*i/60
+                        pts.append((2.25*_m.cos(a),-1.25+2.0*_m.sin(a),z))
+                    line_strip(pts,(.18,.34,.51),1.15)
+                    box(-2.0,-.65,z,.30,.20,.26,(.28,.33,.40))
+                    box(2.0,-.65,z,.30,.20,.26,(.28,.33,.40))
+                for lane in range(22):
+                    z=-2.6+lane*.24
+                    line_strip([(-2.0+i*.04,-.95+.08*_m.sin(i*.13+lane*.5),z) for i in range(101)],
+                               (.02,.36+.018*lane,.77),.9)
+                for i in range(90):
+                    x=-1.8+(i*17%73)*3.6/72;z=-2.5+(i*11%61)*5/60
+                    sphere(x,-.83+.02*_m.sin(i),z,.024,(.42,.78,.95),5,7)
+            elif scene_id==90:  # Extreme geometry stress: independent mesh field, gear cage and orbiting lattice
+                for i in range(12):
+                    gl.glPushMatrix();gl.glRotatef(i*15,1,.7,.4)
+                    torus(.55+i*.13,.026,palette[i%6],68,6);gl.glPopMatrix()
+                for x in range(-3,4):
+                    for y in range(-2,3):
+                        for z in range(-2,3):
+                            if (x+y+z)%2==0:
+                                box(x*.72,y*.67,z*.72,.25,.25,.25,palette[(x+2*y+z)%6])
+                mesh_triangles(12500,2)
+                points_cloud(3500,1)
+                for i in range(13):
+                    a=i*2*_m.pi/13;gear(1.7*_m.cos(a),.26*_m.sin(2*a),1.7*_m.sin(a),.18,9+i%4,palette[(i+3)%6])
+            else:
+                raise ValueError(f"Brak indywidualnej geometrii dla sceny {scene_id}")
+            budget["scene_id"]=scene_id
+
         def draw_scene():
             sid_local=sid
+            if sid_local>=60:
+                draw_unique_scene_60_90(sid_local)
+                return
             if sid_local==1:
                 furry_donut(1.28,.48,2400,(.12,.33,.95))
             elif sid_local==2:
