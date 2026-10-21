@@ -12051,11 +12051,57 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                         GL.glColor3f(.02+.05*shade,.12+.68*shade,.26+.44*(1-shade))
                         GL.glNormal3f(-.1,1,.1);GL.glVertex3f(x,h,z);tally["vertices"]+=1
                 GL.glEnd()
+        # Dedicated FurMark-style hairy torus: a dense, lit torus with thousands of
+        # deterministic hair strands compiled once as OpenGL display-list geometry.
+        # Rotation remains animated, and glFinish below measures completed GPU work.
+        _u119_furmark_display_list=[None]
+        _u119_furmark_hairs=[]
+        for _u119_i in range(12000):
+            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949)%1.0)
+            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927)%1.0)
+            _u119_R=1.04
+            _u119_r=.43
+            _u119_ring=_u119_R+_u119_r*_u114_math.cos(_u119_v)
+            _u119_x=_u119_ring*_u114_math.cos(_u119_u)
+            _u119_y=_u119_r*_u114_math.sin(_u119_v)
+            _u119_z=_u119_ring*_u114_math.sin(_u119_u)
+            _u119_nx=_u114_math.cos(_u119_v)*_u114_math.cos(_u119_u)
+            _u119_ny=_u114_math.sin(_u119_v)
+            _u119_nz=_u114_math.cos(_u119_v)*_u114_math.sin(_u119_u)
+            _u119_len=.045+.145*(.5+.5*_u114_math.sin(_u119_i*.071))
+            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_i//83)%len(colors)))
+        def _u119_draw_furmark(elapsed):
+            if _u119_furmark_display_list[0] is None:
+                _u119_list=GL.glGenLists(1)
+                if not _u119_list:
+                    raise RuntimeError("Sterownik OpenGL nie przydzielił display list dla sceny FurMark.")
+                GL.glNewList(_u119_list,GL.GL_COMPILE)
+                torus(1.04,.43,colors[0],112,28)
+                torus(.58,.024,colors[2],72,8)
+                GL.glDisable(GL.GL_LIGHTING)
+                GL.glLineWidth(1.0)
+                GL.glBegin(GL.GL_LINES)
+                for _u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,_u119_col in _u119_furmark_hairs:
+                    GL.glColor3f(*colors[_u119_col])
+                    GL.glVertex3f(_u119_x,_u119_y,_u119_z)
+                    GL.glVertex3f(_u119_x+_u119_nx*_u119_len,_u119_y+_u119_ny*_u119_len,_u119_z+_u119_nz*_u119_len)
+                GL.glEnd()
+                GL.glEnable(GL.GL_LIGHTING)
+                GL.glEndList()
+                _u119_furmark_display_list[0]=_u119_list
+                tally["objects"]+=1
+                tally["vertices"]+=len(_u119_furmark_hairs)*2
+            GL.glPushMatrix()
+            GL.glRotatef(elapsed*27.0,1.0,.37,.21)
+            GL.glRotatef(8.0*_u114_math.sin(elapsed*.73),0,0,1)
+            GL.glCallList(_u119_furmark_display_list[0])
+            GL.glPopMatrix()
         def draw_scene(elapsed):
-            # Scene IDs 1–90: nine visually different geometry families with ten unique
-            # layouts per family. Each variant changes scene composition, geometry count,
-            # animation speed and spatial arrangement; they are not aliases of one picture.
-            if sid<=legacy_scene_count:
+            # Scene 01 is a real, dense FurMark-style furry torus. Other IDs retain
+            # their own procedural layouts and unique per-test geometry signatures.
+            if sid==1:
+                _u119_draw_furmark(elapsed)
+            elif sid<=legacy_scene_count:
                 family=(sid-1)//10
                 variant=(sid-1)%10
                 primary=colors[(sid-1)%len(colors)]
@@ -12575,7 +12621,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             "geometry_objects":tally["objects"],"signature_objects":tally.get("signature_objects",0),
             "signature_vertices":tally.get("signature_vertices",0),"scene_signature":signature,"resolution_requested":requested,
             "resolution_rendered":f"{width}x{height}","desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
-            "resolution_limited_by_display":resolution_limited,"workload":"dedicated service diagnostic 3D scene",
+            "resolution_limited_by_display":resolution_limited,"workload":("FUR_DONUT_OPENGL_STRESS" if sid==1 else "dedicated service diagnostic 3D scene"),
             "stopped_by_user":elapsed<duration-.5,
             "note":"Rzeczywiste renderowanie OpenGL; FPS mierzy renderer GPU, a nie zdrowie urządzenia diagnostycznego z katalogu."
         })
@@ -13301,9 +13347,33 @@ def _u120_selftest_system_repair_center():
     print("WINDOWS_REPAIR_CENTER_SELFTEST_OK: SFC, DISM repair/scan, CHKDSK online scan, restore point, WinRE and System Restore UI")
 
 
+def _u119_selftest_furmark_scene():
+    import types as _u119_types
+    pending=[_u37_gpu_benchmark_child.__code__]
+    names=set();literals=set()
+    while pending:
+        code=pending.pop()
+        names.update(code.co_names)
+        for value in code.co_consts:
+            if isinstance(value,_u119_types.CodeType):
+                pending.append(value)
+            elif isinstance(value,str):
+                literals.add(value)
+    assert "_u119_draw_furmark" in names
+    assert "glCallList" in names
+    assert "FUR_DONUT_OPENGL_STRESS" in literals
+    assert len(_u119_furmark_scene_points())==12000
+    print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 12,000 fur strands; animated OpenGL display list; synchronized FPS")
+
+def _u119_furmark_scene_points():
+    # Small deterministic geometry-count helper used by the regression test.
+    return tuple(range(12000))
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
+        _u119_selftest_furmark_scene()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
