@@ -4476,7 +4476,7 @@ def _u90_selftest_release_fixes():
     assert "DŁUGI — 180 s" in _U68_PROFILE_CHOICES
     assert "900 s" in _U68_PROFILE_CHOICES[-1]
     assert AppV43._u41_start_vram_test is _u90_start_vram_profile_test
-    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test, _u107_show_speed_test, _u108_show_speed_test)
+    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test, _u107_show_speed_test, _u108_show_speed_test, _u114_show_speed_test)
     assert _u66_measure_speed in (_u90_measure_speed, _u100_measure_speed) or getattr(_u66_measure_speed, "__name__", "") == "_u108_measure_speed"
     assert callable(_u90_error_alarm) and AppV43.queue_results is _u90_queue_results_with_error_alarm
 
