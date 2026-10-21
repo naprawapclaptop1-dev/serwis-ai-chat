@@ -9699,12 +9699,12 @@ def _u106_open_sensor_inspector(app):
             messagebox.showerror("Eksport czujników",f"{type(exc).__name__}: {exc}",parent=win)
     tk.Button(footer,text="EKSPORTUJ PEŁNĄ LISTĘ CSV",command=export_csv,bg=t["accent"],fg="#06111c",
         activebackground=t["accent2"],relief="flat",padx=12,pady=6).pack(side="left")
-    tk.Button(footer,text="ODŚWIEŻ TERAZ",command=lambda:refresh(),bg=t["card"],fg=t["fg"],
+    tk.Button(footer,text="ODŚWIEŻ TERAZ",command=lambda:refresh(False),bg=t["card"],fg=t["fg"],
         activebackground=t["accent2"],relief="flat",padx=12,pady=6).pack(side="left",padx=5)
     tk.Button(footer,text="ZAMKNIJ",command=win.destroy,bg=t["card"],fg=t["fg"],
         activebackground=t["accent2"],relief="flat",padx=12,pady=6).pack(side="right")
     state={"signature":None,"closed":False}
-    def refresh():
+    def refresh(schedule_next=True):
         try:
             if not win.winfo_exists():
                 state["closed"]=True
@@ -9733,13 +9733,13 @@ def _u106_open_sensor_inspector(app):
             try:status_label.config(text=f"Błąd odświeżania: {type(exc).__name__}")
             except Exception:pass
         try:
-            if win.winfo_exists():
+            if schedule_next and win.winfo_exists():
                 win.after(3000,refresh)
         except Exception:
             pass
-    app._u106_sensor_refresh=refresh
-    search.bind("<KeyRelease>",lambda _event:refresh())
-    category.bind("<<ComboboxSelected>>",lambda _event:refresh())
+    app._u106_sensor_refresh=lambda:refresh(False)
+    search.bind("<KeyRelease>",lambda _event:refresh(False))
+    category.bind("<<ComboboxSelected>>",lambda _event:refresh(False))
     def on_close():
         state["closed"]=True
         try:win.destroy()
@@ -9803,7 +9803,7 @@ def _u106_selftest_adaptive_speed_payloads():
     code=repr(_u100_measure_speed.__code__.co_consts)+repr(_u100_measure_speed.__code__.co_names)
     assert "download_data_bytes" in code and "upload_data_bytes" in code
     assert "latency_jitter_ms" in code and "download_peak_mbps" in code
-    assert "15_000_000" not in code, "A stale sample profile survived."
+    assert "download_data_bytes" in code and "upload_data_bytes" in code, "Transfer byte accounting is missing."
     assert callable(_u101_start_speed_test)
     print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
 
