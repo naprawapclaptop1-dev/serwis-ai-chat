@@ -2993,7 +2993,7 @@ def _u76_disk_scan_selected_volume(self):
     return result
 
 def _u76_selftest_workbenches():
-    assert len(_U66_SCENES) == 90 and len({str(x[0]) for x in _U66_SCENES}) == 60
+    assert len(_U66_SCENES) == 90 and len({str(x[0]) for x in _U66_SCENES}) == 90
     assert callable(_u76_component_report_text) and callable(_u76_refresh_component_report)
     assert callable(_u76_open_component_simulator) and callable(_u76_run_component_worker)
     assert callable(_u76_disk_scan_selected_volume)
@@ -3113,7 +3113,7 @@ def _u78_selftest_component_lab():
     checks = [
         ("13 unique module entries", len(keys) == 13 and len(set(keys)) == 13),
         ("same set as component simulators", set(keys) == set(_U69_COMPONENT_LABELS)),
-        ("90 unique OpenGL scenes", len(_U66_SCENES) == 90 and len({str(x[0]) for x in _U66_SCENES}) == 60),
+        ("90 unique OpenGL scenes", len(_U66_SCENES) == 90 and len({str(x[0]) for x in _U66_SCENES}) == 90),
         ("component lab callable", callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)),
         ("real component launcher callable", callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)),
         ("MAX 900-second profile", len(_U68_PROFILE_CHOICES) >= 6 and str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")),
@@ -3155,11 +3155,11 @@ def _u66_selftest_advanced():
     assert AppV43.show_component_lab is _u93_show_lab, "ADVANCED self-test check 19: final component catalog must be wired"
     assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench, _u88_show_module_with_independent_tests), "ADVANCED self-test check 20: AppV43.show_module is a supported final view wrapper"
     assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench, _u88_show_simple_module_with_independent_tests), "ADVANCED self-test check 21: AppV43.show_simple_module is a supported final view wrapper"
-    assert len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==60"
+    assert len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==90, "ADVANCED self-test check 22: len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==90"
     assert AppV43._start_selected_diagnostic is _u91_start_selected_diagnostic, "ADVANCED self-test check 23: final guarded selected-test route is installed"
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
-    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 60 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
+    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 90 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
 
 # Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
 _U66_ORIGINAL_REFRESH_TELEMETRY=AppV43.refresh_telemetry
@@ -3826,14 +3826,14 @@ def _u86_draw_bar_chart(self,canvas,items,title=""):
     _U86_ORIGINAL_DRAW_BAR_CHART(self,canvas,items,title)
 
 def _u86_selftest_component_ui():
-    assert len(_U66_SCENES)==90 and len({x[0] for x in _U66_SCENES})==60
+    assert len(_U66_SCENES)==90 and len({x[0] for x in _U66_SCENES})==90
     assert str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")
     assert callable(_u86_stage_live_panel) and callable(_u86_launch_component_test)
     assert callable(_u86_render_component_report) and callable(_u86_component_monitor_tick)
     assert all(k in _U86_COMPONENT_KEYS for k in ("CPU","GPU","RAM","DYSK","VRAM","EKRAN","SECURITY","BATERIA","SIEĆ","USB","AUDIO","KLAWIATURA","KAMERA"))
     assert any("NIEZROBIONY" in str(x) for x in _u86_draw_bar_chart.__code__.co_consts)
     assert "cpu_power" in _u67_draw_history_chart.__code__.co_consts
-    print("COMPONENT_LIVE_UI_60_SCENE_SELFTEST_OK: 13 modules, independent controls, 6 live charts, sensors N/D")
+    print("COMPONENT_LIVE_UI_90_SCENE_SELFTEST_OK: 13 modules, independent controls, 6 live charts, sensors N/D")
 
 _u67_stage_live_panel=_u86_stage_live_panel
 _u67_run_selected_diagnostic=_u86_run_selected_diagnostic
@@ -5358,7 +5358,7 @@ _U93_TEST_CATALOG = {
  ],
  "GPU":[
   ("gpu_scan","Skan GPU — karta i sterownik","Identyfikacja adaptera/sterownika Windows.","gpu_scan"),
-  ("gpu_scene","Jedna scena OpenGL — wybór 1–60","Mierzy FPS/klatki jednej wskazanej sceny i zapisuje renderer.","gpu_scene"),
+  ("gpu_scene","Jedna scena OpenGL — wybór 1–90","Mierzy FPS/klatki jednej wskazanej sceny i zapisuje renderer.","gpu_scene"),
   ("gpu_std","Benchmark 90 scen — STANDARD","90 scen po 10 sekund każda, rzeczywiste FPS.","gpu_suite10"),
   ("gpu_ultra","Benchmark 90 scen — ULTRA","90 scen po 30 sekund każda, około 30 min renderowania.","gpu_suite30"),
   ("gpu_max","Benchmark 90 scen — MAX","90 scen po 60 sekund każda, około 60 min renderowania.","gpu_suite60"),
@@ -8181,7 +8181,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         import pygame as pg
         from OpenGL import GL as gl
         from OpenGL.GLU import gluPerspective
-        sid=max(1,min(60,int(scene_id)))
+        sid=max(1,min(len(_U66_SCENES),int(scene_id)))
         title=_U100_SCENE_TITLES[sid-1]
         requested_resolution=str(resolution or "1920x1080")
         desktop_w=desktop_h=0
@@ -8753,7 +8753,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             if now-win_start>=1.0:
                 fps=win_frames/(now-win_start);samples.append(round(fps,2));peak=max(peak,fps)
                 win_frames=0;win_start=now
-                pg.display.set_caption(f"NAPRAWA PC • SCENA {sid:02d}/60 • {title} • FPS {fps:.1f} • MAX {peak:.1f} • {renderer[:80]} • ESC = STOP")
+                pg.display.set_caption(f"NAPRAWA PC • SCENA {sid:02d}/{len(_U66_SCENES)} • {title} • FPS {fps:.1f} • MAX {peak:.1f} • {renderer[:80]} • ESC = STOP")
         elapsed=max(.001,_tm.perf_counter()-start)
         result.update({"state":"good" if frames else "warn","scene_id":sid,"scene_name":title,
             "renderer":renderer,"opengl_version":gl_version,"resolution":f"{rw}x{rh}",
@@ -8773,7 +8773,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
     try:_P(output_path).write_text(_j.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
     except Exception:pass
 
-# Route the child process and each selected scene to the separate 60-layout renderer.
+# Route the child process and each selected scene to the separate 90-layout renderer.
 _u37_gpu_benchmark_child = _u104_gpu_benchmark_child
 
 # v4.3.104 — adaptive speed test for low-bandwidth links plus a searchable full sensor window.
@@ -9531,7 +9531,7 @@ def _u105_stage_live_panel(self,index,total,title):
         self.make_button(row,"SYMULATOR 3D TEGO PODZESPOŁU",lambda m=module:_u86_launch_component_test(self,m,"visual"),"good",side="left",ipady=4)
         if module=="GPU":
             self.make_button(row,"TEST VRAM",lambda:_u86_launch_component_test(self,"VRAM","benchmark"),"card",side="left",ipady=4)
-            self.make_button(row,"60 SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"good",side="left",ipady=4)
+            self.make_button(row,"90 SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"good",side="left",ipady=4)
         out=tk.Text(panel,height=3,wrap="word",bg=t["bg"],fg=t["fg"],insertbackground=t["fg"],
             relief="flat",bd=0,font=("Consolas",8),padx=6,pady=4)
         out.pack(fill="x",padx=5,pady=(0,4));out.configure(state="disabled");self._u86_result_text=out
