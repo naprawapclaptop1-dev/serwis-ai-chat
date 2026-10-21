@@ -5508,6 +5508,7 @@ def _u93_show_lab(app):
         fn=getattr(app,"show_service_center",None)
         fn() if callable(fn) else app.show_repairs()
     app.make_button(row,"CENTRUM SERWISU ULTIMATE / SYSTEM REPAIR PRO",center,"card",side="left",ipady=5)
+    app.make_button(row,"CENTRUM NAPRAWY WINDOWS",lambda:_u120_show_system_repair_center(app),"accent",side="left",ipady=5)
     app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=5)
     app.make_button(row,"← TESTY",app.show_tests_hub,"card",side="left",ipady=5)
 
@@ -13074,9 +13075,230 @@ def _u117_selftest_per_test_scene_routing():
     assert len(_U100_SCENE_TITLES)==110
     print("PER_TEST_SIMULATOR_ROUTING_SELFTEST_OK: test button routes to its unique scene; generic module shortcuts removed")
 
+
+
+# v4.4.0 — real Windows repair/recovery actions, with explicit consent and logs.
+_U120_REPAIR_PS = r"""
+param(
+  [Parameter(Mandatory=$true)][ValidateSet('sfc_verify','repair_system','dism_scan','chkdsk_scan','restore_point','winre_status')][string]$Action,
+  [Parameter(Mandatory=$true)][string]$LogPath
+)
+$ErrorActionPreference = 'Continue'
+$script:LastNativeExitCode = 0
+function Add-RepairLog([string]$Text) {
+  $line = '[' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + '] ' + $Text
+  Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8
+}
+function Invoke-RepairNative([string]$Exe, [string[]]$Args) {
+  Add-RepairLog ('COMMAND: ' + $Exe + ' ' + ($Args -join ' '))
+  & $Exe @Args 2>&1 | ForEach-Object {
+    $line = [string]$_
+    Add-Content -LiteralPath $LogPath -Value $line -Encoding UTF8
+  }
+  $script:LastNativeExitCode = $LASTEXITCODE
+  Add-RepairLog ('EXIT_CODE: ' + $script:LastNativeExitCode)
+}
+$finalCode = 0
+try {
+  Add-RepairLog ('NAPRAWA PC — START ACTION=' + $Action)
+  switch ($Action) {
+    'sfc_verify' {
+      Invoke-RepairNative 'sfc.exe' @('/verifyonly')
+      $finalCode = $script:LastNativeExitCode
+    }
+    'repair_system' {
+      Add-RepairLog 'Etap 1/2: DISM RestoreHealth — może długo stać na jednym procencie.'
+      Invoke-RepairNative 'dism.exe' @('/Online','/Cleanup-Image','/RestoreHealth')
+      if ($script:LastNativeExitCode -eq 0) {
+        Add-RepairLog 'Etap 2/2: SFC Scannow'
+        Invoke-RepairNative 'sfc.exe' @('/scannow')
+        $finalCode = $script:LastNativeExitCode
+      } else {
+        $finalCode = $script:LastNativeExitCode
+        Add-RepairLog 'SFC pominięto, ponieważ DISM zwrócił błąd. Sprawdź log DISM.'
+      }
+    }
+    'dism_scan' {
+      Invoke-RepairNative 'dism.exe' @('/Online','/Cleanup-Image','/ScanHealth')
+      $finalCode = $script:LastNativeExitCode
+    }
+    'chkdsk_scan' {
+      Invoke-RepairNative 'chkdsk.exe' @($env:SystemDrive,'/scan')
+      $finalCode = $script:LastNativeExitCode
+    }
+    'restore_point' {
+      try {
+        Checkpoint-Computer -Description 'NaprawaPC przed naprawą' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop
+        Add-RepairLog 'PUNKT_PRZYWRACANIA: utworzono (o ile Windows potwierdził powodzenie).'
+      } catch {
+        $finalCode = 1
+        Add-RepairLog ('PUNKT_PRZYWRACANIA: NIE UTWORZONO — ' + $_.Exception.Message + '. Sprawdź, czy Ochrona systemu jest włączona i czy nie obowiązuje limit punktów.')
+      }
+    }
+    'winre_status' {
+      Invoke-RepairNative 'reagentc.exe' @('/info')
+      $finalCode = $script:LastNativeExitCode
+    }
+  }
+} catch {
+  $finalCode = 1
+  Add-RepairLog ('WYJĄTEK: ' + $_.Exception.ToString())
+} finally {
+  Add-RepairLog ('NAPRAWA PC — COMPLETE ACTION=' + $Action + ' EXIT_CODE=' + $finalCode)
+}
+exit $finalCode
+"""
+
+def _u120_repair_log_folder():
+    from pathlib import Path as _U120Path
+    import os as _U120OS
+    base = _U120Path(_U120OS.environ.get("LOCALAPPDATA") or _U120Path.home())
+    folder = base / "NaprawaPC" / "Raporty" / "NaprawaSystemu"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+def _u120_launch_repair_action(app, action, title):
+    import os as _U120OS
+    import subprocess as _U120Subprocess
+    from pathlib import Path as _U120Path
+    folder = _u120_repair_log_folder()
+    stamp = _U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+    script_path = folder / "NaprawaPC_SystemRepairActions.ps1"
+    log_path = folder / f"{action}-{stamp}.log"
+    script_path.write_text(_U120_REPAIR_PS, encoding="utf-8")
+    log_path.write_text("Naprawa PC — przygotowano zadanie. Oczekiwanie na zgodę UAC...\n", encoding="utf-8")
+    def ps_quote(value):
+        return "'" + str(value).replace("'", "''") + "'"
+    arg_line = "-NoProfile -ExecutionPolicy Bypass -File " + '"' + str(script_path) + '"' + " -Action " + '"' + action + '"' + " -LogPath " + '"' + str(log_path) + '"'
+    command = "$argsLine = " + ps_quote(arg_line) + "; Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argsLine"
+    try:
+        _U120Subprocess.Popen(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+                              stdout=_U120Subprocess.DEVNULL, stderr=_U120Subprocess.DEVNULL,
+                              creationflags=getattr(_U120Subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception as exc:
+        try:
+            messagebox.showerror("Nie uruchomiono zadania", f"{type(exc).__name__}: {exc}\n\nLog: {log_path}")
+        except Exception:
+            pass
+        return
+    try:
+        app._u120_last_repair_log = str(log_path)
+        app._u120_last_repair_action = action
+        app._u120_repair_status_var.set(f"Uruchomiono: {title}. Jeśli Windows poprosi, zatwierdź UAC. Log: {log_path}")
+        _u120_refresh_repair_log(app, log_path)
+        app.append_log(f"NAPRAWA SYSTEMU: uruchomiono {action}; log {log_path}")
+    except Exception:
+        pass
+
+def _u120_refresh_repair_log(app, log_path):
+    try:
+        from pathlib import Path as _U120Path
+        label = getattr(app, "_u120_repair_log_text", None)
+        if label is not None and label.winfo_exists():
+            path = _U120Path(log_path)
+            content = path.read_text(encoding="utf-8", errors="replace") if path.exists() else "Oczekiwanie na log..."
+            label.configure(state="normal")
+            label.delete("1.0", "end")
+            label.insert("end", content[-16000:])
+            label.see("end")
+            label.configure(state="disabled")
+            if "NAPRAWA PC — COMPLETE" not in content:
+                app.after(1500, lambda a=app,p=log_path:_u120_refresh_repair_log(a,p))
+            else:
+                try: app._u120_repair_status_var.set("Zadanie zakończone. Sprawdź kod końcowy i szczegóły w logu.")
+                except Exception: pass
+    except Exception:
+        pass
+
+def _u120_show_system_repair_center(app):
+    import os as _U120OS
+    import subprocess as _U120Subprocess
+    app.current_view = "SYSTEM_REPAIR_CENTER"
+    app.clear()
+    t = app.colors()
+    app.header_title.config(text="CENTRUM NAPRAWY I ODZYSKIWANIA WINDOWS")
+    head = app.panel(app.content)
+    head.pack(fill="x", padx=3, pady=(0,5))
+    tk.Label(head, text="DIAGNOSTYKA • NAPRAWA • PRZYWRACANIE", bg=t["panel"], fg=t["accent"], font=app.fnt(12,"bold")).pack(anchor="w", padx=10, pady=(8,3))
+    tk.Label(head, text="Każde zadanie uruchamia osobny proces z logiem. Naprawy systemowe wymagają potwierdzenia i zgody administratora UAC. Punkt przywracania może nie być dostępny, jeśli Ochrona systemu jest wyłączona. Nie wykonujemy automatycznego resetu ani formatowania.", bg=t["panel"], fg=t["muted"], font=app.fnt(8), wraplength=1250, justify="left").pack(anchor="w", padx=10, pady=(0,8))
+    app._u120_repair_status_var = tk.StringVar(value="Gotowe — wybierz oddzielną operację.")
+    status = tk.Label(app.content, textvariable=app._u120_repair_status_var, bg=t["bg"], fg=t["accent"], anchor="w", justify="left", wraplength=1250)
+    status.pack(fill="x", padx=7, pady=(0,5))
+    operations = [
+      ("SFC — weryfikacja plików", "Tylko weryfikuje integralność; nie naprawia plików.", "sfc_verify", "Uruchomić SFC /verifyonly?"),
+      ("DISM — skan magazynu składników", "Skanuje magazyn Windows bez uruchamiania naprawy.", "dism_scan", "Uruchomić DISM /ScanHealth?"),
+      ("CHKDSK — skan online woluminu systemowego", "CHKDSK /scan; nie wymusza restartu ani naprawy offline.", "chkdsk_scan", "Uruchomić CHKDSK /scan na woluminie systemowym?"),
+      ("NAPRAW WINDOWS — DISM + SFC", "Najpierw DISM /RestoreHealth, a po sukcesie SFC /scannow. Może trwać długo.", "repair_system", "Uruchomić pełną naprawę DISM + SFC? Może potrwać kilkanaście minut lub dłużej. Zapisuj otwarte pliki przed rozpoczęciem."),
+      ("Utwórz punkt przywracania", "Próbuje utworzyć punkt przed zmianami. Nie włącza po cichu Ochrony systemu.", "restore_point", "Utworzyć punkt przywracania Windows? Operacja wymaga administratora i może zostać zablokowana przez ustawienia Windows."),
+      ("Sprawdź środowisko odzyskiwania", "Wyświetla stan WinRE przez reagentc /info.", "winre_status", "Odczytać konfigurację WinRE?"),
+    ]
+    for title, desc, action, question in operations:
+        card = app.panel(app.content)
+        card.pack(fill="x", padx=3, pady=3)
+        row = tk.Frame(card, bg=t["panel"]); row.pack(fill="x", padx=8, pady=5)
+        left = tk.Frame(row, bg=t["panel"]); left.pack(side="left", fill="x", expand=True)
+        tk.Label(left, text=title, bg=t["panel"], fg=t["text"], font=app.fnt(9,"bold"), anchor="w").pack(fill="x")
+        tk.Label(left, text=desc, bg=t["panel"], fg=t["muted"], font=app.fnt(8), anchor="w", justify="left", wraplength=800).pack(fill="x", pady=(2,0))
+        def run_action(a=action, ttl=title, q=question):
+            if not messagebox.askyesno(ttl, q + "\n\nZostanie zapisany lokalny log. Kontynuować?"):
+                return
+            _u120_launch_repair_action(app, a, ttl)
+        app.make_button(row, "URUCHOM", run_action, "accent", side="right", ipady=4)
+    tools = app.panel(app.content); tools.pack(fill="x", padx=3, pady=3)
+    tk.Label(tools, text="PRZYWRACANIE I NARZĘDZIA WINDOWS", bg=t["panel"], fg=t["accent"], font=app.fnt(9,"bold")).pack(anchor="w", padx=8, pady=(6,3))
+    row = tk.Frame(tools, bg=t["panel"]); row.pack(fill="x", padx=8, pady=(0,6))
+    def open_restore():
+        if messagebox.askyesno("Przywracanie systemu", "Otworzyć oficjalne okno Przywracania systemu Windows? Wybór punktu i cofnięcie zmian pozostają pod Twoją kontrolą."):
+            try: _U120Subprocess.Popen(["rstrui.exe"])
+            except Exception as exc: messagebox.showerror("Błąd", str(exc))
+    def open_recovery():
+        try:
+            if hasattr(_U120OS, "startfile"): _U120OS.startfile("ms-settings:recovery")
+            else: _U120Subprocess.Popen(["cmd.exe", "/c", "start", "", "ms-settings:recovery"])
+        except Exception as exc: messagebox.showerror("Błąd", str(exc))
+    def open_log():
+        path = getattr(app, "_u120_last_repair_log", "")
+        if path and _U120OS.path.isfile(path):
+            _U120Subprocess.Popen(["notepad.exe", path])
+        else:
+            messagebox.showinfo("Log", "Najpierw uruchom operację diagnostyczną lub naprawczą.")
+    def open_folder():
+        folder = str(_u120_repair_log_folder())
+        try:
+            if hasattr(_U120OS, "startfile"): _U120OS.startfile(folder)
+            else: _U120Subprocess.Popen(["explorer.exe", folder])
+        except Exception as exc: messagebox.showerror("Błąd", str(exc))
+    app.make_button(row, "PRZYWRACANIE SYSTEMU", open_restore, "card", side="left", ipady=4)
+    app.make_button(row, "USTAWIENIA ODZYSKIWANIA", open_recovery, "card", side="left", ipady=4)
+    app.make_button(row, "OTWÓRZ OSTATNI LOG", open_log, "card", side="left", ipady=4)
+    app.make_button(row, "FOLDER RAPORTÓW", open_folder, "card", side="left", ipady=4)
+    app.make_button(row, "← LABORATORIUM", app.show_component_lab, "card", side="left", ipady=4)
+    logbox = app.panel(app.content); logbox.pack(fill="both", expand=True, padx=3, pady=3)
+    tk.Label(logbox, text="LOG NA ŻYWO — NIE ZAMYKAJ OKNA PODCZAS NAPRAWY", bg=t["panel"], fg=t["accent"], font=app.fnt(9,"bold")).pack(anchor="w", padx=8, pady=(6,3))
+    body = tk.Text(logbox, height=8, bg="#07111f", fg="#cce6ff", insertbackground="#ffffff", wrap="word", font=("Consolas",8), relief="flat")
+    body.pack(fill="both", expand=True, padx=8, pady=(0,8))
+    body.insert("end", "Po uruchomieniu zadania jego postęp i wynik pojawią się tutaj.\n")
+    body.configure(state="disabled")
+    app._u120_repair_log_text = body
+
+AppV43.show_system_repair_center = _u120_show_system_repair_center
+
+def _u120_selftest_system_repair_center():
+    required = ("sfc_verify","repair_system","dism_scan","chkdsk_scan","restore_point","winre_status")
+    for action in required:
+        assert ("'"+action+"'") in _U120_REPAIR_PS
+    assert "DISM /RestoreHealth" in _U120_REPAIR_PS or "'/RestoreHealth'" in _U120_REPAIR_PS
+    assert "sfc.exe" in _U120_REPAIR_PS and "chkdsk.exe" in _U120_REPAIR_PS
+    assert "Checkpoint-Computer" in _U120_REPAIR_PS and "rstrui.exe" in _U120_REPAIR_PS
+    assert callable(AppV43.show_system_repair_center)
+    assert "Start-Process" in _U120_REPAIR_PS
+    print("WINDOWS_REPAIR_CENTER_SELFTEST_OK: SFC, DISM repair/scan, CHKDSK online scan, restore point, WinRE and System Restore UI")
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
+        _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
         _u114_selftest_turbo_math()
