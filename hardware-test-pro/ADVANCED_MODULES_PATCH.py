@@ -800,7 +800,7 @@ def _u66_sensor_probe():
     def collect_sensor_rows(rows, source):
         if not isinstance(rows,list):
             return
-        result["sensors"]=rows[:2000]
+        result["sensors"]=rows[:10000]
         power_rows=[]
         cpu_power_candidates=[]
         gpu_power_candidates=[]
@@ -3827,7 +3827,7 @@ def _u86_draw_bar_chart(self,canvas,items,title=""):
     _U86_ORIGINAL_DRAW_BAR_CHART(self,canvas,items,title)
 
 def _u86_selftest_component_ui():
-    assert len(_U66_SCENES)==110 and len({x[0] for x in _U66_SCENES})==90
+    assert len(_U66_SCENES)==110 and len({x[0] for x in _U66_SCENES})==110
     assert str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")
     assert callable(_u86_stage_live_panel) and callable(_u86_launch_component_test)
     assert callable(_u86_render_component_report) and callable(_u86_component_monitor_tick)
