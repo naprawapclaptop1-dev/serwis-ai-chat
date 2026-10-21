@@ -9301,7 +9301,7 @@ def _u105_selftest_visual_quality():
     assert _U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR is _u105_open_component_base
     assert _u67_stage_live_panel is _u105_stage_live_panel
     assert _u67_refresh_visible_charts is _u105_refresh_visible_charts
-    assert all(k in _u105_draw_component_scene.__code__.co_names for k in ("project","poly","path","ring","fan","chip"))
+    assert all(k in _u105_draw_component_scene.__code__.co_varnames for k in ("project","poly","path","ring","fan","chip"))
     print("POLISHED_SIMULATOR_UI_SELFTEST_OK: technical component renderers, radial gauges, line charts, no bar/rectangle model")
 
 # Replace only the visual layer; keep the existing theme colors, module dispatch, tests and results.
