@@ -3315,6 +3315,7 @@ def _u80_wrap_global(function_name, label=None):
         return _u80_run_with_sound(app, label or function_name, original, app, *args, **kwargs)
     wrapped.__name__ = getattr(original, "__name__", function_name)
     wrapped.__doc__ = getattr(original, "__doc__", None)
+    wrapped.__wrapped__ = original  # preserve access to real signature for regression tests and debugging
     wrapped._u80_sound_wrapped = True
     globals()[function_name] = wrapped
     return True
@@ -11403,9 +11404,10 @@ def _u110_selftest_scene_and_component_rendering():
     nested=_u110_nested_code_names(_u104_gpu_benchmark_child.__code__)
     assert "draw_component_profile" in nested and "draw_component_motion" in nested
     assert "furry_donut" in nested and "glCallList" in nested
-    assert _u66_execute_gpu_scene.__code__.co_argcount>=4
-    assert "render_profile" in _u66_execute_gpu_scene.__code__.co_varnames
-    assert "results" in _u66_execute_gpu_scene.__code__.co_names
+    execute_target=getattr(_u66_execute_gpu_scene,"__wrapped__",_u66_execute_gpu_scene)
+    assert execute_target.__code__.co_argcount>=4
+    assert "render_profile" in execute_target.__code__.co_varnames
+    assert "results" in execute_target.__code__.co_names
     assert _u109_launch_scene_preview is _u110_launch_scene_preview
     assert _u69_open_component_simulator is _u110_open_component_simulator
     assert len(_U100_SCENE_TITLES)==90 and len(set(_U100_SCENE_TITLES))==90
