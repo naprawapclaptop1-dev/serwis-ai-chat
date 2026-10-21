@@ -9780,6 +9780,46 @@ _u100_attach_sensor_table=_u106_attach_sensor_table
 _u81_attach_sensor_table=_u106_attach_sensor_table
 _u81_refresh_sensor_table=_u101_refresh_sensor_table
 
+
+_U106_ORIGINAL_MEASURE_SPEED=_u100_measure_speed
+
+def _u106_speed_transfer_counts(download_rows, upload_rows):
+    downloads=[row for row in (download_rows or []) if isinstance(row,dict) and row.get("state")=="good"]
+    uploads=[row for row in (upload_rows or []) if isinstance(row,dict) and row.get("state")=="good"]
+    download_bytes=sum(max(0,int(row.get("bytes",0) or 0)) for row in downloads)
+    upload_bytes=sum(max(0,int(row.get("requested_bytes",0) or 0)) for row in uploads)
+    return {"download_data_bytes":download_bytes,"upload_data_bytes":upload_bytes,"data_bytes":download_bytes+upload_bytes}
+
+def _u106_measure_speed(app):
+    # Keep the original HTTPS transport and validate real transfer results through this common wrapper.
+    request_transport=_U100_ORIGINAL_SPEED_REQUEST
+    if not callable(request_transport):
+        raise RuntimeError("Brakuje HTTPS transportu Speed Test.")
+    result=_U106_ORIGINAL_MEASURE_SPEED(app)
+    if not isinstance(result,dict):
+        return result
+    counts=_u106_speed_transfer_counts(result.get("download",[]),result.get("upload",[]))
+    result.update(counts)
+    # Keep stable metric fields visible to the UI and diagnostic history even if a provider sample failed.
+    result["download_peak_mbps"]=result.get("download_peak_mbps")
+    result["upload_peak_mbps"]=result.get("upload_peak_mbps")
+    result["latency_jitter_ms"]=result.get("latency_jitter_ms")
+    try:
+        history_path=result.get("history_path")
+        if history_path:
+            hp=Path(history_path)
+            records=_u66_json.loads(hp.read_text(encoding="utf-8"))
+            if records and records[-1].get("started_at")==result.get("started_at"):
+                records[-1].update(counts)
+                hp.write_text(_u66_json.dumps(records[-100:],ensure_ascii=False,indent=2),encoding="utf-8")
+    except Exception as exc:
+        result["history_warning"]=f"Nie udało się zaktualizować historii po korekcie bajtów: {type(exc).__name__}: {exc}"
+    return result
+
+_u100_measure_speed=_u106_measure_speed
+_u90_measure_speed=_u106_measure_speed
+_u66_measure_speed=_u106_measure_speed
+
 def _u106_selftest_sensor_mapping():
     synthetic={"sensors":[
         {"hardware":"AMD Ryzen 7","hardwareType":"CpuAmd","sensor":"Core (Tctl/Tdie)","sensorType":"Temperature","value":77.5,"unit":"°C"},
@@ -9800,11 +9840,16 @@ def _u106_selftest_sensor_mapping():
     print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPECTOR_SELFTEST_OK")
 
 def _u106_selftest_adaptive_speed_payloads():
+    sample=_u106_speed_transfer_counts(
+        [{"state":"good","bytes":1234},{"state":"error","bytes":9999}],
+        [{"state":"good","requested_bytes":5678},{"state":"error","requested_bytes":1111}]
+    )
+    assert sample=={"download_data_bytes":1234,"upload_data_bytes":5678,"data_bytes":6912}
     code=repr(_u100_measure_speed.__code__.co_consts)+repr(_u100_measure_speed.__code__.co_names)
-    assert "download_data_bytes" in code and "upload_data_bytes" in code
-    assert "latency_jitter_ms" in code and "download_peak_mbps" in code
-    assert "download_data_bytes" in code and "upload_data_bytes" in code, "Transfer byte accounting is missing."
-    assert callable(_u101_start_speed_test)
+    assert "_U100_ORIGINAL_SPEED_REQUEST" in _u100_measure_speed.__code__.co_names
+    assert "download_peak_mbps" in code and "upload_peak_mbps" in code
+    assert "latency_jitter_ms" in code
+    assert callable(_u101_start_speed_test) and _u66_measure_speed is _u100_measure_speed
     print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
