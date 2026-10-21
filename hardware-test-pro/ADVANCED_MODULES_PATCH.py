@@ -10923,6 +10923,7 @@ _U108_ORIGINAL_SENSOR_REFRESH = _u100_refresh_sensor_table
 _U108_ORIGINAL_SPEED_SAMPLE_SIZES = _u104_speed_sample_sizes
 _U108_ORIGINAL_SPEED_MEASURE = _u107_measure_speed
 _U108_ORIGINAL_START_SPEED_TEST = _u66_start_speed_test
+_U108_ORIGINAL_SHOW_SPEED_TEST = AppV43.show_speed_test
 _U108_ACTIVE_SPEED_PROFILE = "STANDARD"
 
 def _u108_build_sensor_snapshot(app, temps, gpu, system=None):
