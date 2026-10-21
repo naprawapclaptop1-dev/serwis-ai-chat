@@ -3127,7 +3127,7 @@ def _u78_selftest_component_lab():
     print("COMPONENT_LAB_13_MODULES_SELFTEST_OK: " + ", ".join(name for name, _ in checks))
 
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==90, "Studio must have 60 separately named scenes"
+    assert len(_U66_SCENES)==90, "Studio must have 90 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED), "ADVANCED self-test check 1: all(x.get('source','').startswith('https://') for x in _U66_KNOWLEDGE_SEED)"
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge", "ADVANCED self-test check 2: _U66_KNOWLEDGE_PACK_FORMAT == 'naprawapc-ai-reader-knowledge'"
@@ -3159,7 +3159,7 @@ def _u66_selftest_advanced():
     assert AppV43._start_selected_diagnostic is _u91_start_selected_diagnostic, "ADVANCED self-test check 23: final guarded selected-test route is installed"
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
-    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 60 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
+    print("ADVANCED_MODULES_SELFTEST_OK: live telemetry, 13 independent component tests, 90 OpenGL scenes ULTRA/MAX, per-module 3D workbenches, game graphics advisor, AI reader")
 
 # Integrate into the existing one-window app. Keep the original report/repairs and device test modules.
 _U66_ORIGINAL_REFRESH_TELEMETRY=AppV43.refresh_telemetry
@@ -7442,7 +7442,7 @@ def _u100_selftest_unique_gpu_scenes():
     assert any("Ultimate Mix" in x for x in _U100_SCENE_TITLES[57:60])
     for start,end,token in ((60,63,"Cyclone Lab"),(63,66,"Ulewa"),(66,69,"Powódź"),(69,72,"Pioruny"),(72,75,"Wyścigi"),(75,78,"Drift"),(78,81,"Rally Stage"),(81,84,"F1 Night"),(84,87,"Zamieć"),(87,90,"Tsunami Lab")):
         assert all(token in x for x in _U100_SCENE_TITLES[start:end])
-    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 60 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
+    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 90 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
 
 _u37_gpu_benchmark_child = _u100_gpu_benchmark_child
 
@@ -8917,7 +8917,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
     try:_P(output_path).write_text(_j.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
     except Exception:pass
 
-# Route the child process and each selected scene to the separate 60-layout renderer.
+# Route the child process and each selected scene to the separate 90-scene renderer.
 _u37_gpu_benchmark_child = _u104_gpu_benchmark_child
 
 # v4.3.104 — adaptive speed test for low-bandwidth links plus a searchable full sensor window.
