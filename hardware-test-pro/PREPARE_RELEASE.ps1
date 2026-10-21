@@ -1716,7 +1716,15 @@ $rows=@(Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 
         ("SIEĆ — ADAPTERY / BRAMY / DNS", r"""$ErrorActionPreference='SilentlyContinue'
 $ip=@(Get-NetIPConfiguration | Select-Object InterfaceAlias,InterfaceDescription,NetProfile,IPv4Address,IPv4DefaultGateway,DNSServer)
 $dns=@(Get-DnsClientServerAddress | Select-Object InterfaceAlias,AddressFamily,ServerAddresses)
-[pscustomobject]@{Interfaces=$ip;DNSServers=$dns;ReadOnly=$true} | ConvertTo-Json -Depth 6 -Compress""", 90)
+[pscustomobject]@{Interfaces=$ip;DNSServers=$dns;ReadOnly=$true} | ConvertTo-Json -Depth 6 -Compress""", 90),
+        ("USB / PCI — URZĄDZENIA I KONTROLERY", r"""$ErrorActionPreference='SilentlyContinue'
+$all=@(Get-PnpDevice -PresentOnly | Select-Object Class,FriendlyName,Status,Problem,InstanceId)
+$rows=@($all | Where-Object {$_.Class -in @('USB','System','SCSIAdapter','HDC','DiskDrive') -or $_.InstanceId -match '^(PCI|USB|HID)\\'})
+[pscustomobject]@{Count=$rows.Count;Devices=$rows;ReadOnly=$true;Note='Enumeracja PnP nie mierzy przepustowości ani fizycznego zasilania portu.'} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("PUNKTY PRZYWRACANIA WINDOWS", r"""$ErrorActionPreference='SilentlyContinue'
+$cfg=@(Get-CimInstance SystemRestore -Namespace root/default | Select-Object CreationTime,Description,RestorePointType,SequenceNumber)
+$points=@(Get-ComputerRestorePoint | Sort-Object SequenceNumber -Descending | Select-Object -First 100 SequenceNumber,Description,CreationTime,RestorePointType,EventType)
+[pscustomobject]@{SystemRestoreConfiguration=$cfg;Count=$points.Count;RestorePoints=$points;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120)
     ]
 
 def _u109_run_readonly_audit(self, label, script, timeout=120):
@@ -1757,6 +1765,16 @@ def _u109_run_readonly_audit(self, label, script, timeout=120):
         self.worker(job)
     except Exception as exc:
         messagebox.showerror("Diagnostyka Windows",f"{label}: {type(exc).__name__}: {exc}",parent=self)
+
+def _u109_create_restore_point(self):
+    warning="Windows spróbuje utworzyć punkt przywracania przed pracami serwisowymi. Wymagane są włączona Ochrona systemu i uprawnienia administratora; system może odmówić, jeśli punkt był niedawno tworzony. Kontynuować?"
+    if not messagebox.askyesno("Utwórz punkt przywracania",warning,parent=self):
+        self.queue_log("Utworzenie punktu przywracania anulowane.")
+        return
+    _u55_run_repair(self,"Utwórz punkt przywracania","powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",
+        "Checkpoint-Computer -Description 'NaprawaPC przed pracą serwisową' -RestorePointType 'MODIFY_SETTINGS'"
+    ],600)
 
 def _u109_open_audit_folder(self):
     try:
@@ -1809,6 +1827,11 @@ def _u55_show_service_center(self):
     for specs in repair_rows:
         row=add_row(rp)
         for caption,action in specs: add_btn(row,caption,action,"card" if "UPDATE" in caption or "ZABEZPIECZENIA" in caption else "accent")
+    restore_audit_script=next((spec[1] for spec in _u109_service_audit_specs() if spec[0]=="PUNKTY PRZYWRACANIA WINDOWS"),None)
+    row=add_row(rp)
+    add_btn(row,"UTWÓRZ PUNKT PRZYWRACANIA",lambda:_u109_create_restore_point(self),"good")
+    if restore_audit_script:
+        add_btn(row,"LISTA PUNKTÓW PRZYWRACANIA",lambda:_u109_run_readonly_audit(self,"PUNKTY PRZYWRACANIA WINDOWS",restore_audit_script,120),"card")
     ap = self.panel(audit); ap.pack(fill="x", padx=10, pady=8)
     tk.Label(ap,text="AUDYTY SYSTEMU WINDOWS — ODCZYT BEZ ZMIAN KONFIGURACJI",
         bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(10,4))
@@ -1860,9 +1883,9 @@ def _u55_selftest_service_center():
     assert "System32" in repr(_u107_detect_windows_installations.__code__.co_consts)
     assert callable(_u109_run_readonly_audit) and callable(_u109_open_audit_folder)
     audit_specs=_u109_service_audit_specs()
-    assert len(audit_specs)>=9 and len({x[0] for x in audit_specs})==len(audit_specs)
+    assert len(audit_specs)>=11 and len({x[0] for x in audit_specs})==len(audit_specs)
     audit_names=repr(_u109_service_audit_specs.__code__.co_consts)
-    assert all(key in audit_names for key in ("BIOS / UEFI / SECURE BOOT","AKTYWACJA WINDOWS","URZĄDZENIA PNP","STEROWNIKI","AUTOSTART","BŁĘDY KRYTYCZNE","OSTATNIE AKTUALIZACJE"))
+    assert all(key in audit_names for key in ("BIOS / UEFI / SECURE BOOT","AKTYWACJA WINDOWS","URZĄDZENIA PNP","STEROWNIKI","AUTOSTART","BŁĘDY KRYTYCZNE","OSTATNIE AKTUALIZACJE","USB / PCI","PUNKTY PRZYWRACANIA WINDOWS"))
     assert "_u109_service_audit_specs" in AppV43.show_service_center.__code__.co_names
     print("SERVICE_REPAIR_CENTER_SELFTEST_OK: encrypted tickets, repair tools, offline DISM/SFC, BCD/WinRE and 9 Windows read-only audits")
 if __name__ == "__main__" and "--selftest-service-center" in sys.argv:
