@@ -10234,7 +10234,7 @@ def _u106_selftest_sensor_mapping():
             "gpu":{"provider":"test GPU","gpu_load_percent":88.0,"temperature_c":68.0}}
     expanded=_u106_get_sensor_rows(_U106FakeApp())
     names={str(row.get("sensor")) for row in expanded}
-    assert {"CPU Package","GPU Core","Fan #1","cpu_percent","ram_percent","disk_read_mbps","gpu_load_percent"}.issubset(names)
+    assert {"CPU Package","GPU Core","Fan #1","Użycie CPU","Użycie RAM","Odczyt wszystkich dysków","gpu_load_percent"}.issubset(names)
     assert len(expanded)>=7, "Full inspector must merge raw bridge rows and system/GPU metrics"
     assert callable(_u106_open_sensor_inspector)
     print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPECTOR_SELFTEST_OK")
