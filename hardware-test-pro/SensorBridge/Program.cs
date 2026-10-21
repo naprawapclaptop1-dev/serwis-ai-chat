@@ -27,8 +27,7 @@ internal static class Program
                 IsStorageEnabled = true,
                 IsNetworkEnabled = true,
                 IsPsuEnabled = true,
-                IsBatteryEnabled = true,
-                IsEmbeddedControllerEnabled = true
+                IsBatteryEnabled = true
             };
             computer.Open();
             foreach (var hardware in computer.Hardware)
