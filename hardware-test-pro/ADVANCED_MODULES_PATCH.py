@@ -13060,8 +13060,23 @@ _u81_attach_sensor_table=_u116_attach_sensor_table
 AppV43.show_live_monitor=_u116_show_live_monitor
 _u66_show_live_monitor=_u116_show_live_monitor
 
+def _u117_selftest_per_test_scene_routing():
+    assert callable(_u107_open_component_simulator)
+    assert callable(_u107_launch_scene_preview)
+    detail_names=_u93_deep_code_names(_u93_show_test_detail)
+    assert "_u107_open_component_simulator" in detail_names
+    assert "_u69_open_component_simulator" not in detail_names, "Individual test preview must not call the generic module simulator."
+    for screen in (_u93_show_lab,_u93_show_catalog,_u93_add_entry):
+        names=_u93_deep_code_names(screen)
+        assert "_u69_open_component_simulator" not in names, "Module/catalog selection must lead to the specific test catalog, not a generic simulator shortcut."
+    assert len(_U107_TEST_SCENES)==110
+    assert len(set(_U107_TEST_SCENES.values()))==110
+    assert len(_U100_SCENE_TITLES)==110
+    print("PER_TEST_SIMULATOR_ROUTING_SELFTEST_OK: test button routes to its unique scene; generic module shortcuts removed")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u117_selftest_per_test_scene_routing()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
         _u114_selftest_turbo_math()
