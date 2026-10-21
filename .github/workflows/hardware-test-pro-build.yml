@@ -169,7 +169,12 @@ jobs:
           target_commitish: main
           name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
           body: |
-            Wydanie Windows x64. Testy źródeł przed budową instalatora; zintegrowane centrum serwisu i napraw systemu, testy hardware, 125 skórek oraz poprawka zapisu aktualizacji.
+            Wydanie Windows x64.
+            - 90 odrębnych testów w 15 grupach oraz 90 unikalnych ID scen OpenGL.
+            - 20 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE.
+            - Pełniejsza tabela telemetrii live (czujniki + metryki OS) i profile Speed Test QUICK/STANDARD/MAX.
+            - 125 motywów UI, raporty per-test, aktualizator HTTPS i centrum napraw Windows.
+            - Brak danych czujnika jest oznaczany N/D; fizyczna weryfikacja zależy od sprzętu.
           files: |
             hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
@@ -233,7 +238,7 @@ jobs:
               installer_sha256: process.env.INSTALLER_SHA256,
               installer_size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": zintegrowane centrum Serwis Ultimate + System Repair PRO, prywatne szyfrowane zgłoszenia, naprawa Windows i aktualizator z alternatywnym folderem pobierania, SHA-256 i UAC. Windows x64.",
+              notes: "Wydanie " + version + ": 90 testów w 15 grupach, 90 unikalnych scen OpenGL, pełniejsza tabela telemetrii live, Speed Test QUICK/STANDARD/MAX i 20 odczytowych diagnostyk System Repair PRO / Serwis Ultimate; centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Brak czujnika pozostaje N/D.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
