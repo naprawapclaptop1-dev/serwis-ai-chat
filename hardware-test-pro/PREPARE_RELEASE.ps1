@@ -1676,6 +1676,269 @@ def _u107_add_offline_tab(self,notebook,t,add_row,add_btn):
     add_btn(row,"SFC OFFLINE /SCANNOW",sfc_offline,"accent")
     return offline
 
+
+def _u107_run_readonly_audit(self,label,command,timeout=240):
+    """Run a fixed, read-only Windows inventory/audit and save the full result to a local report."""
+    def job():
+        if not is_windows():
+            self.queue_log(label+": dostępne tylko w Windows.")
+            return
+        try:
+            if isinstance(command,(list,tuple)):
+                argv=[str(x) for x in command]
+            else:
+                ps=Path(os.environ.get("WINDIR",r"C:\Windows"))/"System32"/"WindowsPowerShell"/"v1.0"/"powershell.exe"
+                argv=[str(ps),"-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",str(command)]
+            out,err,rc=run_process(argv,int(timeout))
+            folder=_u107_repair_report_root()
+            stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+            slug=re.sub(r"[^A-Za-z0-9_-]+","_",str(label))[:54] or "audit"
+            target=folder/f"{stamp}-{slug}.txt"
+            payload=(f"NAPRAWA PC — {label}\nCzas: {_U66_datetime.now().isoformat(timespec='seconds')}\n"
+                     f"Exit code: {rc}\nPolecenie: {' '.join(argv)}\n\nSTDOUT:\n{out or '(brak)'}\n\nSTDERR:\n{err or '(brak)'}\n")
+            target.write_text(payload,encoding="utf-8",errors="replace")
+            self.queue_log(f"{label}: kod {rc}. Pełny raport: {target}")
+            self.queue_log((out or err or "Narzędzie nie zwróciło tekstowego wyniku.")[-9000:])
+        except Exception as exc:
+            self.queue_log(f"{label}: BŁĄD {type(exc).__name__}: {exc}")
+    try:self.worker(job)
+    except Exception as exc:messagebox.showerror("Audyt Windows",f"{label}: {type(exc).__name__}: {exc}",parent=self)
+
+def _u107_collect_bios_license_snapshot():
+    if not is_windows():
+        return {"state":"warn","error":"Raport BIOS/licencji wymaga Windows."}
+    script=r"""
+$ErrorActionPreference='SilentlyContinue'
+$bios=Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate
+$board=Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,Version
+$cpu=Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed
+$os=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,InstallDate,LastBootUpTime
+$secureBoot='N/D — firmware nie udostępnił odczytu'
+try { $secureBoot=Confirm-SecureBootUEFI -ErrorAction Stop } catch {}
+$tpm=$null
+try { $tpm=Get-Tpm -ErrorAction Stop | Select-Object TpmPresent,TpmReady,TpmEnabled,TpmActivated,ManufacturerIdTxt,ManufacturerVersion } catch {}
+$licenses=@(Get-CimInstance SoftwareLicensingProduct | Where-Object {
+  $_.Name -like '*Windows*' -and $_.PartialProductKey
+} | Select-Object Name,Description,LicenseStatus,PartialProductKey,ProductKeyChannel)
+$mapped=@()
+foreach($item in $licenses) {
+  $status=switch([int]$item.LicenseStatus) {
+    0 {'Nie licencjonowano'} 1 {'Aktywowano'} 2 {'OOB Grace'} 3 {'OOT Grace'}
+    4 {'Non-Genuine Grace'} 5 {'Notification'} 6 {'Extended Grace'} default {'N/D'}
+  }
+  $mapped += [pscustomobject]@{Name=$item.Name;Description=$item.Description;Status=$status;
+    PartialProductKey=$item.PartialProductKey;Channel=$item.ProductKeyChannel}
+}
+[pscustomobject]@{Bios=$bios;BaseBoard=$board;Processor=$cpu;OperatingSystem=$os;
+ SecureBoot=$secureBoot;TPM=$tpm;WindowsLicensing=$mapped} | ConvertTo-Json -Compress -Depth 7
+"""
+    try:
+        value=ps_json(script,default={})
+        if isinstance(value,list) and len(value)==1 and isinstance(value[0],dict):value=value[0]
+        if not isinstance(value,dict):value={"raw":value}
+        value["state"]="good" if value.get("Bios") or value.get("OperatingSystem") else "warn"
+        value["note"]="Raport tylko do odczytu. Pełny klucz produktu nie jest pobierany ani zapisywany."
+        value["sampled_at"]=_U66_datetime.now().isoformat(timespec="seconds")
+        try:
+            folder=_u107_repair_report_root();target=folder/("BIOS-LICENSE-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")
+            target.write_text(_u66_json.dumps(value,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+            value["report_path"]=str(target)
+        except Exception as exc:value["save_warning"]=str(exc)
+        return value
+    except Exception as exc:return {"state":"error","error":f"{type(exc).__name__}: {exc}"}
+
+def _u107_add_bios_license_tab(self,notebook,t,add_row,add_btn):
+    page=tk.Frame(notebook,bg=t["bg"]);notebook.add(page,text="BIOS / LICENCJA")
+    intro=self.panel(page);intro.pack(fill="x",padx=10,pady=8)
+    tk.Label(intro,text="BIOS / UEFI • PŁYTA GŁÓWNA • TPM • SECURE BOOT • LICENCJA WINDOWS",
+      bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(intro,text="Odczyt bez zmian w BIOS-ie i licencji. Pokazujemy tylko ostatnie 5 znaków klucza udostępnionego przez Windows — pełny klucz nie jest pobierany.",
+      bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    status=tk.Label(page,text="Gotowy — uruchom odczyt systemu.",bg=t["bg"],fg=t["muted"],anchor="w",font=self.fnt(9,"bold"))
+    status.pack(fill="x",padx=12,pady=(0,4))
+    frame=tk.Frame(page,bg=t["bg"]);frame.pack(fill="both",expand=True,padx=10,pady=4)
+    box=tk.Text(frame,wrap="word",bg=t["panel"],fg=t["fg"],insertbackground=t["fg"],relief="flat",font=("Consolas",9))
+    vs=ttk.Scrollbar(frame,orient="vertical",command=box.yview);box.configure(yscrollcommand=vs.set)
+    box.grid(row=0,column=0,sticky="nsew");vs.grid(row=0,column=1,sticky="ns");frame.grid_rowconfigure(0,weight=1);frame.grid_columnconfigure(0,weight=1)
+    box.insert("1.0","Brak raportu — kliknij ODCZYTAJ BIOS / LICENCJĘ.")
+    def start():
+        status.config(text="Pobieranie danych BIOS/UEFI, TPM, systemu i aktywacji Windows…",fg=t["warn"])
+        def job():
+            result=_u107_collect_bios_license_snapshot()
+            def done():
+                if not page.winfo_exists():return
+                status.config(text=f"Stan: {result.get('state','N/D')} • raport: {result.get('report_path','nie zapisano')}",fg=t["good"] if result.get("state")=="good" else t["warn"])
+                box.delete("1.0","end");box.insert("1.0",_u66_json.dumps(result,ensure_ascii=False,indent=2,default=str))
+            self.queue_action(done)
+        try:self.worker(job)
+        except Exception as exc:status.config(text=f"Błąd: {exc}",fg=t["bad"])
+    row=add_row(page);add_btn(row,"ODCZYTAJ BIOS / LICENCJĘ",start,"accent")
+    add_btn(row,"OTWÓRZ FOLDER RAPORTÓW",lambda:os.startfile(str(_u107_repair_report_root())) if is_windows() else None,"card")
+    return page
+
+def _u107_add_knowledge_learning_tab(self,notebook,t,add_row,add_btn):
+    page=tk.Frame(notebook,bg=t["bg"]);notebook.add(page,text="BAZA PDF / NAUKA LIVE")
+    root=Path(os.environ.get("LOCALAPPDATA") or Path.home())/"NaprawaPC"/"KnowledgeBase"
+    try:root.mkdir(parents=True,exist_ok=True)
+    except Exception:pass
+    intro=self.panel(page);intro.pack(fill="x",padx=10,pady=8)
+    tk.Label(intro,text="BAZA WIEDZY SERWISANTA • PDF • INSTRUKCJE • NOTATKI NA ŻYWO",
+      bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(intro,text="Pliki są indeksowane lokalnie; nic nie jest wysyłane. Wyszukiwanie obejmuje nazwy plików i ścieżki, a notatki diagnostyczne są zapisywane w lokalnej bazie wiedzy.",
+      bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    controls=tk.Frame(page,bg=t["bg"]);controls.pack(fill="x",padx=10,pady=(0,5))
+    search_var=tk.StringVar(value="")
+    tk.Label(controls,text="Szukaj:",bg=t["bg"],fg=t["fg"],font=self.fnt(9,"bold")).pack(side="left",padx=(0,5))
+    search=ttk.Entry(controls,textvariable=search_var,width=34);search.pack(side="left",padx=(0,8))
+    status=tk.Label(controls,text=f"Baza: {root}",bg=t["bg"],fg=t["muted"],font=self.fnt(8));status.pack(side="left",fill="x",expand=True)
+    frame=tk.Frame(page,bg=t["panel"]);frame.pack(fill="both",expand=True,padx=10,pady=4)
+    cols=("name","type","folder");tree=ttk.Treeview(frame,columns=cols,show="headings")
+    for col,title,width in (("name","PLIK",300),("type","TYP",90),("folder","LOKALIZACJA",680)):
+        tree.heading(col,text=title);tree.column(col,width=width,minwidth=80,stretch=col!="type")
+    vs=ttk.Scrollbar(frame,orient="vertical",command=tree.yview);hs=ttk.Scrollbar(frame,orient="horizontal",command=tree.xview)
+    tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set);tree.grid(row=0,column=0,sticky="nsew")
+    vs.grid(row=0,column=1,sticky="ns");hs.grid(row=1,column=0,sticky="ew")
+    frame.grid_rowconfigure(0,weight=1);frame.grid_columnconfigure(0,weight=1)
+    records=[]
+    allowed={".pdf",".txt",".md",".html",".htm",".json",".csv",".docx",".rtf",".log"}
+    def scan(folder=None):
+        nonlocal records
+        base=Path(folder) if folder else root
+        fresh=[]
+        try:
+            if base.is_file():
+                if base.suffix.lower() in allowed:fresh=[base]
+            elif base.is_dir():
+                skip={".git","node_modules","__pycache__","windows","program files","program files (x86)","appdata"}
+                for directory,dirs,files in os.walk(base):
+                    dirs[:]=[d for d in dirs if d.casefold() not in skip and not d.startswith(".")]
+                    for name in files:
+                        p=Path(directory)/name
+                        if p.suffix.lower() in allowed:
+                            fresh.append(p)
+                            if len(fresh)>=4000:break
+                    if len(fresh)>=4000:break
+        except Exception as exc:
+            self.queue_log("Baza wiedzy — skan: "+repr(exc))
+        known={str(p).casefold() for p in fresh}
+        if str(root).casefold()!=str(base).casefold():
+            try:
+                for p in root.rglob("*"):
+                    if p.is_file() and p.suffix.lower() in allowed and str(p).casefold() not in known:
+                        fresh.append(p)
+                        if len(fresh)>=4000:break
+            except Exception:pass
+        records=[{"name":p.name,"type":p.suffix.lower().lstrip("."),"folder":str(p.parent),"path":str(p)} for p in fresh[:4000]]
+        refresh_rows()
+        status.config(text=f"Znaleziono {len(records)} plików • baza: {root}")
+    def refresh_rows(*_):
+        term=str(search_var.get() or "").strip().casefold()
+        tree.delete(*tree.get_children())
+        for index,row in enumerate(records):
+            if term and term not in (row["name"]+" "+row["folder"]+" "+row["type"]).casefold():continue
+            tree.insert("","end",iid=f"kb{index}",values=(row["name"],row["type"].upper(),row["folder"]))
+    def selected_path():
+        picked=tree.selection()
+        if not picked:return None
+        try:return records[int(picked[0][2:])]["path"]
+        except Exception:return None
+    def choose_folder():
+        import tkinter.filedialog as _u107_fd
+        selected=_u107_fd.askdirectory(parent=page,title="Wybierz folder dokumentacji / PDF")
+        if selected:scan(selected)
+    def add_files():
+        import tkinter.filedialog as _u107_fd
+        import shutil as _u107_shutil
+        targets=_u107_fd.askopenfilenames(parent=page,title="Dodaj dokumenty do lokalnej bazy",
+           filetypes=[("Dokumenty serwisowe","*.pdf *.txt *.md *.html *.json *.csv *.docx *.rtf *.log"),("Wszystkie pliki","*.*")])
+        if not targets:return
+        dest=root/"imported"
+        dest.mkdir(parents=True,exist_ok=True)
+        copied=0
+        for raw in targets:
+            source=Path(raw)
+            if source.suffix.lower() not in allowed:continue
+            target=dest/source.name
+            if target.exists():
+                target=dest/(source.stem+"-"+_u55_uuid.uuid4().hex[:6]+source.suffix)
+            try:_u107_shutil.copy2(source,target);copied+=1
+            except Exception as exc:self.queue_log("Nie skopiowano "+str(source)+": "+str(exc))
+        scan()
+        messagebox.showinfo("Baza wiedzy",f"Dodano {copied} dokumentów do lokalnej bazy.",parent=self)
+    def open_selected():
+        target=selected_path()
+        if not target:
+            messagebox.showinfo("Baza wiedzy","Wybierz dokument na liście.",parent=self);return
+        try:os.startfile(target)
+        except Exception as exc:messagebox.showerror("Baza wiedzy",f"{type(exc).__name__}: {exc}",parent=self)
+    def ai_reader():
+        fn=getattr(self,"show_ai_reader",None)
+        if callable(fn):fn()
+        else:messagebox.showinfo("AI Czytnik","Moduł AI Czytnika nie jest dostępny w tym buildzie.",parent=self)
+    def add_note():
+        win=tk.Toplevel(self);win.title("NAUKA LIVE — nowa notatka serwisowa");win.geometry("740x560")
+        head=tk.Frame(win,bg=t["panel"]);head.pack(fill="x",padx=8,pady=8)
+        tk.Label(head,text="NOTATKA Z DIAGNOSTYKI / WNIOSKI / NASTĘPNE KROKI",bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=10,pady=8)
+        title_var=tk.StringVar(value="Diagnostyka "+_U66_datetime.now().strftime("%Y-%m-%d %H:%M"))
+        ttk.Entry(win,textvariable=title_var).pack(fill="x",padx=10,pady=(0,8))
+        body=tk.Text(win,wrap="word",bg=t["panel"],fg=t["fg"],insertbackground=t["fg"],font=("Segoe UI",10))
+        body.pack(fill="both",expand=True,padx=10,pady=(0,8))
+        body.insert("1.0","Objawy:\n\nWykonane testy:\n\nWyniki:\n\nWnioski:\n\nNastępne kroki:\n")
+        def save_note():
+            text_value=body.get("1.0","end").strip()
+            title_value=str(title_var.get() or "Notatka serwisowa").strip()
+            if not text_value:
+                messagebox.showwarning("Nauka live","Wpisz treść notatki.",parent=win);return
+            notes=root/"learning-log";notes.mkdir(parents=True,exist_ok=True)
+            slug=re.sub(r"[^A-Za-z0-9_-]+","_",title_value)[:64] or "notatka"
+            target=notes/(_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+slug+".md")
+            target.write_text("# "+title_value+"\n\nData: "+_U66_datetime.now().isoformat(timespec="minutes")+"\nWersja aplikacji: "+str(VERSION)+"\n\n"+text_value+"\n",encoding="utf-8")
+            scan();self.queue_log("Nauka live: zapisano "+str(target));win.destroy()
+        row=add_row(win);add_btn(row,"ZAPISZ NOTATKĘ",save_note,"good");add_btn(row,"ANULUJ",win.destroy,"card")
+    search_var.trace_add("write",refresh_rows)
+    row=add_row(page)
+    add_btn(row,"SKANUJ FOLDER BAZY",scan,"accent")
+    add_btn(row,"WYBIERZ DOKUMENTACJĘ",choose_folder,"card")
+    add_btn(row,"DODAJ PDF / PLIKI",add_files,"card")
+    add_btn(row,"OTWÓRZ DOKUMENT",open_selected,"good")
+    add_btn(row,"AI CZYTNIK",ai_reader,"accent")
+    add_btn(row,"NAUKA LIVE — NOTATKA",add_note,"card")
+    scan()
+    return page
+
+def _u107_add_advanced_audit_tab(self,notebook,t,add_row,add_btn):
+    page=tk.Frame(notebook,bg=t["bg"]);notebook.add(page,text="AUDYT SYSTEMU")
+    intro=self.panel(page);intro.pack(fill="x",padx=10,pady=8)
+    tk.Label(intro,text="AUDYT SYSTEMOWY • STEROWNIKI • PNP • AUTOSTART • ZDARZENIA • DEFENDER • SIEĆ",
+      bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(intro,text="Domyślnie audyty są tylko do odczytu i zapisują raport. Naprawy i skany, które mogą zmienić system, osobno proszą o potwierdzenie.",
+      bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    ps=Path(os.environ.get("WINDIR",r"C:\Windows"))/"System32"/"WindowsPowerShell"/"v1.0"/"powershell.exe"
+    driver_script=r"""$ErrorActionPreference='SilentlyContinue'; pnputil.exe /enum-drivers"""
+    pnp_script=r"""$ErrorActionPreference='SilentlyContinue'; Get-PnpDevice -PresentOnly | Where-Object { $_.Status -ne 'OK' } | Select-Object Class,FriendlyName,Status,InstanceId | ConvertTo-Json -Compress -Depth 4"""
+    startup_script=r"""$ErrorActionPreference='SilentlyContinue'; Get-CimInstance Win32_StartupCommand | Select-Object Name,Command,Location,User | ConvertTo-Json -Compress -Depth 4"""
+    updates_script=r"""$ErrorActionPreference='SilentlyContinue'; Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 60 HotFixID,Description,InstalledBy,InstalledOn | ConvertTo-Json -Compress -Depth 4"""
+    events_script=r"""$ErrorActionPreference='SilentlyContinue'; Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=(Get-Date).AddHours(-24)} -MaxEvents 100 | Select-Object TimeCreated,Id,LevelDisplayName,ProviderName,Message | ConvertTo-Json -Compress -Depth 4"""
+    defender_script=r"""$ErrorActionPreference='SilentlyContinue'; try { Get-MpComputerStatus | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,AntivirusSignatureLastUpdated,QuickScanStartTime,FullScanStartTime | ConvertTo-Json -Compress -Depth 4 } catch { [pscustomobject]@{Unavailable=$_.Exception.Message} | ConvertTo-Json -Compress }"""
+    network_script=r"""$ErrorActionPreference='SilentlyContinue'; $cfg=Get-NetIPConfiguration | Select-Object InterfaceAlias,InterfaceDescription,NetProfile,IPv4Address,IPv4DefaultGateway,DNSServer; $routes=Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Select-Object InterfaceAlias,NextHop,RouteMetric,PolicyStore; [pscustomobject]@{Adapters=$cfg;DefaultRoutes=$routes} | ConvertTo-Json -Compress -Depth 6"""
+    for specs in [
+      [("INWENTARY STEROWNIKÓW",lambda:_u107_run_readonly_audit(self,"Inwentarz sterowników Windows",[str(ps),"-NoProfile","-NonInteractive","-Command",driver_script],300)),
+       ("URZĄDZENIA PNP Z BŁĘDAMI",lambda:_u107_run_readonly_audit(self,"Urządzenia PnP z błędami",[str(ps),"-NoProfile","-NonInteractive","-Command",pnp_script],180)),
+       ("AUDYT AUTOSTARTU",lambda:_u107_run_readonly_audit(self,"Audyt autostartu",[str(ps),"-NoProfile","-NonInteractive","-Command",startup_script],180))],
+      [("HISTORIA AKTUALIZACJI",lambda:_u107_run_readonly_audit(self,"Historia aktualizacji Windows",[str(ps),"-NoProfile","-NonInteractive","-Command",updates_script],180)),
+       ("BŁĘDY SYSTEMU — OSTATNIE 24 H",lambda:_u107_run_readonly_audit(self,"Błędy systemowe ostatnie 24h",[str(ps),"-NoProfile","-NonInteractive","-Command",events_script],180)),
+       ("STAN WINDOWS DEFENDER",lambda:_u107_run_readonly_audit(self,"Stan Windows Defender",[str(ps),"-NoProfile","-NonInteractive","-Command",defender_script],180))],
+      [("KONFIGURACJA SIECI / TRASY",lambda:_u107_run_readonly_audit(self,"Konfiguracja sieci i trasy",[str(ps),"-NoProfile","-NonInteractive","-Command",network_script],180)),
+       ("SFC /VERIFYONLY",lambda:_u107_confirm_and_run(self,"SFC /VERIFYONLY","sfc.exe",["/verifyonly"],3600,"SFC sprawdzi integralność chronionych plików Windows bez naprawiania. Może potrwać kilka minut. Kontynuować?")),
+       ("DEFENDER — SZYBKI SKAN",lambda:_u107_confirm_and_run(self,"Microsoft Defender Quick Scan",str(ps),["-NoProfile","-NonInteractive","-Command","Start-MpScan -ScanType QuickScan"],3600,"Rozpocząć rzeczywisty szybki skan Microsoft Defender? Operacja może obciążyć komputer."))],
+      [("DISM /CHECKHEALTH",lambda:_u55_run_repair(self,"DISM CheckHealth","DISM.exe",["/Online","/Cleanup-Image","/CheckHealth"],600)),
+       ("DISM /SCANHEALTH",lambda:_u55_run_repair(self,"DISM ScanHealth","DISM.exe",["/Online","/Cleanup-Image","/ScanHealth"],1800)),
+       ("RAPORT BATERII",lambda:_u55_run_repair(self,"Raport baterii","powercfg.exe",["/batteryreport","/output",str(_u107_repair_report_root()/"battery-report-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".html")],180))]
+    ]:
+        row=add_row(page)
+        for caption,action in specs:add_btn(row,caption,action,"card" if "HISTORIA" in caption or "STAN WINDOWS" in caption or "KONFIGURACJA" in caption else "accent")
+    return page
+
 def _u55_show_service_center(self):
     self.current_view = "SERVICE_CENTER"
     self.clear()
@@ -1699,6 +1962,9 @@ def _u55_show_service_center(self):
     def add_btn(row, caption, action, kind="accent"):
         self.make_button(row, caption, action, kind, side="left", ipady=6)
     _u107_add_offline_tab(self,notebook,t,add_row,add_btn)
+    _u107_add_bios_license_tab(self,notebook,t,add_row,add_btn)
+    _u107_add_knowledge_learning_tab(self,notebook,t,add_row,add_btn)
+    _u107_add_advanced_audit_tab(self,notebook,t,add_row,add_btn)
     sp = self.panel(service); sp.pack(fill="x", padx=10, pady=8)
     tk.Label(sp, text="SZYBKIE TESTY I DIAGNOSTYKA", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
     for labels in [
@@ -1748,6 +2014,15 @@ def _u55_selftest_service_center():
     assert _u55_ticket_path().name == "zgloszenia.npcdata"
     assert callable(_u107_detect_windows_installations)
     assert callable(_u107_confirm_and_run) and callable(_u107_bcd_backup_path)
+    assert callable(_u107_collect_bios_license_snapshot)
+    assert callable(_u107_add_bios_license_tab) and callable(_u107_add_knowledge_learning_tab) and callable(_u107_add_advanced_audit_tab)
+    assert callable(_u107_run_readonly_audit)
+    assert "_u107_add_bios_license_tab" in AppV43.show_service_center.__code__.co_names
+    assert "_u107_add_knowledge_learning_tab" in AppV43.show_service_center.__code__.co_names
+    assert "_u107_add_advanced_audit_tab" in AppV43.show_service_center.__code__.co_names
+    assert "BIOS / LICENCJA" in _u107_add_bios_license_tab.__code__.co_consts
+    assert "BAZA PDF / NAUKA LIVE" in _u107_add_knowledge_learning_tab.__code__.co_consts
+    assert "AUDYT SYSTEMU" in _u107_add_advanced_audit_tab.__code__.co_consts
     center_constants=repr(AppV43.show_service_center.__code__.co_consts)
     offline_constants=repr(_u107_add_offline_tab.__code__.co_consts)
     assert "_u107_add_offline_tab" in AppV43.show_service_center.__code__.co_names
@@ -1780,7 +2055,7 @@ $src = [regex]::Replace($src,$mainPattern,[System.Text.RegularExpressions.MatchE
 if (!$src.Contains("_U55_INTEGRATED_SERVICE_REPAIR_CENTER") -or !$src.Contains("SERVICE_REPAIR_CENTER_SELFTEST_OK") -or !$src.Contains("self.show_service_center")) { throw "Integracja Serwis Ultimate / System Repair PRO nie została prawidłowo dołączona." }
 
 if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW")) { throw "Theme/hover patch verification failed." }
-# Advanced diagnostics upgrade: AI reader, live metrics, Cloudflare speed test and sequential 20-scene 3D studio.
+# Advanced diagnostics upgrade: AI reader, merged live telemetry, adaptive Speed Test and 90 unique GPU scenes.
 $advancedPatchPath = Join-Path $PSScriptRoot "ADVANCED_MODULES_PATCH.py"
 if (!(Test-Path -LiteralPath $advancedPatchPath)) { throw "Missing advanced feature patch: $advancedPatchPath" }
 $advancedPatch = [IO.File]::ReadAllText($advancedPatchPath,[Text.Encoding]::UTF8)
