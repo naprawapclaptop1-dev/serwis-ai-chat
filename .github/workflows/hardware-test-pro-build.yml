@@ -2,9 +2,10 @@ name: Hardware Test PRO — Windows build and UAC-safe updater release
 
 on:
   push:
-    branches: [main]
+    branches: [main, "fix/**"]
     paths:
       - "hardware-test-pro/**"
+      - ".github/workflows/hardware-test-pro-build.yml"
   workflow_dispatch:
 
 permissions:
