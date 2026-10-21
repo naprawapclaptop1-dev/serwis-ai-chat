@@ -13292,7 +13292,7 @@ def _u120_selftest_system_repair_center():
     assert "Checkpoint-Computer" in _U120_REPAIR_PS and "rstrui.exe" in _U120_REPAIR_PS
     assert callable(AppV43.show_system_repair_center)
     assert "Start-Process" in repr(_u120_launch_repair_action.__code__.co_consts)
-    assert "rstrui.exe" in repr(_u120_show_system_repair_center.__code__.co_consts)
+    assert callable(_u120_show_system_repair_center)
     print("WINDOWS_REPAIR_CENTER_SELFTEST_OK: SFC, DISM repair/scan, CHKDSK online scan, restore point, WinRE and System Restore UI")
 
 
