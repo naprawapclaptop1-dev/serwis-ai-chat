@@ -11915,10 +11915,8 @@ _u93_start_catalog_test=_u114_start_catalog_test
 _U114_ORIGINAL_GPU_BENCHMARK_CHILD=_u37_gpu_benchmark_child
 def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920x1080"):
     sid=max(1,min(110,int(scene_id)))
-    # Keep a constant for the legacy renderer and compatibility checks.
+    # All IDs 1–110 now use the same synchronized renderer, but each ID selects a distinct scene layout.
     legacy_scene_count=90
-    if sid<=legacy_scene_count:
-        return _U114_ORIGINAL_GPU_BENCHMARK_CHILD(output_path,seconds,sid,resolution)
     import json as _u114_json, math as _u114_math, random as _u114_random, time as _u114_time
     from pathlib import Path as _u114_Path
     pg=None
@@ -11968,7 +11966,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
         rng=_u114_random.Random(4079+sid*31)
         tally={"vertices":0,"objects":0,"scene_id":sid}
         colors=((.08,.60,.98),(.10,.88,.72),(.96,.34,.13),(.66,.32,.98),(.98,.72,.16),(.20,.82,.42))
-        c=colors[(sid-91)%len(colors)];c2=colors[(sid-90)%len(colors)];c3=colors[(sid-88)%len(colors)]
+        c=colors[(sid-1)%len(colors)];c2=colors[(sid+1)%len(colors)];c3=colors[(sid+3)%len(colors)]
         def box(x,y,z,sx,sy,sz,col,angle=0):
             GL.glPushMatrix();GL.glTranslatef(x,y,z)
             if angle:GL.glRotatef(float(angle),0,1,0)
@@ -12052,7 +12050,181 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                         GL.glNormal3f(-.1,1,.1);GL.glVertex3f(x,h,z);tally["vertices"]+=1
                 GL.glEnd()
         def draw_scene(elapsed):
-            if sid==91:
+            # Scene IDs 1–90: nine visually different geometry families with ten unique
+            # layouts per family. Each variant changes scene composition, geometry count,
+            # animation speed and spatial arrangement; they are not aliases of one picture.
+            if sid<=legacy_scene_count:
+                family=(sid-1)//10
+                variant=(sid-1)%10
+                primary=colors[(sid-1)%len(colors)]
+                secondary=colors[(sid+2)%len(colors)]
+                accent=colors[(sid+4)%len(colors)]
+                if family==0:
+                    # Orbit / torus engine: increasing number of rotated rings and satellites.
+                    rings=2+variant
+                    for ring in range(rings):
+                        GL.glPushMatrix()
+                        GL.glRotatef(elapsed*(16+variant*2)*(1 if ring%2==0 else -1)+ring*29,
+                                     1+(ring%3)*.31, .4+(variant%4)*.13, .7)
+                        torus(.48+ring*(.19+variant*.008),.026+variant*.002,
+                              colors[(ring+variant)%6],24+variant*4,5+variant%5)
+                        GL.glPopMatrix()
+                    satellites=6+variant*2
+                    for item in range(satellites):
+                        angle=2*_u114_math.pi*item/satellites+elapsed*(.55+variant*.035)
+                        radius=1.0+(item%3)*(.22+variant*.009)
+                        x=radius*_u114_math.cos(angle)
+                        y=.40*_u114_math.sin(angle*2+variant*.3)
+                        z=radius*_u114_math.sin(angle)
+                        if item%2: sphere(x,y,z,.045+variant*.002,secondary,5+variant%4,7+variant%5)
+                        else: box(x,y,z,.09+variant*.004,.10,.10+variant*.003,accent,elapsed*31+item*13)
+                elif family==1:
+                    # PCB / chip topology: different board aspect, trace density and chip matrix.
+                    board_w=3.8+variant*.14
+                    board_d=2.6+(variant%4)*.21
+                    box(0,-.40,0,board_w,.17,board_d,(.025,.20+.01*variant,.13))
+                    for row in range(3+variant%4):
+                        z=-board_d*.36+row*board_d*.72/max(1,(2+variant%4))
+                        pts=[]
+                        for col in range(12+variant*2):
+                            x=-board_w*.43+col*board_w*.86/max(1,(11+variant*2))
+                            y=-.28+.035*_u114_math.sin(col*.7+row+elapsed*(.7+variant*.08))
+                            pts.append((x,y,z+.07*_u114_math.sin(col*.4+row)))
+                        path(pts,colors[(row+variant)%6],.6+variant*.08)
+                    cols=3+variant%5;rows=2+variant%4
+                    for row in range(rows):
+                        for col in range(cols):
+                            x=(col-(cols-1)/2)*(.48+variant*.018)
+                            z=(row-(rows-1)/2)*(.46+variant*.02)
+                            box(x,-.20,z,.22+variant*.006,.18,.22+variant*.005,
+                                colors[(row*cols+col+variant)%6],elapsed*9+row*7-col*4)
+                    box(0,.02,0,1.0+variant*.03,.20,.82+variant*.025,primary,elapsed*11)
+                    for pin in range(8+variant*2):
+                        x=-.65+pin*1.30/max(1,(7+variant*2))
+                        box(x,-.19,board_d*.41,.035,.07,.12,accent)
+                        box(x,-.19,-board_d*.41,.035,.07,.12,accent)
+                elif family==2:
+                    # Thermal field: wave mesh plus a different moving column/isoline pattern.
+                    GL.glPushMatrix();GL.glRotatef(variant*5,1,0,0)
+                    mesh_grid(elapsed,variant%3,18+variant*2);GL.glPopMatrix()
+                    for idx in range(5+variant*2):
+                        angle=2*_u114_math.pi*idx/(5+variant*2)+elapsed*(.18+variant*.025)
+                        radius=.55+(idx%4)*(.42+variant*.012)
+                        x=radius*_u114_math.cos(angle);z=radius*_u114_math.sin(angle)
+                        value=.25+.9*(.5+.5*_u114_math.sin(elapsed*(.8+variant*.08)+idx*.74))
+                        box(x,value/2,z,.12+variant*.004,value,.12+variant*.004,
+                            colors[(idx+variant)%6],elapsed*13+idx*7)
+                    for ring in range(1+variant%5):
+                        torus(.42+ring*.39,.018,colors[(ring+variant)%6],24+variant*2,5)
+                elif family==3:
+                    # Crystal / mineral field: deterministic but per-scene-unique point layout.
+                    count=18+variant*8
+                    for idx in range(count):
+                        x=rng.uniform(-2.9,2.9);z=rng.uniform(-2.3,2.3)
+                        y=-.75+(.35+variant*.045)*_u114_math.sin(idx*.23+elapsed*(.45+variant*.035))
+                        size=.075+rng.random()*(.09+variant*.008)
+                        crystal(x,y,z,size,colors[(idx+variant)%6])
+                    for ring in range(1+variant%4):
+                        GL.glPushMatrix();GL.glTranslatef(0,-.8+ring*.22,0)
+                        GL.glRotatef(elapsed*(10+variant*2)+ring*22,1,.4,.7)
+                        torus(.65+ring*.42,.012+variant*.0008,colors[(ring+variant)%6],28+variant*2,4+variant%4)
+                        GL.glPopMatrix()
+                elif family==4:
+                    # Cooling / turbine bench: fan count and radiator fin pitch differ per scene.
+                    count=2+variant
+                    box(0,-.50,0,4.6,.12,2.4,(.045,.075,.10))
+                    for idx in range(count):
+                        x=(idx-(count-1)/2)*(3.7/max(1,count-1)) if count>1 else 0
+                        radius=.23+variant*.013
+                        fan(x,.05,0,radius,elapsed*(95+variant*13)*(1 if idx%2==0 else -1)+idx*31,
+                            5+variant%9)
+                        box(x,-.18,-.50,.36+variant*.008,.24,.48,colors[(idx+variant)%6])
+                    fin_count=8+variant*3
+                    for fin in range(fin_count):
+                        x=-1.65+fin*3.3/max(1,fin_count-1)
+                        box(x,-.02,.72,.025,.60,.07,secondary)
+                    for ring in range(1+variant%4):
+                        GL.glPushMatrix();GL.glTranslatef(0,.1,0);GL.glRotatef(elapsed*18+ring*27,0,1,1)
+                        torus(.65+ring*.36,.022,accent,24+variant*3,5+variant%4);GL.glPopMatrix()
+                elif family==5:
+                    # Network / packet topology: node graph density and link arrangement scale per test.
+                    nodes=8+variant*3
+                    points=[]
+                    for idx in range(nodes):
+                        angle=2*_u114_math.pi*idx/nodes
+                        radius=1.1+.35*_u114_math.sin(idx*2.3+variant)
+                        points.append((radius*_u114_math.cos(angle),
+                                       .72*_u114_math.sin(idx*.7+elapsed*(.4+variant*.04)),
+                                       radius*_u114_math.sin(angle)))
+                    links=1+variant%4
+                    for idx,p0 in enumerate(points):
+                        for hop in range(1,links+1):
+                            p1=points[(idx+hop)%nodes]
+                            if idx%2==0 or hop==1:
+                                path([p0,((p0[0]+p1[0])*.5,.18*_u114_math.sin(elapsed+idx), (p0[2]+p1[2])*.5),p1],
+                                     colors[(idx+hop+variant)%6],.8+variant*.06)
+                        sphere(*p0,.055+variant*.002,colors[(idx+variant)%6],5+variant%3,7+variant%5)
+                    for idx in range(variant+2):
+                        angle=elapsed*(.9+variant*.06)+idx*2*_u114_math.pi/(variant+2)
+                        sphere(1.85*_u114_math.cos(angle),.35*_u114_math.sin(angle*2),
+                               1.85*_u114_math.sin(angle),.045,accent,5,7)
+                elif family==6:
+                    # Helix / particle storm: individual strand count, pitch, orbit and load change.
+                    strand_count=1+variant
+                    GL.glDisable(GL.GL_LIGHTING);GL.glPointSize(1.0+variant*.22)
+                    GL.glBegin(GL.GL_POINTS)
+                    particle_count=650+variant*260
+                    for idx in range(particle_count):
+                        strand=idx%strand_count
+                        n=idx//strand_count
+                        phase=n*.040+elapsed*(.75+variant*.085)+strand*2*_u114_math.pi/strand_count
+                        radius=.35+2.35*((n%max(1,particle_count//strand_count))/(max(1,particle_count//strand_count)))
+                        x=radius*_u114_math.cos(phase)
+                        y=-2.45+4.9*((n%max(1,particle_count//strand_count))/(max(1,particle_count//strand_count)))
+                        z=radius*_u114_math.sin(phase)+.12*_u114_math.sin(phase*2+variant)
+                        GL.glColor3f(*colors[(strand+variant)%6]);GL.glVertex3f(x,y,z);tally["vertices"]+=1
+                    GL.glEnd();GL.glEnable(GL.GL_LIGHTING)
+                    for ring in range(1+variant%5):
+                        GL.glPushMatrix();GL.glRotatef(elapsed*12+ring*35,1,.8,.25)
+                        torus(.50+ring*.35,.018+variant*.0005,colors[(ring+variant)%6],25+variant*3,5)
+                        GL.glPopMatrix()
+                elif family==7:
+                    # Gearbox / mechanical drive: tooth counts, offsets and rotation directions differ.
+                    count=2+variant
+                    cols=min(4,count);rows=(count+cols-1)//cols
+                    for idx in range(count):
+                        col=idx%cols;row=idx//cols
+                        x=(col-(cols-1)/2)*1.45
+                        y=(row-(rows-1)/2)*1.25
+                        teeth=6+variant+idx%3
+                        GL.glPushMatrix();GL.glTranslatef(x,y,0)
+                        GL.glRotatef(elapsed*(35+variant*4)*(1 if idx%2==0 else -1)+idx*18,0,0,1)
+                        torus(.32+variant*.012,.055,colors[(idx+variant)%6],teeth*3,6+variant%4)
+                        for tooth in range(teeth):
+                            angle=2*_u114_math.pi*tooth/teeth
+                            box((.39+variant*.01)*_u114_math.cos(angle),
+                                (.39+variant*.01)*_u114_math.sin(angle),0,
+                                .10+variant*.003,.11+variant*.002,.15,colors[(idx+variant+2)%6])
+                        GL.glPopMatrix()
+                        sphere(x,y,.13,.09,accent,6,9)
+                else:
+                    # Server / rack tunnel: rack count, slot density and ring depth differ.
+                    rack_count=2+variant%6
+                    for rack in range(rack_count):
+                        x=(rack-(rack_count-1)/2)*(4.3/max(1,rack_count-1))
+                        box(x,0,0,.52+variant*.015,2.4+variant*.13,.48,(.035,.06,.10))
+                        slots=3+variant
+                        for slot in range(slots):
+                            y=-.98+slot*1.96/max(1,slots-1)
+                            box(x,y,.27,.40,.11,.025,colors[(rack+slot+variant)%6])
+                            for led in range(1+variant%4):
+                                sphere(x-.13+led*.085,y+.015,.31,.018,colors[(led+slot+int(elapsed*3))%6],4,6)
+                    for ring in range(2+variant):
+                        GL.glPushMatrix();GL.glTranslatef(0,0,-1.8+ring*.45)
+                        GL.glRotatef(elapsed*(12+variant*2)+ring*23,0,0,1)
+                        torus(1.55,.018+variant*.0007,colors[(ring+variant)%6],26+variant*3,5)
+                        GL.glPopMatrix()
+            elif sid==91:
                 GL.glPushMatrix();GL.glRotatef(13,1,0,0);mesh_grid(elapsed,0,42);GL.glPopMatrix()
                 for k in range(10):
                     x=-2.6+k*.58;sphere(x,.2*_u114_math.sin(elapsed*1.2+k),-2.7,.07,c2,6,9)
@@ -12484,6 +12656,7 @@ def _u114_selftest_unique_gpu_scenes():
     assert all("—" in title for title in _U114_EXTRA_SCENE_TITLES)
     assert callable(_u37_gpu_benchmark_child) and _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert 90 in _u37_gpu_benchmark_child.__code__.co_consts and 110 in _u37_gpu_benchmark_child.__code__.co_consts
+    assert "_U114_ORIGINAL_GPU_BENCHMARK_CHILD" not in _u37_gpu_benchmark_child.__code__.co_names, "All 110 IDs must use the new distinct renderer, not delegate 1–90 to the legacy scene family."
     for scene_id in range(91,111):
         assert _U66_SCENES[scene_id-1][0].startswith(f"{scene_id:02d} —")
         assert _U100_SCENE_TITLES[scene_id-1]==_U114_EXTRA_SCENE_TITLES[scene_id-91]
