@@ -11925,6 +11925,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
     pg=None
     result={"state":"warn","test":"OpenGL dedicated diagnostic scene","scene_id":sid}
     title=_U100_SCENE_TITLES[sid-1]
+    signature=_u116_scene_signature(sid)
     try:
         import pygame as pg
         from OpenGL import GL as GL
@@ -12401,6 +12402,149 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                 mesh_grid(elapsed,2,28)
             else:
                 mesh_grid(elapsed,1,35)
+        def draw_scene_signature(elapsed):
+            # A different 3D accent layout is added for every test ID; no template is reused verbatim.
+            sig=signature
+            mode=sig["style_index"]; variant=sig["variant"]; count=sig["element_count"]
+            scale=sig["scale"]; speed=sig["rotation_speed"]; palette=colors[sig["palette"]]
+            second=colors[(sig["palette"]+2)%len(colors)]
+            third=colors[(sig["palette"]+4)%len(colors)]
+            before_objects=tally["objects"]; before_vertices=tally["vertices"]
+            phase=elapsed*speed+sid*0.173
+            if mode==0:  # nested orbital rings and satellites
+                rings=1+(count%5)
+                for ring in range(rings):
+                    GL.glPushMatrix()
+                    GL.glRotatef(phase*(1 if ring%2==0 else -0.73)+ring*31,1.0+(sid%3)*.2,.4+(ring%4)*.13,.8)
+                    torus(scale*(.35+ring*.17),.018+scale*.008,colors[(sig["palette"]+ring)%6],
+                          22+(variant%7)*2,5+(sid%4))
+                    GL.glPopMatrix()
+                satellites=3+(count%9)
+                for item in range(satellites):
+                    a=2*_u114_math.pi*item/satellites+phase*.025
+                    r=scale*(.7+(item%3)*.19)
+                    sphere(r*_u114_math.cos(a),.25*_u114_math.sin(a*2),r*_u114_math.sin(a),
+                           .035+scale*.022,second,6+(sid%3),8+(variant%5))
+            elif mode==1:  # turbine bank
+                fans=1+(count%6)
+                for item in range(fans):
+                    x=(item-(fans-1)/2)*scale*.55
+                    fan(x,.12*_u114_math.sin(phase*.08+item),0,.18+scale*.12,
+                        phase*(1 if item%2==0 else -1)+item*17,7+(variant%8))
+                    box(x,-.28,-.14,.32+scale*.12,.12,.46,second,phase+item*23)
+            elif mode==2:  # crystal spiral
+                crystals=5+(count%17)
+                for item in range(crystals):
+                    a=item*2.399963+phase*.012
+                    y=-1.55+3.1*item/max(1,crystals-1)
+                    r=scale*(.38+.13*(item%5))
+                    crystal(r*_u114_math.cos(a),y,r*_u114_math.sin(a),.07+scale*.035,colors[(item+sig["palette"])%6])
+            elif mode==3:  # three-dimensional box lattice
+                columns=2+(count%5); rows=2+(variant%4)
+                for item in range(columns*rows):
+                    col=item%columns; row=item//columns
+                    x=(col-(columns-1)/2)*scale*.42
+                    y=(row-(rows-1)/2)*scale*.36
+                    z=.18*_u114_math.sin(phase*.05+item)
+                    box(x,y,z,.13+scale*.055,.12+scale*.045,.12+scale*.04,
+                        colors[(item+sig["palette"])%6],phase+item*29)
+            elif mode==4:  # layered wave ribbons
+                bands=2+(variant%5); samples=48+(count%61)
+                for band in range(bands):
+                    points=[]
+                    for idx in range(samples):
+                        x=-2.5+5.0*idx/max(1,samples-1)
+                        y=scale*.25*_u114_math.sin(x*(1.5+band*.21)+phase*.025+band)
+                        y+=scale*.12*_u114_math.cos(x*(3.2+variant*.07)-phase*.019)
+                        z=(band-(bands-1)/2)*scale*.12
+                        points.append((x,y,z))
+                    path(points,colors[(band+sig["palette"])%6],1.0+(variant%3)*.4)
+            elif mode==5:  # particle helix
+                particles=220+(count%24)*18
+                GL.glDisable(GL.GL_LIGHTING);GL.glPointSize(1.0+(variant%4)*.45);GL.glBegin(GL.GL_POINTS)
+                for item in range(particles):
+                    t=item/max(1,particles-1)
+                    a=t*(8.0+variant*.19)*_u114_math.pi+phase*.03
+                    r=scale*(.22+1.05*t)
+                    GL.glColor3f(*colors[(item+sig["palette"])%6])
+                    GL.glVertex3f(r*_u114_math.cos(a),-1.8+3.6*t,r*_u114_math.sin(a))
+                    tally["vertices"]+=1
+                GL.glEnd();GL.glEnable(GL.GL_LIGHTING)
+            elif mode==6:  # rotating wire cages
+                cages=1+(count%5)
+                GL.glDisable(GL.GL_LIGHTING)
+                for cage in range(cages):
+                    h=scale*(.38+cage*.13)
+                    cx=(cage-(cages-1)/2)*scale*.38
+                    points=[(cx+dx*h,-.1+dy*h,dz*h)
+                        for dx,dy,dz in ((-1,-1,-1),(1,-1,-1),(1,1,-1),(-1,1,-1),
+                                         (-1,-1,1),(1,-1,1),(1,1,1),(-1,1,1))]
+                    edges=((0,1),(1,2),(2,3),(3,0),(4,5),(5,6),(6,7),(7,4),(0,4),(1,5),(2,6),(3,7))
+                    GL.glPushMatrix();GL.glTranslatef(0,0,0);GL.glRotatef(phase+cage*23,1,.4,.7)
+                    GL.glColor3f(*colors[(cage+sig["palette"])%6]);GL.glBegin(GL.GL_LINES)
+                    for a,b in edges:
+                        GL.glVertex3f(*points[a]);GL.glVertex3f(*points[b]);tally["vertices"]+=2
+                    GL.glEnd();GL.glPopMatrix()
+                GL.glEnable(GL.GL_LIGHTING)
+            elif mode==7:  # thermal columns with independent heights
+                columns=4+(count%20)
+                width=scale*.13
+                for item in range(columns):
+                    x=(item-(columns-1)/2)*width*2.2
+                    heat=.5+.5*_u114_math.sin(phase*.035+item*.73+sid*.09)
+                    h=.18+scale*(.30+heat*(.45+(variant%6)*.08))
+                    col=(.85*heat,.13+.35*(1-heat),.06+.22*(1-heat))
+                    box(x,h/2,0,width,h,width,col,phase*.18+item*7)
+            elif mode==8:  # triangle burst
+                triangles=35+(count%24)*9
+                GL.glDisable(GL.GL_LIGHTING);GL.glBegin(GL.GL_TRIANGLES)
+                for item in range(triangles):
+                    a=item*2.399963+phase*.012
+                    r=scale*(.25+(item%13)*.065)
+                    y=scale*(_u114_math.sin(a*1.7)*.65)
+                    GL.glColor3f(*colors[(item+sig["palette"])%6])
+                    GL.glVertex3f(r*_u114_math.cos(a),y,r*_u114_math.sin(a));tally["vertices"]+=1
+                    GL.glVertex3f((r+.12)*_u114_math.cos(a+.17),y+.16,(r+.12)*_u114_math.sin(a+.17));tally["vertices"]+=1
+                    GL.glVertex3f((r+.17)*_u114_math.cos(a-.13),y-.11,(r+.17)*_u114_math.sin(a-.13));tally["vertices"]+=1
+                GL.glEnd();GL.glEnable(GL.GL_LIGHTING)
+            elif mode==9:  # multi-level sphere cluster
+                spheres=4+(count%13)
+                for item in range(spheres):
+                    a=item*2.399963+phase*.018
+                    layer=(item%5)-2
+                    r=scale*(.35+.11*(item%4))
+                    sphere(r*_u114_math.cos(a),layer*scale*.23+.18*_u114_math.sin(phase*.04+item),
+                           r*_u114_math.sin(a),.06+scale*.035,colors[(item+sig["palette"])%6],7+(sid%4),10+(variant%5))
+            elif mode==10:  # mesh tunnel with varying radius
+                rings=2+(count%7)
+                for ring in range(rings):
+                    GL.glPushMatrix()
+                    GL.glRotatef(phase*.42+ring*13,1.0,.3+(ring%4)*.15,.8)
+                    torus(scale*(.3+ring*.13),.018+scale*.006,colors[(ring+sig["palette"])%6],
+                          24+(variant%7)*2,5+(sid%5))
+                    GL.glPopMatrix()
+                # add a cross-section of bars so this isn't just another torus scene
+                bars=4+(variant%7)
+                for idx in range(bars):
+                    a=2*_u114_math.pi*idx/bars+phase*.01
+                    r=scale*(.5+(idx%3)*.13)
+                    box(r*_u114_math.cos(a),r*_u114_math.sin(a),.08,.06,scale*.5,.06,second,phase+idx*19)
+            else:  # motherboard traces, capacitors and cooling blocks
+                board_w=scale*(1.1+(count%7)*.12)
+                board_d=scale*(.75+(variant%5)*.11)
+                box(0,-.42,0,board_w,.09,board_d,(.025,.19,.12),phase*.025)
+                traces=5+(count%18)
+                for trace in range(traces):
+                    z=-board_d*.42+trace*board_d/max(1,traces-1)
+                    points=[(-board_w*.45,-.35,z),(-board_w*.18,-.35,z+.07*_u114_math.sin(phase*.02+trace)),
+                            (board_w*.07,-.35,z-.06),(board_w*.20,-.35,z+.04),(board_w*.45,-.35,z)]
+                    path(points,colors[(trace+sig["palette"])%6],.7+(variant%3)*.3)
+                for item in range(3+(count%9)):
+                    x=(item%4-1.5)*board_w*.22;z=(item//4-1)*board_d*.32
+                    box(x,-.27,z,.12,.18,.12,third,phase+item*13)
+            tally["signature_objects"] = tally.get("signature_objects",0) + (tally["objects"]-before_objects)
+            tally["signature_vertices"] = tally.get("signature_vertices",0) + (tally["vertices"]-before_vertices)
+
         start=_u114_time.perf_counter();window_start=start;window_frames=0;frames=0;peak=0.0;samples=[];running=True
         while running and _u114_time.perf_counter()-start<duration:
             for event in pg.event.get():
@@ -12415,6 +12559,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             GL.glRotatef(elapsed*14.0+(sid-90)*1.7,0,1,0)
             GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)
             draw_scene(elapsed)
+            draw_scene_signature(elapsed)
             # Do not count queued command submission as rendered work; synchronize before the FPS sample.
             GL.glFinish()
             pg.display.flip();frames+=1;window_frames+=1
@@ -12429,7 +12574,8 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             "renderer":renderer,"opengl_version":gl_version,"frames":frames,
             "duration_seconds":round(elapsed,2),"average_fps":round(frames/elapsed,2),
             "peak_fps_1s":round(peak,2),"fps_samples":samples,"geometry_vertices":tally["vertices"],
-            "geometry_objects":tally["objects"],"resolution_requested":requested,
+            "geometry_objects":tally["objects"],"signature_objects":tally.get("signature_objects",0),
+            "signature_vertices":tally.get("signature_vertices",0),"scene_signature":signature,"resolution_requested":requested,
             "resolution_rendered":f"{width}x{height}","desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
             "resolution_limited_by_display":resolution_limited,"workload":"dedicated service diagnostic 3D scene",
             "stopped_by_user":elapsed<duration-.5,
@@ -12697,8 +12843,220 @@ _u107_selftest_unique_scene_per_catalog_test=_u114_selftest_service_catalog
 _u100_selftest_unique_gpu_scenes=_u114_selftest_unique_gpu_scenes
 
 
+
+# v4.3.116 — enforce a unique geometric signature per scene and expose full sensor availability in the UI.
+_U116_SCENE_STYLE_NAMES = (
+    "ORBITAL RINGS","TURBINE ARRAY","CRYSTAL SPIRAL","BOX LATTICE",
+    "WAVE RIBBONS","PARTICLE HELIX","WIRE CAGES","THERMAL COLUMNS",
+    "TRIANGLE BURST","SPHERE CLUSTER","MESH TUNNEL","PCB COOLING GRID"
+)
+
+def _u116_scene_signature(scene_id):
+    sid=max(1,min(110,int(scene_id)))
+    style_index=(sid*7+sid//4)%len(_U116_SCENE_STYLE_NAMES)
+    return {
+        "scene_id":sid,
+        "style_index":style_index,
+        "style_name":_U116_SCENE_STYLE_NAMES[style_index],
+        "variant":1+((sid*11+sid//3)%17),
+        "element_count":4+((sid*17+sid//5)%27),
+        "scale":round(.42+((sid*13)%37)/20.0,3),
+        "rotation_speed":12+((sid*19)%43),
+        "palette":(sid*5+sid//8)%6,
+        "seed":sid*1009+(sid%7)*13
+    }
+
+_U116_ORIGINAL_REFRESH_SENSOR_TABLE=_u108_refresh_sensor_table
+_U116_ORIGINAL_ATTACH_SENSOR_TABLE=_u100_attach_sensor_table
+_U116_ORIGINAL_SHOW_LIVE_MONITOR=AppV43.show_live_monitor
+
+def _u116_refresh_sensor_table(app):
+    _U116_ORIGINAL_REFRESH_SENSOR_TABLE(app)
+    try:
+        tree=getattr(app,"_u100_sensor_tree",None)
+        label=getattr(app,"_u100_sensor_count",None)
+        if tree is None or label is None or not tree.winfo_exists() or not label.winfo_exists():
+            return
+        items=tree.get_children("")
+        available=0;missing=0;categories={}
+        for iid in items:
+            values=tree.item(iid,"values") or ()
+            if len(values)<4:
+                missing+=1;continue
+            cat=str(values[0] or "Other")
+            categories[cat]=categories.get(cat,0)+1
+            raw=str(values[3] if values[3] is not None else "N/D").strip().casefold()
+            if raw in ("n/d","nd","n/a","na","none","null","—","-",""):
+                missing+=1
+            else:
+                available+=1
+        cache=getattr(app,"_u66_sensor_cache",{}) or {}
+        stamp=cache.get("time")
+        age=max(0,_u66_time.monotonic()-stamp) if isinstance(stamp,(int,float)) else None
+        data=f"{len(items)} pozycji • wartości: {available} • N/D: {missing}"
+        if age is not None:
+            data+=f" • próbka: {age:.1f} s"
+        if categories:
+            data+=" • "+", ".join(f"{k}:{v}" for k,v in sorted(categories.items()))
+        label.config(text=data)
+        app._u116_sensor_availability={"total":len(items),"available":available,"missing":missing,"age_seconds":age}
+    except Exception as exc:
+        try:app.queue_log("Licznik dostępności czujników: "+repr(exc))
+        except Exception:pass
+
+def _u116_attach_sensor_table(app,parent,height=10):
+    panel=_U116_ORIGINAL_ATTACH_SENSOR_TABLE(app,parent,max(16,int(height or 16)))
+    try:
+        tree=getattr(app,"_u100_sensor_tree",None)
+        if tree is not None and tree.winfo_exists():
+            tree.configure(height=max(16,int(height or 16)))
+    except Exception:pass
+    return panel
+
+def _u116_force_sensor_refresh(app):
+    try:
+        app._u100_sensor_last=0
+        app._u66_sensor_last=0
+        _u108_sensor_poll(app)
+        app.queue_status("Odświeżenie pełnej telemetrii zlecone — oczekiwanie na Sensor Bridge i liczniki Windows.")
+        app.queue_log("Wymuszono odświeżenie: LHM/Sensor Bridge + CPU per-core + RAM + I/O dysków + NIC + woluminy.")
+    except Exception as exc:
+        try:app.queue_log("Wymuszone odświeżenie czujników nie powiodło się: "+repr(exc))
+        except Exception:pass
+        try:messagebox.showerror("Telemetria",str(exc))
+        except Exception:pass
+
+def _u116_export_sensor_csv(app):
+    try:
+        import csv as _u116_csv
+        from pathlib import Path as _u116_Path
+        rows=_u107_get_sensor_rows(app)
+        if not rows:
+            messagebox.showwarning("Eksport telemetrii","Brak dostępnych wierszy pomiarowych do eksportu. Najpierw odśwież czujniki.")
+            return
+        folder=_u66_store_dir()/"reports"/"sensors"
+        folder.mkdir(parents=True,exist_ok=True)
+        stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+        target=folder/("telemetry-"+stamp+".csv")
+        fields=("category","hardware","sensor","value","unit","source")
+        with target.open("w",encoding="utf-8-sig",newline="") as stream:
+            writer=_u116_csv.DictWriter(stream,fieldnames=fields,extrasaction="ignore")
+            writer.writeheader()
+            for row in rows:
+                writer.writerow({key:row.get(key,"N/D") if row.get(key) is not None else "N/D" for key in fields})
+        report={"state":"good","path":str(target),"row_count":len(rows),
+            "available_rows":sum(1 for row in rows if str(row.get("value","N/D")).strip().casefold() not in ("n/d","nd","n/a","none","null","—","-","")),
+            "note":"Eksport lokalny. Obejmuje wszystkie rekordy scalar, w tym N/D; nie wysyła danych do sieci."}
+        try:app.results["SENSOR_CSV_EXPORT"]=report
+        except Exception:pass
+        try:app.queue_log(f"Eksport telemetrii CSV: {len(rows)} wierszy → {target}")
+        except Exception:pass
+        messagebox.showinfo("Eksport zakończony",f"Zapisano {len(rows)} wierszy telemetrii.\n\n{target}\n\nPlik jest lokalny i zawiera także rekordy N/D.")
+        return str(target)
+    except Exception as exc:
+        msg=f"{type(exc).__name__}: {exc}"
+        try:app.queue_log("Eksport CSV sensorów: "+msg)
+        except Exception:pass
+        try:messagebox.showerror("Eksport telemetrii",msg)
+        except Exception:pass
+        return None
+
+def _u116_show_live_monitor(app):
+    result=_U116_ORIGINAL_SHOW_LIVE_MONITOR(app)
+    try:
+        t=app.colors()
+        pane=app.panel(app.content)
+        pane.pack(fill="x",padx=3,pady=(2,6))
+        tk.Label(pane,text="PEŁNA TELEMETRIA — CZUJNIKI + LICZNIKI SYSTEMOWE",
+            bg=t["panel"],fg=t["accent"],font=app.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,3))
+        tk.Label(pane,text="Pełny inspektor pokazuje wartości czujników, per-core CPU, RAM/swap, odczyt/zapis i IOPS dysków, interfejsy sieciowe oraz woluminy. Rekordy bez bieżącej wartości zostają na liście jako N/D.",
+            bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,5))
+        row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,7))
+        app.make_button(row,"OTWÓRZ PEŁNY INSPEKTOR",lambda:_u107_open_sensor_inspector(app),"accent",side="left",ipady=5)
+        app.make_button(row,"ODŚWIEŻ WSZYSTKIE CZUJNIKI",lambda:_u116_force_sensor_refresh(app),"good",side="left",ipady=5)
+        app.make_button(row,"EKSPORT CAŁEJ TELEMETRII CSV",lambda:_u116_export_sensor_csv(app),"card",side="left",ipady=5)
+    except Exception as exc:
+        try:app.queue_log("Dodatkowe sterowanie telemetrią: "+repr(exc))
+        except Exception:pass
+    return result
+
+def _u116_selftest_scene_signatures():
+    signatures=[_u116_scene_signature(i) for i in range(1,111)]
+    keys=[(x["style_index"],x["variant"],x["element_count"],x["scale"],x["rotation_speed"],x["palette"]) for x in signatures]
+    assert len(signatures)==110 and len(set(keys))==110,"Each of the 110 scene IDs must have a distinct geometry signature."
+    assert len({x["style_name"] for x in signatures})==12
+    names=_u93_deep_code_names(_u114_gpu_benchmark_child)
+    def nested_literals(code):
+        import types as _u116_types
+        found=[]
+        pending=[code]
+        while pending:
+            current=pending.pop()
+            for value in current.co_consts:
+                if isinstance(value,str):found.append(value)
+                elif isinstance(value,_u116_types.CodeType):pending.append(value)
+        return set(found)
+    literals=nested_literals(_u114_gpu_benchmark_child.__code__)
+    assert "draw_scene_signature" in names,"The synchronized OpenGL renderer must draw the scene-specific signature."
+    assert "signature_vertices" in literals and "scene_signature" in literals
+    assert "geometry_objects" in literals and "geometry_vertices" in literals
+    print("UNIQUE_GPU_GEOMETRY_SIGNATURE_SELFTEST_OK: 110 unique signatures, 12 geometry accents, real synchronized OpenGL FPS")
+
+def _u116_selftest_sensor_display_controls():
+    class FakeLabel:
+        def __init__(self):self.text=""
+        def winfo_exists(self):return True
+        def config(self,**kwargs):
+            if "text" in kwargs:self.text=kwargs["text"]
+    class FakeTree:
+        def __init__(self):self.items={}
+        def winfo_exists(self):return True
+        def get_children(self,*args):return list(self.items)
+        def item(self,iid,key=None):
+            return self.items[iid] if key is None else self.items[iid].get(key)
+        def delete(self,*iids):
+            for iid in iids:self.items.pop(iid,None)
+        def insert(self,parent,index,iid=None,values=(),**kwargs):
+            iid=str(iid or ("row"+str(len(self.items))))
+            self.items[iid]={"values":tuple(values)}
+            return iid
+        def exists(self,iid):return iid in self.items
+    class FakeApp:
+        _u100_sensor_tree=FakeTree()
+        _u100_sensor_count=FakeLabel()
+        _u66_sensor_cache={
+            "time":_u66_time.monotonic(),
+            "temps":{"method":"test bridge","sensor_count":2,"sensors":[
+                {"hardware":"CPU Package","hardwareType":"CPU","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test"},
+                {"hardware":"GPU","hardwareType":"GPU","sensor":"Memory Hotspot","sensorType":"Temperature","value":None,"unit":"°C","source":"test"}]},
+            "gpu":{},
+            "system":{"cpu_per_core_percent":[64.0]}
+        }
+        results={}
+        def queue_log(self,*args):pass
+    app=FakeApp()
+    _u116_refresh_sensor_table(app)
+    availability=app._u116_sensor_availability
+    assert availability["total"]>=3
+    assert availability["available"]>=2
+    assert availability["missing"]>=1
+    assert "wartości:" in app._u100_sensor_count.text and "N/D:" in app._u100_sensor_count.text
+    assert callable(_u116_export_sensor_csv) and callable(_u116_force_sensor_refresh)
+    assert AppV43.show_live_monitor is _u116_show_live_monitor
+    print("FULL_SENSOR_DISPLAY_CONTROLS_SELFTEST_OK: full table refresh, available/N-D counters, refresh action and local CSV export")
+
+_u108_refresh_sensor_table=_u116_refresh_sensor_table
+_u100_refresh_sensor_table=_u116_refresh_sensor_table
+_u81_refresh_sensor_table=_u116_refresh_sensor_table
+_u100_attach_sensor_table=_u116_attach_sensor_table
+_u81_attach_sensor_table=_u116_attach_sensor_table
+AppV43.show_live_monitor=_u116_show_live_monitor
+_u66_show_live_monitor=_u116_show_live_monitor
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u116_selftest_scene_signatures()
+        _u116_selftest_sensor_display_controls()
         _u114_selftest_turbo_math()
         _u114_selftest_sensor_inventory()
         _u114_selftest_unique_gpu_scenes()
