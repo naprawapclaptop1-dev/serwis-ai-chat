@@ -8853,7 +8853,7 @@ def _u105_draw_live_gauges(app):
         "cpu":(cpu,100.0,"%",_U105_COLORS["cyan"]),
         "ram":(ram,100.0,"%",_U105_COLORS["violet"]),
         "gpu":(gpu_load,100.0,"%",_U105_COLORS["blue"]),
-        "temp":(gpu_temp if gpu_temp is not None else cpu_temp,110.0,"°C",_U105_COLORS["amber"]),
+        "temp":(gpu_temp,110.0,"°C",_U105_COLORS["amber"]),
         "cpu_temp":(cpu_temp,110.0,"°C",_U105_COLORS["amber"]),
         "gpu_temp":(gpu_temp,110.0,"°C",_U105_COLORS["red"])
     }
