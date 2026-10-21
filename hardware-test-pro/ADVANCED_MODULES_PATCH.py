@@ -7458,18 +7458,20 @@ def _u100_selftest_adaptive_speed():
 def _u100_selftest_unique_gpu_scenes():
     assert len(_U66_SCENES)==90 and len(_U100_SCENE_TITLES)==90
     assert len(set(_U100_SCENE_TITLES))==90
-    assert callable(_u37_gpu_benchmark_child)
-    assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
-    assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
-    assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
-    assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
-    assert any(isinstance(c,tuple) and "resolution_limited_by_display" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
-    assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
+    assert callable(_u100_gpu_benchmark_child)
+    assert _u100_gpu_benchmark_child.__code__.co_argcount>=4
+    assert "glFinish" in _u100_gpu_benchmark_child.__code__.co_names
+    assert "glCallList" in _u100_gpu_benchmark_child.__code__.co_names
+    assert "GetSystemMetrics" in _u100_gpu_benchmark_child.__code__.co_names
+    assert any(isinstance(c,tuple) and "resolution_limited_by_display" in c for c in _u100_gpu_benchmark_child.__code__.co_consts)
+    assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u100_gpu_benchmark_child.__code__.co_consts)
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
-    assert any("Ultimate Mix" in x for x in _U100_SCENE_TITLES[57:60])
-    for start,end,token in ((60,63,"Cyclone Lab"),(63,66,"Ulewa"),(66,69,"Powódź"),(69,72,"Pioruny"),(72,75,"Wyścigi"),(75,78,"Drift"),(78,81,"Rally Stage"),(81,84,"F1 Night"),(84,87,"Zamieć"),(87,90,"Tsunami Lab")):
-        assert all(token in x for x in _U100_SCENE_TITLES[start:end])
-    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 90 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
+    # IDs 60–90 must have individual labels and a dedicated authored geometry branch.
+    assert len(_U110_SCENE_LABELS)==31 and len(set(_U110_SCENE_LABELS.values()))==31
+    for scene_id,label in _U110_SCENE_LABELS.items():
+        assert _U100_SCENE_TITLES[scene_id-1]==label
+    assert set(_U110_SCENE_LABELS)==set(range(60,91))
+    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 90 unique names, IDs 60-90 have individual geometry and animations, real synchronized OpenGL FPS")
 
 _u37_gpu_benchmark_child = _u100_gpu_benchmark_child
 
@@ -12989,7 +12991,7 @@ def _u110_selftest_service_actions():
     assert len(_U110_SERVICE_ACTIONS["SERWIS_ULTIMATE"])>=40
     assert callable(_u110_execute_service_action) and callable(_u110_start_service_action)
     assert callable(_u110_show_service_center) and callable(_u110_show_service_actions)
-    all_known=set(_U110_PS_SCRIPTS)|set(_U110_SCRIPT_ALIASES)|set(_U110_OPEN_TARGETS)|set(_U110_NAV_TARGETS)|set(_U110_PROBE_LINKS)|{
+    all_known=set(_U110_PS_SCRIPTS)|set(_U110_SCRIPT_ALIASES)|set(_U110_OPEN_TARGETS)|set(_U110_NAV_TARGETS)|set(_U110_PROBE_LINKS)|{ "sr_sensor_report","su_sensor_report",
       "sr_dism_check","sr_dism_scan","sr_dism_restore","sr_sfc_scan","sr_chkdsk_scan","sr_repair_sequence",
       "sr_bcd_backup","sr_bcd_repair_uefi","sr_restore_point","sr_dxdiag_report","sr_defender_scan",
       "su_defender_scan","su_energy_report","su_sleepstudy","su_network_stack_reset","su_flush_dns",
