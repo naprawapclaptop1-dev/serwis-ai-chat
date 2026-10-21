@@ -1,7 +1,7 @@
 # Audyt integracji — NAPRAWA PC HARDWARE TEST PRO
 
 Data audytu: 2026-10-22  
-Baza online sprawdzona: release 4.3.118 i źródło `hardware-test-pro/ADVANCED_MODULES_PATCH.py`.
+Baza online sprawdzona: release 4.3.120 i źródło `hardware-test-pro/ADVANCED_MODULES_PATCH.py`.
 
 ## Co już znajduje się w źródle Hardware Test PRO
 
@@ -37,4 +37,4 @@ Przywrócono właściwy test regresyjny unikalnego mapowania 110 pozycji katalog
 
 ## Status prawdy
 
-Build online 4.3.118 zakończył się sukcesem w GitHub Actions. To potwierdza build i testy automatyczne z tego przebiegu, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
+Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To potwierdza build i testy automatyczne z tego przebiegu, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
