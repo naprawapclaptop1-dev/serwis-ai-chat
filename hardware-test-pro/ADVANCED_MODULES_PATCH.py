@@ -4778,7 +4778,7 @@ def _u88_run_selected_diagnostic(app, selected):
         expanded.append(item)
         if item[0] == "GPU":
             expanded.append((
-                "__3D__", "GPU — 60 scen OpenGL, pomiar FPS",
+                "__3D__", "GPU — 90 scen OpenGL, pomiar FPS",
                 lambda: _u90_show_3d_studio(app),
                 lambda: _u88_run_3d_suite(app, 5), ["3D_SUITE"]
             ))
@@ -4876,7 +4876,7 @@ def _u88_start_selected_diagnostic(app):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz co najmniej jeden moduł na pulpicie.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 60 scen 3D + VRAM", "RAM": "RAM",
+        "CPU": "CPU", "GPU": "GPU + 90 scen 3D + VRAM", "RAM": "RAM",
         "DYSKI": "SSD/HDD/NVMe", "MATRYCA": "Matryca", "BATERIA": "Bateria",
         "KLAWIATURA": "Klawiatura", "AUDIO": "Audio", "SIEC": "Speed Test + USB",
         "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
@@ -4884,7 +4884,7 @@ def _u88_start_selected_diagnostic(app):
     message = (
         "Uruchomić zaznaczone testy po kolei, każdy na osobnym ekranie?\n\n"
         "Wyniki czujników na żywo, wykresy i raport są aktualizowane w trakcie. "
-        "GPU: 60 scen po 5 s (około 5 minut) oraz osobny test VRAM 15 s. "
+        "GPU: 90 scen po 5 s (około 7 min 30 s) oraz osobny test VRAM 15 s. "
         "RAM wykorzysta bezpieczny bufor maks. 2 GB. STOP TEST przerywa przebieg.\n\n"
         "Kolejność: " + " → ".join(labels.get(k, k) for k in selected)
     )
@@ -4902,7 +4902,7 @@ def _u88_start_all_tests(app):
     message = (
         "Uruchomić WSZYSTKIE testy po kolei, każdy na osobnym ekranie?\n\n"
         "Przebieg zawiera CPU, GPU, RAM, dyski, matrycę, baterię, klawiaturę, audio, "
-        "60 scen 3D po 5 s, osobny test VRAM, Speed Test, USB, Windows/bezpieczeństwo i kamerę. "
+        "90 scen 3D po 5 s, osobny test VRAM, Speed Test, USB, Windows/bezpieczeństwo i kamerę. "
         "GPU+VRAM dodają około 5 minut i 15 sekund; Speed Test przesyła około 24 MB. "
         "Można przerwać przez STOP TEST."
     )
@@ -5130,13 +5130,13 @@ def _u91_start_selected_diagnostic(app):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz co najmniej jeden moduł na pulpicie.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 60 scen 3D + VRAM", "RAM": "RAM",
+        "CPU": "CPU", "GPU": "GPU + 90 scen 3D + VRAM", "RAM": "RAM",
         "DYSKI": "SSD/HDD/NVMe", "MATRYCA": "Matryca", "BATERIA": "Bateria",
         "KLAWIATURA": "Klawiatura", "AUDIO": "Audio", "SIEC": "Speed Test + USB",
         "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
     }
     if not messagebox.askyesno(
-        "Pełna diagnostyka — online 4.3.92",
+        "Pełna diagnostyka — osobne ekrany",
         "Uruchomić zaznaczone testy po kolei, każdy na osobnym ekranie?\\n\\n"
         "Każdy wyjątek jest zapisywany jako ERROR/N/D — aplikacja ma pozostać otwarta. "
         "GPU obejmuje osobny benchmark 3D oraz VRAM; STOP TEST przerywa przebieg.\\n\\n"
@@ -9675,7 +9675,7 @@ def _u105_stage_live_panel(self,index,total,title):
         self.make_button(row,"SYMULATOR 3D TEGO PODZESPOŁU",lambda m=module:_u86_launch_component_test(self,m,"visual"),"good",side="left",ipady=4)
         if module=="GPU":
             self.make_button(row,"TEST VRAM",lambda:_u86_launch_component_test(self,"VRAM","benchmark"),"card",side="left",ipady=4)
-            self.make_button(row,"60 SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"good",side="left",ipady=4)
+            self.make_button(row,"90 SCEN 3D",lambda:_u68_open_gpu_suite(self,auto_start=True),"good",side="left",ipady=4)
         out=tk.Text(panel,height=3,wrap="word",bg=t["bg"],fg=t["fg"],insertbackground=t["fg"],
             relief="flat",bd=0,font=("Consolas",8),padx=6,pady=4)
         out.pack(fill="x",padx=5,pady=(0,4));out.configure(state="disabled");self._u86_result_text=out
