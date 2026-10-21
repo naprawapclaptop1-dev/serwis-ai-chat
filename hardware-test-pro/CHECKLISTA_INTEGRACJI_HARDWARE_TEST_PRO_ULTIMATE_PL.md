@@ -1,16 +1,17 @@
 # CHECKLISTA INTEGRACJI — NAPRAWA PC HARDWARE TEST PRO
 
-## Wydanie online 4.3.112
-- [x] Windows CI zakończył się sukcesem: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39656632819
+## Wydanie online 4.3.114
+- [x] Windows CI zakończył się sukcesem: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39673844878
 - [x] Setup.exe oraz ALL-IN-ONE ZIP opublikowane.
 - [x] Manifest stable aktualizowany po udanej budowie i publikacji.
-- [x] 15 grup katalogu i 90 unikalnych testów.
-- [x] 90 odrębnych ID scen OpenGL przypisanych do 90 testów.
-- [x] 20 dodatkowych testów dla grup SYSTEM REPAIR PRO i SERWIS ULTIMATE.
+- [x] 15 grup katalogu i 110 unikalnych testów.
+- [x] 110 odrębnych ID scen OpenGL — unikalny layout dla każdego ID.
+- [x] 40 diagnostyk integracyjnych dla grup SYSTEM REPAIR PRO i SERWIS ULTIMATE (po 20 w każdej grupie).
 - [x] Pełna tabela live: sensory, CPU per-core, RAM/swap, I/O i IOPS dysków, karty sieciowe i woluminy — tam, gdzie dane są dostępne.
-- [x] Speed Test QUICK/STANDARD/MAX; MAX wymaga zgody przed większym transferem.
+- [x] Speed Test QUICK/STANDARD/MAX/TURBO; TURBO mierzy 4 równoległe strumienie HTTPS po potwierdzeniu i zapisuje wynik oddzielnie.
 - [x] Test trybów ekranu oddzielony od EDID; audio wymaga jawnego potwierdzenia przed próbkowaniem/tonem.
 - [x] Wyniki katalogu są zapisywane jako indywidualne raporty JSON.
+- [x] Sensor Bridge zachowuje wykryte czujniki bez aktualnego odczytu jako N/D.
 
 ## Liczebność katalogu
 - [x] CPU — 7; RAM — 7; GPU — 8; VRAM — 6; dyski — 7; ekran — 5.
@@ -29,7 +30,7 @@
 - [ ] Potwierdzić czujniki w konkretnych sterownikach CPU/GPU/EC.
 - [ ] Osobno sprawdzić audio, kamerę, matrycę, klawiaturę/touchpad i porty USB.
 - [ ] Sprawdzić aktualizację nad istniejącą instalacją.
-- [ ] Porównać plik po pliku wszystkie funkcje z obu ZIP-ów źródłowych, aby potwierdzić pełną zgodność 1:1.
+- [ ] Porównać plik po pliku wszystkie funkcje z obu ZIP-ów źródłowych, aby potwierdzić pełną zgodność 1:1. Obecne 40 sond nie jest deklaracją pełnego przeniesienia każdego ekranu i każdej funkcji.
 
 ## Granice
 - CI nie potwierdza wszystkich fizycznych urządzeń ani czujników.
