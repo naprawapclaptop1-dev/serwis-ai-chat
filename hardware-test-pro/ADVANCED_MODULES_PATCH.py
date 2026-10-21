@@ -12986,8 +12986,20 @@ def _u116_selftest_scene_signatures():
     assert len(signatures)==110 and len(set(keys))==110,"Each of the 110 scene IDs must have a distinct geometry signature."
     assert len({x["style_name"] for x in signatures})==12
     names=_u93_deep_code_names(_u114_gpu_benchmark_child)
+    def nested_literals(code):
+        import types as _u116_types
+        found=[]
+        pending=[code]
+        while pending:
+            current=pending.pop()
+            for value in current.co_consts:
+                if isinstance(value,str):found.append(value)
+                elif isinstance(value,_u116_types.CodeType):pending.append(value)
+        return set(found)
+    literals=nested_literals(_u114_gpu_benchmark_child.__code__)
     assert "draw_scene_signature" in names,"The synchronized OpenGL renderer must draw the scene-specific signature."
-    assert "signature_vertices" in names and "scene_signature" in names
+    assert "signature_vertices" in literals and "scene_signature" in literals
+    assert "geometry_objects" in literals and "geometry_vertices" in literals
     print("UNIQUE_GPU_GEOMETRY_SIGNATURE_SELFTEST_OK: 110 unique signatures, 12 geometry accents, real synchronized OpenGL FPS")
 
 def _u116_selftest_sensor_display_controls():
