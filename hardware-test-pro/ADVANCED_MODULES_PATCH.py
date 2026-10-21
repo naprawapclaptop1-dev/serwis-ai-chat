@@ -13583,6 +13583,7 @@ def _u121_show_system_repair_center(app):
         panel=app.panel(app.content);panel.pack(fill="x",padx=3,pady=3,before=log_panel if log_panel is not None else None)
         app.make_button(panel,"ZLECENIA SERWISOWE — SERWIS ULTIMATE",lambda:_u121_show_service_jobs(app),"accent",side="left",ipady=4)
         app.make_button(panel,"ZASILANIE / BATERIA — TESTY",lambda:_u121_show_power_lab(app),"card",side="left",ipady=4)
+        app.make_button(panel,"PROFILE NAPRAW / DIAGNOZA",lambda:_u123_show_repair_profiles(app),"card",side="left",ipady=4)
         app.make_button(panel,"BAZA WIEDZY / LEKCJE NAPRAWY",lambda:_u122_show_repair_knowledge(app),"card",side="left",ipady=4)
     except Exception as exc:
         try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
@@ -13946,12 +13947,169 @@ def _u122_selftest_repair_knowledge():
     assert callable(AppV43.show_repair_knowledge)
     print("SYSTEM_REPAIR_PRO_KNOWLEDGE_SELFTEST_OK: local import, SHA-256 dedupe, ranked search and lesson source retrieval")
 
+
+# v4.3.123 — System Repair PRO symptom profiles, safe diagnostics, tool shortcuts and reports.
+_U123_REPAIR_PROFILES={
+ "slow":{"title":"Windows działa wolno","summary":"Sprawdź obciążenie procesów, pamięć, autostart i zdarzenia dysku.","steps":["Zapisz obciążenie CPU/RAM i procesy o największym użyciu pamięci.","Sprawdź wolne miejsce i kondycję dysków.","Nie wyłączaj losowo usług ani zabezpieczeń."],"tool":"perfmon.exe /rel","command":"$cpu=Get-CimInstance Win32_Processor | Select-Object Name,LoadPercentage; $os=Get-CimInstance Win32_OperatingSystem | Select-Object TotalVisibleMemorySize,FreePhysicalMemory; $proc=@(Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 20 Name,Id,CPU,WorkingSet64); [pscustomobject]@{cpu=$cpu;memory=$os;top_processes=$proc} | ConvertTo-Json -Depth 5"},
+ "bsod":{"title":"BSOD / niebieski ekran","summary":"Zbierz ostatnie zdarzenia BugCheck, Kernel-Power i WHEA.","steps":["Zapisz kod STOP i czas wystąpienia.","Sprawdź zdarzenia BugCheck/WHEA oraz pliki minidump.","Nie usuwaj sterowników przed zapisaniem raportu."],"tool":"eventvwr.msc","command":"$start=(Get-Date).AddDays(-14); $e=@(Get-WinEvent -FilterHashtable @{LogName='System';StartTime=$start} -MaxEvents 500 -ErrorAction SilentlyContinue | Where-Object {$_.ProviderName -match 'BugCheck|Kernel-Power|WHEA-Logger|volmgr'} | Select-Object -First 80 TimeCreated,Id,ProviderName,LevelDisplayName,Message); $d=@(Get-ChildItem $env:WINDIR\\Minidump -File -ErrorAction SilentlyContinue | Select-Object -Last 30 Name,Length,LastWriteTime); [pscustomobject]@{events=$e;minidumps=$d} | ConvertTo-Json -Depth 5"},
+ "updates":{"title":"Błąd Windows Update","summary":"Sprawdź historię aktualizacji i zdarzenia Windows Update.","steps":["Zapisz dokładny kod błędu i numer KB.","Sprawdź historię aktualizacji i wolne miejsce.","Najpierw uruchom diagnostykę; reset składników aktualizacji wymaga osobnego potwierdzenia."],"tool":"ms-settings:windowsupdate","command":"$hot=@(Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 40 HotFixID,Description,InstalledOn); $start=(Get-Date).AddDays(-14); $ev=@(Get-WinEvent -FilterHashtable @{LogName='System';StartTime=$start} -MaxEvents 400 -ErrorAction SilentlyContinue | Where-Object {$_.ProviderName -match 'WindowsUpdate|Servicing'} | Select-Object -First 80 TimeCreated,Id,ProviderName,Message); [pscustomobject]@{updates=$hot;events=$ev} | ConvertTo-Json -Depth 5"},
+ "boot":{"title":"Problem z uruchamianiem Windows","summary":"Zbierz zdarzenia startu, stan WinRE i konfigurację systemu.","steps":["Zapisz ostatni komunikat i etap, na którym start się zatrzymuje.","Sprawdź WinRE i zdarzenia startu.","Nie wykonuj automatycznego resetu ani formatowania."],"tool":"ms-settings:recovery","command":"$reagent=& reagentc.exe /info 2>&1 | Out-String; $bcd=& bcdedit.exe /enum '{current}' 2>&1 | Out-String; $start=(Get-Date).AddDays(-7); $ev=@(Get-WinEvent -FilterHashtable @{LogName='System';Id=6005,6006,6008,41;StartTime=$start} -MaxEvents 60 -ErrorAction SilentlyContinue | Select-Object TimeCreated,Id,ProviderName,Message); [pscustomobject]@{winre=$reagent;bcd=$bcd;boot_events=$ev} | ConvertTo-Json -Depth 5"},
+ "network":{"title":"Brak internetu / sieć","summary":"Sprawdź konfigurację IP, bramę, DNS i test HTTPS.","steps":["Porównaj adres IP, bramę i DNS.","Oddziel test połączenia z bramą od DNS i internetu.","Reset sieci może zerwać połączenie — nie uruchamiamy go automatycznie."],"tool":"ms-settings:network-status","command":"$ip=Get-NetIPConfiguration -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,IPv4Address,IPv4DefaultGateway,DNSServer; $gw=Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1 NextHop,InterfaceAlias; $ping=@(); if($gw.NextHop){$ping=@(Test-Connection -ComputerName $gw.NextHop -Count 4 -ErrorAction SilentlyContinue | Select-Object Address,ResponseTime,StatusCode)}; $dns=$null; try{$dns=Resolve-DnsName cloudflare.com -Type A -DnsOnly -ErrorAction Stop | Select-Object -First 4 Name,IPAddress}catch{$dns=$_.Exception.Message}; [pscustomobject]@{ip=$ip;gateway=$gw;gateway_ping=$ping;dns=$dns} | ConvertTo-Json -Depth 5"},
+ "audio":{"title":"Brak dźwięku","summary":"Sprawdź urządzenia audio, usługi i sterowniki.","steps":["Sprawdź wyjście domyślne i głośność aplikacji.","Sprawdź urządzenia audio i błędy PnP.","Nie usuwaj sterowników przed zapisaniem ich wersji."],"tool":"mmsys.cpl","command":"$dev=@(Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object {$_.Class -match 'Audio|MEDIA' -or $_.FriendlyName -match 'audio|sound|dźwięk'} | Select-Object Status,Class,FriendlyName,InstanceId); $svc=@(Get-Service Audiosrv,AudioEndpointBuilder -ErrorAction SilentlyContinue | Select-Object Name,Status,StartType); [pscustomobject]@{devices=$dev;services=$svc} | ConvertTo-Json -Depth 5"},
+ "display":{"title":"Brak obrazu / ekran","summary":"Sprawdź adapter graficzny, rozdzielczość i sterownik.","steps":["Sprawdź kabel, wejście monitora i zasilanie.","Zapisz model GPU i wersję sterownika.","Test wzorca matrycy nie zastępuje sprawdzenia przewodu ani panelu."],"tool":"ms-settings:display","command":"$gpu=@(Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Select-Object Name,DriverVersion,DriverDate,Status,CurrentHorizontalResolution,CurrentVerticalResolution,VideoModeDescription); $mon=@(Get-CimInstance WmiMonitorID -Namespace root\\wmi -ErrorAction SilentlyContinue | Select-Object InstanceName,Active); [pscustomobject]@{gpu=$gpu;monitors=$mon} | ConvertTo-Json -Depth 5"},
+ "game":{"title":"Gra zamyka się / błąd GPU","summary":"Sprawdź sterownik GPU, awarie aplikacji i zdarzenia Display.","steps":["Zapisz nazwę gry, kod błędu i czas awarii.","Sprawdź sterownik i zdarzenia Application Error/Display.","FPS z symulatora nie zastępuje testu gry ani sterownika."],"tool":"perfmon.exe /rel","command":"$gpu=@(Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Select-Object Name,DriverVersion,DriverDate,Status); $start=(Get-Date).AddDays(-14); $ev=@(Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=$start} -MaxEvents 500 -ErrorAction SilentlyContinue | Where-Object {$_.Id -in 1000,1001 -or $_.ProviderName -match 'Display|nvlddmkm|amdwddmg'} | Select-Object -First 80 TimeCreated,Id,ProviderName,Message); [pscustomobject]@{gpu=$gpu;crashes=$ev} | ConvertTo-Json -Depth 5"},
+ "disk":{"title":"Błędy dysku / SMART","summary":"Sprawdź kondycję dysków, woluminy i zdarzenia NTFS/dysk.","steps":["Zrób kopię ważnych danych przed naprawą dysku.","Sprawdź SMART i wolne miejsce.","Skan online jest bezpieczniejszy niż naprawa offline, ale nie zastępuje kopii."],"tool":"diskmgmt.msc","command":"$pd=@(Get-PhysicalDisk -ErrorAction SilentlyContinue | Select-Object FriendlyName,MediaType,HealthStatus,OperationalStatus,Size); $vol=@(Get-Volume -ErrorAction SilentlyContinue | Select-Object DriveLetter,FileSystemLabel,FileSystem,HealthStatus,Size,SizeRemaining); $start=(Get-Date).AddDays(-14); $ev=@(Get-WinEvent -FilterHashtable @{LogName='System';StartTime=$start} -MaxEvents 500 -ErrorAction SilentlyContinue | Where-Object {$_.ProviderName -match 'disk|Ntfs|storahci|stornvme|iaStor'} | Select-Object -First 80 TimeCreated,Id,ProviderName,Message); [pscustomobject]@{disks=$pd;volumes=$vol;events=$ev} | ConvertTo-Json -Depth 5"},
+ "ram":{"title":"Błędy RAM / losowe restarty","summary":"Sprawdź moduły pamięci i zdarzenia WHEA/MemDiag.","steps":["Zapisz konfigurację modułów RAM i częstotliwość.","Sprawdź WHEA i wyniki diagnostyki pamięci.","Nie oznaczaj pamięci jako sprawnej tylko na podstawie odczytu WMI."],"tool":"mdsched.exe","command":"$ram=@(Get-CimInstance Win32_PhysicalMemory -ErrorAction SilentlyContinue | Select-Object DeviceLocator,Capacity,Speed,ConfiguredClockSpeed,Manufacturer,PartNumber); $start=(Get-Date).AddDays(-30); $ev=@(Get-WinEvent -FilterHashtable @{LogName='System';StartTime=$start} -MaxEvents 500 -ErrorAction SilentlyContinue | Where-Object {$_.ProviderName -match 'WHEA-Logger|MemoryDiagnostics-Results|BugCheck'} | Select-Object -First 100 TimeCreated,Id,ProviderName,Message); [pscustomobject]@{modules=$ram;events=$ev} | ConvertTo-Json -Depth 5"},
+ "thermal":{"title":"Przegrzewanie / wentylatory","summary":"Odczytaj sensory temperatury, obciążenia, zegarów i wentylatorów.","steps":["Sprawdź temperaturę w spoczynku i pod kontrolowanym obciążeniem.","Odczyt N/D oznacza brak wartości udostępnionej przez sterownik.","Nie zatrzymuj wentylatorów ani nie wyłączaj zabezpieczeń termicznych."],"tool":"msinfo32.exe","command":"$c=@(Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object Name,LoadPercentage,CurrentClockSpeed,MaxClockSpeed); $gpu=@(Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Select-Object Name,CurrentRefreshRate,DriverVersion,Status); [pscustomobject]@{cpu=$c;gpu=$gpu;note='Temperatury szczegółowe sprawdź w inspektorze sensorów; WMI nie udostępnia ich na każdym komputerze.'} | ConvertTo-Json -Depth 5"},
+ "battery":{"title":"Bateria / ładowanie","summary":"Sprawdź status baterii, raport pojemności i aktywny plan zasilania.","steps":["Porównaj pojemność projektową i pełnego ładowania w Battery Report.","Sprawdź zasilacz, stan baterii i czas pracy.","Raport nie jest dostępny na komputerze bez baterii."],"tool":"ms-settings:batterysaver","command":"$b=@(Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object Caption,EstimatedChargeRemaining,BatteryStatus,EstimatedRunTime,DesignCapacity,FullChargeCapacity); $p=& powercfg.exe /getactivescheme 2>&1 | Out-String; [pscustomobject]@{battery=$b;active_power_plan=$p} | ConvertTo-Json -Depth 5"},
+ "driver":{"title":"Konflikt sterownika","summary":"Sprawdź błędne urządzenia PnP, wersje i podpisy sterowników.","steps":["Zapisz nazwę urządzenia i identyfikator sprzętowy.","Porównaj datę i wersję sterownika z producentem urządzenia.","Nie pobieraj sterowników z przypadkowych stron."],"tool":"devmgmt.msc","command":"$bad=@(Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'OK'} | Select-Object -First 100 Status,Class,FriendlyName,InstanceId); $drivers=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object -First 150 DeviceName,DriverVersion,DriverDate,Manufacturer,IsSigned); [pscustomobject]@{problem_devices=$bad;drivers=$drivers} | ConvertTo-Json -Depth 5"},
+ "activation":{"title":"Aktywacja / licencja Windows","summary":"Odczytaj stan licencji bez zbierania kluczy produktu.","steps":["Sprawdź edycję Windows i stan aktywacji.","Nie udostępniaj kluczy produktu ani identyfikatorów instalacji publicznie.","Zmiany licencji wykonuj wyłącznie przez oficjalne ustawienia."],"tool":"ms-settings:activation","command":"$os=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber; $lic=@(Get-CimInstance SoftwareLicensingProduct -ErrorAction SilentlyContinue | Where-Object {$_.PartialProductKey -and $_.LicenseStatus -ne 0} | Select-Object Name,Description,LicenseStatus,PartialProductKey); [pscustomobject]@{os=$os;licensed_products=$lic;note='Pełne klucze produktu nie są zbierane.'} | ConvertTo-Json -Depth 5"}
+}
+
+def _u123_profile_command(profile_key):
+    item=_U123_REPAIR_PROFILES.get(profile_key)
+    if not item:raise ValueError("Nieznany profil naprawy.")
+    return item["command"]
+
+def _u123_show_repair_profiles(app):
+    import os as _u123_os
+    import subprocess as _u123_subprocess
+    import threading as _u123_threading
+    import webbrowser as _u123_webbrowser
+    from urllib.parse import quote as _u123_quote
+    from datetime import datetime as _u123_datetime
+    from pathlib import Path as _u123_Path
+    app.current_view="SYSTEM_REPAIR_PROFILES";app.clear();t=app.colors()
+    app.header_title.config(text="SYSTEM REPAIR PRO — PROFILE PROBLEMÓW I BEZPIECZNA DIAGNOSTYKA")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="PROFIL PROBLEMU • DIAGNOZA • NARZĘDZIA WINDOWS • RAPORT",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,3))
+    tk.Label(head,text="Profile uruchamiają tylko odczytowe polecenia diagnostyczne. Naprawy systemowe wymagają osobnego potwierdzenia w Centrum napraw. Brak danych lub nieobsługiwane urządzenie oznacza N/D/WARN.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    labels={value["title"]:key for key,value in _U123_REPAIR_PROFILES.items()}
+    selected=tk.StringVar(value=next(iter(labels)))
+    query_row=tk.Frame(app.content,bg=t["bg"]);query_row.pack(fill="x",padx=7,pady=4)
+    combo=ttk.Combobox(query_row,textvariable=selected,values=list(labels),state="readonly",width=38);combo.pack(side="left",padx=(0,8),ipady=3)
+    tk.Label(query_row,text="Opis błędu / kod (opcjonalnie):",bg=t["bg"],fg=t["muted"],font=app.fnt(8)).pack(side="left",padx=(0,5))
+    error_entry=tk.Entry(query_row,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat")
+    error_entry.pack(side="left",fill="x",expand=True,ipady=5)
+    panel=app.panel(app.content);panel.pack(fill="both",expand=True,padx=3,pady=3)
+    detail=tk.Text(panel,height=10,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    detail.pack(fill="both",expand=True,padx=8,pady=8)
+    status=tk.StringVar(value="Wybierz profil i uruchom analizę.")
+    tk.Label(app.content,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=1300).pack(fill="x",padx=8,pady=3)
+    last={"profile":None,"result":"","report":None}
+    def get_profile():
+        return labels.get(selected.get(),next(iter(_U123_REPAIR_PROFILES)))
+    def analyze():
+        key=get_profile();item=_U123_REPAIR_PROFILES[key]
+        user_error=error_entry.get().strip()
+        lines=[item["title"],"",item["summary"],"","KROKI KONTROLNE:"]
+        lines.extend(str(i+1)+". "+step for i,step in enumerate(item["steps"]))
+        if user_error:lines.extend(["","ZGŁOSZONY BŁĄD:",user_error])
+        try:
+            searcher=globals().get("_u122_search_knowledge")
+            if callable(searcher):
+                hits=searcher(item["title"]+" "+user_error,limit=3)
+                if hits:
+                    lines.extend(["","TRAFIENIA Z LOKALNEJ BAZY WIEDZY:"])
+                    for hit in hits:lines.extend(["- "+hit["name"]+" (trafność "+str(hit["score"])+")",hit["snippet"]])
+        except Exception:pass
+        detail.configure(state="normal");detail.delete("1.0","end");detail.insert("end","\n".join(lines));detail.configure(state="disabled")
+        last["profile"]=key
+        status.set("Profil przeanalizowany. To plan kontroli, nie automatyczne potwierdzenie awarii.")
+    def run_diagnostic():
+        key=get_profile();item=_U123_REPAIR_PROFILES[key]
+        folder=_u123_Path(_u123_os.environ.get("LOCALAPPDATA") or _u123_Path.home())/"NaprawaPC"/"Raporty"/"RepairProfiles"
+        folder.mkdir(parents=True,exist_ok=True)
+        stamp=_u123_datetime.now().strftime("%Y%m%d-%H%M%S");path=folder/(stamp+"-"+key+".txt")
+        win=tk.Toplevel(app);win.title("DIAGNOSTYKA — "+item["title"]);win.geometry("820x520");win.minsize(650,400)
+        t2=app.colors();tk.Label(win,text=item["title"],bg=t2["bg"],fg=t2["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=8)
+        out=tk.Text(win,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+        out.pack(fill="both",expand=True,padx=10,pady=(0,10));out.insert("end","Trwa odczyt diagnostyczny. Raport: "+str(path)+"\n");out.configure(state="disabled")
+        def worker():
+            state="WARN"
+            try:
+                command=["powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-Command",_u123_profile_command(key)]
+                result=_u123_subprocess.run(command,capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=90,creationflags=getattr(_u123_subprocess,"CREATE_NO_WINDOW",0))
+                body=((result.stdout or "")+"\n"+(result.stderr or "")).strip() or "Brak danych zwróconych przez polecenie."
+                state="PASS" if result.returncode==0 and body else "WARN"
+                if result.returncode!=0:body+="\n\nKod wyjścia: "+str(result.returncode)+" — wynik nie jest zaliczony."
+            except Exception as exc:body=f"{type(exc).__name__}: {exc}\nBrak poprawnego odczytu; nie oznaczono PASS."
+            try:path.write_text(body,encoding="utf-8")
+            except Exception as exc:body+="\nNie udało się zapisać raportu: "+str(exc)
+            def finish():
+                if not win.winfo_exists():return
+                out.configure(state="normal");out.delete("1.0","end");out.insert("end",body);out.see("end");out.configure(state="disabled")
+                status.set(state+" — "+item["title"]+" — "+str(path))
+                last["profile"]=key;last["result"]=body;last["report"]=str(path)
+                try:app.append_log("SYSTEM REPAIR PROFILE "+key+": "+state+"; "+str(path))
+                except Exception:pass
+            try:app.after(0,finish)
+            except Exception:pass
+        _u123_threading.Thread(target=worker,daemon=True,name="NaprawaPC-Profile-"+key).start()
+    def open_tool():
+        key=get_profile();tool=_U123_REPAIR_PROFILES[key]["tool"]
+        try:
+            if tool.startswith("ms-settings:") and hasattr(_u123_os,"startfile"):_u123_os.startfile(tool)
+            else:
+                parts=tool.split()
+                _u123_subprocess.Popen(parts,creationflags=getattr(_u123_subprocess,"CREATE_NO_WINDOW",0))
+        except Exception as exc:messagebox.showerror("Narzędzie Windows",str(exc))
+    def open_repair_center():
+        if messagebox.askyesno("Centrum napraw","Otworzyć Centrum napraw Windows? Każda naprawa wymaga osobnego potwierdzenia."):
+            app.show_system_repair_center()
+    def search_web():
+        key=get_profile();q=_U123_REPAIR_PROFILES[key]["title"]+" "+error_entry.get().strip()+" Windows troubleshooting Microsoft"
+        _u123_webbrowser.open("https://www.bing.com/search?q="+_u123_quote(q))
+    def save_report():
+        key=get_profile();item=_U123_REPAIR_PROFILES[key]
+        folder=_u123_Path(_u123_os.environ.get("LOCALAPPDATA") or _u123_Path.home())/"NaprawaPC"/"Raporty"/"RepairProfiles";folder.mkdir(parents=True,exist_ok=True)
+        stamp=_u123_datetime.now().strftime("%Y%m%d-%H%M%S")
+        try:
+            import html as _u123_html
+            report=folder/(stamp+"-"+key+".html")
+            body=last["result"] or detail.get("1.0","end-1c")
+            html_doc="<!doctype html><html lang='pl'><meta charset='utf-8'><title>Raport profilu</title><style>body{font:15px Segoe UI,Arial;background:#0a1220;color:#e7f1ff;margin:24px}h1{color:#54d7ff}pre{white-space:pre-wrap;background:#111e31;padding:16px}</style><h1>"+_u123_html.escape(item["title"])+"</h1><p>"+_u123_html.escape(item["summary"])+"</p><pre>"+_u123_html.escape(body)+"</pre></html>"
+            report.write_text(html_doc,encoding="utf-8");last["report"]=str(report)
+            status.set("Raport zapisany: "+str(report))
+        except Exception as exc:messagebox.showerror("Raport profilu",str(exc))
+    def open_last_report():
+        try:
+            path=last.get("report")
+            if path and _u123_os.path.isfile(path) and hasattr(_u123_os,"startfile"):_u123_os.startfile(path)
+            else:messagebox.showinfo("Raport","Najpierw uruchom diagnostykę lub zapisz raport.")
+        except Exception as exc:messagebox.showerror("Raport",str(exc))
+    actions=app.panel(app.content);actions.pack(fill="x",padx=3,pady=3)
+    app.make_button(actions,"ANALIZUJ PROFIL",analyze,"accent",side="left",ipady=4)
+    app.make_button(actions,"URUCHOM ODCZYT",run_diagnostic,"good",side="left",ipady=4)
+    app.make_button(actions,"OTWÓRZ NARZĘDZIE",open_tool,"card",side="left",ipady=4)
+    app.make_button(actions,"CENTRUM NAPRAW",open_repair_center,"card",side="left",ipady=4)
+    app.make_button(actions,"SZUKAJ W SIECI",search_web,"card",side="left",ipady=4)
+    app.make_button(actions,"ZAPISZ RAPORT",save_report,"card",side="left",ipady=4)
+    app.make_button(actions,"OTWÓRZ RAPORT",open_last_report,"card",side="left",ipady=4)
+    app.make_button(actions,"← LABORATORIUM",app.show_component_lab,"card",side="right",ipady=4)
+    analyze()
+    return None
+
+AppV43.show_repair_profiles=_u123_show_repair_profiles
+
+def _u123_selftest_repair_profiles():
+    assert len(_U123_REPAIR_PROFILES)>=12
+    assert len(set(_U123_REPAIR_PROFILES))==len(_U123_REPAIR_PROFILES)
+    forbidden=("Remove-Item","Format-Volume","Clear-Disk","Reset-Computer","Restart-Computer","Stop-Computer")
+    for key,item in _U123_REPAIR_PROFILES.items():
+        assert item.get("title") and item.get("summary") and item.get("steps") and item.get("command")
+        assert not any(word.lower() in item["command"].lower() for word in forbidden),key
+        assert _u123_profile_command(key)==item["command"]
+    assert callable(AppV43.show_repair_profiles)
+    print("SYSTEM_REPAIR_PROFILES_SELFTEST_OK: 12 safe read-only profiles, tool shortcuts and HTML report")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
         _u119_selftest_furmark_scene()
         _u121_selftest_service_jobs()
         _u121_selftest_power_lab()
+        _u123_selftest_repair_profiles()
         _u122_selftest_repair_knowledge()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
