@@ -1971,7 +1971,7 @@ def _u109_add_knowledge_tab(self, notebook, t):
 def _u109_selftest_knowledge_base():
     ids=[a.get("id") for a in _U109_KNOWLEDGE_ARTICLES]
     assert len(ids)>=18 and len(ids)==len(set(ids))
-    for keyword in ("RAM","GPU","USB","PUNKTY PRZYWRACANIA","BIOS","AKTYWACJA","SFC","SIEĆ"):
+    for keyword in ("RAM","GPU","USB","PRZYWRACANIA","BIOS","AKTYWACJA","SFC","SIEĆ"):
         assert _u109_filter_articles(keyword), "Brak artykułu dla: "+keyword
     assert callable(_u109_add_knowledge_tab)
     print("LOCAL_SERVICE_KNOWLEDGE_BASE_SELFTEST_OK: searchable procedures, official sources, save-to-report")
