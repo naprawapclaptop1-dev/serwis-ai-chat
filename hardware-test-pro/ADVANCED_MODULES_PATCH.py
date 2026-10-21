@@ -8791,6 +8791,7 @@ _U105_COLORS = {
     "amber":"#ffbd68","red":"#ff667f","silver":"#b6c9d8","muted":"#6c859a",
     "white":"#e9f5ff","board":"#0b645b","board_edge":"#34dbc9"
 }
+_U105_PI = _u66_math.pi
 
 def _u105_ring_gauge(canvas, title, value, maximum=100.0, unit="%", color="#39e7d0"):
     try:
@@ -8871,13 +8872,15 @@ def _u105_draw_component_scene(app):
     if not str(getattr(app,"current_view","")).startswith("SIM3D_"):
         return
     try:
-        w=max(640,int(canvas.winfo_width() or 900));h=max(300,int(canvas.winfo_height() or 350))
+        w=int(canvas.winfo_width() or 0);h=int(canvas.winfo_height() or 0)
+        if w < 180 or h < 140:
+            return
         canvas.delete("all")
         canvas.configure(bg=_U105_COLORS["bg"],highlightthickness=0,bd=0)
         module=str(app.current_view).replace("SIM3D_","").upper()
         angle=float(getattr(app,"_u68_sim_angle",0.0))
         center_x=w*0.50;center_y=h*0.50
-        scale=min(w,h)*1.28
+        scale=min(w*0.96,h*1.48)
         rot=angle*0.62
         def project(point):
             x,y,z=point
@@ -9227,7 +9230,8 @@ def _u105_open_component_base(self,module,run_test=False,mode="scan"):
         bg=t["bg"],fg=t["accent"],font=self.fnt(9,"bold"),anchor="w")
     self._u68_sim_status.pack(fill="x",padx=5,pady=(2,2))
     self._u68_sim_canvas=tk.Canvas(self.content,height=335,bg=_U105_COLORS["bg"],highlightthickness=0,bd=0)
-    self._u68_sim_canvas.pack(fill="x",expand=False,padx=2,pady=(0,3))
+    self._u68_sim_canvas.pack(fill="x",expand=True,padx=2,pady=(0,3))
+    self._u68_sim_canvas.bind("<Configure>",lambda _e:self.after_idle(lambda:_u105_draw_component_scene(self)))
     gauges=tk.Frame(self.content,bg=t["bg"],bd=0);gauges.pack(fill="x",padx=2,pady=(0,1))
     self._u105_sim_gauges={}
     for i,key in enumerate(("cpu","ram","gpu","temp")):
@@ -9291,6 +9295,53 @@ def _u105_refresh_visible_charts(self):
     except Exception:
         pass
 
+
+# GPU LIVE page uses the same DPI-safe radial presentation as the component workbench.
+_U105_ORIGINAL_GPU_PANEL = _u84_attach_gpu_live_panel
+_U105_ORIGINAL_GPU_TICK = _u84_gpu_live_tick
+
+def _u105_attach_gpu_panel(app):
+    _U105_ORIGINAL_GPU_PANEL(app)
+    for key,item in (getattr(app,"_u84_gpu_values",{}) or {}).items():
+        try:
+            _label,_canvas,_unit,_color=item
+            if _canvas is not None and _canvas.winfo_exists():
+                _canvas.configure(height=62,width=86,bg=_U105_COLORS["panel"],highlightthickness=0,bd=0)
+        except Exception:
+            pass
+
+def _u105_gpu_live_tick(app,schedule=True):
+    _U105_ORIGINAL_GPU_TICK(app,schedule=schedule)
+    values=getattr(app,"_u84_gpu_values",{}) or {}
+    telemetry=getattr(app,"_u84_gpu_last_telemetry",None) or {}
+    cache=getattr(app,"_u66_sensor_cache",{}) or {}
+    temps=cache.get("temps",{}) or {}
+    used=_u84_gpu_numeric(telemetry.get("vram_used_mb"))
+    total=_u84_gpu_numeric(telemetry.get("vram_total_mb"))
+    data={
+      "load":(_u84_gpu_numeric(telemetry.get("gpu_load_percent",getattr(app,"_gpu_util",None))),100.0,"%"),
+      "temp":(_u84_gpu_numeric(telemetry.get("temperature_c",temps.get("gpu_temp_c"))),110.0,"°C"),
+      "vram_used":(used,total or 8192.0,"MB"),
+      "vram_total":(total,total or 8192.0,"MB"),
+      "core_clock":(_u84_gpu_numeric(telemetry.get("gpu_clock_mhz")),3500.0,"MHz"),
+      "memory_clock":(_u84_gpu_numeric(telemetry.get("memory_clock_mhz")),3000.0,"MHz"),
+      "power":(_u84_gpu_numeric(telemetry.get("power_draw_w",telemetry.get("power_w",temps.get("gpu_power_w")))),500.0,"W"),
+      "fan":(_u84_gpu_numeric(telemetry.get("fan_speed_rpm",temps.get("gpu_fan_rpm"))),4000.0,"RPM")
+    }
+    captions={"load":"GPU LOAD","temp":"GPU TEMP","vram_used":"VRAM USED",
+      "vram_total":"VRAM TOTAL","core_clock":"CORE MHz","memory_clock":"MEM MHz",
+      "power":"GPU POWER","fan":"FAN RPM"}
+    for key,item in values.items():
+        try:
+            _label,canvas,unit,color=item
+            val,maximum,default_unit=data.get(key,(None,100.0,unit))
+            _u105_ring_gauge(canvas,captions.get(key,key.upper()),val,maximum,default_unit,color)
+        except Exception:
+            pass
+
+_u84_attach_gpu_live_panel=_u105_attach_gpu_panel
+_u84_gpu_live_tick=_u105_gpu_live_tick
+
 def _u105_selftest_visual_quality():
     assert callable(_u105_draw_component_scene)
     assert callable(_u105_open_component_base)
@@ -9299,6 +9350,8 @@ def _u105_selftest_visual_quality():
     assert "create_polygon" in names and "create_oval" in names and "create_line" in names
     assert "create_rectangle" not in names, "The new 3D renderer must not draw the model out of rectangles."
     assert _U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR is _u105_open_component_base
+    assert _U105_PI > 3.14
+    assert callable(_u105_attach_gpu_panel) and callable(_u105_gpu_live_tick)
     assert _u67_stage_live_panel is _u105_stage_live_panel
     assert _u67_refresh_visible_charts is _u105_refresh_visible_charts
     assert all(k in _u105_draw_component_scene.__code__.co_varnames for k in ("project","poly","path","ring","fan","chip"))
