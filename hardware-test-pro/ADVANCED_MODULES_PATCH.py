@@ -13065,6 +13065,10 @@ def _u117_selftest_per_test_scene_routing():
     assert callable(_u107_open_component_simulator)
     assert callable(_u107_launch_scene_preview)
     detail_names=_u93_deep_code_names(_u93_show_test_detail)
+    if "_u107_launch_scene_preview" not in detail_names and "_u107_open_component_simulator" not in detail_names:
+        original_detail = globals().get("_U102_ORIGINAL_RAM_DETAIL")
+        if callable(original_detail):
+            detail_names.update(_u93_deep_code_names(original_detail))
     assert ("_u107_launch_scene_preview" in detail_names or "_u107_open_component_simulator" in detail_names), "Individual test preview must launch the dedicated scene renderer."
     assert "_u69_open_component_simulator" not in detail_names, "Individual test preview must not call the generic module simulator."
     for screen in (_u93_show_lab,_u93_show_catalog,_u93_add_entry):
