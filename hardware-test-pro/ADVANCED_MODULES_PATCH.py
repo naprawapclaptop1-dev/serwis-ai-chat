@@ -13722,7 +13722,14 @@ def _u121_show_power_lab(app):
         app.make_button(row,"URUCHOM TEST",lambda a=action,ttl=title:_u121_run_power_action(app,a,ttl),"accent",side="right",ipady=4)
     tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=3)
     app.make_button(tools,"← LABORATORIUM",app.show_component_lab,"card",side="left",ipady=4)
-    app.make_button(tools,"OTWÓRZ FOLDER RAPORTÓW",lambda:__import__("os").startfile(str(_u121_power_report_dir())),"card",side="left",ipady=4)
+    def open_power_folder():
+        import os as _u121_os
+        try:
+            folder=str(_u121_power_report_dir())
+            if hasattr(_u121_os,"startfile"):_u121_os.startfile(folder)
+            else:messagebox.showinfo("Folder raportów",folder)
+        except Exception as exc:messagebox.showerror("Folder raportów",str(exc))
+    app.make_button(tools,"OTWÓRZ FOLDER RAPORTÓW",open_power_folder,"card",side="left",ipady=4)
 
 AppV43.show_power_battery_lab=_u121_show_power_lab
 
