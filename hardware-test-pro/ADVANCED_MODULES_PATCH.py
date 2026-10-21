@@ -2993,7 +2993,7 @@ def _u76_disk_scan_selected_volume(self):
     return result
 
 def _u76_selftest_workbenches():
-    assert len(_U66_SCENES) == 60 and len({str(x[0]) for x in _U66_SCENES}) == 60
+    assert len(_U66_SCENES)==90 and len({str(x[0]) for x in _U66_SCENES})==90
     assert callable(_u76_component_report_text) and callable(_u76_refresh_component_report)
     assert callable(_u76_open_component_simulator) and callable(_u76_run_component_worker)
     assert callable(_u76_disk_scan_selected_volume)
@@ -3113,7 +3113,7 @@ def _u78_selftest_component_lab():
     checks = [
         ("13 unique module entries", len(keys) == 13 and len(set(keys)) == 13),
         ("same set as component simulators", set(keys) == set(_U69_COMPONENT_LABELS)),
-        ("60 unique OpenGL scenes", len(_U66_SCENES) == 60 and len({str(x[0]) for x in _U66_SCENES}) == 60),
+        ("90 unique OpenGL scenes", len(_U66_SCENES)==90 and len({str(x[0]) for x in _U66_SCENES})==90),
         ("component lab callable", callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)),
         ("real component launcher callable", callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)),
         ("MAX 900-second profile", len(_U68_PROFILE_CHOICES) >= 6 and str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")),
@@ -3127,7 +3127,7 @@ def _u78_selftest_component_lab():
     print("COMPONENT_LAB_13_MODULES_SELFTEST_OK: " + ", ".join(name for name, _ in checks))
 
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==60, "Studio must have 60 separately named scenes"
+    assert len(_U66_SCENES)==90, "Studio must have 60 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED), "ADVANCED self-test check 1: all(x.get('source','').startswith('https://') for x in _U66_KNOWLEDGE_SEED)"
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge", "ADVANCED self-test check 2: _U66_KNOWLEDGE_PACK_FORMAT == 'naprawapc-ai-reader-knowledge'"
@@ -3143,7 +3143,7 @@ def _u66_selftest_advanced():
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic), "ADVANCED self-test check 11: callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)"
     assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel), "ADVANCED self-test check 12: callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)"
     assert callable(_u67_set_suite_status), "ADVANCED self-test check 13: callable(_u67_set_suite_status)"
-    assert len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES), "ADVANCED self-test check 14: len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES)"
+    assert len(_U66_SCENES)==90 and all(sc[1] for sc in _U66_SCENES), "ADVANCED self-test check 14: len(_U66_SCENES)==90 and all(sc[1] for sc in _U66_SCENES)"
     assert "900 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s"), "ADVANCED self-test check 15: '900 s' in ('3 s','5 s','10 s','20 s','30 s','60 s','120 s','180 s','300 s','600 s','900 s"
     assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator), "ADVANCED self-test check 16: callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)"
     assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene), "ADVANCED self-test check 17: callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)"
@@ -3155,7 +3155,7 @@ def _u66_selftest_advanced():
     assert AppV43.show_component_lab is _u93_show_lab, "ADVANCED self-test check 19: final component catalog must be wired"
     assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench, _u88_show_module_with_independent_tests), "ADVANCED self-test check 20: AppV43.show_module is a supported final view wrapper"
     assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench, _u88_show_simple_module_with_independent_tests), "ADVANCED self-test check 21: AppV43.show_simple_module is a supported final view wrapper"
-    assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60"
+    assert len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==90, "ADVANCED self-test check 22: len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==90"
     assert AppV43._start_selected_diagnostic is _u91_start_selected_diagnostic, "ADVANCED self-test check 23: final guarded selected-test route is installed"
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
@@ -3826,7 +3826,7 @@ def _u86_draw_bar_chart(self,canvas,items,title=""):
     _U86_ORIGINAL_DRAW_BAR_CHART(self,canvas,items,title)
 
 def _u86_selftest_component_ui():
-    assert len(_U66_SCENES)==60 and len({x[0] for x in _U66_SCENES})==60
+    assert len(_U66_SCENES)==90 and len({x[0] for x in _U66_SCENES})==90
     assert str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")
     assert callable(_u86_stage_live_panel) and callable(_u86_launch_component_test)
     assert callable(_u86_render_component_report) and callable(_u86_component_monitor_tick)
@@ -5178,9 +5178,9 @@ def _u88_selftest_final_wiring():
     assert AppV43._u66_ui_wait is _u88_ui_wait
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "MAX — 600 s"})()})()) == 60
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "ULTRA — 300 s"})()})()) == 30
-    assert len(_U66_SCENES) == 60
+    assert len(_U66_SCENES)==90
     assert callable(_u68_attach_component_workbench)
-    print("COMPONENT_INDEPENDENT_WORKBENCH_3D_SUITE_SELFTEST_OK: 13 modules, separate screen per test, 60 scenes, 4K MAX and bounded 3D timing")
+    print("COMPONENT_INDEPENDENT_WORKBENCH_3D_SUITE_SELFTEST_OK: 13 modules, separate screen per test, 90 scenes, 4K MAX and bounded 3D timing")
 
 
 
@@ -6476,7 +6476,37 @@ _U100_SCENE_TITLES = [
  "Sphere Field — gęste pole sfer",
  "Ultimate Mix — geometria mieszana I",
  "Ultimate Mix — geometria mieszana II",
- "Ultimate Mix — geometria mieszana MAX"
+ "Ultimate Mix — geometria mieszana MAX",
+ "Cyclone Lab — Spirala huraganu I",
+ "Cyclone Lab — Oko cyklonu II",
+ "Cyclone Lab — Huragan MAX",
+ "Ulewa 3D — Deszcz ukośny I",
+ "Ulewa 3D — Ściana deszczu II",
+ "Ulewa 3D — Ulewa monsunowa MAX",
+ "Powódź 3D — Wzbierająca rzeka I",
+ "Powódź 3D — Zalane miasto II",
+ "Powódź 3D — Fala powodziowa MAX",
+ "Pioruny 3D — Pojedyncze wyładowanie I",
+ "Pioruny 3D — Burza wielokomórkowa II",
+ "Pioruny 3D — Superkomórka MAX",
+ "Wyścigi — Tor samochodowy I",
+ "Wyścigi — Peleton aut II",
+ "Wyścigi — Tor wyścigowy MAX",
+ "Drift Lab — Łuk i dym opon I",
+ "Drift Lab — Sekcja ósemkowa II",
+ "Drift Lab — Drift tandemowy MAX",
+ "Rally Stage — Szuter i kurz I",
+ "Rally Stage — Górski odcinek II",
+ "Rally Stage — Rajdowy stress MAX",
+ "F1 Night Circuit — Nocny tor I",
+ "F1 Night Circuit — Pit lane i światła II",
+ "F1 Night Circuit — Grand Prix MAX",
+ "Zamieć śnieżna — Opad śniegu I",
+ "Zamieć śnieżna — Wiatr i zawieja II",
+ "Zamieć śnieżna — Blizzard MAX",
+ "Tsunami Lab — Fala przybrzeżna I",
+ "Tsunami Lab — Zalewanie nabrzeża II",
+ "Tsunami Lab — Fala powodziowa MAX"
 ]
 _U66_SCENES = [
  (f"{i:02d} — {name}", name.split(" — ",1)[0], 1 + (i % 3) * 2)
@@ -6839,7 +6869,7 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                 for i in range(count):
                     x=rand.uniform(-2.5,2.5);y=rand.uniform(-1.9,1.9);z=rand.uniform(-2.5,2.5)
                     sphere(x,y,z,0.06+rand.random()*0.1,(0.12+rand.random()*0.7,0.2+rand.random()*0.7,0.55+rand.random()*0.4),7+variant*2,12+variant*2)
-            else:
+            elif family==19:
                 draw_fur_torus(0.9,0.28,800+variant*1200,(0.08,0.25,0.8))
                 for i in range(80+variant*80):
                     x=rand.uniform(-2.2,2.2);y=rand.uniform(-1.4,1.4);z=rand.uniform(-2.2,2.2)
@@ -6847,6 +6877,167 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                     else:box(x,y,z,0.11,0.11,0.11,(0.13,0.5,0.85))
                 for i in range(25+variant*30):
                     wire_box(rand.uniform(-1.5,1.5),rand.uniform(-1,1),rand.uniform(-1.5,1.5),0.25+rand.random()*0.35,(0.12,0.8,0.65))
+            elif family==20:  # Cyclone / hurricane
+                layers=(12,20,30)[variant]
+                for layer in range(layers):
+                    f=layer/max(1,layers-1);r=0.3+1.7*f
+                    gl.glPushMatrix();gl.glTranslatef(0,-2.4+4.8*f,0);gl.glRotatef(layer*31+sid*7,0,1,0)
+                    torus(r,0.08+0.025*variant,(0.30+0.2*f,0.42+0.2*f,0.7+0.15*f),32+variant*12,7+variant*3);gl.glPopMatrix()
+                for i in range(100+variant*180):
+                    a=i*0.41;r=0.35+(i%37)/37*1.6;y=-2.2+(i%53)/52*4.4
+                    sphere(r*_m.cos(a),y,r*_m.sin(a),0.04+0.01*variant,(0.30,0.46,0.65),5,8)
+            elif family==21:  # Torrential rain
+                for i in range(8+variant*6):
+                    sphere((i%7-3)*0.72,1.6+(i//7)*0.32,(i%3-1)*0.65,0.48+0.05*variant,(0.10,0.16,0.27),8,13)
+                for i in range(180+variant*260):
+                    x=-2.8+(i%41)*0.14;z=-2.5+((i*17)%37)*0.14;y=1.4+((i*11)%31)*0.11
+                    line((x,y,z),(x-0.12,y-0.36,z+0.03),(0.28,0.57,0.86),0.7)
+            elif family==22:  # Flooded settlement
+                for side in (-1,1):
+                    for i in range(12+variant*8):
+                        x=side*(1.9+(i%3)*0.3);z=-2.8+i*5.6/(11+variant*8);h=0.7+0.1*(i%4)
+                        box(x,h/2,z,0.5,h,0.42,(0.18,0.24,0.31))
+                        for win in range(2+variant):box(x-0.1+win*0.12,0.3+0.08*(i%4),z+0.216,0.045,0.05,0.02,(0.85,0.68,0.24))
+                for layer in range(7+variant*5):
+                    z=-2.8+layer*5.6/(6+variant*5)
+                    path_line([(-1.7,0.04,z),(0,0.12,z+0.05),(1.7,0.04,z)],(0.04,0.36+0.08*variant,0.72),1.0)
+            elif family==23:  # Lightning storm
+                for i in range(18+variant*15):sphere(-2.5+(i%9)*0.62,1.55+(i%4)*0.18,-1.8+((i*5)%7)*0.52,0.42+0.04*variant,(0.13,0.17,0.26),7+variant*2,11+variant*3)
+                for strike in range(1+variant*2):
+                    x=-1.7+strike*(3.4/max(1,variant*2));z=-0.9+0.45*(strike%3)
+                    pts=[(x,1.45,z),(x-0.16,0.82,z+0.04),(x+0.13,0.48,z+0.12),(x-0.21,-0.1,z+0.19),(x+0.04,-0.62,z+0.12)]
+                    path_line(pts,(0.62,0.84,1.0),2.0+variant)
+                    if variant>0:path_line([pts[2],(pts[2][0]+0.4,0.2,z+0.4),(pts[2][0]+0.55,-0.1,z+0.5)],(0.45,0.73,1.0),1.4)
+            elif family==24:  # Racing circuit
+                torus(2.3,0.18,(0.10,0.12,0.16),60+variant*20,8+variant*3)
+                torus(2.3,0.035,(0.9,0.9,0.78),64+variant*20,5);torus(2.78,0.05,(0.9,0.20,0.08),64+variant*20,6)
+                for i in range(24+variant*20):
+                    a=2*_m.pi*i/(24+variant*20);box(2.95*_m.cos(a),0.18,2.95*_m.sin(a),0.18,0.28,0.17,(0.25,0.29,0.35))
+                for i in range(10+variant*8):box(-2.7+i*5.4/(9+variant*8),0.35,-2.65,0.36,0.5+0.1*(i%3),0.28,(0.19,0.23,0.3))
+            elif family==25:  # Drift figure-eight
+                for scale in (1.0,0.78,0.54):
+                    path_line([(2.25*_m.sin(i/499*2*_m.pi),0.04,1.48*_m.sin(i/499*2*_m.pi)*_m.cos(i/499*2*_m.pi)*2*scale) for i in range(500)],(0.42,0.47,0.53),5.5*scale)
+                for i in range(12+variant*12):
+                    a=i*2*_m.pi/(12+variant*12);box(2.1*_m.sin(a),0.12,1.38*_m.sin(a)*_m.cos(a),0.1,0.22,0.1,(0.9,0.33,0.06))
+            elif family==26:  # Rally stage
+                for i in range(20+variant*18):
+                    x=-2.8+(i%11)*0.56;z=-2.65+(i//11)*0.75;h=0.25+((i*7)%9)*0.12
+                    box(x,h/2,z,0.42,h,0.45,(0.18+0.03*(i%4),0.20+0.03*(i%5),0.19))
+                    sphere(x+0.17,h+0.08,z+0.08,0.12+0.03*variant,(0.22,0.38,0.18),6,9)
+                path_line([(2.25*_m.sin(i/299*2*_m.pi),0.08,1.75*_m.sin(i/299*2*_m.pi)*_m.cos(i/299*2*_m.pi)) for i in range(300)],(0.43,0.34,0.19),4.0+variant*1.5)
+            elif family==27:  # Night F1 circuit
+                torus(2.35,0.16,(0.06,0.09,0.13),68+variant*20,8+variant*3)
+                torus(2.35,0.025,(0.05,0.86,0.92),68+variant*20,5);torus(2.68,0.03,(0.88,0.12,0.35),68+variant*20,5)
+                for i in range(24+variant*18):
+                    a=2*_m.pi*i/(24+variant*18);x=2.95*_m.cos(a);z=2.95*_m.sin(a)
+                    box(x,0.42,z,0.05,0.8,0.05,(0.08,0.62,0.95));sphere(x,0.9,z,0.08+0.02*variant,(0.15,0.8,1.0),6,9)
+                for row in range(3+variant*2):box(-2.6,0.2+row*0.22,-2.15-row*0.06,5.3,0.14,0.32,(0.12,0.16,0.24))
+            elif family==28:  # Blizzard
+                for i in range(18+variant*14):
+                    x=(i%6-2.5)*0.82;z=(i//6-1)*0.78;h=0.55+((i*7)%8)*0.15
+                    box(x,h/2,z,0.52,h,0.48,(0.25,0.31,0.42));sphere(x,h+0.1,z,0.32+0.05*variant,(0.72,0.82,0.93),7+variant*2,10+variant*3)
+                for i in range(50+variant*50):
+                    x=rand.uniform(-2.7,2.7);z=rand.uniform(-2.5,2.5);line((x,rand.uniform(-0.4,2.2),z),(x+0.06,-0.7,z+0.03),(0.72,0.85,1.0),0.8)
+            elif family==29:  # Tsunami and coastal flood
+                for i in range(20+variant*16):
+                    x=-2.75+(i%10)*0.61;z=-2.3+(i//10)*0.9;h=0.32+((i*5)%9)*0.12
+                    box(x,h/2,z,0.45,h,0.46,(0.19,0.24,0.32))
+                for layer in range(12+variant*10):
+                    y=-1.7+layer*3.4/(11+variant*10);pts=[]
+                    for i in range(180):
+                        x=-2.8+i*5.6/179;z=-0.6+0.28*_m.sin(x*2.4+layer*0.3)
+                        pts.append((x,y+0.16*_m.sin(x*1.4+layer),z))
+                    path_line(pts,(0.03,0.40+0.06*variant,0.88),1.0+variant*0.4)
+        def draw_dynamic(elapsed):
+            def vehicle(x,y,z,scale,paint,heading):
+                gl.glPushMatrix();gl.glTranslatef(x,y,z);gl.glRotatef(heading,0,1,0)
+                box(0,0,0,1.05*scale,0.18*scale,0.44*scale,paint)
+                box(0.12*scale,0.13*scale,-0.01*scale,0.42*scale,0.17*scale,0.32*scale,(0.12,0.17,0.23))
+                box(0.48*scale,-0.015*scale,0,0.18*scale,0.12*scale,0.52*scale,paint)
+                box(-0.48*scale,0.02*scale,0,0.17*scale,0.08*scale,0.54*scale,(0.16,0.18,0.22))
+                for wx in (-0.32,0.34):
+                    for wz in (-0.26,0.26):box(wx*scale,-0.105*scale,wz*scale,0.19*scale,0.14*scale,0.10*scale,(0.035,0.045,0.06))
+                gl.glPopMatrix()
+            def particles(count,kind):
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_POINTS if kind in ("snow","cyclone") else gl.GL_LINES)
+                for i in range(count):
+                    a=i*0.754877666+elapsed*(0.8+variant*0.42);seed=(i*0.618033989)%1.0
+                    if kind=="cyclone":
+                        y=-2.5+((seed+elapsed*(0.12+variant*0.06))%1.0)*5.0;r=0.2+2.05*((y+2.5)/5.0)
+                        gl.glColor3f(0.28,0.45+0.08*variant,0.66+0.1*variant);gl.glVertex3f(r*_m.cos(a),y,r*_m.sin(a))
+                    elif kind=="rain":
+                        x=-2.9+(i%97)*5.8/96;z=-2.8+((i*31)%89)*5.6/88;y=2.85-((elapsed*(4+variant*3)+i*0.193)%5.7)
+                        gl.glColor3f(0.25,0.51,0.86);gl.glVertex3f(x,y,z);gl.glVertex3f(x-0.1-0.035*variant,y-0.24-0.06*variant,z+0.035)
+                    elif kind=="snow":
+                        x=-3+((i*17)%101)*6/100;z=-2.8+((i*37)%97)*5.6/96;y=2.9-((elapsed*(1.3+variant*1.4)+i*0.137)%5.8)
+                        gl.glColor3f(0.68,0.82,1.0);gl.glVertex3f(x,y,z)
+                    elif kind=="dust":
+                        x=-2+((i*13)%47)*4/46;y=-0.2+((i*7)%17)*0.06;z=1+((elapsed*2.4+i*0.071)%3.6)
+                        gl.glColor3f(0.58,0.42,0.24);gl.glVertex3f(x,y,z);gl.glVertex3f(x+0.1,y+0.03,z+0.15)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            if family==20:particles((1200,2600,5200)[variant],"cyclone")
+            elif family==21:particles((480,1100,2300)[variant],"rain")
+            elif family==22:
+                grid=(18,30,44)[variant];gl.glBegin(gl.GL_QUADS)
+                for row in range(grid):
+                    z0=-3+6*row/grid;z1=-3+6*(row+1)/grid
+                    for col in range(grid):
+                        x0=-3+6*col/grid;x1=-3+6*(col+1)/grid
+                        for x,z in ((x0,z0),(x1,z0),(x1,z1),(x0,z1)):
+                            h=0.16*_m.sin(x*2+elapsed*1.6)+0.12*_m.cos(z*2.4-elapsed*1.25)+0.06*_m.sin((x+z)*4+elapsed)
+                            gl.glColor3f(0.015,0.24+0.07*_m.sin(elapsed+x),0.52+0.12*_m.cos(elapsed+z));gl.glNormal3f(-0.1*_m.cos(x),1,-0.12*_m.sin(z));gl.glVertex3f(x,h,z)
+                gl.glEnd();primitive_counter["value"]+=grid*grid*2
+                for i in range(6+variant*5):
+                    x=-2.3+((i*19+int(elapsed*4))%23)*0.2;z=-2.4+((i*11)%17)*0.3
+                    box(x,0.20+0.04*_m.sin(elapsed+i),z,0.28,0.08,0.16,(0.36,0.27,0.15))
+            elif family==23:
+                tick=int(elapsed*(4+variant*2))
+                if tick%9 in (0,1,5):
+                    gl.glDisable(gl.GL_LIGHTING);gl.glLineWidth(2+variant);gl.glColor3f(0.7,0.86,1.0);gl.glBegin(gl.GL_LINE_STRIP)
+                    x=-1.8+(tick%4);z=-0.6+(tick%3)*0.45;gl.glVertex3f(x,2,z)
+                    for j in range(10+variant*4):
+                        x+=(-0.28 if (j+tick)%2 else 0.25)+0.07*_m.sin(elapsed*12+j);y=1.7-j*(3.2/(9+variant*4));z+=0.06*_m.cos(j*2.1+tick);gl.glVertex3f(x,y,z)
+                    gl.glEnd();gl.glLineWidth(1.0);gl.glEnable(gl.GL_LIGHTING)
+                    for j in range(variant+1):box(x+j*0.12,-1.2+j*0.12,z,0.04,0.42,0.04,(0.5,0.72,1.0))
+            elif family==24:
+                count=(3,6,10)[variant]
+                for i in range(count):
+                    a=elapsed*(0.65+0.065*i)+i*2*_m.pi/count
+                    vehicle(2.28*_m.cos(a),0.24,2.28*_m.sin(a),0.29,(0.88,0.08+0.06*(i%3),0.10+0.12*(i%4)),90-a*180/_m.pi)
+            elif family==25:
+                count=(2,4,6)[variant]
+                for i in range(count):
+                    a=elapsed*(0.75+0.04*i)+i*2*_m.pi/count;x=2*_m.sin(a);z=1.45*_m.sin(a)*_m.cos(a)*1.9;drift=_m.sin(elapsed*2.2+i)*0.45
+                    vehicle(x,0.22,z,0.27,(0.08+0.12*(i%3),0.28+0.12*(i%4),0.86),45-a*115/_m.pi+drift*30)
+                gl.glDisable(gl.GL_LIGHTING);gl.glBegin(gl.GL_POINTS)
+                for i in range(140+variant*220):
+                    a=elapsed*1.3+i*0.73;x=1.7*_m.sin(a);z=1.2*_m.sin(a)*_m.cos(a);y=0.08+(i%12)*0.025
+                    gl.glColor3f(0.46,0.48,0.52);gl.glVertex3f(x,y,z)
+                gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            elif family==26:
+                count=(1,2,4)[variant]
+                for i in range(count):
+                    a=elapsed*(0.52+0.05*i)+i*1.8;x=2.2*_m.sin(a)+0.22*_m.sin(a*3);z=1.8*_m.sin(a)*_m.cos(a)
+                    vehicle(x,0.26,z,0.31,(0.84,0.48,0.08) if i%2==0 else (0.08,0.45,0.76),40-a*70/_m.pi)
+                particles((180,360,640)[variant],"dust")
+            elif family==27:
+                count=(4,8,14)[variant]
+                for i in range(count):
+                    a=elapsed*(0.86+0.035*i)+i*2*_m.pi/count;x=2.34*_m.cos(a);z=2.34*_m.sin(a)
+                    vehicle(x,0.34,z,0.24,(0.94,0.12+0.04*(i%4),0.13) if i%2==0 else (0.04,0.62,0.88),90-a*180/_m.pi)
+                    gl.glDisable(gl.GL_LIGHTING);gl.glColor3f(0.1,0.72,1.0);gl.glBegin(gl.GL_LINES);gl.glVertex3f(x-0.4,0.25,z);gl.glVertex3f(x-0.72,0.25,z);gl.glEnd();gl.glEnable(gl.GL_LIGHTING)
+            elif family==28:particles((800,1800,3200)[variant],"snow")
+            elif family==29:
+                grid=(18,30,46)[variant];gl.glBegin(gl.GL_QUADS)
+                for row in range(grid):
+                    z0=-3+6*row/grid;z1=-3+6*(row+1)/grid
+                    for col in range(grid):
+                        x0=-3+6*col/grid;x1=-3+6*(col+1)/grid
+                        for x,z in ((x0,z0),(x1,z0),(x1,z1),(x0,z1)):
+                            y=0.25*_m.sin(x+elapsed*1.3)+0.34*_m.sin(z*1.1-elapsed*1.5)+0.15*_m.sin((x+z)*2.4-elapsed*2)
+                            gl.glColor3f(0.02,0.28+0.07*_m.sin(elapsed+x),0.76+0.12*_m.cos(z+elapsed));gl.glNormal3f(-0.15*_m.cos(x+elapsed),1,-0.2*_m.cos(z-elapsed));gl.glVertex3f(x,y,z)
+                gl.glEnd();primitive_counter["value"]+=grid*grid*2
+
         display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()
         profile = {
           "scene_id":sid,"scene_name":_U66_SCENES[sid-1][0],"family":_U100_SCENE_TITLES[sid-1],
@@ -6867,18 +7058,25 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                     rw=max(640,ev.w);rh=max(480,ev.h);gl.glViewport(0,0,rw,rh)
                     gl.glMatrixMode(gl.GL_PROJECTION);gl.glLoadIdentity();gluPerspective(52.0,rw/rh,0.1,150.0);gl.glMatrixMode(gl.GL_MODELVIEW)
             elapsed=_tm.perf_counter()-start
+            if family==23:
+                flash=(int(elapsed*4.0+sid)%11) in (0,1,6)
+                gl.glClearColor(0.24,0.31,0.48,1.0) if flash else gl.glClearColor(0.004,0.008,0.02,1.0)
+            else:
+                gl.glClearColor(0.006,0.012,0.026,1.0)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
             gl.glMatrixMode(gl.GL_MODELVIEW);gl.glLoadIdentity()
             gl.glTranslatef(0.0,0.0,-8.6 if family<16 else -9.5)
             gl.glRotatef(elapsed*(22.0+sid%27),0.2,1.0,0.13)
             gl.glRotatef(11.0+14.0*_m.sin(elapsed*0.63+sid),1.0,0.0,0.2)
             gl.glCallList(display_list)
+            if family>=20:
+                draw_dynamic(elapsed)
             # Wait for actual GPU completion before counting this frame; avoids queued-frame inflation.
             gl.glFinish();pg.display.flip();frames+=1;bucket_frames+=1
             now=_tm.perf_counter()
             if now-last>=1.0:
                 fps=bucket_frames/(now-last);fps_samples.append(fps);bucket_frames=0;last=now
-                pg.display.set_caption(f"NAPRAWA PC FURMARK STYLE | SCENA {sid}/60 | {title} | FPS {fps:.1f} | {renderer[:65]} | ESC STOP")
+                pg.display.set_caption(f"NAPRAWA PC FURMARK STYLE | SCENA {sid}/{len(_U66_SCENES)} | {title} | FPS {fps:.1f} | {renderer[:65]} | ESC STOP")
             clock.tick(0)
         elapsed=max(.001,_tm.perf_counter()-start)
         avg=frames/elapsed
@@ -6891,7 +7089,7 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
           "note":"Wynik to pomiar tej sceny OpenGL na wybranej rozdzielczości. Nie jest to wynik z prawdziwej gry ani certyfikacja fizycznej pamięci GPU."})
     except Exception as exc:
         result.update({"state":"warn","error":f"{type(exc).__name__}: {exc}",
-          "scene_name":_U100_SCENE_TITLES[max(0,min(59,int(scene_id)-1))],
+          "scene_name":_U100_SCENE_TITLES[max(0,min(len(_U100_SCENE_TITLES)-1,int(scene_id)-1))],
           "note":"Renderer nie wystartował poprawnie; brak wyniku nie oznacza usterki GPU."})
     finally:
         try:
@@ -7231,8 +7429,8 @@ def _u100_selftest_adaptive_speed():
     print("ADAPTIVE_SPEED_AND_ALL_VENDOR_SENSOR_SELFTEST_OK")
 
 def _u100_selftest_unique_gpu_scenes():
-    assert len(_U66_SCENES)==60 and len(_U100_SCENE_TITLES)==60
-    assert len(set(_U100_SCENE_TITLES))==60
+    assert len(_U66_SCENES)==90 and len(_U100_SCENE_TITLES)==90
+    assert len(set(_U100_SCENE_TITLES))==90
     assert callable(_u37_gpu_benchmark_child)
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
@@ -7241,7 +7439,9 @@ def _u100_selftest_unique_gpu_scenes():
     assert any(isinstance(c,tuple) and "resolution_limited_by_display" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
-    assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
+    assert any("Ultimate Mix" in x for x in _U100_SCENE_TITLES[57:60])
+    for start,end,token in ((60,63,"Cyclone Lab"),(63,66,"Ulewa"),(66,69,"Powódź"),(69,72,"Pioruny"),(72,75,"Wyścigi"),(75,78,"Drift"),(78,81,"Rally Stage"),(81,84,"F1 Night"),(84,87,"Zamieć"),(87,90,"Tsunami Lab")):
+        assert all(token in x for x in _U100_SCENE_TITLES[start:end])
     print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 60 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
 
 _u37_gpu_benchmark_child = _u100_gpu_benchmark_child
@@ -7665,9 +7865,9 @@ def _u101_selftest_adaptive_speed():
     print("ADAPTIVE_SPEED_ALL_ENTRYPOINTS_AND_FULL_TELEMETRY_SELFTEST_OK")
 
 def _u101_selftest_unique_gpu_scenes():
-    assert len(_U66_SCENES)==60 and len(_U100_SCENE_TITLES)==60
-    assert len(set(_U100_SCENE_TITLES))==60
-    assert len({row[1] for row in _U66_SCENES})==60
+    assert len(_U66_SCENES)==90 and len(_U100_SCENE_TITLES)==90
+    assert len(set(_U100_SCENE_TITLES))==90
+    assert len({row[0] for row in _U66_SCENES})==90
     assert callable(_u37_gpu_benchmark_child)
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
@@ -7676,7 +7876,9 @@ def _u101_selftest_unique_gpu_scenes():
     assert any(isinstance(c,tuple) and "resolution_limited_by_display" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
-    assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
+    assert any("Ultimate Mix" in x for x in _U100_SCENE_TITLES[57:60])
+    for start,end,token in ((60,63,"Cyclone Lab"),(63,66,"Ulewa"),(66,69,"Powódź"),(69,72,"Pioruny"),(72,75,"Wyścigi"),(75,78,"Drift"),(78,81,"Rally Stage"),(81,84,"F1 Night"),(84,87,"Zamieć"),(87,90,"Tsunami Lab")):
+        assert all(token in x for x in _U100_SCENE_TITLES[start:end])
     print("GPU_SCENE_SELFTEST_OK: 60 unique scene IDs, 20 geometry families with distinct individual layouts and synchronized real FPS")
 
 # Each test has a unique scene identifier, not just a shared family label.
