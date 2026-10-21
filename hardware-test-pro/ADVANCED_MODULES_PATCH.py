@@ -12156,6 +12156,285 @@ _U107_TEST_SCENES.update({
 _u93_execute_catalog_test = _u109_execute_catalog_test
 _u93_start_catalog_test = _u109_start_catalog_test
 
+
+# v4.3.114 — expanded operational service tools sourced from System Repair PRO and Serwis Ultimate.
+_U110_SERVICE_ACTIONS = {
+ "SYSTEM_REPAIR_PRO": [
+  ("sr_full_diagnostic","Pełny raport diagnostyczny Windows","CPU, GPU, RAM, BIOS, płyta, woluminy i urządzenia PnP z problemami.","read"),
+  ("sr_detect_windows","Wykryj instalacje Windows","Skanuje widoczne woluminy pod kątem instalacji Windows, bez montowania rejestru offline.","read"),
+  ("sr_disk_inventory","Dyski, partycje i woluminy","Odczyt Get-Disk, Get-Partition, Get-Volume i PhysicalDisk.","read"),
+  ("sr_smart_scan","SMART / niezawodność nośników","Odczyt statusów oraz dostępnych StorageReliabilityCounter; brak danych to N/D.","read"),
+  ("sr_hardware_inventory","CPU / GPU / RAM / płyta / BIOS","Szczegółowa inwentaryzacja sprzętu bez numerów seryjnych.","read"),
+  ("sr_sensor_report","Migawka czujników sprzętowych","Odczyt dostępnego Sensor Bridge; brak odczytu pozostaje N/D.","read"),
+  ("sr_usb_pci","USB / PCI / błędy PnP","Lista urządzeń i stanów zwracanych przez Windows.","read"),
+  ("sr_network_adapters","Adaptery sieci / IP / DNS","Odczyt kart, prędkości linku, adresów, bram i DNS.","read"),
+  ("sr_battery_info","Bateria / zasilanie","Odczytuje kontroler baterii i aktywny plan zasilania.","read"),
+  ("sr_dxdiag_report","Generuj raport DxDiag","Zapisuje lokalny raport DirectX w pliku tekstowym.","confirm"),
+  ("sr_os_activation","Wersja Windows / status licencji","Otwiera osobny test licencji; nie odczytuje klucza produktu.","probe"),
+  ("sr_bios_uefi","BIOS / UEFI / Secure Boot / TPM","Otwiera osobny test BIOS/UEFI i TPM.","probe"),
+  ("sr_driver_audit","Audyt sterowników i PnP","Raport urządzeń problemowych i wersji sterowników.","probe"),
+  ("sr_update_audit","Usługi Windows Update","Status usług aktualizacji i lista ostatnich poprawek.","probe"),
+  ("sr_event_errors","Historia błędów Windows","Ograniczona lista zdarzeń krytycznych i błędów.","probe"),
+  ("sr_service_health","Stan usług krytycznych","Odczyt statusów usług bez ich zmieniania.","probe"),
+  ("sr_recovery_bcd","WinRE / BCD","Odczyt bieżącej konfiguracji rozruchu i odzyskiwania.","probe"),
+  ("sr_open_winre","Otwórz ustawienia odzyskiwania","Otwiera opcje odzyskiwania bez wymuszonego restartu.","open"),
+  ("sr_bcd_backup","Kopia zapasowa BCD","Eksportuje magazyn rozruchu do lokalnego katalogu raportów.","admin_confirm"),
+  ("sr_bcd_repair_uefi","Napraw BCD/EFI bieżącego Windows UEFI","Tworzy kopię BCD, sprawdza tryb UEFI i naprawia bieżące pliki rozruchowe po potwierdzeniu.","admin_confirm"),
+  ("sr_open_diskmgmt","Zarządzanie dyskami","Otwiera diskmgmt.msc; nie formatuje i nie zmienia partycji automatycznie.","open"),
+  ("sr_dism_check","DISM /CheckHealth","Krótka kontrola magazynu składników bez naprawy.","confirm"),
+  ("sr_dism_scan","DISM /ScanHealth","Skan magazynu składników bez naprawy.","confirm"),
+  ("sr_dism_restore","DISM /RestoreHealth","Naprawa magazynu składników; może trwać długo.","admin_confirm"),
+  ("sr_sfc_scan","SFC /scannow","Kontrola i próba naprawy chronionych plików systemowych.","admin_confirm"),
+  ("sr_repair_sequence","Sekwencja DISM + SFC + CHKDSK /scan","Uruchamia kolejno trzy operacje i zachowuje kod każdej.","admin_confirm"),
+  ("sr_chkdsk_scan","CHKDSK /scan","Skan logiczny woluminu systemowego bez /f.","confirm"),
+  ("sr_memdiag","Diagnostyka pamięci Windows","Otwiera mdsched.exe; Windows może poprosić o restart.","confirm"),
+  ("sr_defender_status","Stan ochrony Defender","Odczyt stanu ochrony i sygnatur.","read"),
+  ("sr_defender_scan","Pełny skan Defender","Uruchamia rzeczywisty FullScan; nie wyłącza ochrony.","admin_confirm"),
+  ("sr_restore_point","Utwórz punkt przywracania","Prosi Windows o utworzenie punktu przywracania.","admin_confirm"),
+  ("sr_open_restore","Otwórz Przywracanie systemu","Otwiera rstrui.exe; nie wybiera punktu automatycznie.","open"),
+  ("sr_windows_update","Otwórz Windows Update","Otwiera ustawienia aktualizacji, bez instalacji w tle.","open"),
+  ("sr_device_manager","Menedżer urządzeń","Otwiera devmgmt.msc do kontroli sterowników.","open"),
+  ("sr_cpu_tests","Testy CPU","Przechodzi do oddzielnych testów CPU.","nav"),
+  ("sr_ram_tests","Testy RAM","Przechodzi do oddzielnych testów RAM.","nav"),
+  ("sr_gpu_tests","GPU / OpenGL / VRAM","Przechodzi do testów GPU i odrębnych scen renderowania.","nav"),
+  ("sr_disk_tests","Testy dysków","Przechodzi do skanów i benchmarków SSD/HDD/NVMe.","nav"),
+  ("sr_export_report","Eksport raportu serwisowego","Zapisuje raport JSON i HTML lokalnie.","read")
+ ],
+ "SERWIS_ULTIMATE": [
+  ("su_hardware_report","Pełny raport sprzętowy","CPU, GPU, moduły RAM, płyta, BIOS i problemowe urządzenia.","read"),
+  ("su_disk_detail","Dyski / partycje / niezawodność","Lista nośników, partycji, woluminów i liczników reliability.","read"),
+  ("su_process_list","Procesy — CPU i RAM","Lista procesów według CPU i pamięci; bez command-line i zmiennych środowiskowych.","read"),
+  ("su_startup_audit","Autostart i zadania","Odczyt wpisów autostartu oraz zadań Harmonogramu.","read"),
+  ("su_driver_inventory","Pełna lista sterowników","Urządzenia PnP z dostawcą, wersją, datą i INF.","read"),
+  ("su_installed_apps","Zainstalowane aplikacje","Odczyt kluczy Uninstall; nie używa Win32_Product.","read"),
+  ("su_services_inventory","Usługi Windows","Lista automatycznych i zatrzymanych usług; bez zmiany konfiguracji.","read"),
+  ("su_network_connections","Aktywne połączenia TCP","Odczyt aktywnych połączeń i adresów końców.","read"),
+  ("su_usb_pci_inventory","Urządzenia USB / PCI","Lista urządzeń magistral i ich stanów.","read"),
+  ("su_audio_inventory","Urządzenia audio","Lista wykrytych urządzeń audio.","read"),
+  ("su_camera_inventory","Kamery / obrazowanie","Inwentarz PnP kamer; podgląd jest osobnym testem.","read"),
+  ("su_printer_inventory","Drukarki i kolejki","Lista drukarek jeśli PrintManagement jest dostępny.","read"),
+  ("su_sensor_inventory","Pełna tabela czujników live","Przechodzi do inspektora czujników sprzętowych.","nav"),
+  ("su_energy_report","Raport energii powercfg","Generuje lokalny raport HTML powercfg /energy.","confirm"),
+  ("su_sleepstudy","SleepStudy / Modern Standby","Generuje raport jeśli sprzęt/system obsługuje tę funkcję.","confirm"),
+  ("su_power_requests","Aktywne żądania zasilania","Odczyt powercfg /requests.","read"),
+  ("su_last_wake","Ostatnie źródło wybudzenia","Odczyt powercfg /lastwake.","read"),
+  ("su_network_report","Raport kart / IP / bramy / DNS","Odczyt kart, konfiguracji IP, serwerów DNS i tras.","read"),
+  ("su_gateway_ping","Ping wykrytej bramy","Wykrywa bramę systemową i wykonuje ograniczony test ICMP.","read"),
+  ("su_flush_dns","Wyczyść cache DNS","Uruchamia ipconfig /flushdns po potwierdzeniu.","confirm"),
+  ("su_network_stack_reset","Reset Winsock + flush DNS","Może przerwać łączność i wymagać restartu.","admin_confirm"),
+  ("su_open_network","Diagnostyka sieci Windows","Otwiera ustawienia sieci i rozwiązywania problemów.","open"),
+  ("su_defender_status","Defender — stan ochrony","Odczyt stanu zabezpieczeń.","read"),
+  ("su_defender_threats","Historia wykryć Defendera","Odczyt ostatnich wykryć bez usuwania ani przywracania plików.","read"),
+  ("su_defender_scan","Pełny skan Defender","Uruchamia skan po potwierdzeniu administratora.","admin_confirm"),
+  ("su_game_diagnostics","Diagnostyka gier / GPU","Otwiera doradcę diagnostycznego gier.","nav"),
+  ("su_camera_test","Test kamery","Otwiera osobny ekran podglądu bez zapisywania obrazu.","nav"),
+  ("su_audio_test","Test audio / mikrofonu","Otwiera oddzielne testy; pobranie próbek wymaga potwierdzenia.","nav"),
+  ("su_display_test","Test matrycy / monitora","Otwiera EDID, tryby, wzorce i test obrazu.","nav"),
+  ("su_keyboard_test","Test klawiatury / touchpada","Otwiera oddzielny test urządzeń wejścia.","nav"),
+  ("su_ram_test","Testy RAM","Otwiera osobne testy RAM i przepustowości.","nav"),
+  ("su_gpu_test","Test GPU / sceny 3D","Otwiera oddzielne testy OpenGL.","nav"),
+  ("su_disk_test","Benchmark SSD / HDD / NVMe","Otwiera skany i benchmarki dysków.","nav"),
+  ("su_open_recovery","Opcje odzyskiwania","Otwiera ustawienia odzyskiwania bez restartu.","open"),
+  ("su_open_reports","Otwórz folder raportów","Otwiera lokalny katalog raportów i wyników.","open"),
+  ("su_hash_file","Oblicz SHA-256 pliku","Wybiera plik i oblicza hash lokalnie.","file"),
+  ("su_safe_copy","Bezpieczna kopia folderu","Kopiuje do nowego katalogu, źródło pozostaje bez zmian.","file"),
+  ("su_service_ticket","Nowe zgłoszenie serwisowe","Tworzy lokalne zgłoszenie JSON i HTML.","ticket"),
+  ("su_export_report","Eksport raportu JSON + HTML","Zapisuje czytelny raport z inwentarzem oraz wynikami.","read"),
+  ("su_update_history","Historia Windows Update","Odczyt ostatnich zainstalowanych poprawek.","read"),
+  ("su_error_history","Historia błędów i awarii","Odczyt ograniczonej listy błędów System/Application z 30 dni.","read"),
+  ("su_wmi_health","Kontrola WMI/CIM","Test dostępności zapytań CIM bez naprawy repozytorium WMI.","read"),
+  ("su_windows_tools","Narzędzia administracyjne Windows","Otwiera folder Narzędzia Windows.","open"),
+  ("su_refresh_hardware","Odśwież sprzęt","Uruchamia odczyt sprzętu aplikacji.","nav"),
+  ("su_detect_windows","Wykryj instalacje Windows","Odczytowo wykrywa instalacje na widocznych woluminach.","read"),
+  ("su_sensor_report","Pełna migawka czujników","Odczytuje wszystkie dostępne dane z sensor bridge.","read")
+ ]
+}
+
+_U110_OPEN_TARGETS = {
+ "sr_open_winre":"ms-settings:recovery","sr_open_diskmgmt":"diskmgmt.msc",
+ "sr_open_restore":"rstrui.exe","sr_windows_update":"ms-settings:windowsupdate",
+ "sr_device_manager":"devmgmt.msc","sr_memdiag":"mdsched.exe",
+ "su_open_network":"ms-settings:network-status","su_open_recovery":"ms-settings:recovery",
+ "su_windows_tools":"control.exe /name Microsoft.AdministrativeTools"
+}
+_U110_NAV_TARGETS = {
+ "sr_cpu_tests":"CPU","sr_ram_tests":"RAM","sr_gpu_tests":"GPU","sr_disk_tests":"DYSK",
+ "su_camera_test":"KAMERA","su_audio_test":"AUDIO","su_display_test":"EKRAN",
+ "su_keyboard_test":"KLAWIATURA","su_ram_test":"RAM","su_gpu_test":"GPU","su_disk_test":"DYSK"
+}
+_U110_PS_SCRIPTS = {
+ "sr_full_diagnostic": r"""
+$os=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,LastBootUpTime
+$cpu=Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed
+$cs=Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer,Model,TotalPhysicalMemory,SystemType
+$gpu=@(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,DriverDate,CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate)
+$bios=Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate
+$board=Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,Version
+$vol=@(Get-Volume | Select-Object DriveLetter,FileSystemLabel,FileSystem,HealthStatus,Size,SizeRemaining)
+$bad=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'OK'} | Select-Object -First 60 Class,FriendlyName,Status,InstanceId)
+$mem=Get-CimInstance Win32_PhysicalMemory | Select-Object DeviceLocator,Manufacturer,PartNumber,Capacity,Speed,ConfiguredClockSpeed
+[pscustomobject]@{os=$os;cpu=$cpu;computer=$cs;gpu=$gpu;bios=$bios;board=$board;memory=$mem;volumes=$vol;problem_pnp=$bad;problem_pnp_count=$bad.Count;captured=(Get-Date).ToString('o')} | ConvertTo-Json -Depth 7 -Compress
+""",
+ "sr_detect_windows": r"""
+$found=@()
+foreach($d in @(Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3')) {
+ $root="$($d.DeviceID)\Windows";$sw="$($d.DeviceID)\Windows\System32\config\SOFTWARE";$sy="$($d.DeviceID)\Windows\System32\config\SYSTEM"
+ if((Test-Path -LiteralPath $root) -and (Test-Path -LiteralPath $sw) -and (Test-Path -LiteralPath $sy)) {
+  $found += [pscustomobject]@{volume=$d.DeviceID;windows_path=$root;software_hive_present=$true;system_hive_present=$true;is_current=($d.DeviceID -eq $env:SystemDrive)}
+ }
+}
+[pscustomobject]@{installation_count=$found.Count;installations=$found;method='read-only markers; no offline registry hives mounted'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_disk_inventory": r"""
+$disks=@(Get-Disk -ErrorAction SilentlyContinue | Select-Object Number,FriendlyName,BusType,PartitionStyle,OperationalStatus,HealthStatus,IsBoot,IsSystem,Size)
+$parts=@(Get-Partition -ErrorAction SilentlyContinue | Select-Object DiskNumber,PartitionNumber,DriveLetter,Type,IsBoot,IsSystem,Size)
+$vol=@(Get-Volume -ErrorAction SilentlyContinue | Select-Object DriveLetter,FileSystemLabel,FileSystem,DriveType,HealthStatus,OperationalStatus,Size,SizeRemaining)
+$physical=@(Get-PhysicalDisk -ErrorAction SilentlyContinue | Select-Object FriendlyName,MediaType,BusType,HealthStatus,OperationalStatus,Size)
+[pscustomobject]@{disks=$disks;partitions=$parts;volumes=$vol;physical_disks=$physical} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_smart_scan": r"""
+$rows=@()
+foreach($d in @(Get-PhysicalDisk -ErrorAction SilentlyContinue)){
+ $counter=$null;try{$counter=Get-StorageReliabilityCounter -PhysicalDisk $d -ErrorAction Stop}catch{}
+ $rows += [pscustomobject]@{name=$d.FriendlyName;media_type=$d.MediaType;bus_type=$d.BusType;health=$d.HealthStatus;operational_status=$d.OperationalStatus;size=$d.Size;temperature_c=if($counter){$counter.Temperature}else{$null};wear_percent=if($counter){$counter.Wear}else{$null};read_errors_uncorrected=if($counter){$counter.ReadErrorsUncorrected}else{$null};write_errors_uncorrected=if($counter){$counter.WriteErrorsUncorrected}else{$null};reliability_counter_available=[bool]$counter}
+}
+[pscustomobject]@{physical_disks=$rows;count=$rows.Count;note='Provider/driver dependent; missing SMART/reliability data is N/D.'} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_hardware_inventory": r"""
+$cpu=Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed
+$gpu=@(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,DriverDate,AdapterRAM,VideoProcessor)
+$ram=@(Get-CimInstance Win32_PhysicalMemory | Select-Object DeviceLocator,Manufacturer,Capacity,Speed,ConfiguredClockSpeed,MemoryType,SMBIOSMemoryType)
+$cs=Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer,Model,TotalPhysicalMemory,SystemType
+$board=Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,Version
+$bios=Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate
+[pscustomobject]@{cpu=$cpu;gpu=$gpu;ram_modules=$ram;computer=$cs;board=$board;bios=$bios} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_usb_pci": r"""
+$devices=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {$_.InstanceId -like 'USB*' -or $_.InstanceId -like 'PCI*' -or $_.Class -in @('USB','System')} | Select-Object -First 260 Class,FriendlyName,Status,InstanceId)
+$bad=@($devices | Where-Object {$_.Status -ne 'OK'})
+[pscustomobject]@{devices=$devices;device_count=$devices.Count;problem_count=$bad.Count;problems=$bad} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_network_adapters": r"""
+$adapters=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,InterfaceDescription,Status,LinkSpeed,DriverInformation)
+$config=@(Get-NetIPConfiguration -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,IPv4Address,IPv6Address,IPv4DefaultGateway,DNSServer,NetProfile)
+[pscustomobject]@{adapters=$adapters;configuration=$config;adapter_count=$adapters.Count} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_battery_info": r"""
+$b=@(Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object Name,BatteryStatus,EstimatedChargeRemaining,EstimatedRunTime,Status,DesignVoltage)
+$p=powercfg /getactivescheme 2>&1
+[pscustomobject]@{batteries=$b;has_battery=($b.Count -gt 0);active_power_scheme=($p -join [Environment]::NewLine);powercfg_exit=$LASTEXITCODE} | ConvertTo-Json -Depth 4 -Compress
+""",
+ "sr_update_audit": r"""
+$names=@('wuauserv','BITS','UsoSvc','WaaSMedicSvc')
+$services=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {$_.Name -in $names} | Select-Object Name,DisplayName,State,StartMode,ExitCode)
+$hotfix=@(Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 30 HotFixID,Description,InstalledOn,InstalledBy)
+[pscustomobject]@{services=$services;service_count=$services.Count;recent_hotfixes=$hotfix;hotfix_count=$hotfix.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_driver_audit": r"""
+$problems=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'OK'} | Select-Object Class,FriendlyName,Status,InstanceId)
+$drivers=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object -First 100 DeviceName,DriverProviderName,DriverVersion,DriverDate,InfName)
+[pscustomobject]@{problem_devices=$problems;problem_count=$problems.Count;driver_inventory=$drivers;driver_count=$drivers.Count} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_event_errors": r"""
+$since=(Get-Date).AddHours(-24);$items=@()
+foreach($log in @('System','Application')){try{$items += @(Get-WinEvent -FilterHashtable @{LogName=$log;StartTime=$since;Level=1,2} -MaxEvents 45 -ErrorAction SilentlyContinue | Select-Object TimeCreated,LogName,ProviderName,Id,LevelDisplayName,Message)}catch{}}
+[pscustomobject]@{event_count=$items.Count;window_hours=24;events=$items} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_service_health": r"""
+$names=@('RpcSs','DcomLaunch','EventLog','Schedule','Winmgmt','LanmanWorkstation','Dnscache','Dhcp','W32Time','WinDefend','mpssvc','wuauserv','BITS')
+$rows=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {$_.Name -in $names} | Select-Object Name,DisplayName,State,StartMode,ExitCode)
+$stopped=@($rows | Where-Object {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'})
+[pscustomobject]@{services=$rows;checked_count=$rows.Count;stopped_automatic=$stopped;stopped_automatic_count=$stopped.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_recovery_bcd": r"""
+$reagent=(& reagentc.exe /info 2>&1 | Out-String);$bcd=(& bcdedit.exe /enum '{current}' 2>&1 | Out-String)
+$fw='N/D';try{$fw=[string](Get-ComputerInfo -Property BiosFirmwareType -ErrorAction Stop).BiosFirmwareType}catch{}
+[pscustomobject]@{winre_info=$reagent;bcd_current=$bcd;firmware_type=$fw;note='Read-only configuration check; no BCD changes.'} | ConvertTo-Json -Depth 4 -Compress
+""",
+ "sr_defender_status": r"""
+$s=Get-MpComputerStatus -ErrorAction SilentlyContinue | Select-Object AMServiceEnabled,AntivirusEnabled,AntispywareEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled,IoavProtectionEnabled,NISEnabled,AntivirusSignatureLastUpdated,AntivirusSignatureVersion,QuickScanAge,FullScanAge
+[pscustomobject]@{status=$s;provider_available=[bool]$s;note='No protection setting is changed.'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_process_list": r"""
+$rows=@(Get-Process -ErrorAction SilentlyContinue | Sort-Object CPU -Descending | Select-Object -First 120 ProcessName,Id,CPU,WorkingSet64,PrivateMemorySize64,StartTime)
+[pscustomobject]@{process_count=(Get-Process -ErrorAction SilentlyContinue).Count;top_processes=$rows;note='Command-line and environment variables are omitted.'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_startup_audit": r"""
+$startup=@(Get-CimInstance Win32_StartupCommand -ErrorAction SilentlyContinue | Select-Object Name,Location,User,Command)
+$tasks=@(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object {$_.State -ne 'Disabled'} | Select-Object -First 100 TaskPath,TaskName,State,Author)
+[pscustomobject]@{startup=$startup;startup_count=$startup.Count;scheduled_tasks=$tasks;task_count=$tasks.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_driver_inventory": r"""
+$drivers=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object -First 220 DeviceName,DeviceClass,DriverProviderName,DriverVersion,DriverDate,InfName,IsSigned)
+$problems=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'OK'} | Select-Object Class,FriendlyName,Status,InstanceId)
+[pscustomobject]@{drivers=$drivers;driver_count=$drivers.Count;problem_devices=$problems;problem_count=$problems.Count} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "su_installed_apps": r"""
+$paths=@('HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*')
+$rows=@()
+foreach($p in $paths){try{$rows += @(Get-ItemProperty $p -ErrorAction SilentlyContinue | Where-Object {$_.DisplayName} | Select-Object DisplayName,DisplayVersion,Publisher,InstallDate)}catch{}}
+$rows=$rows | Sort-Object DisplayName -Unique | Select-Object -First 250
+[pscustomobject]@{applications=$rows;application_count=$rows.Count;method='registry Uninstall keys; Win32_Product is not queried'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_services_inventory": r"""
+$all=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Select-Object Name,DisplayName,State,StartMode,StartName,ExitCode,ProcessId)
+$auto=@($all | Where-Object {$_.StartMode -eq 'Auto'});$stopped=@($auto | Where-Object {$_.State -ne 'Running'})
+[pscustomobject]@{services=$auto;automatic_service_count=$auto.Count;stopped_automatic=$stopped;stopped_count=$stopped.Count;all_service_count=$all.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_network_connections": r"""
+$rows=@(Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue | Select-Object -First 180 LocalAddress,LocalPort,RemoteAddress,RemotePort,State,OwningProcess)
+[pscustomobject]@{connections=$rows;connection_count=$rows.Count;note='Local read-only inventory.'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_audio_inventory": r"""
+$rows=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {$_.Class -in @('MEDIA','AudioEndpoint')} | Select-Object Class,FriendlyName,Status,InstanceId)
+$legacy=@(Get-CimInstance Win32_SoundDevice -ErrorAction SilentlyContinue | Select-Object Name,Manufacturer,Status,PNPDeviceID)
+[pscustomobject]@{pnp_audio=$rows;pnp_audio_count=$rows.Count;sound_devices=$legacy;legacy_count=$legacy.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_camera_inventory": r"""
+$rows=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Where-Object {$_.Class -in @('Camera','Image')} | Select-Object Class,FriendlyName,Status,InstanceId)
+[pscustomobject]@{pnp_cameras=$rows;camera_count=$rows.Count;note='Inventory only; live preview is a separate test.'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_printer_inventory": r"""
+$printers=@();try{$printers=@(Get-Printer -ErrorAction Stop | Select-Object Name,DriverName,PortName,PrinterStatus,Shared,WorkOffline)}catch{}
+[pscustomobject]@{printers=$printers;printer_count=$printers.Count;provider='PrintManagement if available'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_network_report": r"""
+$adapters=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,InterfaceDescription,Status,LinkSpeed,MacAddress)
+$ip=@(Get-NetIPConfiguration -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,IPv4Address,IPv6Address,IPv4DefaultGateway,DNSServer,NetProfile)
+$dns=@(Get-DnsClientServerAddress -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,AddressFamily,ServerAddresses)
+$routes=@(Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,NextHop,RouteMetric,State)
+[pscustomobject]@{adapters=$adapters;ip_configuration=$ip;dns=$dns;default_routes=$routes;captured=(Get-Date).ToString('o')} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "su_gateway_ping": r"""
+$route=Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+$gw=[string]$route.NextHop;$ping=@()
+if($gw -and $gw -ne '0.0.0.0'){try{$ping=@(Test-Connection -ComputerName $gw -Count 4 -ErrorAction SilentlyContinue | Select-Object Address,StatusCode,ResponseTime)}catch{}}
+[pscustomobject]@{gateway=$gw;interface_alias=$route.InterfaceAlias;ping=$ping;reply_count=$ping.Count;method='ICMP to detected default gateway; ICMP may be filtered'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_defender_status": r"""
+$s=Get-MpComputerStatus -ErrorAction SilentlyContinue | Select-Object AMServiceEnabled,AntivirusEnabled,AntispywareEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled,IoavProtectionEnabled,NISEnabled,AntivirusSignatureLastUpdated,AntivirusSignatureVersion,QuickScanAge,FullScanAge
+[pscustomobject]@{status=$s;provider_available=[bool]$s;note='No protection setting is changed.'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_defender_threats": r"""
+$rows=@(Get-MpThreatDetection -ErrorAction SilentlyContinue | Sort-Object InitialDetectionTime -Descending | Select-Object -First 60 ThreatID,ThreatStatusID,InitialDetectionTime,LastThreatStatusChangeTime,ActionSuccess,Resources)
+[pscustomobject]@{detections=$rows;detection_count=$rows.Count;note='Read-only; no restore/delete/quarantine action.'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_update_history": r"""
+$rows=@(Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 80 HotFixID,Description,InstalledOn,InstalledBy)
+[pscustomobject]@{updates=$rows;installed_update_count=$rows.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_error_history": r"""
+$since=(Get-Date).AddDays(-30);$rows=@()
+foreach($log in @('System','Application')){try{$rows += @(Get-WinEvent -FilterHashtable @{LogName=$log;StartTime=$since;Level=1,2} -MaxEvents 60 -ErrorAction SilentlyContinue | Select-Object TimeCreated,LogName,ProviderName,Id,LevelDisplayName,Message)}catch{}}
+[pscustomobject]@{window_days=30;events=$rows;event_count=$rows.Count} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_wmi_health": r"""
+$e=$null;$os=$null;try{$os=Get-CimInstance Win32_OperatingSystem -ErrorAction Stop | Select-Object Caption,Version,BuildNumber}catch{$e=$_.Exception.Message}
+$svc=Get-Service winmgmt -ErrorAction SilentlyContinue | Select-Object Name,Status,StartType
+[pscustomobject]@{cim_query=$os;cim_query_error=$e;wmi_service=$svc;repository_verification='N/D; no repository check or repair was run'} | ConvertTo-Json -Depth 5 -Compress
+"""
+}
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
