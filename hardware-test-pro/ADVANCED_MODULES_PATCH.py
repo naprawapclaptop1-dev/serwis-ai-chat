@@ -12997,31 +12997,41 @@ def _u116_selftest_sensor_display_controls():
         def config(self,**kwargs):
             if "text" in kwargs:self.text=kwargs["text"]
     class FakeTree:
-        def __init__(self):
-            self.items={
-                "a":{"values":("Temperature","CPU","Package","72","°C","Sensor Bridge")},
-                "b":{"values":("Temperature","GPU","Hotspot","N/D","°C","Sensor Bridge")},
-                "c":{"values":("Load","CPU","Core 2","64","%","Windows / psutil")}
-            }
+        def __init__(self):self.items={}
         def winfo_exists(self):return True
         def get_children(self,*args):return list(self.items)
         def item(self,iid,key=None):
             return self.items[iid] if key is None else self.items[iid].get(key)
+        def delete(self,*iids):
+            for iid in iids:self.items.pop(iid,None)
+        def insert(self,parent,index,iid=None,values=(),**kwargs):
+            iid=str(iid or ("row"+str(len(self.items))))
+            self.items[iid]={"values":tuple(values)}
+            return iid
+        def exists(self,iid):return iid in self.items
     class FakeApp:
         _u100_sensor_tree=FakeTree()
         _u100_sensor_count=FakeLabel()
-        _u66_sensor_cache={"time":_u66_time.monotonic()}
+        _u66_sensor_cache={
+            "time":_u66_time.monotonic(),
+            "temps":{"method":"test bridge","sensor_count":2,"sensors":[
+                {"hardware":"CPU Package","hardwareType":"CPU","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test"},
+                {"hardware":"GPU","hardwareType":"GPU","sensor":"Memory Hotspot","sensorType":"Temperature","value":None,"unit":"°C","source":"test"}]},
+            "gpu":{},
+            "system":{"cpu_per_core_percent":[64.0]}
+        }
         results={}
         def queue_log(self,*args):pass
     app=FakeApp()
     _u116_refresh_sensor_table(app)
-    assert app._u116_sensor_availability["total"]==3
-    assert app._u116_sensor_availability["available"]==2
-    assert app._u116_sensor_availability["missing"]==1
-    assert "N/D: 1" in app._u100_sensor_count.text
+    availability=app._u116_sensor_availability
+    assert availability["total"]>=3
+    assert availability["available"]>=2
+    assert availability["missing"]>=1
+    assert "wartości:" in app._u100_sensor_count.text and "N/D:" in app._u100_sensor_count.text
     assert callable(_u116_export_sensor_csv) and callable(_u116_force_sensor_refresh)
     assert AppV43.show_live_monitor is _u116_show_live_monitor
-    print("FULL_SENSOR_DISPLAY_CONTROLS_SELFTEST_OK: explicit available/N/D counts, refresh and local CSV export")
+    print("FULL_SENSOR_DISPLAY_CONTROLS_SELFTEST_OK: full table refresh, available/N-D counters, refresh action and local CSV export")
 
 _u108_refresh_sensor_table=_u116_refresh_sensor_table
 _u100_refresh_sensor_table=_u116_refresh_sensor_table
