@@ -9389,11 +9389,19 @@ def _u105_gpu_live_tick(app,schedule=True):
 _u84_attach_gpu_live_panel=_u105_attach_gpu_panel
 _u84_gpu_live_tick=_u105_gpu_live_tick
 
+def _u105_recursive_code_names(code):
+    import types as _u105_types
+    names=set(code.co_names)
+    for item in code.co_consts:
+        if isinstance(item,_u105_types.CodeType):
+            names.update(_u105_recursive_code_names(item))
+    return names
+
 def _u105_selftest_visual_quality():
     assert callable(_u105_draw_component_scene)
     assert callable(_u105_open_component_base)
     assert callable(_u105_ring_gauge)
-    names=_u105_draw_component_scene.__code__.co_names
+    names=_u105_recursive_code_names(_u105_draw_component_scene.__code__)
     assert "create_polygon" in names and "create_oval" in names and "create_line" in names
     assert "create_rectangle" not in names, "The new 3D renderer must not draw the model out of rectangles."
     assert _U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR is _u105_open_component_base
