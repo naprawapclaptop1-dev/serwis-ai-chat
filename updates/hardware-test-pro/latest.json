@@ -1,17 +1,17 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.114",
+  "version": "4.3.115",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.114.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.114/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.114.exe",
-  "sha256": "380afbd6d8f47de6de883eb943e1f1150cf4e946c3e3bda5a3b7df512557dc96",
-  "size": 141863821,
-  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.114.exe",
-  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.114/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.114.exe",
-  "installer_sha256": "380afbd6d8f47de6de883eb943e1f1150cf4e946c3e3bda5a3b7df512557dc96",
-  "installer_size": 141863821,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.115.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.115/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.115.exe",
+  "sha256": "e71d3832c065c3e44555fb9f8c7d8998d81c868c03cba3eb6398b62749220230",
+  "size": 141864099,
+  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.115.exe",
+  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.115/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.115.exe",
+  "installer_sha256": "e71d3832c065c3e44555fb9f8c7d8998d81c868c03cba3eb6398b62749220230",
+  "installer_size": 141864099,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.114: 90 testów w 15 grupach, 90 unikalnych scen OpenGL, pełniejsza tabela telemetrii live, Speed Test QUICK/STANDARD/MAX i 20 odczytowych diagnostyk System Repair PRO / Serwis Ultimate; centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Brak czujnika pozostaje N/D.",
-  "published_at": "2026-10-21T20:56:31.487Z"
+  "notes": "Wydanie 4.3.115: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk integracyjnych System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D i Speed Test TURBO z 4 równoległymi strumieniami HTTPS. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+  "published_at": "2026-10-21T21:01:36.780Z"
 }
