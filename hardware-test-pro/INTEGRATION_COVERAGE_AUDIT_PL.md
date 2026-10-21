@@ -11,6 +11,8 @@ Baza online sprawdzona: release 4.3.120 i źródło `hardware-test-pro/ADVANCED_
 - Tabela sensorów łączy dane LibreHardwareMonitor/bridge i metryki systemowe: użycie CPU na rdzeń, RAM/swap, I/O dysków, sieć, woluminy oraz czujniki temperatury/napięć/zegarów/wentylatorów, jeśli są dostępne. Brak wartości ma być oznaczony N/D.
 - Speed Test ma profile QUICK/STANDARD/MAX/TURBO; profil TURBO dodaje cztery równoległe strumienie HTTPS i raportuje ich wynik osobno.
 - Katalog zawiera 20 testów diagnostycznych System Repair PRO i 20 Serwis Ultimate. To obecnie zestaw procedur diagnostycznych, a nie potwierdzona zgodność funkcja-w-funkcję z oryginalnymi aplikacjami.
+- W buildzie 4.3.121 dodano lokalną historię zleceń serwisowych z eksportem HTML oraz 7 niezależnych akcji zasilania/baterii: Battery Info, Battery Report, Energy Report, SleepStudy, Power Requests, Last Wake i aktywny plan zasilania.
+- W przygotowywanym buildzie 4.3.122 dodawana jest lokalna baza wiedzy: import dokumentów tekstowych/PDF, deduplikacja SHA-256, wyszukiwanie źródeł i szkic lekcji serwisowej.
 
 ## Źródła z biblioteki użytkownika odnalezione do porównania
 
