@@ -6665,6 +6665,23 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             for a,b in edges:gl.glVertex3f(*verts[a]);gl.glVertex3f(*verts[b])
             gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=12
         def build_scene():
+            # Every benchmark scene keeps a FurMark-style animated/fuzzy stress core,
+            # but its radius, density, material and surrounding scene vary by scene ID.
+            # The native scene family below remains unique; this ring is not the only geometry.
+            if family > 0:
+                fur_r = 0.56 + (sid % 9) * 0.075
+                fur_minor = 0.13 + (variant % 3) * 0.035
+                fur_count = 500 + (sid * 37) % 1900
+                fur_color = (
+                    0.12 + ((sid * 17) % 70) / 100.0,
+                    0.18 + ((sid * 29) % 65) / 100.0,
+                    0.35 + ((sid * 11) % 60) / 100.0,
+                )
+                gl.glPushMatrix()
+                gl.glRotatef((sid % 7) * 11.0, 1, 0, 0)
+                gl.glRotatef((sid % 11) * 7.0, 0, 1, 0)
+                draw_fur_torus(fur_r, fur_minor, fur_count, fur_color)
+                gl.glPopMatrix()
             color_a=(0.04,0.66,0.88);color_b=(0.88,0.29,0.13);color_c=(0.24,0.8,0.42)
             amount=12+variant*12+(sid%7)*4
             if family==0:
@@ -10898,10 +10915,338 @@ _u66_measure_speed=_u107_measure_speed
 _u69_open_component_simulator=_u107_open_component_simulator
 AppV43.show_speed_test=_u107_show_speed_test
 
+
+# v4.3.102 — restore the full live OS telemetry into the visible hardware table,
+# and expose quick/standard/max throughput profiles without changing the default cost.
+_U108_ORIGINAL_SENSOR_POLL = _u100_sensor_poll
+_U108_ORIGINAL_SENSOR_REFRESH = _u100_refresh_sensor_table
+_U108_ORIGINAL_SPEED_SAMPLE_SIZES = _u104_speed_sample_sizes
+_U108_ORIGINAL_SPEED_MEASURE = _u107_measure_speed
+_U108_ORIGINAL_START_SPEED_TEST = _u66_start_speed_test
+_U108_ORIGINAL_SHOW_SPEED_TEST = AppV43.show_speed_test
+_U108_ACTIVE_SPEED_PROFILE = "STANDARD"
+
+def _u108_build_sensor_snapshot(app, temps, gpu, system=None):
+    if not isinstance(temps, dict):
+        temps = {}
+    if not isinstance(gpu, dict):
+        gpu = {}
+    if system is None:
+        try:
+            system = _u107_collect_os_metrics(app)
+        except Exception as exc:
+            system = {"metrics_error": f"{type(exc).__name__}: {exc}"}
+    if not isinstance(system, dict):
+        system = {}
+    temps.setdefault("sensors", [])
+    temps.setdefault("sensor_groups", {})
+    temps.setdefault("acpi_zones", [])
+    return {
+        "gpu": gpu,
+        "temps": temps,
+        "system": system,
+        "time": _u66_time.monotonic(),
+        "sampled_at": _U66_datetime.now().isoformat(timespec="seconds")
+    }
+
+def _u108_refresh_sensor_table(app):
+    tree = getattr(app, "_u100_sensor_tree", None)
+    if tree is None:
+        return
+    try:
+        if not tree.winfo_exists():
+            return
+        rows = _u107_get_sensor_rows(app)
+        normalized = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            normalized.append((
+                str(row.get("category") or "Other"),
+                str(row.get("hardware") or "N/D"),
+                str(row.get("sensor") or "N/D"),
+                str(row.get("value") if row.get("value") is not None else "N/D"),
+                str(row.get("unit") or ""),
+                str(row.get("source") or "N/D")
+            ))
+        # Preserve row order; update values in place when the sensor inventory is unchanged.
+        signature = tuple((r[0], r[1], r[2], r[4], r[5]) for r in normalized)
+        old_signature = getattr(app, "_u108_sensor_signature", None)
+        if signature != old_signature:
+            current = tree.get_children()
+            if current:
+                tree.delete(*current)
+            for idx, row in enumerate(normalized):
+                tree.insert("", "end", iid=f"u108sensor{idx}", values=row)
+            app._u108_sensor_signature = signature
+        else:
+            for idx, row in enumerate(normalized):
+                iid = f"u108sensor{idx}"
+                if tree.exists(iid):
+                    tree.item(iid, values=row)
+                else:
+                    tree.insert("", "end", iid=iid, values=row)
+        counts = {}
+        for row in normalized:
+            counts[row[0]] = counts.get(row[0], 0) + 1
+        label = getattr(app, "_u100_sensor_count", None)
+        if label is not None and label.winfo_exists():
+            cache = getattr(app, "_u66_sensor_cache", {}) or {}
+            stamp = cache.get("time")
+            age = max(0, _u66_time.monotonic() - stamp) if isinstance(stamp, (int, float)) else None
+            text = f"{len(normalized)} pozycji • " + ", ".join(f"{k}:{v}" for k, v in sorted(counts.items()))
+            text += f" • próbka {age:.0f} s temu" if age is not None else " • N/D"
+            label.config(text=text)
+    except Exception as exc:
+        try:
+            app.queue_log("Pełna tabela telemetrii: " + repr(exc))
+        except Exception:
+            pass
+
+def _u108_sensor_poll(app):
+    try:
+        if getattr(app, "_u100_sensor_busy", False):
+            app.after(3000, lambda: _u108_sensor_poll(app))
+            return
+        if _u66_time.monotonic() - getattr(app, "_u100_sensor_last", 0) > 2.8:
+            app._u100_sensor_busy = True
+            app._u100_sensor_last = _u66_time.monotonic()
+
+            def job():
+                try:
+                    temps = _u66_sensor_probe()
+                    generic = _u100_gpu_from_sensors(temps)
+                    try:
+                        vendor = _u37_nvidia_telemetry() if "_u37_nvidia_telemetry" in globals() else {}
+                    except Exception as exc:
+                        vendor = {"available": False, "provider": "GPU vendor telemetry unavailable", "error": str(exc)}
+                    gpu = dict(vendor or {})
+                    for key, value in generic.items():
+                        if key in ("sensor_rows", "message"):
+                            continue
+                        if value is not None and (gpu.get(key) is None or gpu.get(key) is False or gpu.get(key) == "N/D"):
+                            gpu[key] = value
+                    if not gpu.get("provider"):
+                        gpu["provider"] = generic.get("provider")
+                    if not gpu.get("available"):
+                        gpu["available"] = generic.get("available", False)
+                    gpu["sensor_rows"] = generic.get("sensor_rows", 0)
+                    if temps.get("gpu_temp_c") is None and generic.get("temperature_c") is not None:
+                        temps["gpu_temp_c"] = generic["temperature_c"]
+                    if temps.get("gpu_power_w") is None and generic.get("power_draw_w") is not None:
+                        temps["gpu_power_w"] = generic["power_draw_w"]
+
+                    # This was missing from the published cache: without it, per-core CPU,
+                    # RAM/swap, per-disk I/O, NIC throughput, battery and per-volume rows
+                    # existed in code but the UI received an empty system object.
+                    system = _u107_collect_os_metrics(app)
+                    snapshot = _u108_build_sensor_snapshot(app, temps, gpu, system)
+
+                    def update():
+                        app._u100_sensor_busy = False
+                        app._u66_sensor_cache = snapshot
+                        app._u84_gpu_last_telemetry = gpu
+                        try:
+                            _u108_refresh_sensor_table(app)
+                        except Exception:
+                            pass
+                        try:
+                            if getattr(app, "current_view", "") == "GPU":
+                                _u84_gpu_live_tick(app, schedule=False)
+                            if getattr(app, "current_view", "") == "LIVE_MONITOR":
+                                _u66_live_tick(app)
+                            if getattr(app, "_u67_stage_panel", None) is not None:
+                                _u67_refresh_visible_charts(app)
+                        except Exception:
+                            pass
+                    app.queue_action(update)
+                except Exception as exc:
+                    def fail(err=exc):
+                        app._u100_sensor_busy = False
+                        try:
+                            app.queue_log("Odczyt pełnej telemetrii: " + str(err))
+                        except Exception:
+                            pass
+                    try:
+                        app.queue_action(fail)
+                    except Exception:
+                        fail()
+            _u66_threading.Thread(target=job, name="NaprawaPCFullHardwareTelemetry", daemon=True).start()
+    except Exception as exc:
+        try:
+            app._u100_sensor_busy = False
+            app.queue_log("Telemetria: " + repr(exc))
+        except Exception:
+            pass
+    try:
+        app.after(3000, lambda: _u108_sensor_poll(app))
+    except Exception:
+        pass
+
+# Three speed profiles: QUICK minimizes transfer; STANDARD preserves current adaptive sizes;
+# MAX measures longer and warns before any large network transfer.
+def _u108_speed_sample_sizes(rate_mbps):
+    try:
+        rate = max(0.02, float(rate_mbps or 0))
+    except Exception:
+        rate = 0.02
+    profile = str(_U108_ACTIVE_SPEED_PROFILE or "STANDARD").upper()
+    if profile == "QUICK":
+        target = max(256_000, min(8_000_000, int(rate * 1_000_000 / 8 * 1.8)))
+        return (max(256_000, int(target * .65)), target, min(10_000_000, max(target, int(target * 1.25))))
+    if profile == "MAX":
+        target = max(1_000_000, min(48_000_000, int(rate * 1_000_000 / 8 * 7.5)))
+        return (max(1_000_000, int(target * .75)), target, min(60_000_000, max(target, int(target * 1.25))))
+    return _U108_ORIGINAL_SPEED_SAMPLE_SIZES(rate)
+
+def _u108_measure_speed(app):
+    global _U108_ACTIVE_SPEED_PROFILE
+    profile = str(getattr(app, "_u108_speed_profile", "STANDARD") or "STANDARD").upper()
+    if profile not in ("QUICK", "STANDARD", "MAX"):
+        profile = "STANDARD"
+    _U108_ACTIVE_SPEED_PROFILE = profile
+    result = _U108_ORIGINAL_SPEED_MEASURE(app)
+    if isinstance(result, dict):
+        result["measurement_profile"] = profile
+        result["profile_note"] = {
+            "QUICK": "Krótszy test z mniejszym transferem.",
+            "STANDARD": "Adaptacyjny test standardowy, dobrany do próbki rozgrzewkowej.",
+            "MAX": "Dłuższe próbki dla szybkich łączy; większy transfer danych."
+        }[profile]
+    return result
+
+def _u108_start_speed_test(app):
+    global _U108_ACTIVE_SPEED_PROFILE
+    profile = str(getattr(app, "_u108_speed_profile", "STANDARD") or "STANDARD").upper()
+    if profile == "MAX":
+        if not messagebox.askyesno(
+            "Speed Test MAX — duży transfer",
+            "Maksymalny test może przesłać do około 300 MB łącznie, zależnie od prędkości łącza. "
+            "Wykona dłuższe próbki, aby ograniczyć wpływ narzutu HTTPS. Kontynuować?"
+        ):
+            _u66_set_speed_status(app, "Test MAX anulowany — nie rozpoczęto transferu.")
+            return
+    _U108_ACTIVE_SPEED_PROFILE = profile
+    app._u108_speed_profile = profile
+    return _U108_ORIGINAL_START_SPEED_TEST(app)
+
+def _u108_show_speed_test(app):
+    _U108_ORIGINAL_SHOW_SPEED_TEST(app)
+    try:
+        t = app.colors()
+        children = app.content.winfo_children()
+        before = children[-1] if children else None
+        pane = app.panel(app.content)
+        pane.pack(fill="x", padx=3, pady=(0, 5), before=before)
+        tk.Label(pane, text="PROFIL POMIARU", bg=t["panel"], fg=t["accent"],
+                 font=app.fnt(9, "bold")).pack(anchor="w", padx=8, pady=(5, 2))
+        options = {
+            "SZYBKI — mały transfer": "QUICK",
+            "STANDARD — adaptacyjny": "STANDARD",
+            "MAX — długi pomiar": "MAX"
+        }
+        reverse = {value: key for key, value in options.items()}
+        current = str(getattr(app, "_u108_speed_profile", "STANDARD") or "STANDARD").upper()
+        if current not in reverse:
+            current = "STANDARD"
+        app._u108_speed_profile = current
+        app._u108_speed_profile_var = tk.StringVar(value=reverse[current])
+        cb = ttk.Combobox(pane, textvariable=app._u108_speed_profile_var,
+                          values=tuple(options.keys()), state="readonly", width=32)
+        cb.pack(anchor="w", padx=8, pady=(0, 5))
+        def selected(_event=None):
+            app._u108_speed_profile = options.get(app._u108_speed_profile_var.get(), "STANDARD")
+        cb.bind("<<ComboboxSelected>>", selected)
+        tk.Label(pane,
+            text="Wartość główna to mediana udanych próbek. MAX pyta o zgodę przed większym transferem; błędne lub niepełne próbki nie są uznawane za wynik.",
+            bg=t["panel"], fg=t["muted"], font=app.fnt(8), wraplength=1320, justify="left"
+        ).pack(fill="x", padx=8, pady=(0, 4))
+    except Exception as exc:
+        try:
+            app.queue_log("Profil Speed Test: " + repr(exc))
+        except Exception:
+            pass
+
+def _u108_selftest_live_telemetry():
+    class FakeTree:
+        def __init__(self): self.items = {}
+        def winfo_exists(self): return True
+        def get_children(self): return list(self.items.keys())
+        def delete(self, *ids):
+            for iid in ids: self.items.pop(iid, None)
+        def insert(self, _parent, _index, iid=None, values=None, **kwargs):
+            key = iid or str(len(self.items)); self.items[key] = tuple(values or ())
+        def exists(self, iid): return iid in self.items
+        def item(self, iid, **kwargs):
+            if "values" in kwargs: self.items[iid] = tuple(kwargs["values"])
+            return {"values": self.items.get(iid, ())}
+    class FakeLabel:
+        def __init__(self): self.text = ""
+        def winfo_exists(self): return True
+        def config(self, **kwargs): self.text = kwargs.get("text", self.text)
+    class FakeApp:
+        pass
+    app = FakeApp()
+    app._u100_sensor_tree = FakeTree()
+    app._u100_sensor_count = FakeLabel()
+    temps = {"method":"synthetic test bridge","sensors":[
+        {"hardware":"CPU Package","hardwareType":"CpuAmd","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test"},
+        {"hardware":"GPU Core","hardwareType":"GpuNvidia","sensor":"GPU Temperature","sensorType":"Temperature","value":66.0,"unit":"°C","source":"test"}
+    ],"acpi_zones":[{"name":"TZ0","value":39.0}]}
+    system = {"cpu_percent":35.0,"cpu_per_core_percent":[22.0,67.0],
+        "ram_percent":61.0,"ram_total_bytes":16*1073741824,"ram_used_bytes":8*1073741824,
+        "disk_devices":[{"name":"PhysicalDrive0","read_mbps":25.5,"write_mbps":4.5,"read_iops":200.0,"write_iops":40.0}],
+        "network_interfaces":[{"name":"Ethernet","download_mbps":92.0,"upload_mbps":8.0,"is_up":True,"link_speed_mbps":1000,"mtu":1500,"addresses":["192.0.2.5"]}],
+        "partitions":[{"mountpoint":"C:\\\\","total_bytes":1000000,"used_bytes":500000,"free_bytes":500000,"used_percent":50,"filesystem":"NTFS"}],
+        "extra_temperature_sensors":[{"hardware":"Windows ACPI","sensor":"TZ0","value":39.0,"unit":"°C","source":"test"}],
+        "sampled_at":_U66_datetime.now().isoformat(timespec="seconds")}
+    app._u66_sensor_cache = _u108_build_sensor_snapshot(app, temps, {"temperature_c":66.0}, system)
+    rows = _u107_get_sensor_rows(app)
+    assert any(r["sensor"]=="Rdzeń logiczny 2 — użycie" and r["value"]=="67" for r in rows)
+    assert any(r["hardware"]=="PhysicalDrive0" and r["sensor"]=="Odczyt" for r in rows)
+    assert any(r["hardware"]=="Ethernet" and r["sensor"]=="Download" for r in rows)
+    assert any(r["hardware"]=="C:\\\\" and r["sensor"]=="Wykorzystanie" for r in rows)
+    assert any(r["sensor"]=="Tctl/Tdie" and r["unit"]=="°C" for r in rows)
+    _u108_refresh_sensor_table(app)
+    values=list(app._u100_sensor_tree.items.values())
+    assert any("Rdzeń logiczny 2 — użycie" in str(row) for row in values)
+    assert any("PhysicalDrive0" in str(row) for row in values)
+    assert any("Ethernet" in str(row) for row in values)
+    assert len(values)>=20 and "pozycji" in app._u100_sensor_count.text
+    print("FULL_LIVE_SENSOR_TABLE_SELFTEST_OK: temperatures, per-core load, RAM/swap, per-disk I/O, NIC, partitions")
+
+def _u108_selftest_speed_profiles():
+    global _U108_ACTIVE_SPEED_PROFILE
+    old = _U108_ACTIVE_SPEED_PROFILE
+    try:
+        _U108_ACTIVE_SPEED_PROFILE = "QUICK"; quick = _u108_speed_sample_sizes(1000)
+        _U108_ACTIVE_SPEED_PROFILE = "STANDARD"; standard = _u108_speed_sample_sizes(1000)
+        _U108_ACTIVE_SPEED_PROFILE = "MAX"; maximum = _u108_speed_sample_sizes(1000)
+        assert max(quick) <= 10_000_000
+        assert max(standard) <= 30_000_000
+        assert max(maximum) <= 60_000_000
+        assert max(maximum) > max(standard) > max(quick)
+        print("SPEED_TEST_PROFILE_SELFTEST_OK: quick < standard < max payloads")
+    finally:
+        _U108_ACTIVE_SPEED_PROFILE = old
+
+# The new collector feeds the visible table; every display refresh shows raw hardware sensors
+# plus OS-level per-core, memory, disk, network, battery and filesystem metrics.
+_u100_refresh_sensor_table = _u108_refresh_sensor_table
+_u81_refresh_sensor_table = _u108_refresh_sensor_table
+_u100_sensor_poll = _u108_sensor_poll
+_u66_sensor_poll = _u108_sensor_poll
+_u104_speed_sample_sizes = _u108_speed_sample_sizes
+_u66_measure_speed = _u108_measure_speed
+_u66_start_speed_test = _u108_start_speed_test
+AppV43.show_speed_test = _u108_show_speed_test
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
         _u107_selftest_sensor_inspector()
+        _u108_selftest_live_telemetry()
+        _u108_selftest_speed_profiles()
         _u107_selftest_speed_validation()
         _u107_selftest_unique_scene_per_catalog_test()
         _u106_selftest_sensor_mapping()
