@@ -13347,3 +13347,48 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         print("ADVANCED_MODULES_SELFTEST_FAILED:",type(_u66_exc).__name__,str(_u66_exc))
         _u66_traceback.print_exc()
         raise SystemExit(1)
+
+
+# v4.3.118 — make the full sensor inventory reachable directly from live component screens.
+# This is a navigation fix only: it does not fabricate sensor values or mark N/D as zero.
+_U118_ORIGINAL_ATTACH_GPU_LIVE_PANEL = _u84_attach_gpu_live_panel
+
+def _u118_attach_gpu_live_panel_with_sensor_inventory(self):
+    result = _U118_ORIGINAL_ATTACH_GPU_LIVE_PANEL(self)
+    try:
+        panel = getattr(self, "_u84_gpu_panel", None)
+        if panel is not None and panel.winfo_exists():
+            row = tk.Frame(panel, bg=self.colors()["panel"])
+            row.pack(fill="x", padx=8, pady=(0, 7))
+            self.make_button(
+                row,
+                "OTWÓRZ PEŁNĄ LISTĘ CZUJNIKÓW CPU / GPU / RAM / DYSKI / SIEĆ",
+                lambda: _u107_open_sensor_inspector(self),
+                "accent",
+                side="left",
+                ipady=4
+            )
+            self.make_button(
+                row,
+                "ODŚWIEŻ CZUJNIKI",
+                lambda: _u116_force_sensor_refresh(self),
+                "good",
+                side="left",
+                ipady=4
+            )
+    except Exception as exc:
+        try:
+            self.queue_log("Przycisk pełnej listy czujników w ekranie GPU: " + repr(exc))
+        except Exception:
+            pass
+    return result
+
+_u84_attach_gpu_live_panel = _u118_attach_gpu_live_panel_with_sensor_inventory
+
+def _u118_selftest_live_sensor_inventory_navigation():
+    assert callable(_u107_open_sensor_inspector)
+    assert callable(_u116_force_sensor_refresh)
+    assert callable(_u118_attach_gpu_live_panel_with_sensor_inventory)
+    assert _u84_attach_gpu_live_panel is _u118_attach_gpu_live_panel_with_sensor_inventory
+    print("LIVE_SENSOR_INVENTORY_NAVIGATION_SELFTEST_OK")
+
