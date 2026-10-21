@@ -13301,54 +13301,6 @@ def _u120_selftest_system_repair_center():
     print("WINDOWS_REPAIR_CENTER_SELFTEST_OK: SFC, DISM repair/scan, CHKDSK online scan, restore point, WinRE and System Restore UI")
 
 
-if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
-    try:
-        _u117_selftest_per_test_scene_routing()
-        _u120_selftest_system_repair_center()
-        _u116_selftest_scene_signatures()
-        _u116_selftest_sensor_display_controls()
-        _u114_selftest_turbo_math()
-        _u114_selftest_sensor_inventory()
-        _u114_selftest_unique_gpu_scenes()
-        _u114_selftest_catalog_routing()
-        _u114_selftest_service_catalog()
-        _u92_selftest_crash_guard()
-        _u107_selftest_sensor_inspector()
-        _u108_selftest_live_telemetry()
-        _u108_selftest_speed_profiles()
-        _u107_selftest_speed_validation()
-        _u109_selftest_service_catalog()
-        _u107_selftest_unique_scene_per_catalog_test()
-        _u106_selftest_sensor_mapping()
-        _u106_selftest_adaptive_speed_payloads()
-        _u105_selftest_visual_quality()
-        _u104_selftest_speed_and_sensors()
-        _u102_selftest_ram_visible_progress()
-        _u100_selftest_adaptive_speed()
-        _u100_selftest_unique_gpu_scenes()
-        _u98_selftest_catalog_safety()
-        _u93_selftest_catalog_routing()
-        _u96_selftest_single_test_screens()
-        _u66_selftest_advanced()
-        _u86_selftest_component_ui()
-        _u90_selftest_release_fixes()
-        _u88_selftest_final_wiring()
-        assert AppV43.show_module is _u88_show_module_with_independent_tests
-        assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
-        assert callable(_u84_attach_gpu_live_panel)
-        assert callable(_u84_gpu_live_tick)
-        assert AppV43.show_module is _u88_show_module_with_independent_tests
-        assert any("GPU LIVE STUDIO" in str(x) for x in _U100_ORIGINAL_ATTACH_GPU_PANEL.__code__.co_consts)
-        assert _U84_GPU_LIVE_FIELDS and len(_U84_GPU_LIVE_FIELDS) >= 8
-        print("GPU_LIVE_PANEL_SELFTEST_OK")
-        raise SystemExit(0)
-    except Exception as _u66_exc:
-        import traceback as _u66_traceback
-        print("ADVANCED_MODULES_SELFTEST_FAILED:",type(_u66_exc).__name__,str(_u66_exc))
-        _u66_traceback.print_exc()
-        raise SystemExit(1)
-
-
 # v4.3.118 — make the full sensor inventory reachable directly from live component screens.
 # This is a navigation fix only: it does not fabricate sensor values or mark N/D as zero.
 _U118_ORIGINAL_ATTACH_GPU_LIVE_PANEL = _u84_attach_gpu_live_panel
@@ -13391,4 +13343,54 @@ def _u118_selftest_live_sensor_inventory_navigation():
     assert callable(_u118_attach_gpu_live_panel_with_sensor_inventory)
     assert _u84_attach_gpu_live_panel is _u118_attach_gpu_live_panel_with_sensor_inventory
     print("LIVE_SENSOR_INVENTORY_NAVIGATION_SELFTEST_OK")
+
+
+
+if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
+    try:
+        _u117_selftest_per_test_scene_routing()
+        _u120_selftest_system_repair_center()
+        _u118_selftest_live_sensor_inventory_navigation()
+        _u116_selftest_scene_signatures()
+        _u116_selftest_sensor_display_controls()
+        _u114_selftest_turbo_math()
+        _u114_selftest_sensor_inventory()
+        _u114_selftest_unique_gpu_scenes()
+        _u114_selftest_catalog_routing()
+        _u114_selftest_service_catalog()
+        _u92_selftest_crash_guard()
+        _u107_selftest_sensor_inspector()
+        _u108_selftest_live_telemetry()
+        _u108_selftest_speed_profiles()
+        _u107_selftest_speed_validation()
+        _u109_selftest_service_catalog()
+        _u107_selftest_unique_scene_per_catalog_test()
+        _u106_selftest_sensor_mapping()
+        _u106_selftest_adaptive_speed_payloads()
+        _u105_selftest_visual_quality()
+        _u104_selftest_speed_and_sensors()
+        _u102_selftest_ram_visible_progress()
+        _u100_selftest_adaptive_speed()
+        _u100_selftest_unique_gpu_scenes()
+        _u98_selftest_catalog_safety()
+        _u93_selftest_catalog_routing()
+        _u96_selftest_single_test_screens()
+        _u66_selftest_advanced()
+        _u86_selftest_component_ui()
+        _u90_selftest_release_fixes()
+        _u88_selftest_final_wiring()
+        assert AppV43.show_module is _u88_show_module_with_independent_tests
+        assert _U84_ORIGINAL_SHOW_MODULE is _u69_show_module
+        assert callable(_u84_attach_gpu_live_panel)
+        assert callable(_u84_gpu_live_tick)
+        assert AppV43.show_module is _u88_show_module_with_independent_tests
+        assert any("GPU LIVE STUDIO" in str(x) for x in _U100_ORIGINAL_ATTACH_GPU_PANEL.__code__.co_consts)
+        assert _U84_GPU_LIVE_FIELDS and len(_U84_GPU_LIVE_FIELDS) >= 8
+        print("GPU_LIVE_PANEL_SELFTEST_OK")
+        raise SystemExit(0)
+    except Exception as _u66_exc:
+        import traceback as _u66_traceback
+        print("ADVANCED_MODULES_SELFTEST_FAILED:",type(_u66_exc).__name__,str(_u66_exc))
+        _u66_traceback.print_exc()
+        raise SystemExit(1)
 
