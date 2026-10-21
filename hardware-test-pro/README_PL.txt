@@ -3,7 +3,7 @@ NAPRAWA PC HARDWARE TEST PRO — WINDOWS x64 / ALL-IN-ONE
 
 KANAŁ ONLINE
 Aktualna wersja jest publikowana w updates/hardware-test-pro/latest.json.
-Ostatnie zweryfikowane wydanie: 4.3.112, opublikowane 2026-10-21.
+Aktualny numer wydania, link instalatora i SHA-256 odczytuj z manifestu stable — nie utrzymuj numeru wersji na sztywno w README.
 Instalator i pełny pakiet ALL-IN-ONE są dostępne w GitHub Releases:
 https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases
 
