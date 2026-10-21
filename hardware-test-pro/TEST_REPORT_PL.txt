@@ -1,10 +1,11 @@
-RAPORT WERYFIKACJI ONLINE — NAPRAWA PC HARDWARE TEST PRO 4.3.112
+RAPORT WERYFIKACJI ONLINE — NAPRAWA PC HARDWARE TEST PRO 4.3.114
 ==================================================================
 
-GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39656632819
+GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39673844878
 Status workflow: success
+Commit zweryfikowanego źródła: 475c7287b79e12efa97af5ff7865ef8460009885
 Data publikacji: 2026-10-21
-Tag: hardware-test-pro-v4.3.112
+Tag: hardware-test-pro-v4.3.114
 
 POTWIERDZONE PRZEZ WINDOWS CI
 [OK] Windows x64 / Python 3.12 oraz .NET 10.
@@ -15,8 +16,11 @@ POTWIERDZONE PRZEZ WINDOWS CI
 [OK] LIVE_SENSOR_INSPECTOR_PER_CORE_DISK_NIC_PARTITION_SELFTEST_OK.
 [OK] FULL_LIVE_SENSOR_TABLE_SELFTEST_OK: temperatury, obciążenie na rdzeń, RAM/swap, I/O dysków, NIC i woluminy.
 [OK] SPEED_TEST_PROFILE_SELFTEST_OK: QUICK < STANDARD < MAX.
-[OK] SYSTEM_REPAIR_PRO_SERWIS_ULTIMATE_CATALOG_SELFTEST_OK: 20 dodatkowych diagnoz, 15 grup i 90 unikalnych testów/scen.
-[OK] UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 90 odrębnych ID scen.
+[OK] SPEED_TEST_TURBO_SELFTEST_OK: 4 równoległe strumienie HTTPS z osobnym wynikiem transferu.
+[OK] SYSTEM_REPAIR_PRO_SERWIS_ULTIMATE_CATALOG_SELFTEST_OK: 40 odczytowych diagnostyk integracyjnych; 110 unikalnych testów/scen w 15 grupach.
+[OK] FULL_SENSOR_INVENTORY_SELFTEST_OK: wykryte sensory bez aktualnej wartości są zachowane jako N/D.
+[OK] GPU_SCENE_SELFTEST_OK: wszystkie 110 ID używają dedykowanego renderera z różnymi layoutami.
+[OK] UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 110 odrębnych ID scen.
 [OK] Pozostałe testy modułów zaawansowanych.
 [OK] PyInstaller EXE.
 [OK] Inno Setup — kompilacja instalatora.
@@ -25,14 +29,14 @@ POTWIERDZONE PRZEZ WINDOWS CI
 
 OPUBLIKOWANE PLIKI
 Setup:
-https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.112/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.112.exe
-Rozmiar: 141,815,175 bajtów
-SHA-256: 3d552aa556f177ae98e970c2e9bd00496a3603ea3be0157caa4cb22dbe0a01f9
+https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.114/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.114.exe
+Rozmiar: 141,863,821 bajtów
+SHA-256: 380afbd6d8f47de6de883eb943e1f1150cf4e946c3e3bda5a3b7df512557dc96
 
 ALL-IN-ONE ZIP:
-https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.112/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.112.zip
-Rozmiar: 284,301,395 bajtów
-SHA-256: 9ac93b3457dc44fe4c95bada668f02680d30d4ff25d91b8719ff825693afddbe
+https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.114/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.114.zip
+Rozmiar: 284,418,114 bajtów
+SHA-256: 135c73a20ac58ae99d118312dcf6230cc425223146edd47baba306ec5ca7a27d
 
 WERYFIKACJE NIEWYKONANE NA MASZYNIE BUILDOWEJ
 [ ] Uruchomienie GUI na fizycznym komputerze użytkownika.
@@ -42,4 +46,4 @@ WERYFIKACJE NIEWYKONANE NA MASZYNIE BUILDOWEJ
 [ ] File-by-file parity check całych archiwów źródłowych System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3.
 
 GRANICE
-CI nie zastępuje pomiarów fizycznego sprzętu. N/D oznacza brak danych. Testy pamięci aplikacyjnej nie obejmują gwarantowanie wszystkich komórek. Speed Test zależy od sieci i endpointu. 20 nowych sond są odczytową integracją diagnostyczną, a nie potwierdzeniem pełnej zgodności 1:1 wszystkich źródłowych funkcji obu ZIP-ów.
+CI nie zastępuje pomiarów fizycznego sprzętu. N/D oznacza brak danych. Testy pamięci aplikacyjnej nie obejmują gwarantowanie wszystkich komórek. Speed Test zależy od sieci i endpointu. 40 sond to odczytowa integracja diagnostyczna. Pełna zgodność 1:1 wszystkich źródłowych funkcji obu ZIP-ów pozostaje niepotwierdzona.
