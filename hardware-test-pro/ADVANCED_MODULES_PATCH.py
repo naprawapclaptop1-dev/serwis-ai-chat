@@ -5435,12 +5435,37 @@ _U93_TEST_CATALOG = {
   ("cam_preview","Podgląd kamery — 10 s","Po potwierdzeniu pokazuje klatki w osobnym oknie bez zapisu.","camera_preview"),
   ("cam_sim","Symulator 3D kamery","Schemat kamery, nie pomiar FPS sensora.","sim")
  ]
+,
+ "SYSTEM_REPAIR_PRO":[
+  ("sr_os_activation","Windows — wersja i stan licencji","Odczyt wydania Windows i stanu licencji bez ujawniania klucza produktu.","service_probe"),
+  ("sr_bios_uefi","BIOS / UEFI / Secure Boot / TPM","Odczyt wersji BIOS, płyty, stanu Secure Boot i TPM.","service_probe"),
+  ("sr_driver_audit","Audyt sterowników i PnP","Lista urządzeń PnP oraz dostępne kody błędów i wersje sterowników.","service_probe"),
+  ("sr_update_audit","Stan usług Windows Update","Status usług aktualizacji oraz wskaźniki oczekującego restartu.","service_probe"),
+  ("sr_event_errors","Dziennik błędów Windows — 24 h","Zbiera ograniczoną listę ostatnich zdarzeń krytycznych i błędów.","service_probe"),
+  ("sr_service_health","Zdrowie usług krytycznych Windows","Kontrola statusu usług systemowych; niczego nie uruchamia ani nie wyłącza.","service_probe"),
+  ("sr_storage_health","Zdrowie woluminów i nośników","Odczyt wolnego miejsca, statusu woluminów i dostępnej telemetrii fizycznych dysków.","service_probe"),
+  ("sr_recovery_bcd","WinRE / BCD — diagnostyka odczytowa","Odczytuje konfigurację środowiska odzyskiwania i bieżącego wpisu rozruchu.","service_probe"),
+  ("sr_network_services","Usługi sieciowe Windows","Kontrola usług DHCP, DNS, WLAN i NLA.","service_probe"),
+  ("sr_component_store","Magazyn składników DISM — CheckHealth","Odczytowy test DISM /CheckHealth; nie wykonuje naprawy ani RestoreHealth.","service_probe")
+ ],
+ "SERWIS_ULTIMATE":[
+  ("su_hardware_inventory","Inwentarz sprzętu serwisowego","Zbiera model CPU, GPU, RAM, płyty głównej i BIOS bez numerów seryjnych.","service_probe"),
+  ("su_software_inventory","Inwentarz zainstalowanego oprogramowania","Odczyt listy aplikacji z rejestru Uninstall; nie używa Win32_Product.","service_probe"),
+  ("su_startup_audit","Autostart i zadania przy logowaniu","Audyt poleceń autostartu oraz ograniczonej listy zadań harmonogramu.","service_probe"),
+  ("su_crash_history","Historia awarii aplikacji — 30 dni","Zbiera ograniczoną listę błędów Application Error / Windows Error Reporting.","service_probe"),
+  ("su_network_config","Konfiguracja LAN / Wi-Fi / DNS","Odczyt adresów IP, bramy, DNS i profilu sieciowego dla aktywnych kart.","service_probe"),
+  ("su_wmi_health","Spójność WMI — test odczytowy","Weryfikuje usługę WMI i dostępność zapytań CIM bez naprawiania repozytorium.","service_probe"),
+  ("su_windows_update_history","Lista zainstalowanych aktualizacji","Odczyt ostatnio zainstalowanych poprawek Windows z Get-HotFix.","service_probe"),
+  ("su_system_services","Audyt automatycznych usług Windows","Lista usług z automatycznym startem i tych, które obecnie nie działają.","service_probe"),
+  ("su_report_folder","Raporty lokalne Naprawa PC","Wyszukuje ostatnie raporty w znanych katalogach lokalnych; nie wysyła ich do sieci.","service_probe"),
+  ("su_windows_installations","Wykrywanie instalacji Windows na dyskach","Odczytowo wykrywa katalogi Windows i pliki rejestru offline na widocznych woluminach.","service_probe")
+ ]
 }
 _U93_ALIASES={"CPU":"CPU","PROCESOR":"CPU","RAM":"RAM","PAMIĘĆ":"RAM","PAMIEC":"RAM","GPU":"GPU","VRAM":"VRAM",
  "DYSK":"DYSK","DYSKI":"DYSK","SSD":"DYSK","HDD":"DYSK","NVME":"DYSK","EKRAN":"EKRAN","MATRYCA":"EKRAN","MONITOR":"EKRAN",
  "SECURITY":"SECURITY","BEZPIECZEŃSTWO":"SECURITY","SYSTEM":"SECURITY","BATERIA":"BATERIA","ZASILANIE":"BATERIA",
  "SIEĆ":"SIEĆ","SIEC":"SIEĆ","WI-FI":"SIEĆ","WIFI":"SIEĆ","LAN":"SIEĆ","USB":"USB","AUDIO":"AUDIO",
- "KLAWIATURA":"KLAWIATURA","TOUCHPAD":"KLAWIATURA","KAMERA":"KAMERA","WEBCAM":"KAMERA"}
+ "KLAWIATURA":"KLAWIATURA","TOUCHPAD":"KLAWIATURA","KAMERA":"KAMERA","WEBCAM":"KAMERA", "SYSTEM REPAIR PRO":"SYSTEM_REPAIR_PRO","SYSTEMREPAIRPRO":"SYSTEM_REPAIR_PRO","SYSTEM_REPAIR_PRO":"SYSTEM_REPAIR_PRO","SERWIS ULTIMATE":"SERWIS_ULTIMATE","SERWISULTIMATE":"SERWIS_ULTIMATE","SERWIS_ULTIMATE":"SERWIS_ULTIMATE"}
 
 def _u93_norm(module):
     raw=str(module or "").upper()
@@ -5698,7 +5723,7 @@ _U93_SUPPORTED_TEST_KINDS = {
  "battery_scan","battery_monitor","battery_max","battery_report","network_scan",
  "network_dns","network_speed","network_jitter","usb_scan","usb_errors","peripheral_usb",
  "audio_scan","audio_mic","audio_output","peripheral_audio","keyboard_scan",
- "keyboard_input","peripheral_keyboard","camera_scan","camera_preview"
+ "keyboard_input","peripheral_keyboard","camera_scan","camera_preview","service_probe"
 }
 
 def _u93_put_result(app,key,result):
@@ -6253,7 +6278,7 @@ def _u93_selftest_catalog_routing():
         assert entries,f"Pusty katalog {module}"
         for test_id,title,description,kind in entries:
             ids.append(test_id);kinds.add(kind);assert title and description
-    assert len(ids)==70 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
+    assert len(ids)==90 and len(set(ids))==90,"Katalog powinien mieć 90 unikalnych testów"
     assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
     assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
     assert AppV43.show_component_lab is _u93_show_lab
@@ -6267,7 +6292,9 @@ def _u93_selftest_catalog_routing():
         detail_names.update(_u93_deep_code_names(original_detail))
     assert "_u93_start_catalog_test" in detail_names
     assert "_u93_execute_catalog_test" in _u93_deep_code_names(_u93_finish_test_worker)
-    print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 70 unique tests, isolated detail screen and real operation dispatcher")
+    assert set(_U107_TEST_SCENES.keys()).issuperset(set(ids))
+    assert len(_U93_TEST_CATALOG["SYSTEM_REPAIR_PRO"]) == 10 and len(_U93_TEST_CATALOG["SERWIS_ULTIMATE"]) == 10
+    print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 90 unique tests, isolated detail screen and real operation dispatcher")
 
 AppV43.show_component_lab = _u93_show_lab
 
@@ -10299,6 +10326,15 @@ _U107_TEST_SCENES = {
     "cam_scan":76, "cam_preview":77, "cam_sim":78
 }
 
+_U107_TEST_SCENES.update({
+ "sr_os_activation":66, "sr_bios_uefi":69, "sr_driver_audit":70, "sr_update_audit":71,
+ "sr_event_errors":72, "sr_service_health":73, "sr_storage_health":74, "sr_recovery_bcd":75,
+ "sr_network_services":79, "sr_component_store":80,
+ "su_hardware_inventory":81, "su_software_inventory":82, "su_startup_audit":83, "su_crash_history":84,
+ "su_network_config":85, "su_wmi_health":86, "su_windows_update_history":87,
+ "su_system_services":88, "su_report_folder":89, "su_windows_installations":90
+})
+
 def _u107_finite_number(value):
     try:
         number=float(value)
@@ -10896,13 +10932,13 @@ def _u107_selftest_unique_scene_per_catalog_test():
             scene_id=_U107_TEST_SCENES[test_id]
             assert 1<=scene_id<=len(_U100_SCENE_TITLES)
             assert "SIMULATOR" not in str(title).upper() or scene_id>0
-    assert len(catalog_ids)==70 and len(set(catalog_ids))==70
+    assert len(catalog_ids)==90 and len(set(catalog_ids))==90
     scene_ids=[_U107_TEST_SCENES[test_id] for test_id in catalog_ids]
-    assert len(set(scene_ids))==70, "Dwa testy katalogu wskazują na tę samą scenę OpenGL."
+    assert len(set(scene_ids))==90, "Dwa testy katalogu wskazują na tę samą scenę OpenGL."
     assert callable(_u107_open_component_simulator) and callable(_u107_launch_scene_preview)
     assert callable(_u107_get_sensor_rows) and callable(_u107_measure_speed)
     assert "COMPONENT_TEST_DETAIL_" in _u107_open_component_simulator.__code__.co_consts
-    print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 70 different scene IDs")
+    print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 90 different scene IDs")
 
 _u101_collect_os_metrics=_u107_collect_os_metrics
 _u104_sensor_records=_u107_sensor_records
@@ -11242,6 +11278,273 @@ _u66_measure_speed = _u108_measure_speed
 _u66_start_speed_test = _u108_start_speed_test
 AppV43.show_speed_test = _u108_show_speed_test
 
+
+# v4.3.112 — extend the independent test catalog with distinct read-only service diagnostics.
+# These are additional probes in the same app, not a claim of byte-for-byte parity with the source ZIPs.
+_U109_ORIGINAL_EXECUTE_CATALOG_TEST = _u93_execute_catalog_test
+_U109_ORIGINAL_START_CATALOG_TEST = _u93_start_catalog_test
+
+_U109_SERVICE_PROBES = {
+ "sr_os_activation": r"""
+$os=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,ProductType
+$lic=@(Get-CimInstance SoftwareLicensingProduct -ErrorAction SilentlyContinue | Where-Object { $_.ApplicationID -eq '55c92734-d682-4d71-983e-d6ec3f16059f' -and $_.PartialProductKey } | Select-Object Name,Description,LicenseStatus)
+[pscustomobject]@{os=$os;license_products=$lic;count=$lic.Count;method='CIM read-only; no product keys returned'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_bios_uefi": r"""
+$bios=Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate
+$board=Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,Version
+$secure=$null;try {$secure=Confirm-SecureBootUEFI -ErrorAction Stop} catch {$secure=$null}
+$tpm=$null;try {$tpm=Get-Tpm | Select-Object TpmPresent,TpmReady,TpmEnabled,TpmActivated,LockedOut} catch {}
+[pscustomobject]@{bios=$bios;board=$board;secure_boot=$secure;tpm=$tpm} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_driver_audit": r"""
+$devices=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue | Select-Object Class,FriendlyName,Status,Problem,InstanceId)
+$bad=@($devices | Where-Object { $_.Status -and $_.Status -ne 'OK' -or $_.Problem -and $_.Problem -ne 0 })
+$drivers=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object DeviceName,DriverProviderName,DriverVersion,InfName)
+[pscustomobject]@{device_count=$devices.Count;problem_count=$bad.Count;problem_devices=$bad;driver_count=$drivers.Count;drivers=$drivers | Select-Object -First 150} | ConvertTo-Json -Depth 7 -Compress
+""",
+ "sr_update_audit": r"""
+$services=@(Get-Service wuauserv,bits,cryptsvc,TrustedInstaller,WaaSMedicSvc -ErrorAction SilentlyContinue | Select-Object Name,Status,StartType)
+$reboot=@()
+if(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending'){$reboot+='CBS'}
+if(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'){$reboot+='WindowsUpdate'}
+$rename=(Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager' -Name PendingFileRenameOperations -ErrorAction SilentlyContinue).PendingFileRenameOperations
+if($rename){$reboot+='PendingFileRenameOperations'}
+[pscustomobject]@{services=$services;service_count=$services.Count;pending_reboot_sources=$reboot;pending_file_rename=[bool]$rename} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_event_errors": r"""
+$start=(Get-Date).AddHours(-24);$items=@()
+foreach($log in @('System','Application')) {
+ try {$items+=@(Get-WinEvent -FilterHashtable @{LogName=$log;Level=1,2;StartTime=$start} -MaxEvents 30 -ErrorAction Stop | Select-Object TimeCreated,LogName,ProviderName,Id,LevelDisplayName,Message)} catch {}
+}
+$items=@($items | Sort-Object TimeCreated -Descending | Select-Object -First 50)
+[pscustomobject]@{window_hours=24;event_count=$items.Count;events=$items} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_service_health": r"""
+$names=@('RpcSs','DcomLaunch','EventLog','Winmgmt','PlugPlay','LanmanWorkstation','Dhcp','Dnscache','WlanSvc','BITS','wuauserv','CryptSvc','Schedule','WinDefend')
+$rows=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object { $_.Name -in $names } | Select-Object Name,DisplayName,State,StartMode,ExitCode)
+$stopped=@($rows | Where-Object { $_.StartMode -eq 'Auto' -and $_.State -ne 'Running' -and $_.Name -notin @('WlanSvc','BITS','wuauserv') })
+[pscustomobject]@{checked_count=$rows.Count;stopped_automatic_count=$stopped.Count;stopped_automatic=$stopped;services=$rows} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_storage_health": r"""
+$volumes=@(Get-Volume -ErrorAction SilentlyContinue | Where-Object DriveLetter | Select-Object DriveLetter,FileSystemLabel,FileSystem,HealthStatus,OperationalStatus,Size,SizeRemaining)
+$disks=@();try {$disks=@(Get-PhysicalDisk -ErrorAction Stop | Select-Object FriendlyName,MediaType,BusType,HealthStatus,OperationalStatus,Size)} catch {}
+$bad=@($disks | Where-Object { $_.HealthStatus -and $_.HealthStatus -notin @('Healthy','Unknown') })
+[pscustomobject]@{volume_count=$volumes.Count;volumes=$volumes;physical_disk_count=$disks.Count;physical_disks=$disks;unhealthy_disk_count=$bad.Count;unhealthy_disks=$bad;note='SMART/HealthStatus depends on driver and storage provider'} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "sr_recovery_bcd": r"""
+$winre='';$bcd=''
+try {$winre=(& reagentc.exe /info 2>&1 | Out-String)} catch {$winre=$_.Exception.Message}
+try {$bcd=(& bcdedit.exe /enum '{current}' 2>&1 | Out-String)} catch {$bcd=$_.Exception.Message}
+[pscustomobject]@{winre_info=$winre;bcd_current=$bcd;method='read-only; no BCD or recovery changes'} | ConvertTo-Json -Depth 4 -Compress
+""",
+ "sr_network_services": r"""
+$names=@('Dhcp','Dnscache','NlaSvc','WlanSvc','Netman','netprofm','LanmanWorkstation')
+$rows=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {$_.Name -in $names} | Select-Object Name,State,StartMode,ExitCode)
+$adapters=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,Status,LinkSpeed,MacAddress)
+[pscustomobject]@{services=$rows;adapter_count=$adapters.Count;adapters=$adapters} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "sr_component_store": r"""
+$text=(& dism.exe /Online /Cleanup-Image /CheckHealth 2>&1 | Out-String)
+$code=$LASTEXITCODE
+[pscustomobject]@{dism_exit_code=$code;output=$text;method='DISM /CheckHealth only; no repair was requested'} | ConvertTo-Json -Depth 4 -Compress
+""",
+ "su_hardware_inventory": r"""
+$cpu=Get-CimInstance Win32_Processor | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,MaxClockSpeed
+$gpu=@(Get-CimInstance Win32_VideoController | Select-Object Name,AdapterRAM,DriverVersion,VideoModeDescription)
+$ram=@(Get-CimInstance Win32_PhysicalMemory | Select-Object Capacity,Speed,Manufacturer)
+$board=Get-CimInstance Win32_BaseBoard | Select-Object Manufacturer,Product,Version
+$bios=Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate
+[pscustomobject]@{cpu=$cpu;gpu=$gpu;ram=$ram;motherboard=$board;bios=$bios;note='Serial numbers omitted'} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "su_software_inventory": r"""
+$paths=@('HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*','HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*')
+$items=@(foreach($path in $paths){Get-ItemProperty $path -ErrorAction SilentlyContinue | Where-Object {$_.DisplayName} | Select-Object DisplayName,DisplayVersion,Publisher,InstallDate})
+$items=@($items | Sort-Object DisplayName -Unique | Select-Object -First 250)
+[pscustomobject]@{application_count=$items.Count;applications=$items;source='Uninstall registry keys; no Win32_Product query'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_startup_audit": r"""
+$startup=@(Get-CimInstance Win32_StartupCommand -ErrorAction SilentlyContinue | Select-Object Name,Command,Location,User)
+$tasks=@()
+try {$tasks=@(Get-ScheduledTask -ErrorAction Stop | Where-Object {$_.Triggers.CimClass.CimClassName -match 'BootTrigger|LogonTrigger'} | Select-Object -First 80 TaskName,TaskPath,State)} catch {}
+[pscustomobject]@{startup_count=$startup.Count;startup=$startup;startup_task_count=$tasks.Count;startup_tasks=$tasks;note='Read-only audit; startup entries are not changed'} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "su_crash_history": r"""
+$start=(Get-Date).AddDays(-30);$items=@()
+foreach($provider in @('Application Error','Windows Error Reporting')) {
+ try {$items+=@(Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName=$provider;StartTime=$start} -MaxEvents 40 -ErrorAction Stop | Select-Object TimeCreated,ProviderName,Id,LevelDisplayName,Message)} catch {}
+}
+$items=@($items | Sort-Object TimeCreated -Descending | Select-Object -First 60)
+[pscustomobject]@{window_days=30;crash_event_count=$items.Count;events=$items} | ConvertTo-Json -Depth 6 -Compress
+""",
+ "su_network_config": r"""
+$rows=@()
+try {$rows=@(Get-NetIPConfiguration -ErrorAction Stop | Select-Object InterfaceAlias,InterfaceDescription,NetProfile,IPv4Address,IPv4DefaultGateway,DNSServer)} catch {}
+[pscustomobject]@{interface_count=$rows.Count;interfaces=$rows;method='Get-NetIPConfiguration read-only'} | ConvertTo-Json -Depth 7 -Compress
+""",
+ "su_wmi_health": r"""
+$svc=Get-Service Winmgmt -ErrorAction SilentlyContinue | Select-Object Name,Status,StartType
+$probe=$null;$errorText=$null
+try {$probe=Get-CimInstance Win32_OperatingSystem -ErrorAction Stop | Select-Object Caption,BuildNumber} catch {$errorText=$_.Exception.Message}
+$verify='not run';$verifyError=$null
+try {$verify=(& winmgmt.exe /verifyrepository 2>&1 | Out-String)} catch {$verifyError=$_.Exception.Message}
+[pscustomobject]@{wmi_service=$svc;cim_query=$probe;cim_query_error=$errorText;repository_verification=$verify;repository_error=$verifyError;method='verification only; no salvage/reset'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_windows_update_history": r"""
+$items=@(Get-HotFix -ErrorAction SilentlyContinue | Sort-Object InstalledOn -Descending | Select-Object -First 60 HotFixID,Description,InstalledBy,InstalledOn)
+[pscustomobject]@{installed_update_count=$items.Count;updates=$items;source='Get-HotFix; recent installed hotfixes'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_system_services": r"""
+$items=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {$_.StartMode -eq 'Auto'} | Select-Object Name,DisplayName,State,StartMode,StartName)
+$stopped=@($items | Where-Object {$_.State -ne 'Running'})
+[pscustomobject]@{automatic_service_count=$items.Count;stopped_count=$stopped.Count;stopped_automatic=$stopped | Select-Object -First 100;services=$items | Select-Object -First 200} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_report_folder": r"""
+$roots=@((Join-Path $env:LOCALAPPDATA 'NaprawaPC'),(Join-Path $env:USERPROFILE 'Desktop\NAPRAWA_PC_RAPORTY'),(Join-Path $env:USERPROFILE 'Documents\NaprawaPC'))
+$found=@()
+foreach($root in $roots){if(Test-Path -LiteralPath $root){$found+=@(Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 40 @{n='Root';e={$root}},FullName,Length,LastWriteTime)}}
+$found=@($found | Sort-Object LastWriteTime -Descending | Select-Object -First 100)
+[pscustomobject]@{searched_roots=$roots;report_count=$found.Count;reports=$found;note='File inventory only; report contents are not uploaded'} | ConvertTo-Json -Depth 5 -Compress
+""",
+ "su_windows_installations": r"""
+$found=@()
+$drives=@(Get-CimInstance Win32_LogicalDisk -Filter 'DriveType=3' -ErrorAction SilentlyContinue)
+foreach($drive in $drives) {
+ $root=$drive.DeviceID+'\'
+ $software=Join-Path $root 'Windows\System32\config\SOFTWARE'
+ $system=Join-Path $root 'Windows\System32\config\SYSTEM'
+ if((Test-Path -LiteralPath $software) -and (Test-Path -LiteralPath $system)) {
+   $found += [pscustomobject]@{drive=$drive.DeviceID;windows_directory=(Join-Path $root 'Windows');software_hive=$software;system_hive=$system;offline=($drive.DeviceID -ne $env:SystemDrive)}
+ }
+}
+[pscustomobject]@{installation_count=$found.Count;installations=$found;method='read-only file marker scan; no offline registry hives mounted'} | ConvertTo-Json -Depth 5 -Compress
+"""
+}
+
+def _u109_service_probe(app, module, test_id, settings):
+    if not is_windows():
+        return {"state":"warn","test_id":test_id,"module":module,
+                "message":"Ten odczyt diagnostyczny wymaga Windows.","returncode":None}
+    script=_U109_SERVICE_PROBES.get(str(test_id))
+    if not script:
+        return {"state":"error","test_id":test_id,"module":module,"message":"Brak skryptu dla testu serwisowego."}
+    timeout=90 if test_id in ("sr_component_store","sr_event_errors","su_crash_history","su_software_inventory","su_windows_installations") else 35
+    try:
+        raw=ps_json(script, default=None)
+        if isinstance(raw,list) and len(raw)==1 and isinstance(raw[0],dict):
+            raw=raw[0]
+        if not isinstance(raw,dict):
+            return {"state":"warn","test_id":test_id,"module":module,"raw_result":str(raw)[:12000],
+                    "message":"PowerShell nie zwrócił obiektu JSON. Wynik nie jest zaliczony."}
+        result=dict(raw)
+        state="good"
+        warnings=[]
+        if test_id=="sr_driver_audit" and int(result.get("problem_count",0) or 0)>0:
+            state="warn";warnings.append("Znaleziono urządzenia PnP zgłaszające status inny niż OK.")
+        if test_id=="sr_service_health" and int(result.get("stopped_automatic_count",0) or 0)>0:
+            state="warn";warnings.append("Jedna lub więcej usług z listy kontrolnej ma status zatrzymany.")
+        if test_id=="sr_storage_health" and int(result.get("unhealthy_disk_count",0) or 0)>0:
+            state="warn";warnings.append("Dostawca magazynu zgłasza stan dysku wymagający uwagi.")
+        if test_id=="sr_event_errors" and int(result.get("event_count",0) or 0)>0:
+            state="warn";warnings.append("W dzienniku znaleziono zdarzenia krytyczne/błędy; ich przyczyna wymaga analizy.")
+        if test_id=="su_crash_history" and int(result.get("crash_event_count",0) or 0)>0:
+            state="warn";warnings.append("W historii znaleziono zdarzenia awarii; obecność wpisu nie określa sama przyczyny.")
+        if test_id=="su_wmi_health" and (result.get("cim_query_error") or not result.get("cim_query")):
+            state="warn";warnings.append("Zapytanie CIM nie zwróciło danych.")
+        if test_id=="su_system_services" and int(result.get("stopped_count",0) or 0)>0:
+            state="warn";warnings.append("Występują zatrzymane usługi automatyczne; nie wszystkie muszą być wymagane w tej konfiguracji.")
+        if test_id=="sr_update_audit" and result.get("pending_reboot_sources"):
+            state="warn";warnings.append("System zgłasza źródło oczekującego ponownego uruchomienia.")
+        if test_id in ("sr_driver_audit","sr_service_health","sr_storage_health","sr_event_errors",
+                       "su_crash_history","su_software_inventory","su_windows_update_history",
+                       "su_startup_audit","su_hardware_inventory","su_network_config","su_system_services") and not raw:
+            state="warn";warnings.append("Puste dane — test nie jest oznaczony jako PASS.")
+        result.update({"state":state,"test_id":str(test_id),"module":str(module),
+            "checked_at":_U66_datetime.now().isoformat(timespec="seconds"),
+            "method":"Windows PowerShell read-only diagnostic",
+            "warnings":warnings,
+            "note":"Odczyt diagnostyczny; nic nie usuwa, nie wyłącza i nie naprawia automatycznie."})
+        _u93_put_result(app,"SERVICE_PROBE_"+str(test_id),result)
+        app.queue_log(f"SERVICE PROBE {test_id}: {state.upper()}"+( " — "+ "; ".join(warnings) if warnings else ""))
+        return result
+    except Exception as exc:
+        return {"state":"error","test_id":str(test_id),"module":str(module),
+                "error":f"{type(exc).__name__}: {exc}","note":"Nie wykonano operacji naprawczej."}
+
+def _u109_execute_catalog_test(app,module,test_id,kind,settings):
+    if kind=="service_probe":
+        return _u109_service_probe(app,module,test_id,settings)
+    return _U109_ORIGINAL_EXECUTE_CATALOG_TEST(app,module,test_id,kind,settings)
+
+def _u109_start_catalog_test(app,module,test_id,title,kind):
+    if kind=="service_probe" and test_id=="sr_component_store":
+        if not messagebox.askyesno("DISM CheckHealth — test odczytowy",
+            "Uruchomić DISM /Online /Cleanup-Image /CheckHealth? To kontrola magazynu składników bez naprawy. Może potrwać kilkanaście sekund. Kontynuować?"):
+            _u93_update_detail(app,test_id,"ANULOWANO",{"state":"warn","message":"Anulowano za zgodą operatora; nie uruchomiono DISM."})
+            return
+    return _U109_ORIGINAL_START_CATALOG_TEST(app,module,test_id,title,kind)
+
+def _u109_selftest_service_catalog():
+    module_keys=[item[0] for item in _U93_MODULES]
+    assert set(module_keys)==set(_U93_TEST_CATALOG.keys()),"Każdy moduł z laboratorium musi mieć swój katalog."
+    assert len(module_keys)==15 and len(set(module_keys))==15
+    all_tests=[test for entries in _U93_TEST_CATALOG.values() for test in entries]
+    ids=[item[0] for item in all_tests]
+    assert len(ids)==90 and len(set(ids))==90
+    for module in ("SYSTEM_REPAIR_PRO","SERWIS_ULTIMATE"):
+        assert len(_U93_TEST_CATALOG[module])==10
+        assert all(test[3]=="service_probe" for test in _U93_TEST_CATALOG[module])
+    scenes=[_U107_TEST_SCENES[test_id] for test_id in ids]
+    assert len(set(scenes))==90
+    assert set(ids).issubset(_U107_TEST_SCENES)
+    assert "service_probe" in _U93_SUPPORTED_TEST_KINDS
+    assert callable(_u109_service_probe)
+    print("SYSTEM_REPAIR_PRO_SERWIS_ULTIMATE_CATALOG_SELFTEST_OK: 20 read-only diagnostics, 15 modules, 90 unique tests and OpenGL scenes")
+
+_U93_SUPPORTED_TEST_KINDS.add("service_probe")
+_U93_TEST_CATALOG["SYSTEM_REPAIR_PRO"] = [
+ ("sr_os_activation","Windows — wersja i stan licencji","Odczyt wydania Windows i stanu licencji bez ujawniania klucza produktu.","service_probe"),
+ ("sr_bios_uefi","BIOS / UEFI / Secure Boot / TPM","Odczyt wersji BIOS, płyty, stanu Secure Boot i TPM.","service_probe"),
+ ("sr_driver_audit","Audyt sterowników i PnP","Lista urządzeń PnP oraz dostępne kody błędów i wersje sterowników.","service_probe"),
+ ("sr_update_audit","Stan usług Windows Update","Status usług aktualizacji oraz wskaźniki oczekującego restartu.","service_probe"),
+ ("sr_event_errors","Dziennik błędów Windows — 24 h","Zbiera ograniczoną listę ostatnich zdarzeń krytycznych i błędów.","service_probe"),
+ ("sr_service_health","Zdrowie usług krytycznych Windows","Kontrola statusu usług systemowych; niczego nie uruchamia ani nie wyłącza.","service_probe"),
+ ("sr_storage_health","Zdrowie woluminów i nośników","Odczyt wolnego miejsca, statusu woluminów i dostępnej telemetrii fizycznych dysków.","service_probe"),
+ ("sr_recovery_bcd","WinRE / BCD — diagnostyka odczytowa","Odczytuje konfigurację środowiska odzyskiwania i bieżącego wpisu rozruchu.","service_probe"),
+ ("sr_network_services","Usługi sieciowe Windows","Kontrola usług DHCP, DNS, WLAN i NLA.","service_probe"),
+ ("sr_component_store","Magazyn składników DISM — CheckHealth","Odczytowy test DISM /CheckHealth; nie wykonuje naprawy ani RestoreHealth.","service_probe")
+]
+_U93_TEST_CATALOG["SERWIS_ULTIMATE"] = [
+ ("su_hardware_inventory","Inwentarz sprzętu serwisowego","Zbiera model CPU, GPU, RAM, płyty głównej i BIOS bez numerów seryjnych.","service_probe"),
+ ("su_software_inventory","Inwentarz zainstalowanego oprogramowania","Odczyt listy aplikacji z rejestru Uninstall; nie używa Win32_Product.","service_probe"),
+ ("su_startup_audit","Autostart i zadania przy logowaniu","Audyt poleceń autostartu oraz ograniczonej listy zadań harmonogramu.","service_probe"),
+ ("su_crash_history","Historia awarii aplikacji — 30 dni","Zbiera ograniczoną listę błędów Application Error / Windows Error Reporting.","service_probe"),
+ ("su_network_config","Konfiguracja LAN / Wi-Fi / DNS","Odczyt adresów IP, bramy, DNS i profilu sieciowego dla aktywnych kart.","service_probe"),
+ ("su_wmi_health","Spójność WMI — test odczytowy","Weryfikuje usługę WMI i dostępność zapytań CIM bez naprawiania repozytorium.","service_probe"),
+ ("su_windows_update_history","Lista zainstalowanych aktualizacji","Odczyt ostatnio zainstalowanych poprawek Windows z Get-HotFix.","service_probe"),
+ ("su_system_services","Audyt automatycznych usług Windows","Lista usług z automatycznym startem i tych, które obecnie nie działają.","service_probe"),
+ ("su_report_folder","Raporty lokalne Naprawa PC","Wyszukuje ostatnie raporty w znanych katalogach lokalnych; nie wysyła ich do sieci.","service_probe"),
+ ("su_windows_installations","Wykrywanie instalacji Windows na dyskach","Odczytowo wykrywa katalogi Windows i pliki rejestru offline na widocznych woluminach.","service_probe")
+]
+_U93_MODULES.extend([
+ ("SYSTEM_REPAIR_PRO","SYSTEM REPAIR PRO — DIAGNOSTYKA WINDOWS"),
+ ("SERWIS_ULTIMATE","SERWIS ULTIMATE — NARZĘDZIA SERWISOWE")
+])
+_U93_ALIASES.update({
+ "SYSTEM REPAIR PRO":"SYSTEM_REPAIR_PRO","SYSTEMREPAIRPRO":"SYSTEM_REPAIR_PRO","SYSTEM_REPAIR_PRO":"SYSTEM_REPAIR_PRO",
+ "SERWIS ULTIMATE":"SERWIS_ULTIMATE","SERWISULTIMATE":"SERWIS_ULTIMATE","SERWIS_ULTIMATE":"SERWIS_ULTIMATE"
+})
+_U107_TEST_SCENES.update({
+ "sr_os_activation":66, "sr_bios_uefi":69, "sr_driver_audit":70, "sr_update_audit":71,
+ "sr_event_errors":72, "sr_service_health":73, "sr_storage_health":74, "sr_recovery_bcd":75,
+ "sr_network_services":79, "sr_component_store":80,
+ "su_hardware_inventory":81, "su_software_inventory":82, "su_startup_audit":83, "su_crash_history":84,
+ "su_network_config":85, "su_wmi_health":86, "su_windows_update_history":87,
+ "su_system_services":88, "su_report_folder":89, "su_windows_installations":90
+})
+_u93_execute_catalog_test = _u109_execute_catalog_test
+_u93_start_catalog_test = _u109_start_catalog_test
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
@@ -11249,6 +11552,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u108_selftest_live_telemetry()
         _u108_selftest_speed_profiles()
         _u107_selftest_speed_validation()
+        _u109_selftest_service_catalog()
         _u107_selftest_unique_scene_per_catalog_test()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
