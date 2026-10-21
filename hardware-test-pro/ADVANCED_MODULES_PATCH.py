@@ -13374,10 +13374,384 @@ def _u119_selftest_furmark_scene():
     print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 12,000 fur strands; animated OpenGL display list; synchronized FPS")
 
 
+# v4.3.121 — bring Serwis Ultimate service-job workflow into the main app.
+def _u121_job_store_path():
+    import os as _u121_os
+    from pathlib import Path as _u121_Path
+    root=_u121_os.environ.get("LOCALAPPDATA") or str(_u121_Path.home())
+    return _u121_Path(root)/"NaprawaPC"/"SerwisUltimate"/"service_jobs.json"
+
+def _u121_load_jobs(path=None):
+    import json as _u121_json
+    p=path or _u121_job_store_path()
+    try:
+        data=_u121_json.loads(p.read_text(encoding="utf-8"))
+        return [row for row in data if isinstance(row,dict)] if isinstance(data,list) else []
+    except Exception:
+        return []
+
+def _u121_save_jobs(path,jobs):
+    import json as _u121_json
+    from pathlib import Path as _u121_Path
+    p=_u121_Path(path);p.parent.mkdir(parents=True,exist_ok=True)
+    temp=p.with_suffix(p.suffix+".tmp")
+    temp.write_text(_u121_json.dumps(list(jobs),ensure_ascii=False,indent=2),encoding="utf-8")
+    temp.replace(p)
+    return p
+
+def _u121_export_job_html(job,path):
+    import html as _u121_html
+    from pathlib import Path as _u121_Path
+    labels=(
+        ("Numer zlecenia","id"),("Utworzono","created_at"),("Klient","client"),
+        ("Kontakt","contact"),("Typ urządzenia","device_type"),("Model","device_model"),
+        ("Numer seryjny","serial"),("Objaw klienta","symptom"),("Wynik diagnozy","diagnosis"),
+        ("Wykonane czynności","work_done"),("Uzgodniony zakres","scope"),("Status","status"),
+        ("Szacunkowy koszt","estimate"),("Zgoda na diagnozę/naprawę","consent_diagnostics"),
+        ("Omówiono kopię danych","backup_discussed"),("Zalanie/korozja","liquid_damage"),
+        ("Warunki gwarancji","warranty_informed")
+    )
+    rows=[]
+    for label,key in labels:
+        value=job.get(key,"—")
+        if isinstance(value,bool):value="TAK" if value else "NIE"
+        rows.append("<tr><th>"+_u121_html.escape(label)+"</th><td>"+_u121_html.escape(str(value if value not in (None,"") else "—"))+"</td></tr>")
+    html_doc=("<!doctype html><html lang='pl'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Karta serwisowa</title><style>body{font:15px Segoe UI,Arial;background:#0a1220;color:#e7f1ff;margin:24px}"
+        "h1{color:#54d7ff}table{border-collapse:collapse;width:100%;background:#111e31}th,td{border:1px solid #30445f;padding:9px;text-align:left;vertical-align:top}"
+        "th{width:240px;color:#79dfff}small{color:#9db0c9}</style></head><body>"
+        "<h1>NAPRAWA PC — KARTA SERWISOWA</h1><small>Wygenerowano lokalnie. Nie zapisuj haseł klientów w zleceniu.</small><table>"
+        +"".join(rows)+"</table></body></html>")
+    p=_u121_Path(path);p.parent.mkdir(parents=True,exist_ok=True);p.write_text(html_doc,encoding="utf-8")
+    return p
+
+def _u121_show_service_jobs(app):
+    import os as _u121_os
+    import uuid as _u121_uuid
+    from datetime import datetime as _u121_datetime
+    from pathlib import Path as _u121_Path
+    app.current_view="SERVICE_JOBS"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — ZLECENIA I KARTY SERWISOWE")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="ZLECENIE SERWISOWE • RAPORT KLIENTA • HISTORIA",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,2))
+    tk.Label(head,text="Dane zapisują się lokalnie. Nie wpisuj haseł, kodów PIN ani innych danych uwierzytelniających. Naprawy systemowe uruchamiaj z osobnego Centrum napraw i po potwierdzeniu.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    form=app.panel(app.content);form.pack(fill="x",padx=3,pady=3)
+    grid=tk.Frame(form,bg=t["panel"]);grid.pack(fill="x",padx=8,pady=(7,4))
+    entries={};texts={};checks={}
+    def entry_field(label,key,row,col,width=28):
+        tk.Label(grid,text=label,bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"),anchor="w").grid(row=row*2,column=col,sticky="w",padx=(3,6),pady=(2,0))
+        e=tk.Entry(grid,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat",width=width)
+        e.grid(row=row*2+1,column=col,sticky="ew",padx=(3,10),pady=(0,4),ipady=4);entries[key]=e
+    grid.columnconfigure(1,weight=1);grid.columnconfigure(3,weight=1)
+    entry_field("Klient / firma *","client",0,0)
+    entry_field("Telefon lub e-mail (opcjonalnie)","contact",0,2)
+    tk.Label(grid,text="Typ urządzenia",bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"),anchor="w").grid(row=2,column=0,sticky="w",padx=3,pady=(2,0))
+    device_type=ttk.Combobox(grid,values=("Laptop","Komputer stacjonarny","All-in-One","Mini PC","Inne"),state="readonly",width=25)
+    device_type.set("Laptop");device_type.grid(row=3,column=0,sticky="ew",padx=(3,10),pady=(0,4));entries["device_type"]=device_type
+    entry_field("Producent / model *","device_model",1,2)
+    entry_field("Numer seryjny (opcjonalnie)","serial",2,0)
+    entry_field("Szacunkowy koszt / uzgodnienie","estimate",2,2)
+    def text_field(label,key,row,height=3):
+        tk.Label(form,text=label,bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"),anchor="w").pack(fill="x",padx=11,pady=(3,1))
+        box=tk.Text(form,height=height,bg=t["card"],fg=t["text"],insertbackground=t["text"],wrap="word",relief="flat")
+        box.pack(fill="x",padx=10,pady=(0,4));texts[key]=box
+    text_field("Objaw zgłoszony przez klienta *","symptom",0,3)
+    text_field("Wynik diagnozy / ustalenia","diagnosis",0,3)
+    text_field("Wykonane czynności / zalecenia","work_done",0,3)
+    text_field("Uzgodniony zakres i ograniczenia","scope",0,2)
+    consent_row=tk.Frame(form,bg=t["panel"]);consent_row.pack(fill="x",padx=8,pady=3)
+    for key,label in (("consent_diagnostics","Zgoda na diagnozę/naprawę"),("backup_discussed","Omówiono kopię danych"),("liquid_damage","Zalanie/korozja odnotowane"),("warranty_informed","Warunki gwarancji przekazane")):
+        var=tk.BooleanVar(value=False);checks[key]=var
+        ttk.Checkbutton(consent_row,text=label,variable=var).pack(side="left",padx=4,pady=2)
+    status_row=tk.Frame(form,bg=t["panel"]);status_row.pack(fill="x",padx=10,pady=(2,7))
+    tk.Label(status_row,text="Status:",bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    status_var=tk.StringVar(value="Nowe")
+    status_box=ttk.Combobox(status_row,textvariable=status_var,values=("Nowe","W diagnozie","Oczekuje na części","W naprawie","Gotowe","Wydane","Anulowane"),state="readonly",width=23)
+    status_box.pack(side="left")
+    store=_u121_job_store_path()
+    current={"id":None}
+    jobs_cache=[]
+    status_label=tk.Label(app.content,text="Zlecenia przechowywane lokalnie.",bg=t["bg"],fg=t["accent"],anchor="w",justify="left")
+    status_label.pack(fill="x",padx=8,pady=(3,2))
+    def form_value(key):
+        if key in entries:return entries[key].get().strip()
+        return texts[key].get("1.0","end-1c").strip()
+    def reset_form():
+        current["id"]=None
+        for widget in entries.values():
+            try:widget.delete(0,"end")
+            except Exception:pass
+        try:device_type.set("Laptop")
+        except Exception:pass
+        for widget in texts.values():widget.delete("1.0","end")
+        for var in checks.values():var.set(False)
+        status_var.set("Nowe")
+    def refresh_list(select_id=None):
+        nonlocal jobs_cache
+        jobs_cache=_u121_load_jobs(store)
+        for iid in tree.get_children():tree.delete(iid)
+        for job in sorted(jobs_cache,key=lambda x:str(x.get("created_at","")),reverse=True):
+            tree.insert("","end",iid=str(job.get("id")),values=(job.get("created_at",""),job.get("client",""),job.get("device_type",""),job.get("device_model",""),job.get("status","")))
+        if select_id and tree.exists(select_id):tree.selection_set(select_id);tree.see(select_id)
+    def save_job():
+        client=form_value("client");model=form_value("device_model");symptom=form_value("symptom")
+        if not client or not model or not symptom:
+            messagebox.showwarning("Zlecenie serwisowe","Wypełnij klienta, model urządzenia i objaw zgłoszony przez klienta.")
+            return
+        jobs=_u121_load_jobs(store);now=_u121_datetime.now().isoformat(timespec="seconds")
+        job_id=current["id"] or (_u121_datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+_u121_uuid.uuid4().hex[:6])
+        job={
+            "id":job_id,"created_at":now,"client":client,"contact":form_value("contact"),
+            "device_type":form_value("device_type"),"device_model":model,"serial":form_value("serial"),
+            "estimate":form_value("estimate"),"symptom":symptom,"diagnosis":form_value("diagnosis"),
+            "work_done":form_value("work_done"),"scope":form_value("scope"),"status":status_var.get(),
+            "consent_diagnostics":checks["consent_diagnostics"].get(),"backup_discussed":checks["backup_discussed"].get(),
+            "liquid_damage":checks["liquid_damage"].get(),"warranty_informed":checks["warranty_informed"].get(),
+            "schema_version":1
+        }
+        replaced=False
+        for index,old in enumerate(jobs):
+            if str(old.get("id"))==job_id:jobs[index]=job;replaced=True;break
+        if not replaced:jobs.append(job)
+        try:
+            _u121_save_jobs(store,jobs);current["id"]=job_id;refresh_list(job_id)
+            status_label.config(text=f"Zapisano zlecenie {job_id} • {len(jobs)} zapisanych zleceń • {store}")
+        except Exception as exc:
+            messagebox.showerror("Zapis zlecenia",f"Nie udało się zapisać zlecenia: {type(exc).__name__}: {exc}")
+    def load_selected(_event=None):
+        selection=tree.selection()
+        if not selection:return
+        job=next((x for x in jobs_cache if str(x.get("id"))==selection[0]),None)
+        if not job:return
+        current["id"]=str(job.get("id"))
+        for key,widget in entries.items():
+            try:widget.delete(0,"end");widget.insert(0,str(job.get(key,"") or ""))
+            except Exception:pass
+        try:device_type.set(str(job.get("device_type","Laptop")))
+        except Exception:pass
+        for key,widget in texts.items():widget.delete("1.0","end");widget.insert("1.0",str(job.get(key,"") or ""))
+        for key,var in checks.items():var.set(bool(job.get(key,False)))
+        status_var.set(str(job.get("status","Nowe")))
+        status_label.config(text=f"Wczytano zlecenie {current['id']} — zapis nadpisze wybrane zlecenie.")
+    def export_selected():
+        selection=tree.selection()
+        if not selection:
+            messagebox.showinfo("Eksport","Zaznacz zlecenie na liście.");return
+        job=next((x for x in jobs_cache if str(x.get("id"))==selection[0]),None)
+        if not job:return
+        folder=store.parent/"reports";folder.mkdir(parents=True,exist_ok=True)
+        path=folder/(str(job.get("id"))+".html")
+        try:
+            _u121_export_job_html(job,path)
+            status_label.config(text=f"Raport HTML zapisany: {path}")
+            try:
+                if hasattr(_u121_os,"startfile"):_u121_os.startfile(str(path))
+            except Exception:pass
+        except Exception as exc:messagebox.showerror("Eksport raportu",str(exc))
+    def open_folder():
+        try:
+            store.parent.mkdir(parents=True,exist_ok=True)
+            if hasattr(_u121_os,"startfile"):_u121_os.startfile(str(store.parent))
+            else:messagebox.showinfo("Folder danych",str(store.parent))
+        except Exception as exc:messagebox.showerror("Folder danych",str(exc))
+    actions=app.panel(app.content);actions.pack(fill="x",padx=3,pady=3)
+    app.make_button(actions,"ZAPISZ / AKTUALIZUJ",save_job,"good",side="left",ipady=4)
+    app.make_button(actions,"NOWE ZLECENIE",reset_form,"card",side="left",ipady=4)
+    app.make_button(actions,"EKSPORT HTML",export_selected,"accent",side="left",ipady=4)
+    app.make_button(actions,"ODŚWIEŻ LISTĘ",lambda:refresh_list(),"card",side="left",ipady=4)
+    app.make_button(actions,"FOLDER DANYCH",open_folder,"card",side="left",ipady=4)
+    app.make_button(actions,"← LABORATORIUM",app.show_component_lab,"card",side="right",ipady=4)
+    list_panel=app.panel(app.content);list_panel.pack(fill="both",expand=True,padx=3,pady=3)
+    tk.Label(list_panel,text="HISTORIA ZLECEŃ — DWUKLIK OTWIERA DO EDYCJI",bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,3))
+    tree=ttk.Treeview(list_panel,columns=("date","client","type","model","status"),show="headings",height=7)
+    for key,label,width in (("date","Utworzono",150),("client","Klient",200),("type","Typ",130),("model","Urządzenie",240),("status","Status",150)):
+        tree.heading(key,text=label);tree.column(key,width=width,anchor="w")
+    tree.pack(fill="both",expand=True,padx=8,pady=(0,8))
+    tree.bind("<Double-1>",load_selected)
+    refresh_list()
+    return None
+
+_U121_ORIGINAL_SHOW_SYSTEM_REPAIR_CENTER=AppV43.show_system_repair_center
+def _u121_show_system_repair_center(app):
+    result=_U121_ORIGINAL_SHOW_SYSTEM_REPAIR_CENTER(app)
+    try:
+        body=getattr(app,"_u120_repair_log_text",None)
+        log_panel=body.master if body is not None else None
+        panel=app.panel(app.content);panel.pack(fill="x",padx=3,pady=3,before=log_panel if log_panel is not None else None)
+        app.make_button(panel,"ZLECENIA SERWISOWE — SERWIS ULTIMATE",lambda:_u121_show_service_jobs(app),"accent",side="left",ipady=4)
+        app.make_button(panel,"ZASILANIE / BATERIA — TESTY",lambda:_u121_show_power_lab(app),"card",side="left",ipady=4)
+    except Exception as exc:
+        try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
+        except Exception:pass
+    return result
+AppV43.show_system_repair_center=_u121_show_system_repair_center
+AppV43.show_service_jobs=_u121_show_service_jobs
+
+def _u121_selftest_service_jobs():
+    import tempfile as _u121_tempfile
+    from pathlib import Path as _u121_Path
+    sample={"id":"TEST-001","client":"<script>alert(1)</script>","device_model":"Laptop X","symptom":"Brak obrazu","consent_diagnostics":True}
+    with _u121_tempfile.TemporaryDirectory() as root:
+        path=_u121_Path(root)/"jobs.json"
+        _u121_save_jobs(path,[sample])
+        assert _u121_load_jobs(path)==[sample]
+        report=_u121_export_job_html(sample,_u121_Path(root)/"report.html")
+        html_text=report.read_text(encoding="utf-8")
+        assert "&lt;script&gt;" in html_text and "<script>alert(1)</script>" not in html_text
+    print("SERWIS_ULTIMATE_SERVICE_JOBS_SELFTEST_OK: atomic local storage, load/edit model and escaped HTML export")
+
+
+# Power/Battery diagnostics ported from Serwis Ultimate: each operation runs independently.
+def _u121_power_report_dir():
+    from pathlib import Path as _u121_Path
+    import os as _u121_os
+    folder=_u121_Path(_u121_os.environ.get("LOCALAPPDATA") or _u121_Path.home())/"NaprawaPC"/"Raporty"/"PowerBattery"
+    folder.mkdir(parents=True,exist_ok=True)
+    return folder
+
+def _u121_power_command(action,output_path):
+    path=str(output_path)
+    if action=="battery_info":
+        script="$b=@(Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object Caption,DeviceID,EstimatedChargeRemaining,BatteryStatus,EstimatedRunTime,DesignCapacity,FullChargeCapacity); if($b.Count -eq 0){[pscustomobject]@{state='N/D';note='Brak baterii udostępnionej przez WMI'} | ConvertTo-Json -Compress}else{$b | ConvertTo-Json -Depth 4 -Compress}"
+        return ["powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-Command",script],30
+    if action=="battery_report":return ["powercfg.exe","/batteryreport","/output",path],90
+    if action=="energy_report":return ["powercfg.exe","/energy","/duration","30","/output",path],90
+    if action=="sleepstudy":return ["powercfg.exe","/sleepstudy","/output",path],90
+    if action=="power_requests":return ["powercfg.exe","/requests"],30
+    if action=="last_wake":return ["powercfg.exe","/lastwake"],30
+    if action=="active_plan":return ["powercfg.exe","/getactivescheme"],30
+    raise ValueError("Nieznana operacja zasilania: "+str(action))
+
+def _u121_run_power_action(app,action,title):
+    import os as _u121_os
+    import subprocess as _u121_subprocess
+    import threading as _u121_threading
+    from datetime import datetime as _u121_datetime
+    from pathlib import Path as _u121_Path
+    if _u121_os.name!="nt":
+        messagebox.showinfo(title,"Ten test wymaga Windows.")
+        return
+    folder=_u121_power_report_dir()
+    stamp=_u121_datetime.now().strftime("%Y%m%d-%H%M%S")
+    ext=".html" if action in ("battery_report","energy_report","sleepstudy") else ".txt"
+    report_path=folder/(stamp+"-"+action+ext)
+    win=tk.Toplevel(app);win.title("NAPRAWA PC — "+title);win.geometry("820x520");win.minsize(650,400)
+    try:win.configure(bg=app.colors()["bg"])
+    except Exception:pass
+    t=app.colors()
+    tk.Label(win,text=title,bg=t["bg"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(10,3))
+    tk.Label(win,text="Osobny przebieg. Brak baterii lub brak obsługi SleepStudy oznacza N/D/WARN, nie fikcyjny PASS.",bg=t["bg"],fg=t["muted"],font=app.fnt(8),wraplength=780,justify="left").pack(anchor="w",padx=12,pady=(0,6))
+    status=tk.StringVar(value="Przygotowanie testu…")
+    tk.Label(win,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=780).pack(fill="x",padx=12,pady=(0,4))
+    output=tk.Text(win,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    output.pack(fill="both",expand=True,padx=12,pady=(0,8))
+    output.insert("end","Polecenie zostanie uruchomione osobno. Raport: "+str(report_path)+"\n")
+    output.configure(state="disabled")
+    buttons=tk.Frame(win,bg=t["bg"]);buttons.pack(fill="x",padx=12,pady=(0,10))
+    def set_output(text):
+        if not win.winfo_exists():return
+        output.configure(state="normal");output.delete("1.0","end");output.insert("end",text);output.see("end");output.configure(state="disabled")
+    def open_report():
+        try:
+            if report_path.exists() and hasattr(_u121_os,"startfile"):_u121_os.startfile(str(report_path))
+            else:messagebox.showinfo("Raport",str(report_path) if report_path.exists() else "Raport nie został utworzony.")
+        except Exception as exc:messagebox.showerror("Raport",str(exc))
+    app.make_button(buttons,"OTWÓRZ RAPORT",open_report,"accent",side="left",ipady=3)
+    app.make_button(buttons,"ZAMKNIJ",win.destroy,"card",side="right",ipady=3)
+    def worker():
+        state="WARN";text_out="";error=""
+        try:
+            command,timeout=_u121_power_command(action,report_path)
+            result=_u121_subprocess.run(command,capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=timeout,
+                creationflags=getattr(_u121_subprocess,"CREATE_NO_WINDOW",0))
+            text_out=((result.stdout or "")+"\n"+(result.stderr or "")).strip()
+            if action in ("battery_report","energy_report","sleepstudy"):
+                if result.returncode==0 and report_path.exists():
+                    state="PASS";text_out=(text_out+"\n\nRaport HTML utworzony: "+str(report_path)).strip()
+                else:
+                    state="WARN"
+                    if not text_out:text_out="Polecenie nie utworzyło raportu. Sprawdź obsługę polecenia i uprawnienia administratora."
+            else:
+                if not text_out:text_out="Brak tekstowego wyniku."
+                try:report_path.write_text(text_out,encoding="utf-8")
+                except Exception as exc:text_out+="\n\nNie zapisano raportu: "+str(exc)
+                state="PASS" if result.returncode==0 and "N/D" not in text_out else "WARN"
+            if result.returncode!=0:
+                state="WARN";error=f"\n\nKod wyjścia: {result.returncode}. Nie oznaczono tego jako PASS."
+        except Exception as exc:
+            state="WARN";error=f"{type(exc).__name__}: {exc}"
+            text_out="Test nie zakończył się poprawnie. "+error+"\n\nBrak obsługi sprzętu, konieczność administratora lub brak powercfg może dać WARN/N/D."
+            try:report_path.write_text(text_out,encoding="utf-8")
+            except Exception:pass
+        def finish():
+            if not win.winfo_exists():return
+            status.set(f"{state} — raport: {report_path}")
+            set_output((text_out or "Brak danych.")+error)
+            try:app.append_log(f"POWER/BATTERY {action}: {state}; {report_path}")
+            except Exception:pass
+        try:app.after(0,finish)
+        except Exception:pass
+    _u121_threading.Thread(target=worker,daemon=True,name="NaprawaPC-Power-"+action).start()
+
+def _u121_show_power_lab(app):
+    app.current_view="POWER_BATTERY_LAB"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — ZASILANIE, BATERIA I UŚPIENIE")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="TESTY ZASILANIA I BATERII — KAŻDY URUCHAMIA OSOBNY RAPORT",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,3))
+    tk.Label(head,text="Raporty są zapisywane lokalnie. Battery report, Energy report i SleepStudy mogą nie być obsługiwane przez dany laptop/Windows; Energy report może wymagać uruchomienia jako administrator. Brak danych to WARN/N/D, nie PASS.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    actions=[
+      ("BATTERY INFO","battery_info","Odczyt WMI baterii, poziomu naładowania, stanu i czasu pracy."),
+      ("BATTERY REPORT","battery_report","Raport HTML o baterii i historii pojemności."),
+      ("ENERGY REPORT","energy_report","30-sekundowa analiza problemów zasilania i uśpienia."),
+      ("SLEEPSTUDY","sleepstudy","Raport Modern Standby, jeśli obsługiwany przez urządzenie."),
+      ("POWER REQUESTS","power_requests","Procesy i sterowniki blokujące uśpienie."),
+      ("LAST WAKE","last_wake","Ostatnie źródło wybudzenia systemu."),
+      ("AKTYWNY PLAN ZASILANIA","active_plan","Identyfikacja aktywnego planu zasilania Windows.")
+    ]
+    for title,action,desc in actions:
+        card=app.panel(app.content);card.pack(fill="x",padx=3,pady=3)
+        row=tk.Frame(card,bg=t["panel"]);row.pack(fill="x",padx=8,pady=5)
+        left=tk.Frame(row,bg=t["panel"]);left.pack(side="left",fill="x",expand=True)
+        tk.Label(left,text=title,bg=t["panel"],fg=t["text"],font=app.fnt(9,"bold"),anchor="w").pack(fill="x")
+        tk.Label(left,text=desc,bg=t["panel"],fg=t["muted"],font=app.fnt(8),anchor="w",wraplength=950,justify="left").pack(fill="x",pady=(2,0))
+        app.make_button(row,"URUCHOM TEST",lambda a=action,ttl=title:_u121_run_power_action(app,a,ttl),"accent",side="right",ipady=4)
+    tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=3)
+    app.make_button(tools,"← LABORATORIUM",app.show_component_lab,"card",side="left",ipady=4)
+    def open_power_folder():
+        import os as _u121_os
+        try:
+            folder=str(_u121_power_report_dir())
+            if hasattr(_u121_os,"startfile"):_u121_os.startfile(folder)
+            else:messagebox.showinfo("Folder raportów",folder)
+        except Exception as exc:messagebox.showerror("Folder raportów",str(exc))
+    app.make_button(tools,"OTWÓRZ FOLDER RAPORTÓW",open_power_folder,"card",side="left",ipady=4)
+
+AppV43.show_power_battery_lab=_u121_show_power_lab
+
+def _u121_selftest_power_lab():
+    from pathlib import Path as _u121_Path
+    expected={
+      "battery_info":"powershell.exe","battery_report":"powercfg.exe","energy_report":"powercfg.exe",
+      "sleepstudy":"powercfg.exe","power_requests":"powercfg.exe","last_wake":"powercfg.exe","active_plan":"powercfg.exe"
+    }
+    for action,executable in expected.items():
+        command,timeout=_u121_power_command(action,_u121_Path("report.html"))
+        assert command[0].lower()==executable
+        assert timeout>=30
+    assert callable(AppV43.show_power_battery_lab)
+    print("SERWIS_ULTIMATE_POWER_BATTERY_SELFTEST_OK: 7 independent actions; separate reports; honest WARN/N/D")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
         _u119_selftest_furmark_scene()
+        _u121_selftest_service_jobs()
+        _u121_selftest_power_lab()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
