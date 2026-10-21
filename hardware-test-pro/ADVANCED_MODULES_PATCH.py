@@ -4456,7 +4456,7 @@ def _u90_selftest_release_fixes():
     assert "DŁUGI — 180 s" in _U68_PROFILE_CHOICES
     assert "900 s" in _U68_PROFILE_CHOICES[-1]
     assert AppV43._u41_start_vram_test is _u90_start_vram_profile_test
-    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test)
+    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test, _u107_show_speed_test)
     assert _u66_measure_speed in (_u90_measure_speed, _u100_measure_speed)
     assert callable(_u90_error_alarm) and AppV43.queue_results is _u90_queue_results_with_error_alarm
 
@@ -6178,7 +6178,7 @@ def _u93_show_test_detail(app,module,test_id):
     app._u93_detail_report.insert("1.0","Wynik pojawi się po uruchomieniu. Brak wyniku nie oznacza zaliczenia testu.")
     app._u93_detail_report.configure(state="disabled")
     row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=(0,5))
-    if kind=="sim":app.make_button(row,"OTWÓRZ SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+    if kind=="sim":app.make_button(row,"UNIKALNA SCENA OPENGL / FPS",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
     elif kind=="games":app.make_button(row,"OTWÓRZ DORADCĘ GIER",lambda:_u68_show_games_advisor(app),"accent",side="left",ipady=5)
     elif kind=="keyboard_input":
         app.make_button(row,"START REJESTRACJI KLAWISZY",lambda:_u93_start_keyboard_capture(app),"accent",side="left",ipady=5)
@@ -6187,7 +6187,7 @@ def _u93_show_test_detail(app,module,test_id):
     elif kind=="screen_patterns":app.make_button(row,"OTWÓRZ TEST WZORCÓW MATRYCY",lambda:_u93_start_screen_patterns(app,test_id),"accent",side="left",ipady=5)
     else:
         app.make_button(row,"URUCHOM TEN TEST",lambda:_u93_start_catalog_test(app,module,test_id,title,kind),"accent",side="left",ipady=5)
-        app.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+        app.make_button(row,"UNIKALNA SCENA OPENGL / FPS",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
     if kind not in ("keyboard_input","sim","games","camera_preview","screen_patterns"):
         app.make_button(row,"STOP TEST",app.stop_current_test,"bad",side="left",ipady=5)
     nav=tk.Frame(app.content,bg=t["bg"]);nav.pack(fill="x")
@@ -7862,7 +7862,7 @@ def _u101_selftest_adaptive_speed():
     assert tele["gpu_clock_mhz"]==2400 and tele["fan_speed_rpm"]==1600 and tele["power_draw_w"]==185
     assert callable(_u101_refresh_sensor_table) and callable(_u101_sensor_poll)
     assert _u66_measure_speed is _u100_measure_speed
-    assert AppV43.show_speed_test is _u101_show_speed_test
+    assert AppV43.show_speed_test is _u107_show_speed_test
     print("ADAPTIVE_SPEED_ALL_ENTRYPOINTS_AND_FULL_TELEMETRY_SELFTEST_OK")
 
 def _u101_selftest_unique_gpu_scenes():
@@ -10252,9 +10252,656 @@ def _u106_selftest_adaptive_speed_payloads():
     assert callable(_u101_start_speed_test) and _u66_measure_speed is _u100_measure_speed
     print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
 
+
+# v4.3.111 — fix live sensor refresh, expose per-core/per-device metrics, validate throughput samples, and give every catalog test its own OpenGL scene.
+_U107_ORIGINAL_COLLECT_OS_METRICS = _u101_collect_os_metrics
+_U107_ORIGINAL_SENSOR_RECORDS = _u104_sensor_records
+_U107_ORIGINAL_SENSOR_ROWS = _u106_get_sensor_rows
+_U107_ORIGINAL_OPEN_SENSOR_INSPECTOR = _u106_open_sensor_inspector
+_U107_ORIGINAL_ATTACH_SENSOR_TABLE = _u106_attach_sensor_table
+_U107_ORIGINAL_MEASURE_SPEED = _u100_measure_speed
+_U107_ORIGINAL_SHOW_SPEED_TEST = AppV43.show_speed_test
+_U107_ORIGINAL_OPEN_COMPONENT_SIMULATOR = _u69_open_component_simulator
+
+# One explicitly assigned renderer scene for each of the 70 independent catalog tests.
+# Each scene ID is unique; the renderer measures real OpenGL FPS and reports GPU renderer/API.
+_U107_TEST_SCENES = {
+    "cpu_scan":46, "cpu_single":47, "cpu_multi":48, "cpu_load60":49, "cpu_max":50, "cpu_sensor":51, "cpu_sim":12,
+    "ram_scan":25, "ram_512":26, "ram_1024":27, "ram_2048":28, "ram_bw":29, "ram_max":30, "ram_sim":24,
+    "gpu_scan":1, "gpu_scene":2, "gpu_std":3, "gpu_ultra":16, "gpu_max":17, "gpu_sensor":18, "gpu_games":58, "gpu_sim":59,
+    "vram_scan":31, "vram_64":32, "vram_128":33, "vram_256":55, "vram_max":56, "vram_sim":57,
+    "disk_scan":13, "disk_smart":14, "disk_512":15, "disk_2048":37, "disk_4096":38, "disk_max":39, "disk_sim":22,
+    "screen_edid":52, "screen_modes":53, "screen_patterns":54, "screen_rgb":10, "screen_sim":11,
+    "sec_scan":43, "sec_startup":44, "sec_events":45, "sec_sim":60,
+    "bat_scan":7, "bat_180":8, "bat_600":9, "bat_report":64, "bat_sim":65,
+    "net_scan":61, "net_dns":62, "net_speed":63, "net_jitter":67, "net_sim":68,
+    "usb_scan":19, "usb_errors":20, "usb_functional":21, "usb_sim":42,
+    "audio_scan":4, "audio_mic":5, "audio_output":6, "audio_functional":40, "audio_sim":41,
+    "key_scan":34, "key_press":35, "key_functional":36, "key_sim":23,
+    "cam_scan":76, "cam_preview":77, "cam_sim":78
+}
+
+def _u107_finite_number(value):
+    try:
+        number=float(value)
+        return number if _u66_math.isfinite(number) else None
+    except Exception:
+        return None
+
+def _u107_collect_os_metrics(app):
+    metrics=_U107_ORIGINAL_COLLECT_OS_METRICS(app) or {}
+    if not psutil:
+        return metrics
+    try:
+        values=psutil.cpu_percent(interval=None,percpu=True)
+        metrics["cpu_per_core_percent"]=[round(float(x),2) for x in values]
+    except Exception:
+        metrics["cpu_per_core_percent"]=[]
+    now=_u66_time.monotonic()
+    # Per-physical/logical disk counters. First sample is N/D, never a fabricated zero rate.
+    try:
+        disk_now=psutil.disk_io_counters(perdisk=True) or {}
+    except Exception:
+        disk_now={}
+    disk_prev=getattr(app,"_u107_disk_io_prev",{}) or {}
+    disk_dt=max(.05,now-float(disk_prev.get("time",now))) if disk_prev else None
+    disk_rows=[]
+    disk_snapshot={}
+    for name,counter in disk_now.items():
+        read=int(getattr(counter,"read_bytes",0) or 0)
+        write=int(getattr(counter,"write_bytes",0) or 0)
+        read_count=int(getattr(counter,"read_count",0) or 0)
+        write_count=int(getattr(counter,"write_count",0) or 0)
+        old=(disk_prev.get("items") or {}).get(name)
+        read_rate=write_rate=read_iops=write_iops=None
+        if old and disk_dt:
+            read_rate=max(0.0,(read-old["read"])/disk_dt/1_000_000)
+            write_rate=max(0.0,(write-old["write"])/disk_dt/1_000_000)
+            read_iops=max(0.0,(read_count-old["read_count"])/disk_dt)
+            write_iops=max(0.0,(write_count-old["write_count"])/disk_dt)
+        disk_rows.append({"name":str(name),"read_mbps":read_rate,"write_mbps":write_rate,
+            "read_iops":read_iops,"write_iops":write_iops,"read_bytes_total":read,
+            "write_bytes_total":write,"read_operations_total":read_count,"write_operations_total":write_count})
+        disk_snapshot[str(name)]={"read":read,"write":write,"read_count":read_count,"write_count":write_count}
+    app._u107_disk_io_prev={"time":now,"items":disk_snapshot}
+    metrics["disk_devices"]=disk_rows
+
+    # Per-network-interface throughput, adapter state, link speed and addresses.
+    try:
+        net_now=psutil.net_io_counters(pernic=True) or {}
+    except Exception:
+        net_now={}
+    net_prev=getattr(app,"_u107_net_io_prev",{}) or {}
+    net_dt=max(.05,now-float(net_prev.get("time",now))) if net_prev else None
+    try: iface_stats=psutil.net_if_stats() or {}
+    except Exception: iface_stats={}
+    try: iface_addrs=psutil.net_if_addrs() or {}
+    except Exception: iface_addrs={}
+    net_rows=[];net_snapshot={}
+    for name,counter in net_now.items():
+        recv=int(getattr(counter,"bytes_recv",0) or 0)
+        sent=int(getattr(counter,"bytes_sent",0) or 0)
+        old=(net_prev.get("items") or {}).get(name)
+        down=up=None
+        if old and net_dt:
+            down=max(0.0,(recv-old["recv"])*8/net_dt/1_000_000)
+            up=max(0.0,(sent-old["sent"])*8/net_dt/1_000_000)
+        stat=iface_stats.get(name)
+        addresses=[]
+        for addr in iface_addrs.get(name,[]) or []:
+            address=str(getattr(addr,"address","") or "")
+            if address: addresses.append(address)
+        net_rows.append({"name":str(name),"download_mbps":down,"upload_mbps":up,
+            "bytes_received_total":recv,"bytes_sent_total":sent,
+            "is_up":bool(stat.isup) if stat else None,
+            "link_speed_mbps":getattr(stat,"speed",None) if stat else None,
+            "mtu":getattr(stat,"mtu",None) if stat else None,"addresses":addresses})
+        net_snapshot[str(name)]={"recv":recv,"sent":sent}
+    app._u107_net_io_prev={"time":now,"items":net_snapshot}
+    metrics["network_interfaces"]=net_rows
+
+    # Filesystem capacity per mounted volume. A failed/unavailable mount remains absent, not zero.
+    partitions=[]
+    try:
+        mounts=psutil.disk_partitions(all=False) or []
+    except Exception:
+        mounts=[]
+    for part in mounts:
+        mount=str(getattr(part,"mountpoint","") or "")
+        if not mount: continue
+        try:
+            usage=psutil.disk_usage(mount)
+            partitions.append({"device":str(getattr(part,"device","") or mount),"mountpoint":mount,
+                "filesystem":str(getattr(part,"fstype","") or "N/D"),"total_bytes":int(usage.total),
+                "used_bytes":int(usage.used),"free_bytes":int(usage.free),"used_percent":float(usage.percent)})
+        except Exception:
+            partitions.append({"device":str(getattr(part,"device","") or mount),"mountpoint":mount,
+                "filesystem":str(getattr(part,"fstype","") or "N/D"),"total_bytes":None,
+                "used_bytes":None,"free_bytes":None,"used_percent":None})
+    metrics["partitions"]=partitions
+    metrics["sampled_at"]=_U66_datetime.now().isoformat(timespec="seconds")
+    return metrics
+
+def _u107_sensor_category(sensor_type,unit=""):
+    st=str(sensor_type or "Other").strip().lower()
+    un=str(unit or "").strip().lower()
+    if st=="temperature" or un in ("°c","c"): return "Temperature"
+    if st in ("load","level") or un=="%": return "Load"
+    if st=="clock" or un in ("mhz","ghz"): return "Clock"
+    if st=="voltage" or un in ("v","mv"): return "Voltage"
+    if st=="fan" or un=="rpm": return "Fan"
+    if st=="power" or un in ("w","watt","watts"): return "Power"
+    if st in ("smallData".lower(),"data","memory"): return "Memory"
+    if st in ("throughput","current","energy","timespan"): return st.title()
+    return "Other"
+
+def _u107_get_sensor_rows(app):
+    # Rebuild from the freshest cache first. The prior implementation could prefer stale Treeview text over new readings.
+    cache=getattr(app,"_u66_sensor_cache",{}) or {}
+    temps=cache.get("temps",{}) or {}
+    system=cache.get("system",{}) or {}
+    gpu=cache.get("gpu",{}) or {}
+    rows=[]
+    seen=set()
+    def identity(row):
+        return tuple(str(row.get(k,"") if row.get(k) is not None else "N/D").strip().casefold()
+            for k in ("hardware","sensor","unit"))
+    def add(category,hardware,name,value,unit="",source="N/D"):
+        if isinstance(value,dict) or isinstance(value,(list,tuple)):
+            return
+        if value is None:
+            shown="N/D"
+        elif isinstance(value,bool):
+            shown="TAK" if value else "NIE"
+        elif isinstance(value,(int,float)):
+            try:
+                number=float(value)
+                shown=(f"{number:.2f}".rstrip("0").rstrip(".") if _u66_math.isfinite(number) else "N/D")
+            except Exception:
+                shown="N/D"
+        else:
+            shown=str(value)
+        row={"category":str(category or "Other"),"hardware":str(hardware or "N/D"),
+             "sensor":str(name or "N/D"),"value":shown,"unit":str(unit or ""),
+             "source":str(source or "N/D")}
+        key=identity(row)
+        if key not in seen:
+            seen.add(key);rows.append(row)
+
+    # Raw sensor records from LibreHardwareMonitor/Sensor Bridge are the authoritative source.
+    raw=temps.get("sensors",[]) or []
+    if not raw:
+        for group,items in (temps.get("sensor_groups",{}) or {}).items():
+            for item in items or []:
+                if isinstance(item,dict):
+                    raw=list(raw)+[item]
+    for sensor in raw:
+        if not isinstance(sensor,dict): continue
+        unit=sensor.get("unit") or ""
+        stype=sensor.get("sensorType") or sensor.get("sensor_type") or sensor.get("type") or "Other"
+        hardware=(str(sensor.get("hardware") or sensor.get("parent") or "N/D")
+            +(" / "+str(sensor.get("hardwareType") or sensor.get("hardware_type")) if (sensor.get("hardwareType") or sensor.get("hardware_type")) else ""))
+        add(_u107_sensor_category(stype,unit),hardware,
+            sensor.get("sensor") or sensor.get("name") or "N/D",sensor.get("value"),unit,
+            sensor.get("source") or temps.get("method") or temps.get("bridge_provider") or "Sensor Bridge")
+
+    # The compact summaries supplement the raw feed when a provider exposes only a subset of sensor objects.
+    temp_summaries=[
+        ("Temperature","CPU","Temperatura CPU (wybrany czujnik)",temps.get("cpu_temp_c"),"°C"),
+        ("Temperature","GPU","Temperatura GPU (wybrany czujnik)",gpu.get("temperature_c",temps.get("gpu_temp_c")),"°C"),
+        ("Power","CPU","Moc CPU",temps.get("cpu_power_w"),"W"),
+        ("Power","GPU","Moc GPU",gpu.get("power_draw_w",gpu.get("power_w",temps.get("gpu_power_w"))),"W"),
+        ("Power","System","Moc systemu",temps.get("system_power_w"),"W"),
+        ("Power","Bateria","Moc baterii",temps.get("battery_power_w"),"W"),
+        ("Voltage","CPU","Napięcie CPU",temps.get("cpu_voltage_v"),"V"),
+        ("Voltage","GPU","Napięcie GPU",temps.get("gpu_voltage_v"),"V"),
+        ("Clock","CPU","Zegar CPU",temps.get("cpu_clock_mhz"),"MHz"),
+        ("Clock","GPU","Zegar GPU",gpu.get("gpu_clock_mhz",temps.get("gpu_clock_mhz")),"MHz"),
+        ("Clock","GPU","Zegar pamięci GPU",gpu.get("memory_clock_mhz"),"MHz"),
+        ("Fan","CPU","Wentylator CPU",temps.get("cpu_fan_rpm"),"RPM"),
+        ("Fan","GPU","Wentylator GPU",gpu.get("fan_speed_rpm",temps.get("gpu_fan_rpm")),"RPM"),
+        ("Load","GPU","Użycie GPU",gpu.get("gpu_load_percent",gpu.get("load_percent")),"%"),
+        ("Memory","VRAM","VRAM użyta",gpu.get("vram_used_mb"),"MB"),
+        ("Memory","VRAM","VRAM całkowita",gpu.get("vram_total_mb"),"MB"),
+        ("Count","Sensor Bridge","Liczba odczytów sprzętowych",temps.get("sensor_count",len(raw)),""),
+    ]
+    for row in temp_summaries:
+        add(*row,temps.get("method") or gpu.get("provider") or "Wybrany czujnik / N/D")
+
+    # OS-level values: RAM, swap, per-core load, aggregate I/O, uptime, battery and temperatures.
+    system_names={
+      "cpu_percent":("Load","CPU","Użycie CPU","%"),
+      "cpu_clock_mhz":("Clock","CPU","Zegar CPU","MHz"),
+      "cpu_clock_max_mhz":("Clock","CPU","Maksymalny zegar CPU","MHz"),
+      "ram_percent":("Memory","RAM","Użycie RAM","%"),
+      "ram_total_bytes":("Memory","RAM","RAM całkowita", "B"),
+      "ram_used_bytes":("Memory","RAM","RAM użyta","B"),
+      "ram_available_bytes":("Memory","RAM","RAM dostępna","B"),
+      "swap_percent":("Memory","Swap","Użycie swap","%"),
+      "swap_total_bytes":("Memory","Swap","Swap całkowity","B"),
+      "swap_used_bytes":("Memory","Swap","Swap użyty","B"),
+      "disk_read_mbps":("Throughput","Dysk","Odczyt wszystkich dysków","MB/s"),
+      "disk_write_mbps":("Throughput","Dysk","Zapis wszystkich dysków","MB/s"),
+      "net_down_mbps":("Throughput","Sieć","Pobieranie łączne","Mbps"),
+      "net_up_mbps":("Throughput","Sieć","Wysyłanie łączne","Mbps"),
+      "battery_percent":("Battery","Bateria","Poziom baterii","%"),
+      "battery_plugged":("Battery","Bateria","Zasilanie AC podłączone",""),
+      "battery_seconds_left":("Battery","Bateria","Pozostały czas baterii","s"),
+      "uptime_seconds":("System","Windows","Czas działania systemu","s"),
+    }
+    mapped=set()
+    for key,spec in system_names.items():
+        if key in system:
+            cat,hw,label,unit=spec
+            value=system.get(key)
+            if key.endswith("_bytes") and value is not None:
+                try: value=round(float(value)/1073741824,3);unit="GiB"
+                except Exception: pass
+            add(cat,hw,label,value,unit,"Windows / psutil");mapped.add(key)
+    for index,value in enumerate(system.get("cpu_per_core_percent",[]) or [],1):
+        add("Load","CPU","Rdzeń logiczny %d — użycie"%index,value,"%","Windows / psutil per-core")
+    for disk in system.get("disk_devices",[]) or []:
+        if not isinstance(disk,dict): continue
+        name=str(disk.get("name") or "Dysk")
+        for key,label,unit in (("read_mbps","Odczyt","MB/s"),("write_mbps","Zapis","MB/s"),
+                               ("read_iops","Operacje odczytu","IOPS"),("write_iops","Operacje zapisu","IOPS")):
+            add("Throughput",name,label,disk.get(key),unit,"Windows / psutil per-disk")
+        add("Other",name,"Operacje odczytu — licznik",disk.get("read_operations_total"),"operacje","Windows / psutil")
+        add("Other",name,"Operacje zapisu — licznik",disk.get("write_operations_total"),"operacje","Windows / psutil")
+    for nic in system.get("network_interfaces",[]) or []:
+        if not isinstance(nic,dict): continue
+        name=str(nic.get("name") or "Interfejs sieciowy")
+        add("Throughput",name,"Download",nic.get("download_mbps"),"Mbps","Windows / psutil per-interface")
+        add("Throughput",name,"Upload",nic.get("upload_mbps"),"Mbps","Windows / psutil per-interface")
+        add("System",name,"Interfejs aktywny",nic.get("is_up"),"","Windows / psutil")
+        add("System",name,"Szybkość łącza",nic.get("link_speed_mbps"),"Mbps","Windows / psutil")
+        add("Other",name,"MTU",nic.get("mtu"),"","Windows / psutil")
+        add("Other",name,"Adresy",", ".join(nic.get("addresses",[]) or []),"","Windows / psutil")
+    for volume in system.get("partitions",[]) or []:
+        if not isinstance(volume,dict): continue
+        name=str(volume.get("mountpoint") or volume.get("device") or "Wolumin")
+        for key,label,unit in (("used_percent","Wykorzystanie","%"),
+            ("total_bytes","Całkowita pojemność","GiB"),("used_bytes","Zajęte","GiB"),("free_bytes","Wolne","GiB")):
+            value=volume.get(key)
+            if unit=="GiB" and value is not None:
+                try:value=round(float(value)/1073741824,3)
+                except Exception:pass
+            add("Storage",name,label,value,unit,"Windows / psutil filesystem")
+        add("Storage",name,"System plików",volume.get("filesystem"),"","Windows / psutil")
+
+    # Include every scalar returned by Windows/GPU providers, even if a future provider adds new fields.
+    for key,value in system.items():
+        if key in mapped or key in ("cpu_per_core_percent","disk_devices","network_interfaces","partitions","extra_temperature_sensors","sampled_at"):
+            continue
+        if not isinstance(value,(dict,list,tuple)):
+            add("System","Windows",str(key),value,"","Windows / psutil")
+    for sensor in system.get("extra_temperature_sensors",[]) or []:
+        if isinstance(sensor,dict):
+            add("Temperature",sensor.get("hardware","OS"),sensor.get("sensor","Temperature"),
+                sensor.get("value"),sensor.get("unit","°C"),sensor.get("source","psutil"))
+    for zone in temps.get("acpi_zones",[]) or []:
+        if isinstance(zone,dict):
+            add("ACPI / Temperature","Windows ACPI",zone.get("name","Strefa termiczna"),
+                zone.get("value"),"°C", "Windows WMI ACPI — to nie musi być temperatura rdzenia CPU")
+
+    # Keep scalar vendor telemetry and any future GPU fields visible.
+    for key,value in gpu.items():
+        if key in ("sensor_rows","message","available","provider","error","sensors") or isinstance(value,(dict,list,tuple)):
+            continue
+        add("GPU","GPU",str(key),value,"",gpu.get("provider") or "GPU telemetry")
+    for sensor in gpu.get("sensors",[]) or []:
+        if isinstance(sensor,dict):
+            add(_u107_sensor_category(sensor.get("sensorType"),sensor.get("unit")),
+                sensor.get("hardware") or sensor.get("hardwareType") or "GPU",
+                sensor.get("sensor") or sensor.get("name") or "N/D",sensor.get("value"),
+                sensor.get("unit") or "",sensor.get("source") or gpu.get("provider") or "GPU telemetry")
+
+    # Tree values are fallback only for rows not present in the current sensor snapshot.
+    try:
+        tree=getattr(app,"_u100_sensor_tree",None)
+        if tree is not None and tree.winfo_exists():
+            for item in tree.get_children(""):
+                values=tree.item(item,"values") or ()
+                if len(values)>=6:
+                    add(values[0],values[1],values[2],values[3],values[4],values[5])
+    except Exception:
+        pass
+    return rows
+
+def _u107_sensor_records(app):
+    # The compact dashboard uses the same data source as the full inspector; add per-core, disk and NIC rows.
+    rows=_U107_ORIGINAL_SENSOR_RECORDS(app)
+    expanded=_u107_get_sensor_rows(app)
+    seen=set((str(r.get("hardware","")).casefold(),str(r.get("sensor","")).casefold(),str(r.get("unit","")).casefold()) for r in rows)
+    for row in expanded:
+        key=(str(row.get("hardware","")).casefold(),str(row.get("sensor","")).casefold(),str(row.get("unit","")).casefold())
+        if key in seen:
+            continue
+        rows.append(row);seen.add(key)
+    return rows
+
+def _u107_attach_sensor_table(app,parent,height=10):
+    panel=_U107_ORIGINAL_ATTACH_SENSOR_TABLE(app,parent,height)
+    try:
+        tree=getattr(app,"_u100_sensor_tree",None)
+        if tree is not None and tree.winfo_exists():
+            tree.configure(height=max(12,int(height or 12)))
+    except Exception:
+        pass
+    return panel
+
+def _u107_open_sensor_inspector(app):
+    result=_U107_ORIGINAL_OPEN_SENSOR_INSPECTOR(app)
+    try:
+        win=getattr(app,"_u106_sensor_window",None)
+        if win is not None and win.winfo_exists():
+            # This alias keeps the four-second poll loop active while the inspector is open on any app page.
+            app._u104_sensor_window=win
+    except Exception as exc:
+        try:app.queue_log("Pełny inspektor sensorów: "+repr(exc))
+        except Exception:pass
+    return result
+
+# Validate HTTP status, transferred bytes and elapsed time before accepting a throughput sample.
+def _u107_validate_speed_sample(row,direction):
+    if not isinstance(row,dict):
+        return {"state":"error","direction":direction,"error":"Brak rekordu próbki."}
+    sample=dict(row)
+    status=sample.get("status")
+    try:status=int(status)
+    except Exception:status=0
+    if status<200 or status>=300:
+        sample.update({"state":"error","direction":direction,"error":sample.get("error") or f"HTTP {status or 'N/D'}"})
+        return sample
+    amount=0;requested=0;seconds=None
+    try:amount=max(0,int(sample.get("bytes",0) or 0))
+    except Exception:amount=0
+    try:requested=max(0,int(sample.get("requested_bytes",0) or 0))
+    except Exception:requested=0
+    try:seconds=float(sample.get("seconds"))
+    except Exception:seconds=None
+    if not _u107_finite_number(seconds) or float(seconds)<=0:
+        sample.update({"state":"error","direction":direction,"error":"Brak poprawnego czasu pomiaru."})
+        return sample
+    if amount<=0:
+        sample.update({"state":"error","direction":direction,"error":"Nie przesłano żadnych bajtów."})
+        return sample
+    if requested>0 and amount<int(requested*.98):
+        sample.update({"state":"error","direction":direction,"error":f"Niepełny transfer: {amount} / {requested} B."})
+        return sample
+    sample.update({"state":"good","direction":direction,"measured_bytes":amount,
+        "mbps":round(amount*8/float(seconds)/1_000_000,3)})
+    return sample
+
+def _u107_finalize_speed_result(result):
+    import statistics as _u107_stats
+    if not isinstance(result,dict):
+        return result
+    latencies=[]
+    for value in result.get("latency_ms",[]) or []:
+        number=_u107_finite_number(value)
+        if number is not None and number>=0:latencies.append(float(number))
+    errors=[]
+    directions={}
+    for direction in ("download","upload"):
+        checked=[]
+        for original in result.get(direction,[]) or []:
+            row=_u107_validate_speed_sample(original,direction)
+            checked.append(row)
+            if row.get("state")!="good":
+                errors.append({"direction":direction,"sample_index":row.get("sample_index"),
+                    "error":row.get("error") or "Próbka niezaliczona"})
+        directions[direction]=checked
+        result[direction]=checked
+    warmup=result.get("warmup",{}) or {}
+    checked_warm={}
+    for direction,original in warmup.items():
+        if direction in ("download","upload") and isinstance(original,dict):
+            row=_u107_validate_speed_sample(original,direction+"-warmup")
+            checked_warm[direction]=row
+            if row.get("state")!="good":
+                errors.append({"direction":direction+"-warmup","sample_index":row.get("sample_index"),
+                    "error":row.get("error") or "Próbka rozgrzewkowa niezaliczona"})
+        else:
+            checked_warm[direction]=original
+    result["warmup"]=checked_warm
+    valid={direction:[row for row in rows if row.get("state")=="good"] for direction,rows in directions.items()}
+    rates={direction:[float(row["mbps"]) for row in rows] for direction,rows in valid.items()}
+    def stats(direction):
+        values=rates[direction]
+        if not values:return {"median":None,"mean":None,"minimum":None,"peak":None,"cv":None}
+        mean=float(_u107_stats.fmean(values))
+        cv=float(_u107_stats.pstdev(values)/mean*100) if mean>0 and len(values)>1 else (0.0 if mean>0 else None)
+        return {"median":round(_u90_median(values),2),"mean":round(mean,2),
+            "minimum":round(min(values),2),"peak":round(max(values),2),"cv":round(cv,2) if cv is not None else None}
+    down=stats("download");up=stats("upload")
+    result.update({
+        "download_mbps":down["median"],"download_mean_mbps":down["mean"],
+        "download_min_mbps":down["minimum"],"download_peak_mbps":down["peak"],
+        "download_cv_percent":down["cv"],
+        "upload_mbps":up["median"],"upload_mean_mbps":up["mean"],
+        "upload_min_mbps":up["minimum"],"upload_peak_mbps":up["peak"],
+        "upload_cv_percent":up["cv"],
+        "download_samples_valid":len(valid["download"]),
+        "upload_samples_valid":len(valid["upload"]),
+        "total_download_samples":len(directions["download"]),
+        "total_upload_samples":len(directions["upload"]),
+        "successful_samples":len(valid["download"])+len(valid["upload"]),
+        "total_samples":len(directions["download"])+len(directions["upload"]),
+        "latency_samples_valid":len(latencies),
+        "latency_average_ms":round(_u90_median(latencies),2) if latencies else None,
+        "latency_min_ms":round(min(latencies),2) if latencies else None,
+        "latency_max_ms":round(max(latencies),2) if latencies else None,
+        "latency_spread_ms":round(max(latencies)-min(latencies),2) if len(latencies)>1 else None,
+        "latency_jitter_ms":round(_u90_median([abs(latencies[i]-latencies[i-1]) for i in range(1,len(latencies))]),2) if len(latencies)>1 else None,
+        "transfer_errors":errors,
+        "data_bytes":sum(int(row.get("bytes",0) or 0) for rows in valid.values() for row in rows)
+            +sum(int(row.get("bytes",0) or 0) for row in checked_warm.values() if isinstance(row,dict) and row.get("state")=="good"),
+        "method":"HTTPS Cloudflare; wszystkie bajty i HTTP status zweryfikowane; mediana, peak i CV liczone z ważnych próbek.",
+        "latency_method":"HTTPS round-trip time; nie jest to ICMP ping."
+    })
+    result["state"]="good" if len(valid["download"])>=2 and len(valid["upload"])>=2 and len(latencies)>=3 else "warn"
+    result["finished_at"]=_U66_datetime.now().isoformat(timespec="seconds")
+    return result
+
+def _u107_measure_speed(app):
+    # Keep a hard guard in the code path: the measured engine must use the HTTPS transport already tested by CI.
+    if not callable(_U100_ORIGINAL_SPEED_REQUEST):
+        raise RuntimeError("Brakuje transportu HTTPS dla Speed Test.")
+    result=_U107_ORIGINAL_MEASURE_SPEED(app)
+    result=_u107_finalize_speed_result(result)
+    if not isinstance(result,dict):
+        return result
+    try:
+        history_path=result.get("history_path")
+        if history_path:
+            history_file=Path(history_path)
+            records=_u66_json.loads(history_file.read_text(encoding="utf-8"))
+            if records and records[-1].get("started_at")==result.get("started_at"):
+                records[-1].update(result)
+                history_file.write_text(_u66_json.dumps(records[-100:],ensure_ascii=False,indent=2),encoding="utf-8")
+    except Exception as exc:
+        result["history_warning"]=f"Nie udało się zsynchronizować historii: {type(exc).__name__}: {exc}"
+    def update_metrics():
+        controls=getattr(app,"_u107_speed_metrics",{}) or {}
+        values={
+            "sample_count":f"DL {result.get('download_samples_valid',0)}/{result.get('total_download_samples',0)} • UL {result.get('upload_samples_valid',0)}/{result.get('total_upload_samples',0)}",
+            "rtt_spread":f"{result['latency_spread_ms']:.1f} ms" if isinstance(result.get("latency_spread_ms"),(int,float)) else "N/D",
+            "download_cv":f"CV {result['download_cv_percent']:.1f}%" if isinstance(result.get("download_cv_percent"),(int,float)) else "N/D",
+            "upload_cv":f"CV {result['upload_cv_percent']:.1f}%" if isinstance(result.get("upload_cv_percent"),(int,float)) else "N/D"
+        }
+        for key,value in values.items():
+            try:
+                label=controls.get(key)
+                if label is not None and label.winfo_exists():label.config(text=value)
+            except Exception:pass
+    try:app.queue_action(update_metrics)
+    except Exception:pass
+    return result
+
+def _u107_show_speed_test(app):
+    _U107_ORIGINAL_SHOW_SPEED_TEST(app)
+    try:
+        t=app.colors()
+        pane=app.panel(app.content)
+        children=app.content.winfo_children()
+        before=children[-1] if children else None
+        pane.pack(fill="x",padx=3,pady=(0,5),before=before)
+        tk.Label(pane,text="JAKOŚĆ PRÓBEK I STABILNOŚĆ ŁĄCZA",bg=t["panel"],fg=t["accent"],
+            font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(5,2))
+        tk.Label(pane,text="Prędkość główna = mediana; peak pokazuje maksimum. CV pokazuje rozrzut próbek (mniej = stabilniej). Transfery z błędnym HTTP, niepełnymi bajtami lub czasem są odrzucane.",
+            bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1320,justify="left").pack(fill="x",padx=8,pady=(0,4))
+        row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=5,pady=(0,5))
+        app._u107_speed_metrics={}
+        specs=(("UDANE PRÓBKI","sample_count"),("ROZPIĘTOŚĆ RTT","rtt_spread"),
+            ("STABILNOŚĆ DOWNLOAD","download_cv"),("STABILNOŚĆ UPLOAD","upload_cv"))
+        for caption,key in specs:
+            card=tk.Frame(row,bg=t["card"],highlightbackground=t["panel"],highlightthickness=1)
+            card.pack(side="left",fill="both",expand=True,padx=2)
+            tk.Label(card,text=caption,bg=t["card"],fg=t["muted"],font=app.fnt(8,"bold")).pack(pady=(5,1))
+            label=tk.Label(card,text="N/D",bg=t["card"],fg=t["accent2"],font=app.fnt(11,"bold"))
+            label.pack(pady=(0,5));app._u107_speed_metrics[key]=label
+    except Exception as exc:
+        try:app.queue_log("Speed Test extended UI: "+repr(exc))
+        except Exception:pass
+
+def _u107_launch_scene_preview(app,module,test_id,scene_id):
+    scene_title=_U100_SCENE_TITLES[int(scene_id)-1]
+    if not messagebox.askyesno("Unikalna scena OpenGL",
+        f"Uruchomić własną scenę {int(scene_id):02d}/90 dla testu {test_id}?\n\n"
+        f"{scene_title}\n\n"
+        "To prawdziwe renderowanie OpenGL z pomiarem FPS GPU przez 10 sekund. "
+        "Scena jest przypisana wyłącznie do tego testu, ale FPS nie jest wynikiem sprawności CPU/RAM/dysku. Kontynuować?"):
+        return
+    if getattr(app,"running",False):
+        messagebox.showinfo("Test w toku","Poczekaj na zakończenie bieżącego testu albo zatrzymaj go.")
+        return
+    _u93_update_detail(app,test_id,"SCENA OPENGL W TOKU",{
+        "state":"running","test_id":test_id,"module":module,"scene_id":int(scene_id),
+        "scene_name":scene_title,"duration_seconds":10,
+        "note":"Unikalny renderer OpenGL. Pomiar FPS dotyczy renderowania GPU; nie zastępuje testu podzespołu w nazwie."
+    })
+    def job():
+        start=_u66_time.monotonic()
+        try:
+            result=_u66_execute_gpu_scene(app,int(scene_id),10)
+            if not isinstance(result,dict):result={"state":"warn","message":"Renderer nie zwrócił raportu."}
+        except Exception as exc:
+            result={"state":"error","error":f"{type(exc).__name__}: {exc}"}
+        result.update({"test_id":str(test_id),"module":str(module),"scene_id":int(scene_id),
+            "scene_name":scene_title,"preview_duration_seconds":round(_u66_time.monotonic()-start,2),
+            "note":"Ta scena OpenGL jest unikalna dla wybranego wpisu katalogu. FPS jest wynikiem renderera GPU, nie diagnozą sprawności CPU/RAM/dysku."})
+        try:
+            report=_u93_persist_result(app,module,"scene-"+str(test_id),"Scena OpenGL: "+scene_title,result,
+                _u66_time.monotonic()-start)
+            _u93_put_result(app,"COMPONENT_SCENE_"+str(test_id),report)
+            _u93_update_detail(app,test_id,"SCENA ZAKOŃCZONA • FPS "+str(result.get("average_fps","N/D")),report)
+            app.queue_log(f"UNIKALNA SCENA TESTU {test_id}: {result.get('state')} • scena {scene_id}/90 • FPS {result.get('average_fps','N/D')}")
+        except Exception as exc:
+            app.queue_log(f"Raport sceny {test_id}: {type(exc).__name__}: {exc}")
+    app.worker(job)
+
+def _u107_open_component_simulator(app,module,fullscreen=False,mode="scan"):
+    # Catalog screens use a dedicated real OpenGL scene; non-catalog callers retain the existing module simulator.
+    view=str(getattr(app,"current_view","") or "")
+    if view.startswith("COMPONENT_TEST_DETAIL_"):
+        test_id=view.split("COMPONENT_TEST_DETAIL_",1)[1]
+        scene_id=_U107_TEST_SCENES.get(test_id)
+        if scene_id is not None:
+            _u107_launch_scene_preview(app,module,test_id,scene_id)
+            return
+    return _U107_ORIGINAL_OPEN_COMPONENT_SIMULATOR(app,module,fullscreen,mode)
+
+def _u107_selftest_sensor_inspector():
+    class FakeTree:
+        def __init__(self,values):self._values=values
+        def winfo_exists(self):return True
+        def get_children(self,_root=""):return list(range(len(self._values)))
+        def item(self,item,_field):return {"values":self._values[item]}
+    class FakeApp:
+        _u100_sensor_tree=None
+        _u66_sensor_cache={
+          "temps":{"method":"fake bridge","sensor_count":3,"cpu_temp_c":72.0,"cpu_power_w":52.0,
+            "sensors":[
+              {"hardware":"CPU Package","hardwareType":"CpuAmd","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test"},
+              {"hardware":"CPU Core","hardwareType":"CpuAmd","sensor":"Core #1","sensorType":"Temperature","value":68.0,"unit":"°C","source":"test"}],
+            "acpi_zones":[{"name":"TZ0","value":39.0}]},
+          "gpu":{"provider":"fake gpu","temperature_c":64.0,"gpu_load_percent":87.0,"vram_used_mb":4096},
+          "system":{"cpu_percent":32.0,"ram_percent":61.0,"cpu_per_core_percent":[31.0,58.0],
+            "disk_devices":[{"name":"PhysicalDrive0","read_mbps":17.5,"write_mbps":8.0,"read_iops":120.0,"write_iops":60.0}],
+            "network_interfaces":[{"name":"Ethernet","download_mbps":92.0,"upload_mbps":8.0,"is_up":True,"link_speed_mbps":1000,"addresses":["192.0.2.5"]}],
+            "partitions":[{"mountpoint":"C:\\\\","total_bytes":1000000,"used_bytes":500000,"free_bytes":500000,"used_percent":50,"filesystem":"NTFS"}],
+            "extra_temperature_sensors":[{"hardware":"OS","sensor":"ACPI package","value":43.0,"unit":"°C","source":"test"}]}}
+    rows=_u107_get_sensor_rows(FakeApp())
+    signatures={(r["hardware"],r["sensor"],r["unit"]) for r in rows}
+    assert any("Tctl/Tdie" in x[1] for x in signatures)
+    assert any(x[1]=="Rdzeń logiczny 2 — użycie" and x[2]=="%" for x in signatures)
+    assert any(x[0]=="PhysicalDrive0" and x[1]=="Odczyt" for x in signatures)
+    assert any(x[0]=="Ethernet" and x[1]=="Download" for x in signatures)
+    assert any(x[0]=="C:\\\\" and x[1]=="Wykorzystanie" for x in signatures)
+    assert any(x[0]=="Windows ACPI" and x[1]=="TZ0" for x in signatures)
+    assert any(x[1]=="Temperatura CPU (wybrany czujnik)" for x in signatures)
+    assert any(x[1]=="cpu_percent" for x in signatures) is False  # known values have human-friendly labels
+    assert len(rows)>=20
+    print("LIVE_SENSOR_INSPECTOR_PER_CORE_DISK_NIC_PARTITION_SELFTEST_OK")
+
+def _u107_selftest_speed_validation():
+    sample={
+      "state":"good","latency_ms":[22.0,24.0,25.0,23.0],
+      "download":[
+        {"state":"good","status":200,"requested_bytes":1000000,"bytes":1000000,"seconds":1.0,"mbps":8.0},
+        {"state":"good","status":200,"requested_bytes":2000000,"bytes":2000000,"seconds":1.0,"mbps":16.0},
+        {"state":"good","status":503,"requested_bytes":3000000,"bytes":3000000,"seconds":1.0,"mbps":24.0}],
+      "upload":[
+        {"state":"good","status":200,"requested_bytes":500000,"bytes":500000,"seconds":1.0,"mbps":4.0},
+        {"state":"good","status":200,"requested_bytes":1000000,"bytes":1000000,"seconds":2.0,"mbps":4.0}],
+      "warmup":{"download":{"state":"good","status":200,"requested_bytes":256000,"bytes":256000,"seconds":.3},
+                "upload":{"state":"good","status":200,"requested_bytes":256000,"bytes":256000,"seconds":.4}}}
+    result=_u107_finalize_speed_result(sample)
+    assert result["download_samples_valid"]==2 and result["upload_samples_valid"]==2
+    assert result["download_mbps"]==12.0 and result["upload_mbps"]==4.0
+    assert result["download"][2]["state"]=="error" and result["state"]=="warn"
+    assert result["data_bytes"]==1000000+2000000+500000+1000000+256000+256000
+    assert result["latency_min_ms"]==22.0 and result["latency_max_ms"]==25.0
+    assert result["latency_spread_ms"]==3.0
+    assert result["download_cv_percent"] is not None and result["upload_cv_percent"]==0.0
+    print("SPEED_TEST_HTTP_BYTES_MEDIAN_JITTER_STABILITY_SELFTEST_OK")
+
+def _u107_selftest_unique_scene_per_catalog_test():
+    catalog_ids=[]
+    for module,entries in _U93_TEST_CATALOG.items():
+        for test_id,title,description,kind in entries:
+            catalog_ids.append(test_id)
+            assert test_id in _U107_TEST_SCENES, "Brak indywidualnej sceny dla "+str(test_id)
+            scene_id=_U107_TEST_SCENES[test_id]
+            assert 1<=scene_id<=len(_U100_SCENE_TITLES)
+            assert "SIMULATOR" not in str(title).upper() or scene_id>0
+    assert len(catalog_ids)==70 and len(set(catalog_ids))==70
+    scene_ids=[_U107_TEST_SCENES[test_id] for test_id in catalog_ids]
+    assert len(set(scene_ids))==70, "Dwa testy katalogu wskazują na tę samą scenę OpenGL."
+    assert callable(_u107_open_component_simulator) and callable(_u107_launch_scene_preview)
+    assert callable(_u107_get_sensor_rows) and callable(_u107_measure_speed)
+    assert "COMPONENT_TEST_DETAIL_" in _u107_open_component_simulator.__code__.co_consts
+    print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 70 different scene IDs")
+
+_u101_collect_os_metrics=_u107_collect_os_metrics
+_u104_sensor_records=_u107_sensor_records
+_u106_get_sensor_rows=_u107_get_sensor_rows
+_u106_open_sensor_inspector=_u107_open_sensor_inspector
+_u106_attach_sensor_table=_u107_attach_sensor_table
+_u81_attach_sensor_table=_u107_attach_sensor_table
+_u100_measure_speed=_u107_measure_speed
+_u90_measure_speed=_u107_measure_speed
+_u66_measure_speed=_u107_measure_speed
+_u69_open_component_simulator=_u107_open_component_simulator
+AppV43.show_speed_test=_u107_show_speed_test
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u107_selftest_sensor_inspector()
+        _u107_selftest_speed_validation()
+        _u107_selftest_unique_scene_per_catalog_test()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
         _u105_selftest_visual_quality()
