@@ -800,7 +800,26 @@ def _u66_sensor_probe():
     def collect_sensor_rows(rows, source):
         if not isinstance(rows,list):
             return
-        result["sensors"]=rows[:10000]
+        # Merge sensor inventory from bridge/WMI; keep unavailable values as N/D instead of discarding them.
+        existing_rows=list(result.get("sensors") or [])
+        merged_rows=list(existing_rows)
+        seen_rows=set()
+        def _row_key(item):
+            if not isinstance(item,dict):return None
+            hardware=str(item.get("hardwareId") or item.get("hardware_id") or item.get("hardware") or item.get("parent") or "").strip().casefold()
+            identifier=str(item.get("identifier") or "").strip().casefold()
+            name=str(item.get("sensor") or item.get("name") or "").strip().casefold()
+            kind=str(item.get("sensorType") or item.get("sensor_type") or item.get("type") or "").strip().casefold()
+            unit=str(item.get("unit") or "").strip().casefold()
+            return (hardware,identifier or name,kind,unit)
+        for item in existing_rows:
+            key=_row_key(item)
+            if key is not None:seen_rows.add(key)
+        for item in rows[:10000]:
+            key=_row_key(item)
+            if key is not None and key not in seen_rows:
+                merged_rows.append(item);seen_rows.add(key)
+        result["sensors"]=merged_rows[:10000]
         power_rows=[]
         cpu_power_candidates=[]
         gpu_power_candidates=[]
@@ -925,7 +944,8 @@ def _u66_sensor_probe():
                 if result["sensors"]:
                     result["bridge_provider"]=payload.get("provider")
                     result["bridge_errors"]=payload.get("errors") or []
-                    break
+                    if any(isinstance(item,dict) and item.get("value") is not None for item in result["sensors"]):
+                        break
         except Exception as exc:
             result["bridge_error"]=f"{type(exc).__name__}: {exc}"
 
@@ -956,7 +976,7 @@ try{
         proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
         if proc.returncode==0 and proc.stdout.strip():
             payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
-            if not result["sensors"]:
+            if payload.get("sensors"):
                 collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
             result["acpi_zones"]=payload.get("zones") or []
             for sensor in result["sensors"]:
