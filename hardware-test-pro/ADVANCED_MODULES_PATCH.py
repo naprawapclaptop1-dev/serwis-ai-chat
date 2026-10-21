@@ -13165,7 +13165,7 @@ def _u120_launch_repair_action(app, action, title):
     stamp = _U66_datetime.now().strftime("%Y%m%d-%H%M%S")
     script_path = folder / "NaprawaPC_SystemRepairActions.ps1"
     log_path = folder / f"{action}-{stamp}.log"
-    script_path.write_text(_U120_REPAIR_PS, encoding="utf-8")
+    script_path.write_text(_U120_REPAIR_PS, encoding="utf-8-sig")
     log_path.write_text("Naprawa PC — przygotowano zadanie. Oczekiwanie na zgodę UAC...\n", encoding="utf-8")
     def ps_quote(value):
         return "'" + str(value).replace("'", "''") + "'"
@@ -13291,7 +13291,8 @@ def _u120_selftest_system_repair_center():
     assert "sfc.exe" in _U120_REPAIR_PS and "chkdsk.exe" in _U120_REPAIR_PS
     assert "Checkpoint-Computer" in _U120_REPAIR_PS and "rstrui.exe" in _U120_REPAIR_PS
     assert callable(AppV43.show_system_repair_center)
-    assert "Start-Process" in _U120_REPAIR_PS
+    assert "Start-Process" in repr(_u120_launch_repair_action.__code__.co_consts)
+    assert "rstrui.exe" in repr(_u120_show_system_repair_center.__code__.co_consts)
     print("WINDOWS_REPAIR_CENTER_SELFTEST_OK: SFC, DISM repair/scan, CHKDSK online scan, restore point, WinRE and System Restore UI")
 
 
