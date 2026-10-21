@@ -9376,7 +9376,7 @@ def _u105_refresh_visible_charts(self):
         draw("_u67_stage_chart_clocks",clocks,max([1000.0]+clock_values),"ZEGARY MHz")
         power={k:hist.get(k,[]) for k in ("cpu_power","gpu_power","system_power","battery_power")}
         power_values=[v for items in power.values() for v in items]
-        draw("_u67_stage_chart_power",power,max([1.0]+power_values),"MOC W")
+        draw("_u67_stage_chart_power",power,max([1.0]+power_values),"POBÓR MOCY W")
         voltage={k:hist.get(k,[]) for k in ("cpu_voltage","gpu_voltage")}
         voltage_values=[v for items in voltage.values() for v in items]
         draw("_u67_stage_chart_voltage",voltage,max([0.1]+voltage_values),"NAPIĘCIE V")
