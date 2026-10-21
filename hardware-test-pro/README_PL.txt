@@ -1,42 +1,36 @@
-NAPRAWA PC HARDWARE TEST PRO — PAKIET ŹRÓDŁOWY
-================================================
-
-WERSJA / KANAŁ STABLE
-To repozytorium źródłowe i materiały do lokalnego builda. Aktualną wersję publiczną odczytuj z updates/hardware-test-pro/latest.json. Ostatnie zweryfikowane wydanie przed tą aktualizacją dokumentacji: 4.3.98 (19.10.2026). Numer następnego builda online jest nadawany automatycznie — nie wpisuj go ręcznie.
-
-ZAKRES FUNKCJI
-- 125 motywów UI; wyszukiwarka i podgląd skórki.
-- 13 grup laboratoriów i 70 niezależnych pozycji katalogu testów:
-  CPU (7), RAM (7), GPU (8), VRAM (6), dyski (7), ekran/EDID (5),
-  bezpieczeństwo Windows (4), bateria (5), sieć (5), USB (4), audio (5),
-  klawiatura/touchpad (4), kamera (3).
-- Każdy wpis katalogu prowadzi do oddzielnego ekranu testu, własnego uruchomienia i raportu.
-- CPU: skan, obciążenie i przepustowość SHA-256 single/multi-thread.
-- RAM: skan stanu systemu i wzorce/benchmark bufora z kontrolą danych; nie dowodzi to sprawdzenia wszystkich fizycznych komórek.
-- GPU: 60 nazwanych scen OpenGL, pojedyncza scena i zestawy benchmarkowe. FPS zależy od GPU, sterownika i rozdzielczości.
-- VRAM: inwentarz i testy alokacji/readback tekstur; ograniczenia sterownika są raportowane.
-- Dyski: skan woluminu, dostępne dane reliability/SMART i benchmark plikowy z tymczasowym plikiem usuwanym po teście.
-- Ekran: skan EDID oraz oddzielny odczyt bieżących/udostępnionych trybów ekranu.
-- Sieć: adaptery, DNS/HTTPS, transfer download/upload i pomiary opóźnień opisane zgodnie z metodą.
-- Peryferia: USB, audio, klawiatura/touchpad i kamera; testy interaktywne wskazują potrzebne potwierdzenie.
-- Centrum Serwis Ultimate / System Repair PRO, raporty, aktualizator globalny HTTPS i pomocniczy Sensor Bridge.
-
-BUDOWANIE LOKALNE
-1. Wypakuj pełne repozytorium źródłowe. Wymagane są: NaprawaPC_Hardware_Test_PRO.pyw, ui_reference.png, app_icon.png, app.ico, SUITE_SETUP.iss, folder SensorBridge i powiązane zasoby.
-2. Na Windows 10/11 x64 zainstaluj Python 3 x64, .NET SDK 10 i Inno Setup 6/7.
-3. Uruchom BUILD_WINDOWS.bat. Skrypt odczytuje wersję ze źródła, uruchamia selftesty, buduje Sensor Bridge, EXE, Setup oraz pakiet ALL-IN-ONE.
-4. Lokalny skrypt NIE publikuje do GitHub ani NIE zmienia manifestu stable. Publikację wersji online wykonuje zweryfikowany workflow GitHub Actions.
-5. Wyniki trafiają do folderu dist, a log do BUILD_LOCAL.log. W razie niepowodzenia skrypt zwraca kod błędu.
-
-TESTY I GRANICE
-- Sukces CI potwierdza wyłącznie kroki i selftesty zapisane w workflow. Nie zastępuje testu sprzętu użytkownika.
-- Temperatura, moc, zegary, wentylatory, VRAM i użycie GPU zależą od czujników, sterowników i Sensor Bridge. Brak danych musi pozostać N/D, bez zgadywania.
-- RAM/VRAM testowane z poziomu procesu nie są pełnym testem wszystkich fizycznych komórek.
-- Test audio, kamery, klawiatury i matrycy może wymagać potwierdzenia operatora. Samo wykrycie urządzenia nie potwierdza sprawności fizycznej.
-- Speed Test przesyła rzeczywiste dane i zależy od sieci oraz endpointu.
-- Schemat 3D jest wizualizacją edukacyjną; nie jest benchmarkiem, jeśli dany test nie wykonuje rzeczywistego pomiaru.
+NAPRAWA PC HARDWARE TEST PRO — PAKIET ŹRÓDŁOWY / ONLINE
+=========================================================
 
 KANAŁ ONLINE
-Manifest stable: updates/hardware-test-pro/latest.json
-Wydania i instalatory: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases
-Manifest aktualizuje workflow wyłącznie po poprawnych testach, kompilacji Setup.exe i publikacji assetów.
+Wydanie stabilne określa manifest updates/hardware-test-pro/latest.json.
+Build Windows x64, Setup.exe i pakiet ALL-IN-ONE powstają w GitHub Actions po zaliczeniu wbudowanych testów.
+Repozytorium: https://github.com/naprawapclaptop1-dev/serwis-ai-chat
+
+ZINTEGROWANE LABORATORIA I TESTY
+- Katalog 90 niezależnych pozycji: 70 testów sprzętowych oraz 10 procedur SYSTEM REPAIR PRO i 10 SERWIS ULTIMATE.
+- Każdy wpis ma osobny ekran, osobne uruchomienie i raport JSON. Każdy wpis jest przypisany do własnego profilu OpenGL.
+- GPU: 90 nazwanych profili w 30 rodzinach geometrycznych; rzeczywisty FPS, peak, klatki, renderer, OpenGL i rozdzielczość.
+- CPU: identyfikacja, obciążenie, zegary i syntetyczny throughput single/multi-thread.
+- RAM: inwentarz, wzorce/benchmark bufora; test procesu Windows nie gwarantuje sprawdzenia wszystkich fizycznych komórek.
+- GPU/VRAM: karta, sterownik, dostępne czujniki i testy rzeczywistej alokacji/readback tekstur OpenGL.
+- Dyski: woluminy, wolne/zajęte miejsce, per-device read/write oraz SMART/reliability, gdy Windows je udostępnia.
+- Telemetria: surowe rekordy Sensor Bridge/LibreHardwareMonitor, temperatury psutil/ACPI, CPU per-core, RAM/swap, per-disk I/O, woluminy, per-adapter RX/TX, bateria oraz dostępne GPU/VRAM/fan/power/voltage/clock.
+- Speed Test: HTTPS Cloudflare, RTT, rozgrzewka, download/upload dopasowane do łącza, mediana/peak/jitter, bajty i historia.
+- SYSTEM REPAIR PRO: stan Windows, status licencji bez pełnego klucza, BIOS/UEFI/TPM/Secure Boot/RAM, inwentarz sterowników, DxDiag/DirectX, SFC /verifyonly, DISM /ScanHealth, dziennik zdarzeń, punkty przywracania i lokalna baza wiedzy.
+- SERWIS ULTIMATE: pełny inspector/CSV, VRAM, raport baterii, kamera, klawiatura/mysz, tryby ekranu, audio, USB, inwentarz modeli CIM/WMI i gotowość UEFI/Windows Memory Diagnostic.
+- SFC/DISM wymagają administratora. Nie uruchamiają /RestoreHealth, automatycznego restartu ani zmian w BCD.
+
+BUDOWANIE / PUBLIKACJA
+1. Workflow Windows odtwarza źródło i zasoby z repozytorium.
+2. Następuje kontrola składni, selftesty, budowa Sensor Bridge, EXE i instalatora.
+3. Release oraz manifest stable są publikowane wyłącznie po sukcesie całego procesu.
+4. Testy CI nie zastępują sprawdzenia odczytów na docelowym sprzęcie użytkownika.
+
+GRANICE POMIARU
+- FPS OpenGL zależy od sceny, sterownika, renderera i rozdzielczości; nie oznacza FPS w prawdziwej grze.
+- Brak temperatury CPU/GPU, mocy, napięcia lub RPM oznacza N/D, a nie wartość zero.
+- Pamięć testowana z procesu nie zastępuje pełnego offline memtestu.
+- Odczyt PnP dowodzi wykrycia urządzenia przez Windows, nie sprawności fizycznej portu lub przetwornika.
+- SFC /verifyonly i DISM /ScanHealth to diagnostyka bez automatycznej naprawy.
+
+Raporty: CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md, TEST_REPORT_PL.txt i FUNKCJE_ZINTEGROWANE.txt
