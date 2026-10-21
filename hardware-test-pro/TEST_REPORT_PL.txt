@@ -16,7 +16,7 @@ POTWIERDZONE PRZEZ WINDOWS CI
 [OK] FULL_LIVE_SENSOR_TABLE_SELFTEST_OK: temperatury, obciążenie na rdzeń, RAM/swap, I/O dysków, NIC i woluminy.
 [OK] SPEED_TEST_PROFILE_SELFTEST_OK: QUICK < STANDARD < MAX.
 [OK] SYSTEM_REPAIR_PRO_SERWIS_ULTIMATE_CATALOG_SELFTEST_OK: 20 dodatkowych diagnoz, 15 grup i 90 unikalnych testów/scen.
-[OK] UNQIUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 90 odrębnych ID scen.
+[OK] UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 90 odrębnych ID scen.
 [OK] Pozostałe testy modułów zaawansowanych.
 [OK] PyInstaller EXE.
 [OK] Inno Setup — kompilacja instalatora.
