@@ -9454,9 +9454,9 @@ def _u105_selftest_visual_quality():
     assert _u67_stage_live_panel is _u105_stage_live_panel
     assert _u67_refresh_visible_charts is _u105_refresh_visible_charts
     stage_constants=repr(_u105_stage_live_panel.__code__.co_consts)
-    refresh_names=_u105_recursive_code_names(_u105_refresh_visible_charts.__code__)
+    refresh_constants=repr(_u105_refresh_visible_charts.__code__.co_consts)
     assert "_u67_stage_chart_power" in stage_constants and "_u67_stage_chart_voltage" in stage_constants
-    assert "POBÓR MOCY W" in refresh_names and "NAPIĘCIE V" in refresh_names
+    assert "POBÓR MOCY W" in refresh_constants and "NAPIĘCIE V" in refresh_constants
     assert all(k in names for k in ("project","poly","path","ring","fan","chip"))
     print("POLISHED_SIMULATOR_UI_SELFTEST_OK: technical component renderers, radial gauges, line charts, no bar/rectangle model")
 
