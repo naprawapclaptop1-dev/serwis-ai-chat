@@ -12837,7 +12837,7 @@ def _u114_selftest_sensor_inventory():
 
 _u109_selftest_service_catalog=_u114_selftest_service_catalog
 _u93_selftest_catalog_routing=_u114_selftest_catalog_routing
-_u107_selftest_unique_scene_per_catalog_test=_u114_selftest_service_catalog
+# Keep the original unique-scene routing self-test; do not alias it to the service catalog test.
 _u100_selftest_unique_gpu_scenes=_u114_selftest_unique_gpu_scenes
 
 
