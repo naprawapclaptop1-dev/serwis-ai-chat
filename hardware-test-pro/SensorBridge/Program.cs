@@ -32,7 +32,7 @@ internal static class Program
                 ReadHardware(hardware, sensors, errors);
             var result = new
             {
-                ok = sensors.Count > 0,
+                ok = sensors.Any(x => x["value"] is not null),
                 timestampUtc = DateTimeOffset.UtcNow,
                 startedAtUtc = started,
                 sensorCount = sensors.Count,
@@ -52,6 +52,7 @@ internal static class Program
                 timestampUtc = DateTimeOffset.UtcNow,
                 startedAtUtc = started,
                 sensorCount = sensors.Count,
+                valueCount = sensors.Count(x => x["value"] is not null),
                 sensors,
                 errors = errors.Append(ex.GetType().Name + ": " + ex.Message).Take(30).ToArray(),
                 provider = "LibreHardwareMonitorLib 0.9.6"
