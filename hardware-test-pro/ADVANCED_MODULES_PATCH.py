@@ -11820,6 +11820,77 @@ def _u114_service_probe(app,module,test_id,settings):
         if any(token in low for token in ("component store is repairable","component store corruption was detected","corruption detected")):
             warnings.append("DISM zgłosił uszkodzenie magazynu składników; nie wykonano automatycznej naprawy.")
             result["state"]="warn"
+    elif test_id=="sr_firewall_profiles":
+        profiles=result.get("profiles") or []
+        if not profiles:
+            result["state"]="warn";warnings.append("Nie odczytano profili zapory.")
+        elif not any(isinstance(row,dict) and row.get("Enabled") is True for row in profiles):
+            result["state"]="warn";warnings.append("Żaden profil zapory nie został zgłoszony jako włączony; sprawdź szczegóły i zasady organizacji.")
+    elif test_id=="sr_defender_status":
+        if not result.get("available"):
+            result["state"]="warn";warnings.append("Nie udało się odczytać statusu Microsoft Defender.")
+        else:
+            status=result.get("status") or {}
+            if status.get("AntivirusEnabled") is False or status.get("RealTimeProtectionEnabled") is False:
+                result["state"]="warn";warnings.append("Defender zgłosił wyłączony składnik ochrony; potwierdź konfigurację na tym komputerze.")
+    elif test_id=="sr_bitlocker_audit":
+        if not result.get("available") or not int(result.get("volume_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie uzyskano statusu woluminów BitLocker; dostawca może być niedostępny.")
+    elif test_id=="sr_pending_reboot":
+        if result.get("pending_reboot"):
+            result["state"]="warn";warnings.append("Wykryto źródło oczekującego restartu systemu.")
+    elif test_id=="sr_reliability_events":
+        if int(result.get("event_count",0) or 0)>0:
+            result["state"]="warn";warnings.append("Znaleziono wpisy krytyczne/błędy z ostatnich 7 dni; przejrzyj treść zdarzeń.")
+    elif test_id=="sr_boot_status":
+        if not result.get("os"):
+            result["state"]="warn";warnings.append("Nie uzyskano podstawowych informacji o uruchomionym systemie.")
+    elif test_id=="sr_device_problems":
+        if int(result.get("problem_count",0) or 0)>0:
+            result["state"]="warn";warnings.append("Co najmniej jedno obecne urządzenie PnP zgłasza problem.")
+        elif result.get("problem_devices") is None:
+            result["state"]="warn";warnings.append("Dostawca PnP nie zwrócił listy wyników.")
+    elif test_id=="sr_volume_capacity":
+        if not int(result.get("volume_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie odczytano woluminów; nie oznaczono skanu jako PASS.")
+    elif test_id=="su_process_pressure":
+        if not int(result.get("process_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie uzyskano inwentarza działających procesów.")
+    elif test_id=="su_task_scheduler_audit":
+        if not int(result.get("task_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie zwrócono zadań odpowiadających filtrowi; wynik nie dowodzi braku zadań.")
+    elif test_id=="su_path_health":
+        if not int(result.get("entry_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie uzyskano żadnych wpisów PATH.")
+        if int(result.get("missing_count",0) or 0)>0:
+            result["state"]="warn";warnings.append("PATH zawiera wpisy wskazujące na brakujące katalogi.")
+        if int(result.get("duplicate_path_count",0) or 0)>0:
+            warnings.append("Wykryto powtarzające się ścieżki PATH.")
+    elif test_id=="su_dns_audit":
+        if not int(result.get("dns_adapter_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie odczytano serwerów DNS kart sieciowych.")
+        if not int(result.get("resolved_count",0) or 0):
+            result["state"]="warn";warnings.append("Zapytanie DNS nie zwróciło odpowiedzi; sprawdź połączenie i resolver.")
+    elif test_id=="su_perf_counter_audit":
+        if int(result.get("usable_count",0) or 0)<2:
+            result["state"]="warn";warnings.append("Co najmniej jeden wybrany licznik wydajności jest niedostępny.")
+    elif test_id=="su_power_plan":
+        if not result.get("active_scheme"):
+            result["state"]="warn";warnings.append("Nie odczytano aktywnego planu zasilania.")
+    elif test_id=="su_windows_features":
+        if not int(result.get("available_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie odczytano stanów żadnej z wybranych funkcji Windows.")
+    elif test_id=="su_temp_folder_health":
+        folders=result.get("folders") or []
+        if not folders or not any(isinstance(row,dict) and row.get("exists") for row in folders):
+            result["state"]="warn";warnings.append("Nie odczytano żadnego istniejącego katalogu TEMP.")
+    elif test_id=="su_crash_dump_audit":
+        locations=result.get("locations") or []
+        if not locations:
+            result["state"]="warn";warnings.append("Nie uzyskano informacji o lokalizacjach zrzutów.")
+    elif test_id=="su_network_profile_audit":
+        if not int(result.get("adapter_count",0) or 0) and not int(result.get("profile_count",0) or 0):
+            result["state"]="warn";warnings.append("Nie odczytano profili sieciowych ani kart sieciowych.")
     result["warnings"]=warnings
     result["note"]=str(result.get("note") or "Diagnostyka odczytowa; nie uruchomiono operacji naprawczej.")
     return result
