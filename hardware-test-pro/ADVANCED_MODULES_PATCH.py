@@ -8792,6 +8792,7 @@ _U105_COLORS = {
     "white":"#e9f5ff","board":"#0b645b","board_edge":"#34dbc9"
 }
 _U105_PI = _u66_math.pi
+_U66_PI = _u66_math.pi  # compatibility alias used by the renderer's rotating model helpers
 
 def _u105_ring_gauge(canvas, title, value, maximum=100.0, unit="%", color="#39e7d0"):
     try:
@@ -9350,8 +9351,10 @@ def _u105_selftest_visual_quality():
     assert "create_polygon" in names and "create_oval" in names and "create_line" in names
     assert "create_rectangle" not in names, "The new 3D renderer must not draw the model out of rectangles."
     assert _U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR is _u105_open_component_base
-    assert _U105_PI > 3.14
+    assert _U105_PI > 3.14 and _U66_PI > 3.14
+    assert "max(640" not in _u105_draw_component_scene.__code__.co_consts
     assert callable(_u105_attach_gpu_panel) and callable(_u105_gpu_live_tick)
+    assert "create_rectangle" not in _u105_gpu_live_tick.__code__.co_names
     assert _u67_stage_live_panel is _u105_stage_live_panel
     assert _u67_refresh_visible_charts is _u105_refresh_visible_charts
     assert all(k in _u105_draw_component_scene.__code__.co_varnames for k in ("project","poly","path","ring","fan","chip"))
