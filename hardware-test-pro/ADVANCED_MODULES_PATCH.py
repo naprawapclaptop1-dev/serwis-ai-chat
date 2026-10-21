@@ -10260,8 +10260,17 @@ def _u107_selftest_sensor_source_merge():
     assert _u66_measure_speed is _u106_measure_speed
     assert AppV43.show_speed_test is _u101_show_speed_test
     assert callable(_u101_collect_os_metrics)
-    assert "_u101_collect_os_metrics" in _u100_sensor_poll.__code__.co_names
-    assert "system" in repr(_u100_sensor_poll.__code__.co_consts)
+    deep_names=_u93_deep_code_names(_u100_sensor_poll)
+    assert "_u101_collect_os_metrics" in deep_names
+    def nested_constants(function):
+        import types as _u107_types
+        pending=[function.__code__];values=[]
+        while pending:
+            code=pending.pop()
+            values.extend(code.co_consts)
+            pending.extend(item for item in code.co_consts if isinstance(item,_u107_types.CodeType))
+        return values
+    assert "system" in repr(nested_constants(_u100_sensor_poll))
     print("FULL_SENSOR_SOURCE_MERGE_AND_ACTIVE_SPEED_UI_SELFTEST_OK")
 
 def _u106_selftest_sensor_mapping():
