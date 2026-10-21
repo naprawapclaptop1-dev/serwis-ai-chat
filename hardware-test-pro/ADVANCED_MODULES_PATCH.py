@@ -13356,6 +13356,7 @@ def _u119_selftest_furmark_scene():
     while pending:
         code=pending.pop()
         names.update(code.co_names)
+        names.update(code.co_varnames)
         for value in code.co_consts:
             if isinstance(value,_u119_types.CodeType):
                 pending.append(value)
