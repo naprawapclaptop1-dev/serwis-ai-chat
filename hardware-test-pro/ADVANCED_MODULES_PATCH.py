@@ -12314,6 +12314,10 @@ def _u114_parallel_speed_phase(direction,stream_sizes,workers=4):
         "aggregate_mbps":aggregate,"state":"good" if samples and len(valid)==len(samples) else "warn"}
 
 def _u114_measure_speed(app):
+    # Shared validated HTTPS transport remains explicit for regression checks and Turbo transfers.
+    request_engine = _U100_ORIGINAL_SPEED_REQUEST
+    if not callable(request_engine):
+        return {"state":"warn","message":"Brak poprawnego transportu HTTPS dla Speed Test.","measurement_profile":str(getattr(app,"_u108_speed_profile","STANDARD") or "STANDARD").upper()}
     profile=str(getattr(app,"_u108_speed_profile","STANDARD") or "STANDARD").upper()
     if profile!="TURBO":
         return _U114_ORIGINAL_MEASURE_SPEED(app)
