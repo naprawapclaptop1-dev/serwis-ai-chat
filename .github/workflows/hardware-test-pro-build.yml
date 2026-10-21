@@ -76,7 +76,7 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pyinstaller psutil pillow numpy pygame-ce PyOpenGL sounddevice opencv-python cryptography
+          python -m pip install pyinstaller psutil pillow numpy pygame-ce PyOpenGL sounddevice opencv-python cryptography pypdf
 
       - name: Syntax and built-in tests
         shell: pwsh
@@ -123,7 +123,7 @@ jobs:
         shell: pwsh
         run: |
           Set-Location "${{ github.workspace }}\hardware-test-pro"
-          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --add-binary "SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 ".\NaprawaPC_Hardware_Test_PRO.pyw"
+          python -m PyInstaller --noconfirm --clean --noconsole --onefile --name "NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION" --icon ".\app.ico" --add-data "ui_reference.png;." --add-data "app_icon.png;." --add-binary "SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe;." --hidden-import psutil --hidden-import PIL --hidden-import PIL.Image --hidden-import PIL.ImageTk --hidden-import PIL.ImageOps --hidden-import numpy --hidden-import pygame --hidden-import OpenGL --hidden-import OpenGL.GL --hidden-import OpenGL.GLU --hidden-import sounddevice --hidden-import cv2 --collect-all PIL --collect-all numpy --collect-all pygame --collect-all OpenGL --collect-all sounddevice --collect-all cv2 --collect-all cryptography --hidden-import cryptography.fernet --hidden-import cryptography.hazmat.primitives.kdf.pbkdf2 --hidden-import pypdf ".\NaprawaPC_Hardware_Test_PRO.pyw"
           if (!(Test-Path ".\dist\NAPRAWA-PC-HARDWARE-TEST-PRO-$env:APP_VERSION.exe")) { throw "PyInstaller did not create the EXE." }
 
       - name: Install Inno Setup
@@ -175,6 +175,8 @@ jobs:
             - Wszystkie 110 scen używają dedykowanego renderera: 90 scen w 9 rodzinach geometrii po 10 wariantów oraz 20 dodatkowych układów serwisowych; rzeczywiste FPS mierzone z synchronizacją renderowania.
             - Sensor Bridge zachowuje wykryte sensory bez bieżącej wartości jako N/D oraz oddziela liczbę wykrytych sensorów od liczby bieżących odczytów.
             - Speed Test QUICK/STANDARD/MAX oraz TURBO z 4 równoległymi strumieniami HTTPS; wynik równoległy jest raportowany oddzielnie od mediany bazowej.
+            - Serwis Ultimate: zlecenia serwisowe z lokalną historią i eksportem HTML; 7 osobnych testów zasilania/baterii.
+            - System Repair PRO: lokalna baza wiedzy z importem TXT/MD/PDF, SHA-256 i wyszukiwaniem źródeł; skrypty są tylko tekstem.
             - 125 motywów UI, indywidualne raporty i aktualizator HTTPS.
             - Brak czujnika jest oznaczany N/D. Windows CI nie zastępuje testu fizycznego komputera użytkownika.
             - Uwaga dotycząca zakresu: 40 sond to integracja diagnostyczna w katalogu; pełna zgodność 1:1 wszystkich wewnętrznych ekranów i funkcji z obydwoma archiwami źródłowymi nie została jeszcze potwierdzona.
@@ -241,7 +243,7 @@ jobs:
               installer_sha256: process.env.INSTALLER_SHA256,
               installer_size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk integracyjnych System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D i Speed Test TURBO z 4 równoległymi strumieniami HTTPS. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+              notes: "Wydanie " + version + ": 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii oraz lokalna baza wiedzy PDF/TXT/MD. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
