@@ -5380,9 +5380,9 @@ _U93_TEST_CATALOG = {
  "GPU":[
   ("gpu_scan","Skan GPU — karta i sterownik","Identyfikacja adaptera/sterownika Windows.","gpu_scan"),
   ("gpu_scene","Jedna scena OpenGL — wybór 1–110","Mierzy FPS/klatki jednej wskazanej sceny i zapisuje renderer.","gpu_scene"),
-  ("gpu_std","Benchmark 90 scen — STANDARD","90 scen po 10 sekund każda, rzeczywiste FPS.","gpu_suite10"),
-  ("gpu_ultra","Benchmark 90 scen — ULTRA","90 scen po 30 sekund każda, około 45 min renderowania.","gpu_suite30"),
-  ("gpu_max","Benchmark 90 scen — MAX","90 scen po 60 sekund każda, około 90 min renderowania.","gpu_suite60"),
+  ("gpu_std","Benchmark 110 scen — STANDARD","110 scen po 10 sekund każda, rzeczywiste FPS.","gpu_suite10"),
+  ("gpu_ultra","Benchmark 110 scen — ULTRA","110 scen po 30 sekund każda, około 55 min renderowania.","gpu_suite30"),
+  ("gpu_max","Benchmark 110 scen — MAX","110 scen po 60 sekund każda, około 110 min renderowania.","gpu_suite60"),
   ("gpu_sensor","Czujniki GPU — temperatura/VRAM/zegar/moc","N/D gdy sterownik nie udostępnia pomiaru.","gpu_sensor"),
   ("gpu_games","Doradca gier — ustawienia grafiki","Oddziela pomiary syntetyczne od szacunków FPS w grach.","games"),
   ("gpu_sim","Symulator 3D GPU","Schemat karty; FPS mierzą tylko testy renderowania.","sim")
@@ -5484,7 +5484,6 @@ def _u93_add_entry(app,module):
         tk.Label(row,text=f"LABORATORIUM {module} — {len(_U93_TEST_CATALOG[module])} TESTÓW NIEZALEŻNYCH",
                  bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(side="left",padx=7,pady=5)
         app.make_button(row,"KATALOG — WYBIERZ JEDEN TEST",lambda m=module:_u93_show_catalog(app,m),"accent",side="left",ipady=4)
-        app.make_button(row,"SYMULATOR 3D",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=4)
         if module=="GPU":app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=4)
     except Exception as exc:
         try:app.append_log("Nie udało się otworzyć laboratorium "+module+": "+repr(exc))
@@ -5503,7 +5502,6 @@ def _u93_show_lab(app):
         tk.Label(card,text=label,bg=t["card"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,2))
         tk.Label(card,text=f"{len(_U93_TEST_CATALOG[key])} osobnych testów",bg=t["card"],fg=t["good"],font=app.fnt(8,"bold")).pack(anchor="w",padx=8)
         app.make_button(card,"OTWÓRZ KATALOG",lambda m=key:_u93_show_catalog(app,m),"accent",side="left",ipady=4)
-        app.make_button(card,"SYMULATOR 3D",lambda m=key:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=4)
     for c in range(3):grid.grid_columnconfigure(c,weight=1)
     row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=3)
     def center():
@@ -5539,7 +5537,6 @@ def _u93_show_catalog(app,module):
     tk.Label(head,text="Otwórz jeden wiersz. Każdy test ma osobny ekran, własne ustawienia i wynik. Brak czujnika lub wyniku będzie oznaczony N/D/OSTRZEŻENIE — nie jako PASS.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=10,pady=(0,6))
     _u93_scroll_rows(app,app.content,module)
     row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=3)
-    app.make_button(row,"SYMULATOR 3D TEGO PODZESPOŁU",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=4)
     if module=="GPU":
         app.make_button(row,"TESTY VRAM",lambda:_u93_show_catalog(app,"VRAM"),"card",side="left",ipady=4)
         app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=4)
@@ -6199,7 +6196,7 @@ def _u93_show_test_detail(app,module,test_id):
     app._u93_detail_report.insert("1.0","Wynik pojawi się po uruchomieniu. Brak wyniku nie oznacza zaliczenia testu.")
     app._u93_detail_report.configure(state="disabled")
     row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=(0,5))
-    if kind=="sim":app.make_button(row,"UNIKALNA SCENA OPENGL / FPS",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+    if kind=="sim":app.make_button(row,"UNIKALNA SCENA OPENGL / FPS",lambda m=module:_u107_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
     elif kind=="games":app.make_button(row,"OTWÓRZ DORADCĘ GIER",lambda:_u68_show_games_advisor(app),"accent",side="left",ipady=5)
     elif kind=="keyboard_input":
         app.make_button(row,"START REJESTRACJI KLAWISZY",lambda:_u93_start_keyboard_capture(app),"accent",side="left",ipady=5)
@@ -6208,7 +6205,7 @@ def _u93_show_test_detail(app,module,test_id):
     elif kind=="screen_patterns":app.make_button(row,"OTWÓRZ TEST WZORCÓW MATRYCY",lambda:_u93_start_screen_patterns(app,test_id),"accent",side="left",ipady=5)
     else:
         app.make_button(row,"URUCHOM TEN TEST",lambda:_u93_start_catalog_test(app,module,test_id,title,kind),"accent",side="left",ipady=5)
-        app.make_button(row,"UNIKALNA SCENA OPENGL / FPS",lambda m=module:_u69_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
+        app.make_button(row,"UNIKALNA SCENA OPENGL / FPS",lambda m=module:_u107_open_component_simulator(app,m,False,"scan"),"good",side="left",ipady=5)
     if kind not in ("keyboard_input","sim","games","camera_preview","screen_patterns"):
         app.make_button(row,"STOP TEST",app.stop_current_test,"bad",side="left",ipady=5)
     nav=tk.Frame(app.content,bg=t["bg"]);nav.pack(fill="x")
@@ -10822,7 +10819,7 @@ def _u107_show_speed_test(app):
 def _u107_launch_scene_preview(app,module,test_id,scene_id):
     scene_title=_U100_SCENE_TITLES[int(scene_id)-1]
     if not messagebox.askyesno("Unikalna scena OpenGL",
-        f"Uruchomić własną scenę {int(scene_id):02d}/90 dla testu {test_id}?\n\n"
+        f"Uruchomić własną scenę {int(scene_id):02d}/110 dla testu {test_id}?\n\n"
         f"{scene_title}\n\n"
         "To prawdziwe renderowanie OpenGL z pomiarem FPS GPU przez 10 sekund. "
         "Scena jest przypisana wyłącznie do tego testu, ale FPS nie jest wynikiem sprawności CPU/RAM/dysku. Kontynuować?"):
@@ -10850,7 +10847,7 @@ def _u107_launch_scene_preview(app,module,test_id,scene_id):
                 _u66_time.monotonic()-start)
             _u93_put_result(app,"COMPONENT_SCENE_"+str(test_id),report)
             _u93_update_detail(app,test_id,"SCENA ZAKOŃCZONA • FPS "+str(result.get("average_fps","N/D")),report)
-            app.queue_log(f"UNIKALNA SCENA TESTU {test_id}: {result.get('state')} • scena {scene_id}/90 • FPS {result.get('average_fps','N/D')}")
+            app.queue_log(f"UNIKALNA SCENA TESTU {test_id}: {result.get('state')} • scena {scene_id}/110 • FPS {result.get('average_fps','N/D')}")
         except Exception as exc:
             app.queue_log(f"Raport sceny {test_id}: {type(exc).__name__}: {exc}")
     app.worker(job)
