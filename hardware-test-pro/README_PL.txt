@@ -33,6 +33,16 @@ SYSTEM REPAIR PRO / SERWIS ULTIMATE
 40 testów odczytowych — 20 poprzednich oraz 20 dodatkowych kontroli w tym wydaniu: wersja i status licencji Windows (bez kluczy), BIOS/UEFI/Secure Boot/TPM, PnP i sterowniki, stan Windows Update, błędy dziennika, usługi krytyczne, woluminy/nośniki, BCD/WinRE, usługi sieciowe, DISM CheckHealth, inwentarz sprzętu i oprogramowania, autostart/zadania, historia awarii, konfiguracja IP/DNS, WMI, lista hotfixów, usługi automatyczne, lokalne raporty i wykrywanie instalacji Windows na widocznych woluminach. Każdy ma swój raport. Test DISM CheckHealth wymaga potwierdzenia i nie naprawia automatycznie.
 Centrum serwisu zawiera także istniejące narzędzia SFC/DISM RestoreHealth, CHKDSK, DNS/Winsock, raport baterii, narzędzia Windows, offline DISM/SFC, BCD/WinRE oraz lokalne szyfrowane zgłoszenia.
 
+
+NOWE FUNKCJE ZINTEGROWANE 4.3.120–4.3.124
+- Scena GPU 01: osobny, animowany FurMark-style furry torus z 12 000 włosami OpenGL i zsynchronizowanym pomiarem FPS. Pozostałe 109 scen zachowuje osobne układy i sygnatury.
+- Zlecenia Serwis Ultimate: lokalna historia zleceń, edycja, status, zgoda na diagnozę, omówienie kopii danych i eksport karty serwisowej HTML. Hasła/PIN nie są zbierane.
+- 7 niezależnych testów zasilania/baterii: Battery Info, Battery Report, Energy Report, SleepStudy, Power Requests, Last Wake i aktywny plan zasilania. Nieobsługiwane raporty otrzymują WARN/N/D.
+- Baza wiedzy System Repair PRO: import TXT/MD/PDF i innych formatów tekstowych, lokalna deduplikacja SHA-256, wyszukiwanie źródeł, podgląd fragmentów, otwarcie źródła i szkic lekcji. Skrypty są indeksowane jako tekst, nie uruchamiane.
+- 14 profili problemów System Repair PRO: wolny Windows, BSOD, aktualizacje, rozruch, sieć, audio, obraz, gry/GPU, dysk, RAM, temperatura, bateria, sterowniki i aktywacja. Każdy ma osobny odczyt diagnostyczny, skrót do narzędzia i raport HTML.
+- 10 dodatkowych niezależnych testów Serwis Ultimate: błędy PnP, sterowniki, aplikacje, usługi, procesy, TCP/UDP, Defender, brama/DNS, błędy systemowe i szybka inwentaryzacja. Każdy zapisuje osobny raport.
+- Testy odczytowe nie naprawiają automatycznie systemu. Naprawy wymagające zmian są dostępne osobno, z potwierdzeniem. Pełna zgodność 1:1 wszystkich funkcji z oryginalnymi archiwami obu aplikacji nadal wymaga audytu i testów fizycznych.
+
 BUDOWANIE LOKALNE
 1. Użyj pełnego checkoutu repozytorium z NaprawaPC_Hardware_Test_PRO.pyw, zasobami graficznymi, SUITE_SETUP.iss i folderem SensorBridge.
 2. Wymagane: Windows 10/11 x64, Python 3 x64, .NET SDK 10 oraz Inno Setup 6/7.
