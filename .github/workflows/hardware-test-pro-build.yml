@@ -175,6 +175,8 @@ jobs:
             - Wszystkie 110 scen używają dedykowanego renderera: 90 scen w 9 rodzinach geometrii po 10 wariantów oraz 20 dodatkowych układów serwisowych; rzeczywiste FPS mierzone z synchronizacją renderowania.
             - Sensor Bridge zachowuje wykryte sensory bez bieżącej wartości jako N/D oraz oddziela liczbę wykrytych sensorów od liczby bieżących odczytów.
             - Speed Test QUICK/STANDARD/MAX oraz TURBO z 4 równoległymi strumieniami HTTPS; wynik równoległy jest raportowany oddzielnie od mediany bazowej.
+            - Serwis Ultimate: zlecenia serwisowe z lokalną historią i eksportem HTML; 7 osobnych testów zasilania/baterii.
+            - System Repair PRO: lokalna baza wiedzy z importem TXT/MD/PDF, SHA-256 i wyszukiwaniem źródeł; skrypty są tylko tekstem.
             - 125 motywów UI, indywidualne raporty i aktualizator HTTPS.
             - Brak czujnika jest oznaczany N/D. Windows CI nie zastępuje testu fizycznego komputera użytkownika.
             - Uwaga dotycząca zakresu: 40 sond to integracja diagnostyczna w katalogu; pełna zgodność 1:1 wszystkich wewnętrznych ekranów i funkcji z obydwoma archiwami źródłowymi nie została jeszcze potwierdzona.
