@@ -10266,7 +10266,8 @@ def _u106_selftest_adaptive_speed_payloads():
     assert "_U100_ORIGINAL_SPEED_REQUEST" in _u100_measure_speed.__code__.co_names
     assert "download_peak_mbps" in code and "upload_peak_mbps" in code
     assert "latency_jitter_ms" in code
-    assert callable(_u101_start_speed_test) and _u66_measure_speed is _u100_measure_speed
+    assert callable(_u101_start_speed_test)
+    assert _u66_measure_speed is _u100_measure_speed or getattr(_u66_measure_speed, "__name__", "") == "_u108_measure_speed", "Speed Test must use the validated adaptive engine, optionally wrapped by the profile selector"
     print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
 
 
