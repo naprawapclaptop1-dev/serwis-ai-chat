@@ -5524,6 +5524,8 @@ def _u93_show_catalog(app,module):
         app.make_button(row,"TESTY VRAM",lambda:_u93_show_catalog(app,"VRAM"),"card",side="left",ipady=4)
         app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=4)
     app.make_button(row,"CENTRUM SERWISU / SYSTEM REPAIR PRO",lambda: (getattr(app,"show_service_center",None) or app.show_repairs)(),"card",side="left",ipady=4)
+    if module in ("SYSTEM_REPAIR_PRO","SERWIS_ULTIMATE"):
+        app.make_button(row,"PEŁNE NARZĘDZIA / NAPRAWY",lambda m=module:_u110_show_service_actions(app,m),"accent",side="left",ipady=4)
     app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=4)
 
 
@@ -12763,6 +12765,237 @@ try{
         return _u110_export_report(app)
     return {"state":"error","action_id":action_id,"message":"Brak handlera. Operacja nie została uruchomiona."}
 
+
+_U110_SCENE_LABELS = {
+ 60:"GPU endurance reactor — gears and mesh",61:"GPU cyclone column — rotating helix",
+ 62:"GPU tornado funnel — inverted cone",63:"GPU horizontal vortex — radial spokes",
+ 64:"GPU rain field — precipitation impacts",65:"GPU squall wall — wind bands",
+ 66:"GPU monsoon spiral — dense rain vortex",67:"GPU flooded city — street grid",
+ 68:"GPU suspension bridge — cables and river",69:"GPU tsunami front — coastal skyline",
+ 70:"GPU lightning strike — single bolt",71:"GPU forked lightning — branch tree",
+ 72:"GPU supercell — electrical lattice",73:"GPU oval circuit — grandstands",
+ 74:"GPU figure-eight — crossed raceway",75:"GPU pit lane — garages and gantry",
+ 76:"GPU drift arena — tyre barriers",77:"GPU rally hairpin — switchbacks",
+ 78:"GPU mountain rally — elevated road",79:"GPU off-road — obstacle field",
+ 80:"GPU rally jump — ramps and gates",81:"GPU night F1 — neon oval",
+ 82:"GPU urban circuit — street canyon",83:"GPU F1 gantry — elevated bridges",
+ 84:"GPU snow mountains — frozen ridges",85:"GPU snow forest — trees",
+ 86:"GPU ice cavern — faceted pillars",87:"GPU blizzard vortex — ice rings",
+ 88:"GPU ocean tsunami — wave wall",89:"GPU flooded tunnel — arches/current",
+ 90:"GPU extreme geometry — mesh/gear/lattice"
+}
+for _u110_scene_id,_u110_scene_name in _U110_SCENE_LABELS.items():
+    if 1 <= _u110_scene_id <= len(_U100_SCENE_TITLES):
+        _U100_SCENE_TITLES[_u110_scene_id-1]=_u110_scene_name
+
+def _u110_open_target(app, target):
+    try:
+        if str(target).startswith("ms-settings:"):
+            os.startfile(str(target))
+        elif callable(getattr(app,"open_shell",None)):
+            app.open_shell(str(target))
+        else:
+            _u66_subprocess.Popen(str(target),shell=True,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        return True
+    except Exception as exc:
+        messagebox.showerror("Uruchamianie narzędzia",str(target)+"\n"+str(type(exc).__name__)+": "+str(exc))
+        return False
+
+def _u110_show_service_center(app):
+    app.current_view="SERVICE_CENTER"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="CENTRUM SERWISU — SYSTEM REPAIR PRO + SERWIS ULTIMATE")
+    intro=app.panel(app.content);intro.pack(fill="x",pady=(0,7))
+    tk.Label(intro,text="NARZĘDZIA SERWISOWE I NAPRAWCZE — Z OSOBNYMI EKRANAMI I RAPORTAMI",
+             bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(intro,text="Wynik każdej czynności trafia do osobnego raportu lokalnego. Operacje zmieniające system wymagają potwierdzenia, a naprawy administracyjne sprawdzają uprawnienia.",
+             bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    grid=tk.Frame(app.content,bg=t["bg"]);grid.pack(fill="both",expand=True)
+    cards=[
+      ("SYSTEM_REPAIR_PRO","SYSTEM REPAIR PRO","DISM/SFC/CHKDSK, BCD/UEFI, WinRE, punkt przywracania, sterowniki, Windows Update, Defender, diagnostyka sprzętu."),
+      ("SERWIS_ULTIMATE","SERWIS ULTIMATE","Inwentarz CPU/GPU/RAM/dysków, procesy, autostart, usługi, sterowniki, sieć, energia, audio, kamera, drukarki, hash i zgłoszenia.")
+    ]
+    for i,(key,title,desc) in enumerate(cards):
+        card=tk.Frame(grid,bg=t["card"],highlightbackground=t["accent2"],highlightthickness=1)
+        card.grid(row=0,column=i,sticky="nsew",padx=5,pady=5)
+        tk.Label(card,text=title,bg=t["card"],fg=t["accent"],font=app.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(12,4))
+        tk.Label(card,text=str(len(_U110_SERVICE_ACTIONS[key]))+" narzędzi",bg=t["card"],fg=t["good"],font=app.fnt(10,"bold")).pack(anchor="w",padx=12,pady=(0,5))
+        tk.Label(card,text=desc,bg=t["card"],fg=t["fg"],font=app.fnt(9),wraplength=520,justify="left").pack(anchor="w",padx=12,pady=(0,10))
+        app.make_button(card,"OTWÓRZ NARZĘDZIA",lambda g=key:_u110_show_service_actions(app,g),"accent",side="left",ipady=7)
+    for c in range(2):grid.grid_columnconfigure(c,weight=1)
+    footer=tk.Frame(app.content,bg=t["bg"]);footer.pack(fill="x",pady=5)
+    app.make_button(footer,"ODŚWIEŻ INWENTARZ SPRZĘTU",lambda:_u110_start_service_action(app,"SERWIS_ULTIMATE","su_refresh_hardware"),"good",side="left",ipady=5)
+    app.make_button(footer,"OTWÓRZ RAPORTY LOKALNE",lambda:_u110_start_service_action(app,"SERWIS_ULTIMATE","su_open_reports"),"card",side="left",ipady=5)
+    app.make_button(footer,"← LABORATORIUM TESTÓW",lambda:_u93_show_lab(app),"card",side="left",ipady=5)
+    app.make_button(footer,"PULPIT",app.show_dashboard,"card",side="left",ipady=5)
+
+def _u110_show_service_actions(app, group):
+    group=str(group).upper()
+    if group not in _U110_SERVICE_ACTIONS:
+        messagebox.showerror("Centrum serwisu","Nieznana grupa narzędzi.");return
+    app.current_view="SERVICE_ACTIONS_"+group
+    app.clear();t=app.colors()
+    title="SYSTEM REPAIR PRO — NARZĘDZIA WINDOWS" if group=="SYSTEM_REPAIR_PRO" else "SERWIS ULTIMATE — NARZĘDZIA SERWISOWE"
+    app.header_title.config(text=title)
+    head=app.panel(app.content);head.pack(fill="x",pady=(0,5))
+    tk.Label(head,text=title+" — "+str(len(_U110_SERVICE_ACTIONS[group]))+" niezależnych operacji",
+             bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(8,3))
+    tk.Label(head,text="Wybierz pojedynczą czynność. Każda ma własne uruchomienie i raport. Odczyt PnP/sensorów nie dowodzi sprawności fizycznej podzespołu.",
+             bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1340,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    shell=tk.Frame(app.content,bg=t["bg"]);shell.pack(fill="both",expand=True,padx=2,pady=2)
+    canvas=tk.Canvas(shell,bg=t["bg"],highlightthickness=0)
+    scroll=ttk.Scrollbar(shell,orient="vertical",command=canvas.yview)
+    body=tk.Frame(canvas,bg=t["bg"]);win=canvas.create_window((0,0),window=body,anchor="nw")
+    body.bind("<Configure>",lambda e,c=canvas:c.configure(scrollregion=c.bbox("all")))
+    canvas.bind("<Configure>",lambda e,c=canvas,w=win:c.itemconfigure(w,width=e.width))
+    canvas.configure(yscrollcommand=scroll.set);canvas.pack(side="left",fill="both",expand=True);scroll.pack(side="right",fill="y")
+    risks={"read":"ODCZYT","confirm":"POTWIERDZENIE","admin_confirm":"ADMIN + POTWIERDZENIE","open":"NARZĘDZIE WINDOWS","nav":"ODDZIELNY TEST","probe":"ODDZIELNA DIAGNOSTYKA","file":"LOKALNY PLIK","ticket":"LOKALNE ZGŁOSZENIE"}
+    for n,(key,label,desc,risk) in enumerate(_U110_SERVICE_ACTIONS[group],1):
+        card=tk.Frame(body,bg=t["card"],highlightbackground=t["accent2"],highlightthickness=1);card.pack(fill="x",padx=3,pady=3)
+        row=tk.Frame(card,bg=t["card"]);row.pack(fill="x",padx=8,pady=(4,1))
+        tk.Label(row,text="%02d. "%n+label,bg=t["card"],fg=t["accent"],font=app.fnt(9,"bold"),anchor="w").pack(side="left",fill="x",expand=True)
+        tk.Label(row,text=risks.get(risk,risk),bg=t["card"],fg=t["warn"] if risk in ("confirm","admin_confirm") else t["muted"],font=app.fnt(7,"bold")).pack(side="left",padx=8)
+        app.make_button(row,"OTWÓRZ",lambda g=group,k=key:_u110_show_service_action(app,g,k),"accent",side="right",ipady=3)
+        tk.Label(card,text=desc,bg=t["card"],fg=t["muted"],font=app.fnt(8),wraplength=1360,justify="left",anchor="w").pack(fill="x",padx=8,pady=(0,5))
+    footer=tk.Frame(app.content,bg=t["bg"]);footer.pack(fill="x",pady=3)
+    app.make_button(footer,"KATALOG DIAGNOSTYCZNY",lambda g=group:_u93_show_catalog(app,g),"good",side="left",ipady=5)
+    app.make_button(footer,"← CENTRUM SERWISU",lambda:_u110_show_service_center(app),"card",side="left",ipady=5)
+
+def _u110_show_service_action(app, group, action_id):
+    meta=_u110_action_meta(group,action_id)
+    if not meta:
+        messagebox.showerror("Centrum serwisu","Nie znaleziono definicji tej czynności.");return
+    _,title,description,risk=meta
+    app.current_view="SERVICE_ACTION_DETAIL_"+str(action_id)
+    app.clear();t=app.colors();app.header_title.config(text=title)
+    head=app.panel(app.content);head.pack(fill="x",pady=(0,5))
+    tk.Label(head,text=title,bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold"),anchor="w").pack(fill="x",padx=10,pady=(8,3))
+    tk.Label(head,text=description,bg=t["panel"],fg=t["fg"],font=app.fnt(9),wraplength=1350,justify="left",anchor="w").pack(fill="x",padx=10,pady=(0,5))
+    note="Odczyt lokalny. Brak danych czujnika/dostawcy oznacza N/D lub OSTRZEŻENIE."
+    if risk in ("confirm","admin_confirm"):
+        note="Operacja może zmienić system albo działać długo. Przed uruchomieniem pojawi się potwierdzenie; czynności administracyjne wymagają uruchomienia aplikacji jako administrator."
+    tk.Label(head,text=note,bg=t["panel"],fg=t["warn"] if risk in ("confirm","admin_confirm") else t["muted"],font=app.fnt(8),wraplength=1350,justify="left",anchor="w").pack(fill="x",padx=10,pady=(0,8))
+    panel=app.panel(app.content);panel.pack(fill="both",expand=True,pady=(0,5))
+    app._u110_action_status=tk.Label(panel,text="GOTOWY — czynność jeszcze nieuruchomiona.",bg=t["panel"],fg=t["muted"],font=app.fnt(9,"bold"),anchor="w")
+    app._u110_action_status.pack(fill="x",padx=10,pady=(8,3))
+    app._u110_action_report=tk.Text(panel,height=14,wrap="word",bg=t["card"],fg=t["fg"],insertbackground=t["fg"],relief="flat",font=("Consolas",9),padx=8,pady=6)
+    app._u110_action_report.pack(fill="both",expand=True,padx=7,pady=(0,7))
+    app._u110_action_report.insert("1.0","Po uruchomieniu pojawi się rzeczywisty wynik i lokalny raport JSON. Brak danych nie jest traktowany jako zaliczenie.")
+    app._u110_action_report.configure(state="disabled")
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",pady=(0,4))
+    app.make_button(row,"URUCHOM TĘ CZYNNOŚĆ",lambda g=group,k=action_id:_u110_start_service_action(app,g,k),"accent",side="left",ipady=6)
+    app.make_button(row,"ZAPISZ RAPORT JSON + HTML",lambda:_u110_start_service_action(app,group,"su_export_report"),"good",side="left",ipady=6)
+    app.make_button(row,"RAPORTY LOKALNE",lambda:_u110_start_service_action(app,"SERWIS_ULTIMATE","su_open_reports"),"card",side="left",ipady=6)
+    app.make_button(row,"← LISTA NARZĘDZI",lambda g=group:_u110_show_service_actions(app,g),"card",side="left",ipady=6)
+
+def _u110_start_service_action(app, group, action_id):
+    meta=_u110_action_meta(group,action_id)
+    if meta is None:
+        if action_id=="su_open_reports":
+            target=str(_u110_report_dir())
+            try:os.startfile(target)
+            except Exception as exc:messagebox.showerror("Raporty",str(exc))
+            return
+        messagebox.showerror("Centrum serwisu","Nie znaleziono czynności: "+str(action_id));return
+    _,title,description,risk=meta
+    if risk=="nav":
+        if action_id=="su_sensor_inventory":
+            fn=getattr(app,"show_live_monitor",None)
+            if callable(fn):fn()
+            else:messagebox.showinfo("Czujniki","Monitor live nie jest dostępny w tym widoku.")
+        elif action_id=="su_game_diagnostics":
+            _u68_show_games_advisor(app)
+        elif action_id=="su_refresh_hardware":
+            fn=getattr(app,"refresh_hardware_async",None)
+            if callable(fn):fn()
+            else:messagebox.showwarning("Sprzęt","Brak funkcji odświeżania w tym wydaniu.")
+        else:
+            target=_U110_NAV_TARGETS.get(action_id)
+            if target:_u93_show_catalog(app,target)
+            else:messagebox.showwarning("Nawigacja","Nie znaleziono docelowego katalogu.")
+        return
+    if risk=="probe":
+        link=_U110_PROBE_LINKS.get(action_id)
+        if link:_u93_show_test_detail(app,link[0],link[1])
+        else:messagebox.showwarning("Diagnostyka","Brak podłączonego testu diagnostycznego.");return
+        return
+    if action_id=="su_game_diagnostics":
+        _u68_show_games_advisor(app);return
+    if action_id=="su_service_ticket":
+        _u110_service_ticket_form(app);return
+    if risk=="admin_confirm" and not is_admin():
+        messagebox.showwarning("Wymagany administrator","Uruchom NAPRAWA PC jako administrator. Operacji nie uruchomiono.")
+        _u110_update_action_view(app,action_id,"WYMAGANY ADMINISTRATOR",{"state":"warn","message":"Brak uprawnień administratora."})
+        return
+    if risk in ("confirm","admin_confirm"):
+        warning=""
+        if action_id=="sr_bcd_repair_uefi":
+            warning="\nUWAGA: ta czynność zapisuje pliki EFI/BCD. Najpierw tworzona jest kopia. Uruchamiaj tylko dla bieżącego Windows w trybie UEFI."
+        elif action_id=="sr_repair_sequence":
+            warning="\nDISM/SFC mogą trwać długo. CHKDSK jest tylko w trybie /scan."
+        elif action_id=="su_network_stack_reset":
+            warning="\nReset Winsock może wymagać restartu i tymczasowo przerwać łączność."
+        if not messagebox.askyesno("Potwierdź czynność",title+"\n\n"+description+warning+"\n\nUruchomić teraz?"):
+            _u110_update_action_view(app,action_id,"ANULOWANO",{"state":"warn","message":"Użytkownik anulował; nic nie uruchomiono."})
+            return
+    if action_id in _U110_OPEN_TARGETS:
+        ok=_u110_open_target(app,_U110_OPEN_TARGETS[action_id])
+        _u110_update_action_view(app,action_id,"OTWARTO" if ok else "BŁĄD",{"state":"good" if ok else "error","target":_U110_OPEN_TARGETS[action_id]})
+        return
+    if action_id=="su_open_reports":
+        try:os.startfile(str(_u110_report_dir()))
+        except Exception as exc:messagebox.showerror("Raporty",str(exc))
+        return
+    settings={}
+    if action_id=="su_hash_file":
+        file_path=_u66_filedialog.askopenfilename(title="Wybierz plik do obliczenia SHA-256")
+        if not file_path:return
+        settings["file_path"]=file_path
+    elif action_id=="su_safe_copy":
+        source=_u66_filedialog.askdirectory(title="Wybierz folder źródłowy do skopiowania")
+        if not source:return
+        parent=_u66_filedialog.askdirectory(title="Wybierz folder nadrzędny dla kopii")
+        if not parent:return
+        settings={"source":source,"destination":str(Path(parent)/(Path(source).name+"-kopia-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")))}
+    _u110_update_action_view(app,action_id,"W TOKU",{"state":"running","action_id":action_id,"title":title})
+    started=_u66_time.monotonic()
+    def job():
+        try:result=_u110_execute_service_action(app,group,action_id,settings)
+        except Exception as exc:result={"state":"error","error":str(type(exc).__name__)+": "+str(exc),"action_id":action_id}
+        report=_u110_persist_action_report(group,action_id,title,result,_u66_time.monotonic()-started)
+        try:
+            app.results["SERVICE_ACTION_"+str(action_id)]=report
+            app.queue_results("SERVICE_ACTION_"+str(action_id),report)
+            app.queue_log("NARZĘDZIE SERWISOWE "+str(action_id)+": "+str(report.get("state","warn")).upper())
+        except Exception:pass
+        _u110_update_action_view(app,action_id,str(report.get("state","warn")).upper(),report)
+    app.worker(job)
+
+def _u110_selftest_service_actions():
+    all_items=[(group,item) for group,items in _U110_SERVICE_ACTIONS.items() for item in items]
+    ids=[item[0] for _,item in all_items]
+    assert len(_U110_SERVICE_ACTIONS)==2 and set(_U110_SERVICE_ACTIONS)=={"SYSTEM_REPAIR_PRO","SERWIS_ULTIMATE"}
+    assert len(ids)>=75 and len(set(ids))==len(ids),"Każda czynność serwisowa musi mieć unikalne ID."
+    assert len(_U110_SERVICE_ACTIONS["SYSTEM_REPAIR_PRO"])>=35
+    assert len(_U110_SERVICE_ACTIONS["SERWIS_ULTIMATE"])>=40
+    assert callable(_u110_execute_service_action) and callable(_u110_start_service_action)
+    assert callable(_u110_show_service_center) and callable(_u110_show_service_actions)
+    all_known=set(_U110_PS_SCRIPTS)|set(_U110_OPEN_TARGETS)|set(_U110_NAV_TARGETS)|set(_U110_PROBE_LINKS)|{
+      "sr_dism_check","sr_dism_scan","sr_dism_restore","sr_sfc_scan","sr_chkdsk_scan","sr_repair_sequence",
+      "sr_bcd_backup","sr_bcd_repair_uefi","sr_restore_point","sr_dxdiag_report","sr_defender_scan",
+      "su_defender_scan","su_energy_report","su_sleepstudy","su_network_stack_reset","su_flush_dns",
+      "su_power_requests","su_last_wake","su_hash_file","su_safe_copy","sr_export_report","su_export_report",
+      "su_service_ticket","su_game_diagnostics","su_open_reports","sr_create_restore_point"
+    }
+    missing=set(ids)-all_known
+    assert not missing,"Brak procedur dla czynności: "+str(sorted(missing))
+    assert len(_U110_SCENE_LABELS)==31 and len(set(_U110_SCENE_LABELS.values()))==31
+    assert set(_U110_SCENE_LABELS)==set(range(60,91))
+    print("SERVICE_TOOLS_EXECUTABLE_SELFTEST_OK: "+str(len(ids))+" isolated tools, local reports, guarded repairs, 31 unique GPU scene labels")
+
+AppV43.show_service_center=_u110_show_service_center
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
@@ -12771,6 +13004,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u108_selftest_speed_profiles()
         _u107_selftest_speed_validation()
         _u109_selftest_service_catalog()
+        _u110_selftest_service_actions()
         _u107_selftest_unique_scene_per_catalog_test()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
