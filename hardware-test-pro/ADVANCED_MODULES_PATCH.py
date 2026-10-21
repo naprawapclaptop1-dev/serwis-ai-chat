@@ -12651,10 +12651,14 @@ def _u110_execute_service_action(app, group, action_id, settings=None):
         module,test_id=_U110_PROBE_LINKS[action_id]
         return _u109_service_probe(app,module,test_id,{})
     if action_id in ("sr_sensor_report","su_sensor_report"):
-        try:result=_u66_sensor_probe()
-        except Exception as exc:result={"state":"warn","error":str(type(exc).__name__)+": "+str(exc)}
-        if not isinstance(result,dict):result={"state":"warn","message":"Czujniki nie zwróciły raportu."}
-        result["note"]="Odczyt czujników, które faktycznie udostępnia sprzęt/sterownik."
+        try:snapshot=_u66_sensor_probe()
+        except Exception as exc:snapshot={"state":"warn","error":str(type(exc).__name__)+": "+str(exc)}
+        try:rows=_u107_get_sensor_rows(app)
+        except Exception as exc:rows=[]
+        if not isinstance(snapshot,dict):snapshot={"state":"warn","message":"Źródło czujników nie zwróciło migawki."}
+        result={"state":"good" if rows else "warn","sensor_count":len(rows),
+                "sensors":rows,"snapshot":snapshot,
+                "note":"Wartości z tabeli czujników dostępnych na tym PC. Brak czujnika pozostaje N/D; nie wszystkie urządzenia udostępniają wszystkie pola."}
         return result
     if action_id in ("sr_dism_check","sr_dism_scan","sr_dism_restore","sr_sfc_scan","sr_chkdsk_scan",
                      "sr_defender_scan","su_defender_scan","su_flush_dns","su_power_requests","su_last_wake"):
@@ -12911,9 +12915,7 @@ def _u110_start_service_action(app, group, action_id):
     _,title,description,risk=meta
     if risk=="nav":
         if action_id=="su_sensor_inventory":
-            fn=getattr(app,"show_live_monitor",None)
-            if callable(fn):fn()
-            else:messagebox.showinfo("Czujniki","Monitor live nie jest dostępny w tym widoku.")
+            _u107_open_sensor_inspector(app)
         elif action_id=="su_game_diagnostics":
             _u68_show_games_advisor(app)
         elif action_id=="su_refresh_hardware":
