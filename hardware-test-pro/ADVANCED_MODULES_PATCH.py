@@ -13582,6 +13582,7 @@ def _u121_show_system_repair_center(app):
         log_panel=body.master if body is not None else None
         panel=app.panel(app.content);panel.pack(fill="x",padx=3,pady=3,before=log_panel if log_panel is not None else None)
         app.make_button(panel,"ZLECENIA SERWISOWE — SERWIS ULTIMATE",lambda:_u121_show_service_jobs(app),"accent",side="left",ipady=4)
+        app.make_button(panel,"ZASILANIE / BATERIA — TESTY",lambda:_u121_show_power_lab(app),"card",side="left",ipady=4)
     except Exception as exc:
         try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
         except Exception:pass
@@ -13602,11 +13603,148 @@ def _u121_selftest_service_jobs():
         assert "&lt;script&gt;" in html_text and "<script>alert(1)</script>" not in html_text
     print("SERWIS_ULTIMATE_SERVICE_JOBS_SELFTEST_OK: atomic local storage, load/edit model and escaped HTML export")
 
+
+# Power/Battery diagnostics ported from Serwis Ultimate: each operation runs independently.
+def _u121_power_report_dir():
+    from pathlib import Path as _u121_Path
+    import os as _u121_os
+    folder=_u121_Path(_u121_os.environ.get("LOCALAPPDATA") or _u121_Path.home())/"NaprawaPC"/"Raporty"/"PowerBattery"
+    folder.mkdir(parents=True,exist_ok=True)
+    return folder
+
+def _u121_power_command(action,output_path):
+    path=str(output_path)
+    if action=="battery_info":
+        script="$b=@(Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object Caption,DeviceID,EstimatedChargeRemaining,BatteryStatus,EstimatedRunTime,DesignCapacity,FullChargeCapacity); if($b.Count -eq 0){[pscustomobject]@{state='N/D';note='Brak baterii udostępnionej przez WMI'} | ConvertTo-Json -Compress}else{$b | ConvertTo-Json -Depth 4 -Compress}"
+        return ["powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-Command",script],30
+    if action=="battery_report":return ["powercfg.exe","/batteryreport","/output",path],90
+    if action=="energy_report":return ["powercfg.exe","/energy","/duration","30","/output",path],90
+    if action=="sleepstudy":return ["powercfg.exe","/sleepstudy","/output",path],90
+    if action=="power_requests":return ["powercfg.exe","/requests"],30
+    if action=="last_wake":return ["powercfg.exe","/lastwake"],30
+    if action=="active_plan":return ["powercfg.exe","/getactivescheme"],30
+    raise ValueError("Nieznana operacja zasilania: "+str(action))
+
+def _u121_run_power_action(app,action,title):
+    import os as _u121_os
+    import subprocess as _u121_subprocess
+    import threading as _u121_threading
+    from datetime import datetime as _u121_datetime
+    from pathlib import Path as _u121_Path
+    if _u121_os.name!="nt":
+        messagebox.showinfo(title,"Ten test wymaga Windows.")
+        return
+    folder=_u121_power_report_dir()
+    stamp=_u121_datetime.now().strftime("%Y%m%d-%H%M%S")
+    ext=".html" if action in ("battery_report","energy_report","sleepstudy") else ".txt"
+    report_path=folder/(stamp+"-"+action+ext)
+    win=tk.Toplevel(app);win.title("NAPRAWA PC — "+title);win.geometry("820x520");win.minsize(650,400)
+    try:win.configure(bg=app.colors()["bg"])
+    except Exception:pass
+    t=app.colors()
+    tk.Label(win,text=title,bg=t["bg"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(10,3))
+    tk.Label(win,text="Osobny przebieg. Brak baterii lub brak obsługi SleepStudy oznacza N/D/WARN, nie fikcyjny PASS.",bg=t["bg"],fg=t["muted"],font=app.fnt(8),wraplength=780,justify="left").pack(anchor="w",padx=12,pady=(0,6))
+    status=tk.StringVar(value="Przygotowanie testu…")
+    tk.Label(win,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=780).pack(fill="x",padx=12,pady=(0,4))
+    output=tk.Text(win,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    output.pack(fill="both",expand=True,padx=12,pady=(0,8))
+    output.insert("end","Polecenie zostanie uruchomione osobno. Raport: "+str(report_path)+"\n")
+    output.configure(state="disabled")
+    buttons=tk.Frame(win,bg=t["bg"]);buttons.pack(fill="x",padx=12,pady=(0,10))
+    def set_output(text):
+        if not win.winfo_exists():return
+        output.configure(state="normal");output.delete("1.0","end");output.insert("end",text);output.see("end");output.configure(state="disabled")
+    def open_report():
+        try:
+            if report_path.exists() and hasattr(_u121_os,"startfile"):_u121_os.startfile(str(report_path))
+            else:messagebox.showinfo("Raport",str(report_path) if report_path.exists() else "Raport nie został utworzony.")
+        except Exception as exc:messagebox.showerror("Raport",str(exc))
+    app.make_button(buttons,"OTWÓRZ RAPORT",open_report,"accent",side="left",ipady=3)
+    app.make_button(buttons,"ZAMKNIJ",win.destroy,"card",side="right",ipady=3)
+    def worker():
+        state="WARN";text_out="";error=""
+        try:
+            command,timeout=_u121_power_command(action,report_path)
+            result=_u121_subprocess.run(command,capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=timeout,
+                creationflags=getattr(_u121_subprocess,"CREATE_NO_WINDOW",0))
+            text_out=((result.stdout or "")+"\n"+(result.stderr or "")).strip()
+            if action in ("battery_report","energy_report","sleepstudy"):
+                if result.returncode==0 and report_path.exists():
+                    state="PASS";text_out=(text_out+"\n\nRaport HTML utworzony: "+str(report_path)).strip()
+                else:
+                    state="WARN"
+                    if not text_out:text_out="Polecenie nie utworzyło raportu. Sprawdź obsługę polecenia i uprawnienia administratora."
+            else:
+                if not text_out:text_out="Brak tekstowego wyniku."
+                try:report_path.write_text(text_out,encoding="utf-8")
+                except Exception as exc:text_out+="\n\nNie zapisano raportu: "+str(exc)
+                state="PASS" if result.returncode==0 and "N/D" not in text_out else "WARN"
+            if result.returncode!=0:
+                state="WARN";error=f"\n\nKod wyjścia: {result.returncode}. Nie oznaczono tego jako PASS."
+        except Exception as exc:
+            state="WARN";error=f"{type(exc).__name__}: {exc}"
+            text_out="Test nie zakończył się poprawnie. "+error+"\n\nBrak obsługi sprzętu, konieczność administratora lub brak powercfg może dać WARN/N/D."
+            try:report_path.write_text(text_out,encoding="utf-8")
+            except Exception:pass
+        def finish():
+            if not win.winfo_exists():return
+            status.set(f"{state} — raport: {report_path}")
+            set_output((text_out or "Brak danych.")+error)
+            try:app.append_log(f"POWER/BATTERY {action}: {state}; {report_path}")
+            except Exception:pass
+        try:app.after(0,finish)
+        except Exception:pass
+    _u121_threading.Thread(target=worker,daemon=True,name="NaprawaPC-Power-"+action).start()
+
+def _u121_show_power_lab(app):
+    app.current_view="POWER_BATTERY_LAB"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — ZASILANIE, BATERIA I UŚPIENIE")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="TESTY ZASILANIA I BATERII — KAŻDY URUCHAMIA OSOBNY RAPORT",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,3))
+    tk.Label(head,text="Raporty są zapisywane lokalnie. Battery report, Energy report i SleepStudy mogą nie być obsługiwane przez dany laptop/Windows; Energy report może wymagać uruchomienia jako administrator. Brak danych to WARN/N/D, nie PASS.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    actions=[
+      ("BATTERY INFO","battery_info","Odczyt WMI baterii, poziomu naładowania, stanu i czasu pracy."),
+      ("BATTERY REPORT","battery_report","Raport HTML o baterii i historii pojemności."),
+      ("ENERGY REPORT","energy_report","30-sekundowa analiza problemów zasilania i uśpienia."),
+      ("SLEEPSTUDY","sleepstudy","Raport Modern Standby, jeśli obsługiwany przez urządzenie."),
+      ("POWER REQUESTS","power_requests","Procesy i sterowniki blokujące uśpienie."),
+      ("LAST WAKE","last_wake","Ostatnie źródło wybudzenia systemu."),
+      ("AKTYWNY PLAN ZASILANIA","active_plan","Identyfikacja aktywnego planu zasilania Windows.")
+    ]
+    for title,action,desc in actions:
+        card=app.panel(app.content);card.pack(fill="x",padx=3,pady=3)
+        row=tk.Frame(card,bg=t["panel"]);row.pack(fill="x",padx=8,pady=5)
+        left=tk.Frame(row,bg=t["panel"]);left.pack(side="left",fill="x",expand=True)
+        tk.Label(left,text=title,bg=t["panel"],fg=t["text"],font=app.fnt(9,"bold"),anchor="w").pack(fill="x")
+        tk.Label(left,text=desc,bg=t["panel"],fg=t["muted"],font=app.fnt(8),anchor="w",wraplength=950,justify="left").pack(fill="x",pady=(2,0))
+        app.make_button(row,"URUCHOM TEST",lambda a=action,ttl=title:_u121_run_power_action(app,a,ttl),"accent",side="right",ipady=4)
+    tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=3)
+    app.make_button(tools,"← LABORATORIUM",app.show_component_lab,"card",side="left",ipady=4)
+    app.make_button(tools,"OTWÓRZ FOLDER RAPORTÓW",lambda:__import__("os").startfile(str(_u121_power_report_dir())),"card",side="left",ipady=4)
+
+AppV43.show_power_battery_lab=_u121_show_power_lab
+
+def _u121_selftest_power_lab():
+    from pathlib import Path as _u121_Path
+    expected={
+      "battery_info":"powershell.exe","battery_report":"powercfg.exe","energy_report":"powercfg.exe",
+      "sleepstudy":"powercfg.exe","power_requests":"powercfg.exe","last_wake":"powercfg.exe","active_plan":"powercfg.exe"
+    }
+    for action,executable in expected.items():
+        command,timeout=_u121_power_command(action,_u121_Path("report.html"))
+        assert command[0].lower()==executable
+        assert timeout>=30
+    assert callable(AppV43.show_power_battery_lab)
+    print("SERWIS_ULTIMATE_POWER_BATTERY_SELFTEST_OK: 7 independent actions; separate reports; honest WARN/N/D")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
         _u119_selftest_furmark_scene()
         _u121_selftest_service_jobs()
+        _u121_selftest_power_lab()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
