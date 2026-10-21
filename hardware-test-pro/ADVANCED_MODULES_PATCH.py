@@ -13371,9 +13371,239 @@ def _u119_selftest_furmark_scene():
     print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 12,000 fur strands; animated OpenGL display list; synchronized FPS")
 
 
+
+# v4.3.121 — bring Serwis Ultimate service-job workflow into the main app.
+def _u121_job_store_path():
+    import os as _u121_os
+    from pathlib import Path as _u121_Path
+    root=_u121_os.environ.get("LOCALAPPDATA") or str(_u121_Path.home())
+    return _u121_Path(root)/"NaprawaPC"/"SerwisUltimate"/"service_jobs.json"
+
+def _u121_load_jobs(path=None):
+    import json as _u121_json
+    p=path or _u121_job_store_path()
+    try:
+        data=_u121_json.loads(p.read_text(encoding="utf-8"))
+        return [row for row in data if isinstance(row,dict)] if isinstance(data,list) else []
+    except Exception:
+        return []
+
+def _u121_save_jobs(path,jobs):
+    import json as _u121_json
+    from pathlib import Path as _u121_Path
+    p=_u121_Path(path);p.parent.mkdir(parents=True,exist_ok=True)
+    temp=p.with_suffix(p.suffix+".tmp")
+    temp.write_text(_u121_json.dumps(list(jobs),ensure_ascii=False,indent=2),encoding="utf-8")
+    temp.replace(p)
+    return p
+
+def _u121_export_job_html(job,path):
+    import html as _u121_html
+    from pathlib import Path as _u121_Path
+    labels=(
+        ("Numer zlecenia","id"),("Utworzono","created_at"),("Klient","client"),
+        ("Kontakt","contact"),("Typ urządzenia","device_type"),("Model","device_model"),
+        ("Numer seryjny","serial"),("Objaw klienta","symptom"),("Wynik diagnozy","diagnosis"),
+        ("Wykonane czynności","work_done"),("Uzgodniony zakres","scope"),("Status","status"),
+        ("Szacunkowy koszt","estimate"),("Zgoda na diagnozę/naprawę","consent_diagnostics"),
+        ("Omówiono kopię danych","backup_discussed"),("Zalanie/korozja","liquid_damage"),
+        ("Warunki gwarancji","warranty_informed")
+    )
+    rows=[]
+    for label,key in labels:
+        value=job.get(key,"—")
+        if isinstance(value,bool):value="TAK" if value else "NIE"
+        rows.append("<tr><th>"+_u121_html.escape(label)+"</th><td>"+_u121_html.escape(str(value if value not in (None,"") else "—"))+"</td></tr>")
+    html_doc=("<!doctype html><html lang='pl'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Karta serwisowa</title><style>body{font:15px Segoe UI,Arial;background:#0a1220;color:#e7f1ff;margin:24px}"
+        "h1{color:#54d7ff}table{border-collapse:collapse;width:100%;background:#111e31}th,td{border:1px solid #30445f;padding:9px;text-align:left;vertical-align:top}"
+        "th{width:240px;color:#79dfff}small{color:#9db0c9}</style></head><body>"
+        "<h1>NAPRAWA PC — KARTA SERWISOWA</h1><small>Wygenerowano lokalnie. Nie zapisuj haseł klientów w zleceniu.</small><table>"
+        +"".join(rows)+"</table></body></html>")
+    p=_u121_Path(path);p.parent.mkdir(parents=True,exist_ok=True);p.write_text(html_doc,encoding="utf-8")
+    return p
+
+def _u121_show_service_jobs(app):
+    import os as _u121_os
+    import uuid as _u121_uuid
+    from datetime import datetime as _u121_datetime
+    from pathlib import Path as _u121_Path
+    app.current_view="SERVICE_JOBS"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — ZLECENIA I KARTY SERWISOWE")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="ZLECENIE SERWISOWE • RAPORT KLIENTA • HISTORIA",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,2))
+    tk.Label(head,text="Dane zapisują się lokalnie. Nie wpisuj haseł, kodów PIN ani innych danych uwierzytelniających. Naprawy systemowe uruchamiaj z osobnego Centrum napraw i po potwierdzeniu.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    form=app.panel(app.content);form.pack(fill="x",padx=3,pady=3)
+    grid=tk.Frame(form,bg=t["panel"]);grid.pack(fill="x",padx=8,pady=(7,4))
+    entries={};texts={};checks={}
+    def entry_field(label,key,row,col,width=28):
+        tk.Label(grid,text=label,bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"),anchor="w").grid(row=row*2,column=col,sticky="w",padx=(3,6),pady=(2,0))
+        e=tk.Entry(grid,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat",width=width)
+        e.grid(row=row*2+1,column=col,sticky="ew",padx=(3,10),pady=(0,4),ipady=4);entries[key]=e
+    grid.columnconfigure(1,weight=1);grid.columnconfigure(3,weight=1)
+    entry_field("Klient / firma *","client",0,0)
+    entry_field("Telefon lub e-mail (opcjonalnie)","contact",0,2)
+    tk.Label(grid,text="Typ urządzenia",bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"),anchor="w").grid(row=2,column=0,sticky="w",padx=3,pady=(2,0))
+    device_type=ttk.Combobox(grid,values=("Laptop","Komputer stacjonarny","All-in-One","Mini PC","Inne"),state="readonly",width=25)
+    device_type.set("Laptop");device_type.grid(row=3,column=0,sticky="ew",padx=(3,10),pady=(0,4));entries["device_type"]=device_type
+    entry_field("Producent / model *","device_model",1,2)
+    entry_field("Numer seryjny (opcjonalnie)","serial",2,0)
+    entry_field("Szacunkowy koszt / uzgodnienie","estimate",2,2)
+    def text_field(label,key,row,height=3):
+        tk.Label(form,text=label,bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"),anchor="w").pack(fill="x",padx=11,pady=(3,1))
+        box=tk.Text(form,height=height,bg=t["card"],fg=t["text"],insertbackground=t["text"],wrap="word",relief="flat")
+        box.pack(fill="x",padx=10,pady=(0,4));texts[key]=box
+    text_field("Objaw zgłoszony przez klienta *","symptom",0,3)
+    text_field("Wynik diagnozy / ustalenia","diagnosis",0,3)
+    text_field("Wykonane czynności / zalecenia","work_done",0,3)
+    text_field("Uzgodniony zakres i ograniczenia","scope",0,2)
+    consent_row=tk.Frame(form,bg=t["panel"]);consent_row.pack(fill="x",padx=8,pady=3)
+    for key,label in (("consent_diagnostics","Zgoda na diagnozę/naprawę"),("backup_discussed","Omówiono kopię danych"),("liquid_damage","Zalanie/korozja odnotowane"),("warranty_informed","Warunki gwarancji przekazane")):
+        var=tk.BooleanVar(value=False);checks[key]=var
+        ttk.Checkbutton(consent_row,text=label,variable=var).pack(side="left",padx=4,pady=2)
+    status_row=tk.Frame(form,bg=t["panel"]);status_row.pack(fill="x",padx=10,pady=(2,7))
+    tk.Label(status_row,text="Status:",bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    status_var=tk.StringVar(value="Nowe")
+    status_box=ttk.Combobox(status_row,textvariable=status_var,values=("Nowe","W diagnozie","Oczekuje na części","W naprawie","Gotowe","Wydane","Anulowane"),state="readonly",width=23)
+    status_box.pack(side="left")
+    store=_u121_job_store_path()
+    current={"id":None}
+    jobs_cache=[]
+    status_label=tk.Label(app.content,text="Zlecenia przechowywane lokalnie.",bg=t["bg"],fg=t["accent"],anchor="w",justify="left")
+    status_label.pack(fill="x",padx=8,pady=(3,2))
+    def form_value(key):
+        if key in entries:return entries[key].get().strip()
+        return texts[key].get("1.0","end-1c").strip()
+    def reset_form():
+        current["id"]=None
+        for widget in entries.values():
+            try:widget.delete(0,"end")
+            except Exception:pass
+        try:device_type.set("Laptop")
+        except Exception:pass
+        for widget in texts.values():widget.delete("1.0","end")
+        for var in checks.values():var.set(False)
+        status_var.set("Nowe")
+    def refresh_list(select_id=None):
+        nonlocal jobs_cache
+        jobs_cache=_u121_load_jobs(store)
+        for iid in tree.get_children():tree.delete(iid)
+        for job in sorted(jobs_cache,key=lambda x:str(x.get("created_at","")),reverse=True):
+            tree.insert("","end",iid=str(job.get("id")),values=(job.get("created_at",""),job.get("client",""),job.get("device_type",""),job.get("device_model",""),job.get("status","")))
+        if select_id and tree.exists(select_id):tree.selection_set(select_id);tree.see(select_id)
+    def save_job():
+        client=form_value("client");model=form_value("device_model");symptom=form_value("symptom")
+        if not client or not model or not symptom:
+            messagebox.showwarning("Zlecenie serwisowe","Wypełnij klienta, model urządzenia i objaw zgłoszony przez klienta.")
+            return
+        jobs=_u121_load_jobs(store);now=_u121_datetime.now().isoformat(timespec="seconds")
+        job_id=current["id"] or (_u121_datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+_u121_uuid.uuid4().hex[:6])
+        job={
+            "id":job_id,"created_at":now,"client":client,"contact":form_value("contact"),
+            "device_type":form_value("device_type"),"device_model":model,"serial":form_value("serial"),
+            "estimate":form_value("estimate"),"symptom":symptom,"diagnosis":form_value("diagnosis"),
+            "work_done":form_value("work_done"),"scope":form_value("scope"),"status":status_var.get(),
+            "consent_diagnostics":checks["consent_diagnostics"].get(),"backup_discussed":checks["backup_discussed"].get(),
+            "liquid_damage":checks["liquid_damage"].get(),"warranty_informed":checks["warranty_informed"].get(),
+            "schema_version":1
+        }
+        replaced=False
+        for index,old in enumerate(jobs):
+            if str(old.get("id"))==job_id:jobs[index]=job;replaced=True;break
+        if not replaced:jobs.append(job)
+        try:
+            _u121_save_jobs(store,jobs);current["id"]=job_id;refresh_list(job_id)
+            status_label.config(text=f"Zapisano zlecenie {job_id} • {len(jobs)} zapisanych zleceń • {store}")
+        except Exception as exc:
+            messagebox.showerror("Zapis zlecenia",f"Nie udało się zapisać zlecenia: {type(exc).__name__}: {exc}")
+    def load_selected(_event=None):
+        selection=tree.selection()
+        if not selection:return
+        job=next((x for x in jobs_cache if str(x.get("id"))==selection[0]),None)
+        if not job:return
+        current["id"]=str(job.get("id"))
+        for key,widget in entries.items():
+            try:widget.delete(0,"end");widget.insert(0,str(job.get(key,"") or ""))
+            except Exception:pass
+        try:device_type.set(str(job.get("device_type","Laptop")))
+        except Exception:pass
+        for key,widget in texts.items():widget.delete("1.0","end");widget.insert("1.0",str(job.get(key,"") or ""))
+        for key,var in checks.items():var.set(bool(job.get(key,False)))
+        status_var.set(str(job.get("status","Nowe")))
+        status_label.config(text=f"Wczytano zlecenie {current['id']} — zapis nadpisze wybrane zlecenie.")
+    def export_selected():
+        selection=tree.selection()
+        if not selection:
+            messagebox.showinfo("Eksport","Zaznacz zlecenie na liście.");return
+        job=next((x for x in jobs_cache if str(x.get("id"))==selection[0]),None)
+        if not job:return
+        folder=store.parent/"reports";folder.mkdir(parents=True,exist_ok=True)
+        path=folder/(str(job.get("id"))+".html")
+        try:
+            _u121_export_job_html(job,path)
+            status_label.config(text=f"Raport HTML zapisany: {path}")
+            try:
+                if hasattr(_u121_os,"startfile"):_u121_os.startfile(str(path))
+            except Exception:pass
+        except Exception as exc:messagebox.showerror("Eksport raportu",str(exc))
+    def open_folder():
+        try:
+            store.parent.mkdir(parents=True,exist_ok=True)
+            if hasattr(_u121_os,"startfile"):_u121_os.startfile(str(store.parent))
+            else:messagebox.showinfo("Folder danych",str(store.parent))
+        except Exception as exc:messagebox.showerror("Folder danych",str(exc))
+    actions=app.panel(app.content);actions.pack(fill="x",padx=3,pady=3)
+    app.make_button(actions,"ZAPISZ / AKTUALIZUJ",save_job,"good",side="left",ipady=4)
+    app.make_button(actions,"NOWE ZLECENIE",reset_form,"card",side="left",ipady=4)
+    app.make_button(actions,"EKSPORT HTML",export_selected,"accent",side="left",ipady=4)
+    app.make_button(actions,"ODŚWIEŻ LISTĘ",lambda:refresh_list(),"card",side="left",ipady=4)
+    app.make_button(actions,"FOLDER DANYCH",open_folder,"card",side="left",ipady=4)
+    app.make_button(actions,"← LABORATORIUM",app.show_component_lab,"card",side="right",ipady=4)
+    list_panel=app.panel(app.content);list_panel.pack(fill="both",expand=True,padx=3,pady=3)
+    tk.Label(list_panel,text="HISTORIA ZLECEŃ — DWUKLIK OTWIERA DO EDYCJI",bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,3))
+    tree=ttk.Treeview(list_panel,columns=("date","client","type","model","status"),show="headings",height=7)
+    for key,label,width in (("date","Utworzono",150),("client","Klient",200),("type","Typ",130),("model","Urządzenie",240),("status","Status",150)):
+        tree.heading(key,text=label);tree.column(key,width=width,anchor="w")
+    tree.pack(fill="both",expand=True,padx=8,pady=(0,8))
+    tree.bind("<Double-1>",load_selected)
+    refresh_list()
+    return None
+
+_U121_ORIGINAL_SHOW_SYSTEM_REPAIR_CENTER=AppV43.show_system_repair_center
+def _u121_show_system_repair_center(app):
+    result=_U121_ORIGINAL_SHOW_SYSTEM_REPAIR_CENTER(app)
+    try:
+        body=getattr(app,"_u120_repair_log_text",None)
+        log_panel=body.master if body is not None else None
+        panel=app.panel(app.content);panel.pack(fill="x",padx=3,pady=3,before=log_panel if log_panel is not None else None)
+        app.make_button(panel,"ZLECENIA SERWISOWE — SERWIS ULTIMATE",lambda:_u121_show_service_jobs(app),"accent",side="left",ipady=4)
+    except Exception as exc:
+        try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
+        except Exception:pass
+    return result
+AppV43.show_system_repair_center=_u121_show_system_repair_center
+AppV43.show_service_jobs=_u121_show_service_jobs
+
+def _u121_selftest_service_jobs():
+    import tempfile as _u121_tempfile
+    from pathlib import Path as _u121_Path
+    sample={"id":"TEST-001","client":"<script>alert(1)</script>","device_model":"Laptop X","symptom":"Brak obrazu","consent_diagnostics":True}
+    with _u121_tempfile.TemporaryDirectory() as root:
+        path=_u121_Path(root)/"jobs.json"
+        _u121_save_jobs(path,[sample])
+        assert _u121_load_jobs(path)==[sample]
+        report=_u121_export_job_html(sample,_u121_Path(root)/"report.html")
+        html_text=report.read_text(encoding="utf-8")
+        assert "&lt;script&gt;" in html_text and "<script>alert(1)</script>" not in html_text
+    print("SERWIS_ULTIMATE_SERVICE_JOBS_SELFTEST_OK: atomic local storage, load/edit model and escaped HTML export")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
+        _u121_selftest_service_jobs()
         _u119_selftest_furmark_scene()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
