@@ -12985,7 +12985,16 @@ def _u116_selftest_scene_signatures():
     keys=[(x["style_index"],x["variant"],x["element_count"],x["scale"],x["rotation_speed"],x["palette"]) for x in signatures]
     assert len(signatures)==110 and len(set(keys))==110,"Each of the 110 scene IDs must have a distinct geometry signature."
     assert len({x["style_name"] for x in signatures})==12
-    names=_u93_deep_code_names(_u114_gpu_benchmark_child)
+    def nested_identifiers(code):
+        import types as _u116_types
+        found=set()
+        pending=[code]
+        while pending:
+            current=pending.pop()
+            found.update(current.co_names)
+            found.update(current.co_varnames)
+            pending.extend(value for value in current.co_consts if isinstance(value,_u116_types.CodeType))
+        return found
     def nested_literals(code):
         import types as _u116_types
         found=[]
@@ -12996,8 +13005,9 @@ def _u116_selftest_scene_signatures():
                 if isinstance(value,str):found.append(value)
                 elif isinstance(value,_u116_types.CodeType):pending.append(value)
         return set(found)
+    identifiers=nested_identifiers(_u114_gpu_benchmark_child.__code__)
     literals=nested_literals(_u114_gpu_benchmark_child.__code__)
-    assert "draw_scene_signature" in names,"The synchronized OpenGL renderer must draw the scene-specific signature."
+    assert "draw_scene_signature" in identifiers,"The synchronized OpenGL renderer must draw the scene-specific signature."
     assert "signature_vertices" in literals and "scene_signature" in literals
     assert "geometry_objects" in literals and "geometry_vertices" in literals
     print("UNIQUE_GPU_GEOMETRY_SIGNATURE_SELFTEST_OK: 110 unique signatures, 12 geometry accents, real synchronized OpenGL FPS")
