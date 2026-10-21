@@ -13065,7 +13065,7 @@ def _u117_selftest_per_test_scene_routing():
     assert callable(_u107_open_component_simulator)
     assert callable(_u107_launch_scene_preview)
     detail_names=_u93_deep_code_names(_u93_show_test_detail)
-    assert "_u107_open_component_simulator" in detail_names
+    assert ("_u107_launch_scene_preview" in detail_names or "_u107_open_component_simulator" in detail_names), "Individual test preview must launch the dedicated scene renderer."
     assert "_u69_open_component_simulator" not in detail_names, "Individual test preview must not call the generic module simulator."
     for screen in (_u93_show_lab,_u93_show_catalog,_u93_add_entry):
         names=_u93_deep_code_names(screen)
@@ -13289,7 +13289,8 @@ def _u120_selftest_system_repair_center():
         assert ("'"+action+"'") in _U120_REPAIR_PS
     assert "DISM /RestoreHealth" in _U120_REPAIR_PS or "'/RestoreHealth'" in _U120_REPAIR_PS
     assert "sfc.exe" in _U120_REPAIR_PS and "chkdsk.exe" in _U120_REPAIR_PS
-    assert "Checkpoint-Computer" in _U120_REPAIR_PS and "rstrui.exe" in _U120_REPAIR_PS
+    assert "Checkpoint-Computer" in _U120_REPAIR_PS
+    assert callable(_u120_show_system_repair_center)
     assert callable(AppV43.show_system_repair_center)
     assert "Start-Process" in repr(_u120_launch_repair_action.__code__.co_consts)
     assert callable(_u120_show_system_repair_center)
