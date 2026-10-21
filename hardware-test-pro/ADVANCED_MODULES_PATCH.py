@@ -12603,7 +12603,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             GL.glRotatef(elapsed*14.0+(sid-90)*1.7,0,1,0)
             GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)
             draw_scene(elapsed)
-            draw_scene_signature(elapsed)
+            if sid!=1:
+                draw_scene_signature(elapsed)
+            # The dedicated FurMark-style scene remains visually clean; other tests add their unique signature overlay.
             # Do not count queued command submission as rendered work; synchronize before the FPS sample.
             GL.glFinish()
             pg.display.flip();frames+=1;window_frames+=1
