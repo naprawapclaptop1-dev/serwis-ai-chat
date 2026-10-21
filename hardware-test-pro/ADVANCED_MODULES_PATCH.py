@@ -7937,11 +7937,41 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         from OpenGL.GLU import gluPerspective
         sid=max(1,min(60,int(scene_id)))
         title=_U100_SCENE_TITLES[sid-1]
+        requested_resolution=str(resolution or "1920x1080")
+        desktop_w=desktop_h=0
+        resolution_limited=False
         try:
-            rw,rh=[int(v) for v in str(resolution).lower().split("x",1)]
+            rw,rh=[int(v) for v in requested_resolution.lower().split("x",1)]
         except Exception:
-            rw,rh=1920,1080
+            requested_resolution="1920x1080";rw,rh=1920,1080
         rw=max(640,min(3840,rw));rh=max(480,min(2160,rh))
+
+        # Keep the actual active renderer inside the usable monitor area on smaller/HiDPI PCs.
+        try:
+            if os.name=="nt":
+                import ctypes as _u104_ctypes
+                desktop_w=int(_u104_ctypes.windll.user32.GetSystemMetrics(0))
+                desktop_h=int(_u104_ctypes.windll.user32.GetSystemMetrics(1))
+                if desktop_w>=640 and desktop_h>=480:
+                    usable_w=max(640,desktop_w-48)
+                    usable_h=max(480,desktop_h-112)
+                    display_scale=min(1.0,usable_w/float(rw),usable_h/float(rh))
+                    if display_scale<0.999:
+                        rw=max(640,int(rw*display_scale))
+                        rh=max(480,int(rh*display_scale))
+                        if rw>usable_w or rh>usable_h:
+                            correction=min(usable_w/float(rw),usable_h/float(rh))
+                            rw=max(640,int(rw*correction))
+                            rh=max(480,int(rh*correction))
+                        resolution_limited=True
+        except Exception:
+            desktop_w=desktop_h=0
+        result.update({
+            "resolution_requested":requested_resolution,
+            "resolution_rendered":f"{rw}x{rh}",
+            "desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
+            "resolution_limited_by_display":resolution_limited
+        })
         duration=max(3,min(900,int(seconds)))
         pg.init()
         try:
