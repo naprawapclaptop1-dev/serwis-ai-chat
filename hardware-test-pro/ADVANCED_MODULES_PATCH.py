@@ -13583,6 +13583,7 @@ def _u121_show_system_repair_center(app):
         panel=app.panel(app.content);panel.pack(fill="x",padx=3,pady=3,before=log_panel if log_panel is not None else None)
         app.make_button(panel,"ZLECENIA SERWISOWE — SERWIS ULTIMATE",lambda:_u121_show_service_jobs(app),"accent",side="left",ipady=4)
         app.make_button(panel,"ZASILANIE / BATERIA — TESTY",lambda:_u121_show_power_lab(app),"card",side="left",ipady=4)
+        app.make_button(panel,"BAZA WIEDZY / LEKCJE NAPRAWY",lambda:_u122_show_repair_knowledge(app),"card",side="left",ipady=4)
     except Exception as exc:
         try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
         except Exception:pass
@@ -13746,12 +13747,201 @@ def _u121_selftest_power_lab():
     assert callable(AppV43.show_power_battery_lab)
     print("SERWIS_ULTIMATE_POWER_BATTERY_SELFTEST_OK: 7 independent actions; separate reports; honest WARN/N/D")
 
+
+# v4.3.122 — local repair knowledge base and lesson helper ported from System Repair PRO.
+def _u122_knowledge_path():
+    from pathlib import Path as _u122_Path
+    import os as _u122_os
+    folder=_u122_Path(_u122_os.environ.get("LOCALAPPDATA") or _u122_Path.home())/"NaprawaPC"/"KnowledgeBase"
+    folder.mkdir(parents=True,exist_ok=True)
+    return folder/"knowledge.json"
+
+def _u122_load_knowledge(path=None):
+    import json as _u122_json
+    p=path or _u122_knowledge_path()
+    try:
+        data=_u122_json.loads(p.read_text(encoding="utf-8"))
+        return [x for x in data if isinstance(x,dict) and x.get("text")] if isinstance(data,list) else []
+    except Exception:return []
+
+def _u122_save_knowledge(path,documents):
+    import json as _u122_json
+    from pathlib import Path as _u122_Path
+    p=_u122_Path(path);p.parent.mkdir(parents=True,exist_ok=True)
+    temp=p.with_suffix(p.suffix+".tmp")
+    temp.write_text(_u122_json.dumps(list(documents),ensure_ascii=False,indent=2),encoding="utf-8")
+    temp.replace(p)
+    return p
+
+def _u122_extract_knowledge_file(path,max_chars=120000):
+    import hashlib as _u122_hashlib
+    from pathlib import Path as _u122_Path
+    p=_u122_Path(path)
+    if not p.is_file():raise FileNotFoundError(str(p))
+    if p.stat().st_size>2*1024*1024:raise ValueError("Plik przekracza limit 2 MB.")
+    suffix=p.suffix.lower()
+    if suffix==".pdf":
+        try:
+            from pypdf import PdfReader as _u122_PdfReader
+            reader=_u122_PdfReader(str(p))
+            text="\n".join((page.extract_text() or "") for page in reader.pages[:100])
+        except ImportError:raise RuntimeError("Brak modułu pypdf w pakiecie — nie można odczytać PDF.")
+    else:
+        allowed={".txt",".md",".log",".csv",".json",".html",".htm",".xml",".ini",".yaml",".yml",".ps1",".bat",".cmd",".py",".cs",".xaml",".config",".rtf",".sql",".reg",".cfg",".conf"}
+        if suffix not in allowed:raise ValueError("Nieobsługiwany format pliku: "+suffix)
+        text=p.read_text(encoding="utf-8-sig",errors="replace")
+        if suffix in (".html",".htm"):
+            import re as _u122_re
+            text=_u122_re.sub(r"(?is)<script\b.*?</script>|<style\b.*?</style>"," ",text)
+            text=_u122_re.sub(r"(?s)<[^>]+>"," ",text)
+            text=text.replace("&nbsp;"," ").replace("&amp;","&").replace("&lt;","<").replace("&gt;",">")
+    text="".join(ch for ch in text if ch in "\n\r\t" or ord(ch)>=32).strip()
+    if not text:raise ValueError("Plik nie zawiera tekstu do indeksowania.")
+    truncated=len(text)>max_chars
+    text=text[:max_chars]
+    digest=_u122_hashlib.sha256(text.encode("utf-8",errors="replace")).hexdigest()
+    from datetime import datetime as _u122_datetime
+    return {"id":digest,"name":p.name,"source_path":str(p.resolve()),"suffix":suffix,"sha256":digest,
+            "imported_at":_u122_datetime.now().isoformat(timespec="seconds"),"text":text,"truncated":truncated}
+
+def _u122_import_knowledge_files(paths,path=None):
+    existing=_u122_load_knowledge(path)
+    by_hash={str(x.get("sha256")):x for x in existing}
+    added=0;errors=[]
+    for source in paths:
+        try:
+            doc=_u122_extract_knowledge_file(source)
+            if doc["sha256"] not in by_hash:
+                by_hash[doc["sha256"]]=doc;added+=1
+        except Exception as exc:
+            errors.append({"path":str(source),"error":f"{type(exc).__name__}: {exc}"})
+    _u122_save_knowledge(path or _u122_knowledge_path(),by_hash.values())
+    return {"added":added,"total":len(by_hash),"errors":errors}
+
+def _u122_search_knowledge(query,documents=None,limit=8):
+    import re as _u122_re
+    query=str(query or "").strip()
+    if not query:return []
+    terms=[x.casefold() for x in _u122_re.findall(r"[\w\-]{2,}",query)]
+    if not terms:return []
+    results=[]
+    for doc in (documents if documents is not None else _u122_load_knowledge()):
+        text=str(doc.get("text",""));folded=text.casefold()
+        score=sum(folded.count(term)*(3 if term in doc.get("name","").casefold() else 1) for term in terms)
+        if score<=0:continue
+        best=0
+        for term in terms:
+            pos=folded.find(term)
+            if pos>=0:best=pos;break
+        start=max(0,best-260);end=min(len(text),best+950)
+        snippet=text[start:end].strip()
+        results.append({"score":score,"name":str(doc.get("name","Dokument")),"source_path":str(doc.get("source_path","")),
+                        "sha256":str(doc.get("sha256","")),"snippet":snippet,"document":doc})
+    results.sort(key=lambda x:(x["score"],len(x["snippet"])),reverse=True)
+    return results[:max(1,min(20,int(limit)))]
+
+def _u122_show_repair_knowledge(app):
+    import os as _u122_os
+    from tkinter import filedialog as _u122_filedialog
+    app.current_view="REPAIR_KNOWLEDGE_BASE";app.clear();t=app.colors()
+    app.header_title.config(text="SYSTEM REPAIR PRO — LOKALNA BAZA WIEDZY")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="BAZA WIEDZY • WYSZUKIWANIE • LEKCJA SERWISOWA",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,3))
+    tk.Label(head,text="Importowane dokumenty są indeksowane lokalnie. Skrypty są traktowane wyłącznie jako tekst — nie są uruchamiane. PDF obsługiwany przez pypdf. Nie importuj plików z hasłami ani kluczami odzyskiwania.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    status=tk.StringVar(value="Dokumenty: "+str(len(_u122_load_knowledge())))
+    tk.Label(app.content,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=1300).pack(fill="x",padx=8,pady=(0,4))
+    query_row=tk.Frame(app.content,bg=t["bg"]);query_row.pack(fill="x",padx=6,pady=4)
+    query=tk.Entry(query_row,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat")
+    query.pack(side="left",fill="x",expand=True,padx=(0,6),ipady=6)
+    result_panel=app.panel(app.content);result_panel.pack(fill="both",expand=True,padx=3,pady=3)
+    results=ttk.Treeview(result_panel,columns=("score","source"),show="headings",height=7)
+    results.heading("score",text="Trafność");results.heading("source",text="Źródło")
+    results.column("score",width=80,anchor="center");results.column("source",width=550,anchor="w")
+    results.pack(fill="x",padx=8,pady=(8,4))
+    output=tk.Text(result_panel,height=12,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    output.pack(fill="both",expand=True,padx=8,pady=(0,8))
+    found={}
+    def show_selected(_event=None):
+        selection=results.selection()
+        if not selection:return
+        item=found.get(selection[0])
+        if not item:return
+        output.configure(state="normal");output.delete("1.0","end")
+        output.insert("end",item["name"]+"\nŹródło: "+item["source_path"]+"\nTrafność: "+str(item["score"])+"\n\n"+item["snippet"])
+        output.configure(state="disabled")
+    results.bind("<<TreeviewSelect>>",show_selected)
+    def run_search():
+        found.clear()
+        for iid in results.get_children():results.delete(iid)
+        matches=_u122_search_knowledge(query.get(),limit=12)
+        for idx,item in enumerate(matches):
+            iid="kb"+str(idx);found[iid]=item
+            results.insert("","end",iid=iid,values=(item["score"],item["name"]))
+        if matches:
+            results.selection_set("kb0");show_selected()
+            status.set(f"Dokumenty: {len(_u122_load_knowledge())} • Trafienia: {len(matches)} • Wyniki lokalne, nie są automatyczną diagnozą.")
+        else:
+            output.configure(state="normal");output.delete("1.0","end");output.insert("end","Brak trafień. Zaimportuj instrukcję lub zmień frazę.");output.configure(state="disabled")
+            status.set(f"Dokumenty: {len(_u122_load_knowledge())} • Brak trafień.")
+    def import_files():
+        paths=_u122_filedialog.askopenfilenames(title="Importuj dokumenty do lokalnej bazy wiedzy",
+            filetypes=(("Dokumenty serwisowe","*.txt *.md *.log *.pdf *.csv *.json *.html *.htm *.xml *.ini *.yaml *.yml *.ps1 *.bat *.cmd *.py *.cs *.xaml *.config *.rtf *.sql *.reg *.cfg *.conf"),("Wszystkie pliki","*.*")))
+        if not paths:return
+        result=_u122_import_knowledge_files(paths)
+        message="Dodano: "+str(result["added"])+" • Łącznie: "+str(result["total"])
+        if result["errors"]:message+="\nPominięto "+str(len(result["errors"]))+" plików; pierwszy błąd: "+result["errors"][0]["error"]
+        status.set(message)
+        if result["errors"]:app.append_log("Baza wiedzy: "+message)
+    def clear_knowledge():
+        docs=_u122_load_knowledge()
+        if not docs:
+            status.set("Baza wiedzy jest pusta.");return
+        if not messagebox.askyesno("Wyczyść bazę wiedzy",f"Usunąć {len(docs)} wpisów indeksu lokalnego? Oryginalne pliki źródłowe nie zostaną skasowane."):return
+        _u122_save_knowledge(_u122_knowledge_path(),[])
+        for iid in results.get_children():results.delete(iid)
+        found.clear();output.configure(state="normal");output.delete("1.0","end");output.configure(state="disabled")
+        status.set("Baza wiedzy wyczyszczona. Oryginalne pliki pozostały bez zmian.")
+    def make_lesson():
+        matches=_u122_search_knowledge(query.get(),limit=5)
+        if not matches:
+            messagebox.showinfo("Lekcja serwisowa","Najpierw wpisz temat i wyszukaj dokumenty.");return
+        lesson=["LEKCJA SERWISOWA: "+query.get().strip(),"", "1. Zdefiniuj objaw i zanotuj warunki wystąpienia.","2. Przeczytaj trafienia źródłowe poniżej; nie uruchamiaj skryptów tylko dlatego, że znajdują się w dokumencie.","3. Zapisz diagnozę i wykonaj wyłącznie kroki, które rozumiesz oraz które są zgodne z dokumentacją urządzenia.","4. Po każdej zmianie uruchom odpowiedni test kontrolny.","5. Zapisz wynik i źródła w raporcie.", "", "ŹRÓDŁA:"]
+        for item in matches:
+            lesson.extend(["", "— "+item["name"]+" (trafność "+str(item["score"])+")", item["snippet"]])
+        output.configure(state="normal");output.delete("1.0","end");output.insert("end","\n".join(lesson));output.configure(state="disabled")
+        status.set("Ułożono szkic lekcji na podstawie "+str(len(matches))+" lokalnych źródeł. Zweryfikuj procedury przed naprawą.")
+    app.make_button(query_row,"SZUKAJ",run_search,"accent",side="left",ipady=4)
+    tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=3)
+    app.make_button(tools,"IMPORTUJ DOKUMENTY",import_files,"good",side="left",ipady=4)
+    app.make_button(tools,"UŁÓŻ LEKCJĘ",make_lesson,"accent",side="left",ipady=4)
+    app.make_button(tools,"WYCZYŚĆ INDEKS",clear_knowledge,"card",side="left",ipady=4)
+    app.make_button(tools,"← LABORATORIUM",app.show_component_lab,"card",side="right",ipady=4)
+    output.configure(state="disabled")
+    return None
+
+AppV43.show_repair_knowledge=_u122_show_repair_knowledge
+
+def _u122_selftest_repair_knowledge():
+    import tempfile as _u122_tempfile
+    from pathlib import Path as _u122_Path
+    with _u122_tempfile.TemporaryDirectory() as root:
+        source=_u122_Path(root)/"guide.txt";source.write_text("DISM RestoreHealth repairs the Windows component store. SFC checks protected system files.",encoding="utf-8")
+        result=_u122_import_knowledge_files([source],_u122_Path(root)/"knowledge.json")
+        assert result["added"]==1 and result["total"]==1
+        docs=_u122_load_knowledge(_u122_Path(root)/"knowledge.json")
+        hits=_u122_search_knowledge("DISM component store",docs)
+        assert hits and hits[0]["name"]=="guide.txt"
+        assert _u122_extract_knowledge_file(source)["sha256"]
+    assert callable(AppV43.show_repair_knowledge)
+    print("SYSTEM_REPAIR_PRO_KNOWLEDGE_SELFTEST_OK: local import, SHA-256 dedupe, ranked search and lesson source retrieval")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u117_selftest_per_test_scene_routing()
         _u119_selftest_furmark_scene()
         _u121_selftest_service_jobs()
         _u121_selftest_power_lab()
+        _u122_selftest_repair_knowledge()
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
