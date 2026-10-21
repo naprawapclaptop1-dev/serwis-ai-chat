@@ -14,6 +14,7 @@ Baza online sprawdzona: release 4.3.120 i źródło `hardware-test-pro/ADVANCED_
 - W buildzie 4.3.121 dodano lokalną historię zleceń serwisowych z eksportem HTML oraz 7 niezależnych akcji zasilania/baterii: Battery Info, Battery Report, Energy Report, SleepStudy, Power Requests, Last Wake i aktywny plan zasilania.
 - W przygotowywanym buildzie 4.3.122 dodawana jest lokalna baza wiedzy: import dokumentów tekstowych/PDF, deduplikacja SHA-256, wyszukiwanie źródeł i szkic lekcji serwisowej.
 - W przygotowywanym buildzie 4.3.123 dodawany jest asystent profili napraw System Repair PRO: 14 profili objawów, osobne odczytowe skany PowerShell, skróty do narzędzi Windows, wyszukiwanie sieciowe i raport HTML.
+- W przygotowywanym buildzie 4.3.124 dodawanych jest 10 niezależnych testów Serwis Ultimate: PnP, sterowniki, aplikacje, usługi, procesy, TCP/UDP, Defender, brama/DNS, błędy systemowe i szybka inwentaryzacja.
 
 ## Źródła z biblioteki użytkownika odnalezione do porównania
 
@@ -40,4 +41,4 @@ Przywrócono właściwy test regresyjny unikalnego mapowania 110 pozycji katalog
 
 ## Status prawdy
 
-Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To potwierdza build i testy automatyczne z tego przebiegu, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
+Buildy online 4.3.119, 4.3.120 i 4.3.121 zakończyły się sukcesem. Wersja 4.3.122 z bazą wiedzy jest opublikowana; build 4.3.123 z profilami napraw przechodzi publikację, a 4.3.124 z dodatkowymi testami Serwis Ultimate jest przygotowywany. CI potwierdza składnię, selftesty i kompilację, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
