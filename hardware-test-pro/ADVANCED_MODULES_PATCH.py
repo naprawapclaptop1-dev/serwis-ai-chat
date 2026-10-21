@@ -11265,6 +11265,9 @@ def _u110_open_component_simulator(app,module,fullscreen=False,mode="scan"):
     return _U109_ORIGINAL_OPEN_COMPONENT_SIMULATOR(app,module,fullscreen,mode)
 
 
+# Compatibility alias for earlier integration bindings that still reference the previous wrapper name.
+_u109_open_component_simulator = _u110_open_component_simulator
+
 def _u109_selftest_sensor_inspector():
     class FakeTree:
         def __init__(self,values):self._values=values
