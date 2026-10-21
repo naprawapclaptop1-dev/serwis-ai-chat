@@ -8881,7 +8881,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                     rw=max(640,event.w);rh=max(480,event.h);gl.glViewport(0,0,rw,rh)
                     gl.glMatrixMode(gl.GL_PROJECTION);gl.glLoadIdentity();gluPerspective(52.0,rw/rh,.1,240.0);gl.glMatrixMode(gl.GL_MODELVIEW)
             elapsed=_tm.perf_counter()-start
-            if 70<=sid_local<=72 and (int(elapsed*4+sid_local)%9) in (0,1,5):
+            if 70<=sid<=72 and (int(elapsed*4+sid)%9) in (0,1,5):
                 gl.glClearColor(.22,.30,.47,1.0)
             else:
                 gl.glClearColor(.004,.008,.02,1.0)
