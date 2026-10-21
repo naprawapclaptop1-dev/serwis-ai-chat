@@ -9262,14 +9262,16 @@ def _u105_stage_live_panel(self,index,total,title):
         value.pack(anchor="w")
         self._u67_stage_values[key]=value
     for col in range(5):strip.grid_columnconfigure(col,weight=1)
+    try: stage_screen_h=max(600,int(self.winfo_screenheight()))
+    except Exception: stage_screen_h=900
+    stage_chart_h=max(52,min(82,int(stage_screen_h*0.075)))
     charts=tk.Frame(panel,bg=t["panel"],bd=0);charts.pack(fill="x",padx=2,pady=(0,5))
     for name,row,col in (("_u67_stage_chart_hw",0,0),("_u67_stage_chart_io",0,1),
-                         ("_u67_stage_chart_temp",1,0),("_u67_stage_chart_clocks",1,1)):
-        chart=tk.Canvas(charts,height=94,bg=t["bg"],highlightthickness=0,bd=0)
+                         ("_u67_stage_chart_temp",1,0),("_u67_stage_chart_clocks",1,1),
+                         ("_u67_stage_chart_power",2,0),("_u67_stage_chart_voltage",2,1)):
+        chart=tk.Canvas(charts,height=stage_chart_h,bg=t["bg"],highlightthickness=0,bd=0)
         chart.grid(row=row,column=col,sticky="nsew",padx=4,pady=3)
         setattr(self,name,chart)
-    self._u67_stage_chart_power=None
-    self._u67_stage_chart_voltage=None
     for col in range(2):charts.grid_columnconfigure(col,weight=1)
     hist=getattr(self,"_u67_hist",{}) or {}
     for key in _U86_HISTORY_KEYS:hist.setdefault(key,[])
@@ -9372,6 +9374,12 @@ def _u105_refresh_visible_charts(self):
         clocks={k:hist.get(k,[]) for k in ("cpu_clock","gpu_clock")}
         clock_values=[v for items in clocks.values() for v in items]
         draw("_u67_stage_chart_clocks",clocks,max([1000.0]+clock_values),"ZEGARY MHz")
+        power={k:hist.get(k,[]) for k in ("cpu_power","gpu_power","system_power","battery_power")}
+        power_values=[v for items in power.values() for v in items]
+        draw("_u67_stage_chart_power",power,max([1.0]+power_values),"MOC W")
+        voltage={k:hist.get(k,[]) for k in ("cpu_voltage","gpu_voltage")}
+        voltage_values=[v for items in voltage.values() for v in items]
+        draw("_u67_stage_chart_voltage",voltage,max([0.1]+voltage_values),"NAPIĘCIE V")
     except Exception:
         pass
 
@@ -9445,6 +9453,10 @@ def _u105_selftest_visual_quality():
     assert "create_rectangle" not in _u105_gpu_live_tick.__code__.co_names
     assert _u67_stage_live_panel is _u105_stage_live_panel
     assert _u67_refresh_visible_charts is _u105_refresh_visible_charts
+    stage_names=_u105_recursive_code_names(_u105_stage_live_panel.__code__)
+    refresh_names=_u105_recursive_code_names(_u105_refresh_visible_charts.__code__)
+    assert "_u67_stage_chart_power" in stage_names and "_u67_stage_chart_voltage" in stage_names
+    assert "MOC W" in refresh_names and "NAPIĘCIE V" in refresh_names
     assert all(k in names for k in ("project","poly","path","ring","fan","chip"))
     print("POLISHED_SIMULATOR_UI_SELFTEST_OK: technical component renderers, radial gauges, line charts, no bar/rectangle model")
 
