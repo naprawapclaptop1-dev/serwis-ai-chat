@@ -12631,12 +12631,20 @@ def _u110_service_ticket_form(app):
     app.make_button(row,"ZAPISZ ZGŁOSZENIE JSON + HTML",save,"accent",side="left",ipady=6)
     app.make_button(row,"ANULUJ",top.destroy,"card",side="left",ipady=6)
 
+_U110_SCRIPT_ALIASES = {
+ "su_hardware_report":"sr_hardware_inventory",
+ "su_disk_detail":"sr_disk_inventory",
+ "su_usb_pci_inventory":"sr_usb_pci",
+ "su_detect_windows":"sr_detect_windows"
+}
+
 def _u110_execute_service_action(app, group, action_id, settings=None):
     settings=dict(settings or {})
     if not is_windows():
         return {"state":"warn","message":"Narzędzia serwisowe wymagają Windows 10/11."}
-    if action_id in _U110_PS_SCRIPTS:
-        return _u110_powershell_json(_U110_PS_SCRIPTS[action_id],timeout=240)
+    script_id=_U110_SCRIPT_ALIASES.get(action_id,action_id)
+    if script_id in _U110_PS_SCRIPTS:
+        return _u110_powershell_json(_U110_PS_SCRIPTS[script_id],timeout=240)
     if action_id in _U110_PROBE_LINKS:
         module,test_id=_U110_PROBE_LINKS[action_id]
         return _u109_service_probe(app,module,test_id,{})
@@ -12986,7 +12994,8 @@ def _u110_selftest_service_actions():
       "sr_bcd_backup","sr_bcd_repair_uefi","sr_restore_point","sr_dxdiag_report","sr_defender_scan",
       "su_defender_scan","su_energy_report","su_sleepstudy","su_network_stack_reset","su_flush_dns",
       "su_power_requests","su_last_wake","su_hash_file","su_safe_copy","sr_export_report","su_export_report",
-      "su_service_ticket","su_game_diagnostics","su_open_reports","sr_create_restore_point"
+      "su_service_ticket","su_game_diagnostics","su_open_reports","su_sensor_inventory","su_refresh_hardware",
+      "sr_restore_point","sr_create_restore_point"
     }
     missing=set(ids)-all_known
     assert not missing,"Brak procedur dla czynności: "+str(sorted(missing))
