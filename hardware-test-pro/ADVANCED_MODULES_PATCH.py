@@ -12989,7 +12989,7 @@ def _u110_selftest_service_actions():
     assert len(_U110_SERVICE_ACTIONS["SERWIS_ULTIMATE"])>=40
     assert callable(_u110_execute_service_action) and callable(_u110_start_service_action)
     assert callable(_u110_show_service_center) and callable(_u110_show_service_actions)
-    all_known=set(_U110_PS_SCRIPTS)|set(_U110_OPEN_TARGETS)|set(_U110_NAV_TARGETS)|set(_U110_PROBE_LINKS)|{
+    all_known=set(_U110_PS_SCRIPTS)|set(_U110_SCRIPT_ALIASES)|set(_U110_OPEN_TARGETS)|set(_U110_NAV_TARGETS)|set(_U110_PROBE_LINKS)|{
       "sr_dism_check","sr_dism_scan","sr_dism_restore","sr_sfc_scan","sr_chkdsk_scan","sr_repair_sequence",
       "sr_bcd_backup","sr_bcd_repair_uefi","sr_restore_point","sr_dxdiag_report","sr_defender_scan",
       "su_defender_scan","su_energy_report","su_sleepstudy","su_network_stack_reset","su_flush_dns",
