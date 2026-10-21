@@ -9222,7 +9222,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                 gl.glClearColor(.004,.008,.02,1.0)
             gl.glClear(gl.GL_COLOR_BUFFER_BIT|gl.GL_DEPTH_BUFFER_BIT)
             gl.glLoadIdentity()
-            camera_distance=5.25 if render_profile else (5.6 if sid<=3 else 8.6 if family<16 else 9.5)
+            camera_distance=5.25 if render_profile else (5.6 if sid<=3 else 8.6 if sid<=60 else 9.5)
             gl.glTranslatef(0,-.05 if render_profile else -.18,-camera_distance)
             rotation_speed=9.0 if render_profile else (14+(sid%11)*2.2)
             gl.glRotatef(elapsed*rotation_speed,.35+(sid%3)*.3,1,.22+(sid%5)*.08)
@@ -11396,6 +11396,7 @@ _u69_open_component_simulator=_u110_open_component_simulator
 def _u110_selftest_scene_and_component_rendering():
     assert _u104_gpu_benchmark_child.__code__.co_argcount>=5
     assert "render_profile" in _u104_gpu_benchmark_child.__code__.co_varnames
+    assert "family" not in _u104_gpu_benchmark_child.__code__.co_names, "Renderer must not reference an undefined scene-family variable"
     nested=_u110_nested_code_names(_u104_gpu_benchmark_child.__code__)
     assert "draw_component_profile" in nested and "draw_component_motion" in nested
     assert "furry_donut" in nested and "glCallList" in nested
