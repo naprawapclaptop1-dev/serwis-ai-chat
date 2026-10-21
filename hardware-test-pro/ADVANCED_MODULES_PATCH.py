@@ -7330,7 +7330,13 @@ def _u100_sensor_poll(app):
                     gpu["sensor_rows"]=generic.get("sensor_rows",0)
                     if temps.get("gpu_temp_c") is None and generic.get("temperature_c") is not None:temps["gpu_temp_c"]=generic["temperature_c"]
                     if temps.get("gpu_power_w") is None and generic.get("power_draw_w") is not None:temps["gpu_power_w"]=generic["power_draw_w"]
-                    snapshot={"gpu":gpu,"temps":temps,"time":_u66_time.monotonic()}
+                    try:
+                        # Include OS counters in the same fresh snapshot shown by the sensor inspector.
+                        # This worker already runs off the Tk thread, so per-core/disk/NIC reads do not freeze the UI.
+                        system=_u109_collect_os_metrics(app)
+                    except Exception as exc:
+                        system={"metrics_error":f"{type(exc).__name__}: {exc}"}
+                    snapshot={"gpu":gpu,"temps":temps,"system":system,"time":_u66_time.monotonic()}
                     def update():
                         app._u100_sensor_busy=False;app._u66_sensor_cache=snapshot;app._u84_gpu_last_telemetry=gpu
                         try:_u100_refresh_sensor_table(app)
@@ -10372,7 +10378,7 @@ def _u107_selftest_sensor_source_merge():
     assert AppV43.show_speed_test is _u109_show_speed_test
     assert callable(_u101_collect_os_metrics)
     deep_names=_u93_deep_code_names(_u100_sensor_poll)
-    assert "_u101_collect_os_metrics" in deep_names
+    assert "_u109_collect_os_metrics" in deep_names
     def nested_constants(function):
         import types as _u107_types
         pending=[function.__code__];values=[]
