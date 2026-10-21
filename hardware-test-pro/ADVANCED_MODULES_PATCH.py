@@ -788,6 +788,30 @@ def _u66_start_speed_test(self):
             self.queue_action(fail)
     _u66_threading.Thread(target=job,name="NaprawaPCSpeedTest",daemon=True).start()
 
+def _u107_merge_sensor_rows(existing, incoming, source, limit=2500):
+    """Merge distinct sensor records from the bridge and WMI without dropping source-only readings."""
+    merged=[]
+    seen={}
+    def key(row):
+        return tuple(str(row.get(field) or "").strip().casefold() for field in
+                     ("hardware","hardwareType","hardware_type","parent","sensor","name","sensorType","sensor_type","unit"))
+    for candidate in list(existing or [])+list(incoming or []):
+        if not isinstance(candidate,dict):
+            continue
+        row=dict(candidate)
+        if not row.get("source"):
+            row["source"]=str(source or "N/D")
+        identity=key(row)
+        # Prefer an existing bridge record for an identical physical sensor; append otherwise unseen records.
+        old=seen.get(identity)
+        if old is not None:
+            if old.get("value") is None and row.get("value") is not None:
+                old["value"]=row.get("value")
+            continue
+        seen[identity]=row
+        merged.append(row)
+    return merged[-max(1,int(limit or 2500)):]
+
 def _u66_sensor_probe():
     result={"cpu_temp_c":None,"gpu_temp_c":None,"cpu_power_w":None,"gpu_power_w":None,
             "system_power_w":None,"battery_power_w":None,"cpu_voltage_v":None,"gpu_voltage_v":None,
@@ -800,7 +824,7 @@ def _u66_sensor_probe():
     def collect_sensor_rows(rows, source):
         if not isinstance(rows,list):
             return
-        result["sensors"]=rows[:2000]
+        result["sensors"]=_u107_merge_sensor_rows(result.get("sensors",[]),rows,source,2500)
         power_rows=[]
         cpu_power_candidates=[]
         gpu_power_candidates=[]
@@ -956,8 +980,10 @@ try{
         proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
         if proc.returncode==0 and proc.stdout.strip():
             payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
-            if not result["sensors"]:
-                collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
+            # Always merge the WMI/OpenHardwareMonitor fallback. The bridge may not expose every temperature or usage counter.
+            collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
+            if result.get("bridge_provider") and result.get("sensors"):
+                result["method"]="LibreHardwareMonitor Sensor Bridge + WMI/ACPI fallback"
             result["acpi_zones"]=payload.get("zones") or []
             for sensor in result["sensors"]:
                 if not isinstance(sensor,dict): continue
@@ -7276,7 +7302,13 @@ def _u100_sensor_poll(app):
                     gpu["sensor_rows"]=generic.get("sensor_rows",0)
                     if temps.get("gpu_temp_c") is None and generic.get("temperature_c") is not None:temps["gpu_temp_c"]=generic["temperature_c"]
                     if temps.get("gpu_power_w") is None and generic.get("power_draw_w") is not None:temps["gpu_power_w"]=generic["power_draw_w"]
-                    snapshot={"gpu":gpu,"temps":temps,"time":_u66_time.monotonic()}
+                    try:
+                        # Keep OS/psutil metrics in the same snapshot. Previously this poll overwrote
+                        # the separate system dictionary created by the full telemetry inspector.
+                        system=_u101_collect_os_metrics(app)
+                    except Exception as exc:
+                        system={"error":f"{type(exc).__name__}: {exc}"}
+                    snapshot={"gpu":gpu,"temps":temps,"system":system,"time":_u66_time.monotonic()}
                     def update():
                         app._u100_sensor_busy=False;app._u66_sensor_cache=snapshot;app._u84_gpu_last_telemetry=gpu
                         try:_u100_refresh_sensor_table(app)
@@ -10208,6 +10240,30 @@ _u100_measure_speed=_u106_measure_speed
 _u90_measure_speed=_u106_measure_speed
 _u66_measure_speed=_u106_measure_speed
 
+def _u107_selftest_sensor_source_merge():
+    bridge=[
+        {"hardware":"CPU Package","sensor":"CPU Package","sensorType":"Temperature","value":72.0,"unit":"°C","source":"bridge"},
+        {"hardware":"GPU Core","sensor":"GPU Core","sensorType":"Temperature","value":67.0,"unit":"°C","source":"bridge"},
+        {"hardware":"GPU Core","sensor":"GPU Load","sensorType":"Load","value":93.0,"unit":"%","source":"bridge"}
+    ]
+    wmi=[
+        {"hardware":"CPU Package","sensor":"CPU Package","sensorType":"Temperature","value":71.0,"unit":"°C","source":"wmi"},
+        {"hardware":"Motherboard","parent":"Motherboard","sensor":"System Temperature","sensorType":"Temperature","value":41.0,"unit":"°C","source":"wmi"},
+        {"hardware":"NVMe","parent":"NVMe","sensor":"Drive Temperature","sensorType":"Temperature","value":48.0,"unit":"°C","source":"wmi"}
+    ]
+    merged=_u107_merge_sensor_rows(bridge,wmi,"test")
+    names={x.get("sensor") for x in merged}
+    assert {"CPU Package","GPU Core","GPU Load","System Temperature","Drive Temperature"}.issubset(names)
+    assert sum(1 for x in merged if x.get("sensor")=="CPU Package")==1
+    assert next(x for x in merged if x.get("sensor")=="CPU Package")["value"]==72.0
+    assert all(x.get("source") for x in merged)
+    assert _u66_measure_speed is _u106_measure_speed
+    assert AppV43.show_speed_test is _u101_show_speed_test
+    assert callable(_u101_collect_os_metrics)
+    assert "_u101_collect_os_metrics" in _u100_sensor_poll.__code__.co_names
+    assert "system" in repr(_u100_sensor_poll.__code__.co_consts)
+    print("FULL_SENSOR_SOURCE_MERGE_AND_ACTIVE_SPEED_UI_SELFTEST_OK")
+
 def _u106_selftest_sensor_mapping():
     synthetic={"sensors":[
         {"hardware":"AMD Ryzen 7","hardwareType":"CpuAmd","sensor":"Core (Tctl/Tdie)","sensorType":"Temperature","value":77.5,"unit":"°C"},
@@ -10255,6 +10311,7 @@ def _u106_selftest_adaptive_speed_payloads():
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u107_selftest_sensor_source_merge()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
         _u105_selftest_visual_quality()
