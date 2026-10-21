@@ -12435,6 +12435,334 @@ $svc=Get-Service winmgmt -ErrorAction SilentlyContinue | Select-Object Name,Stat
 """
 }
 
+
+_U110_OPEN_TARGETS.update({
+ "sr_open_winre":"ms-settings:recovery","sr_open_diskmgmt":"diskmgmt.msc",
+ "sr_open_restore":"rstrui.exe","sr_windows_update":"ms-settings:windowsupdate",
+ "sr_device_manager":"devmgmt.msc","sr_memdiag":"mdsched.exe",
+ "su_open_network":"ms-settings:network-status","su_open_recovery":"ms-settings:recovery",
+ "su_windows_tools":"control.exe /name Microsoft.AdministrativeTools"
+})
+
+_U110_PROBE_LINKS = {
+ "sr_os_activation":("SYSTEM_REPAIR_PRO","sr_os_activation"),
+ "sr_bios_uefi":("SYSTEM_REPAIR_PRO","sr_bios_uefi"),
+ "sr_driver_audit":("SYSTEM_REPAIR_PRO","sr_driver_audit"),
+ "sr_update_audit":("SYSTEM_REPAIR_PRO","sr_update_audit"),
+ "sr_event_errors":("SYSTEM_REPAIR_PRO","sr_event_errors"),
+ "sr_service_health":("SYSTEM_REPAIR_PRO","sr_service_health"),
+ "sr_recovery_bcd":("SYSTEM_REPAIR_PRO","sr_recovery_bcd")
+}
+
+def _u110_action_meta(group, action_id):
+    return next((item for item in _U110_SERVICE_ACTIONS.get(str(group),[]) if item[0]==str(action_id)),None)
+
+def _u110_report_dir():
+    try:
+        root=_u66_store_dir()
+    except Exception:
+        root=Path.home()/".naprawapc"
+    folder=Path(root)/"reports"/"service-center"
+    folder.mkdir(parents=True,exist_ok=True)
+    return folder
+
+def _u110_persist_action_report(group, action_id, title, result, elapsed):
+    report=dict(result or {})
+    report.setdefault("state","warn")
+    report.update({"group":str(group),"action_id":str(action_id),"title":str(title),
+                   "elapsed_seconds":round(float(elapsed),2),
+                   "finished_at":_U66_datetime.now().isoformat(timespec="seconds"),
+                   "source":"integrated native service workspace"})
+    try:
+        stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+        target=_u110_report_dir()/(str(action_id)+"-"+stamp+".json")
+        target.write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+        report["report_path"]=str(target)
+    except Exception as exc:
+        report["report_save_warning"]=str(type(exc).__name__)+": "+str(exc)
+    return report
+
+def _u110_update_action_view(app, action_id, status, result=None):
+    def apply():
+        if getattr(app,"current_view","")!="SERVICE_ACTION_DETAIL_"+str(action_id):
+            return
+        try:
+            lab=getattr(app,"_u110_action_status",None)
+            if lab is not None and lab.winfo_exists():
+                word=str(status).upper()
+                color=app.colors()["good"] if word in ("GOOD","GOTOWE","OK","STARTED") else app.colors()["bad"] if word in ("ERROR","BŁĄD","FAIL") else app.colors()["warn"]
+                lab.config(text=str(status),fg=color)
+        except Exception:
+            pass
+        try:
+            box=getattr(app,"_u110_action_report",None)
+            if box is not None and box.winfo_exists():
+                box.configure(state="normal")
+                box.delete("1.0","end")
+                body=_u66_json.dumps(result,ensure_ascii=False,indent=2,default=str) if isinstance(result,dict) else str(result or "Brak raportu.")
+                box.insert("1.0",body[:40000])
+                box.configure(state="disabled")
+        except Exception:
+            pass
+    try:
+        app.queue_action(apply)
+    except Exception:
+        try:apply()
+        except Exception:pass
+
+def _u110_powershell_json(script, timeout=120):
+    if not is_windows():
+        return {"state":"warn","message":"Ta czynność wymaga Windows 10/11.","returncode":None}
+    full="$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='Stop';\n"+str(script)
+    try:
+        proc=_u66_subprocess.run(["powershell.exe","-NoLogo","-NoProfile","-NonInteractive","-Command",full],
+            capture_output=True,text=True,timeout=max(5,int(timeout)),
+            creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        stdout=(proc.stdout or "").strip()
+        stderr=(proc.stderr or "").strip()
+        parsed=None
+        if stdout:
+            try:parsed=_u66_json.loads(stdout)
+            except Exception:parsed=None
+        result={"state":"good" if proc.returncode==0 and parsed is not None else "warn",
+                "returncode":proc.returncode,"data":parsed,"method":"PowerShell/CIM",
+                "stderr":stderr[-6000:]}
+        if parsed is None:
+            result["stdout"]=stdout[-20000:]
+            result["note"]="PowerShell nie zwrócił poprawnego JSON; nie oznaczono wyniku jako PASS."
+        if proc.returncode!=0:
+            result["note"]="Proces zwrócił kod błędu; odczytaj stderr i wynik."
+        if parsed in (None,[],{}):
+            result["state"]="warn"
+        return result
+    except Exception as exc:
+        return {"state":"error","error":str(type(exc).__name__)+": "+str(exc),
+                "note":"Nie uzyskano zweryfikowanego wyniku."}
+
+def _u110_native_command(args, timeout=180):
+    if not is_windows():
+        return {"state":"warn","message":"Ta czynność wymaga Windows 10/11.","returncode":None}
+    try:
+        proc=_u66_subprocess.run(list(args),capture_output=True,text=True,timeout=max(5,int(timeout)),
+            creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        code=proc.returncode
+        result={"state":"good" if code==0 else "warn","returncode":code,
+                "stdout":(proc.stdout or "")[-24000:],"stderr":(proc.stderr or "")[-8000:],
+                "command":[str(x) for x in args]}
+        if code is None:
+            result["state"]="warn"
+        return result
+    except Exception as exc:
+        return {"state":"error","error":str(type(exc).__name__)+": "+str(exc),
+                "command":[str(x) for x in args]}
+
+def _u110_export_report(app):
+    data={"app":str(globals().get("APP_NAME","NAPRAWA PC HARDWARE TEST PRO")),
+          "version":str(globals().get("VERSION","N/D")),
+          "captured_at":_U66_datetime.now().isoformat(timespec="seconds"),
+          "inventory":{"cpu":getattr(app,"cpu",{}),"gpus":getattr(app,"gpus",[]),
+             "logical_disks":getattr(app,"logical_disks",[]),
+             "physical_disks":getattr(app,"physical_disks",[]),
+             "monitors":getattr(app,"monitors",[])},
+          "results":getattr(app,"results",{}) or {},
+          "privacy_note":"Raport zapisany lokalnie, nie wysłany do sieci."}
+    folder=_u110_report_dir()
+    stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+    jp=folder/("service-report-"+stamp+".json")
+    hp=folder/("service-report-"+stamp+".html")
+    jp.write_text(_u66_json.dumps(data,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+    rendered=_u66_html.escape(_u66_json.dumps(data,ensure_ascii=False,indent=2,default=str))
+    hp.write_text("<!doctype html><meta charset='utf-8'><title>Raport Naprawa PC</title><style>body{background:#07111f;color:#d9e7f6;font:14px Consolas,monospace;padding:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>NAPRAWA PC — RAPORT SERWISOWY</h1><pre>"+rendered+"</pre>",encoding="utf-8")
+    return {"state":"good","json_path":str(jp),"html_path":str(hp),
+            "result_sections":len(data["results"]),"note":"Raport zapisano lokalnie."}
+
+def _u110_service_ticket_form(app):
+    top=tk.Toplevel(app)
+    top.title("NAPRAWA PC — nowe zgłoszenie serwisowe")
+    top.geometry("760x620")
+    t=app.colors()
+    top.configure(bg=t["bg"])
+    tk.Label(top,text="NOWE ZGŁOSZENIE SERWISOWE",bg=t["bg"],fg=t["accent"],font=app.fnt(14,"bold")).pack(anchor="w",padx=16,pady=(14,6))
+    frame=tk.Frame(top,bg=t["panel"])
+    frame.pack(fill="both",expand=True,padx=14,pady=8)
+    fields={}
+    def add(label,key,default="",height=1):
+        tk.Label(frame,text=label,bg=t["panel"],fg=t["fg"],font=app.fnt(9,"bold")).pack(anchor="w",padx=10,pady=(6,1))
+        if height==1:
+            widget=tk.Entry(frame,bg=t["card"],fg=t["fg"],insertbackground=t["fg"],relief="flat")
+            widget.pack(fill="x",padx=10)
+            if default:widget.insert(0,default)
+        else:
+            widget=tk.Text(frame,height=height,bg=t["card"],fg=t["fg"],insertbackground=t["fg"],relief="flat")
+            widget.pack(fill="x",padx=10)
+            if default:widget.insert("1.0",default)
+        fields[key]=widget
+    add("Klient (opcjonalnie)","client")
+    add("Urządzenie / model","device")
+    add("Priorytet","priority","normalny")
+    add("Opis usterki — wymagane","issue","",3)
+    add("Notatki serwisowe","notes","",4)
+    def value(key):
+        widget=fields[key]
+        return widget.get("1.0","end").strip() if isinstance(widget,tk.Text) else widget.get().strip()
+    def save():
+        device=value("device");issue=value("issue")
+        if not device or not issue:
+            messagebox.showwarning("Brak danych","Wpisz urządzenie i opis usterki.",parent=top)
+            return
+        stamp=_U66_datetime.now().strftime("%Y%m%d-%H%M%S")
+        ticket_id="NPC-"+stamp
+        obj={"ticket_id":ticket_id,"created_at":_U66_datetime.now().isoformat(timespec="seconds"),
+             "client":value("client"),"device":device,"priority":value("priority") or "normalny",
+             "issue":issue,"notes":value("notes"),"status":"nowe","storage":"local-only"}
+        folder=_u110_report_dir()/"jobs"
+        folder.mkdir(parents=True,exist_ok=True)
+        jp=folder/(ticket_id+".json");hp=folder/(ticket_id+".html")
+        jp.write_text(_u66_json.dumps(obj,ensure_ascii=False,indent=2),encoding="utf-8")
+        rows="".join("<dt>"+_u66_html.escape(str(k))+"</dt><dd>"+_u66_html.escape(str(v)).replace(chr(10),"<br>")+"</dd>" for k,v in obj.items())
+        hp.write_text("<!doctype html><meta charset='utf-8'><title>"+ticket_id+"</title><style>body{font:15px Segoe UI;background:#07111f;color:#d9e7f6;padding:24px}dt{color:#38bdf8;font-weight:bold;margin-top:12px}dd{white-space:pre-wrap}</style><h1>"+ticket_id+"</h1><dl>"+rows+"</dl>",encoding="utf-8")
+        try:app.queue_log("ZGŁOSZENIE SERWISOWE "+ticket_id+": zapis lokalny.")
+        except Exception:pass
+        messagebox.showinfo("Zlecenie zapisane","Zapisano lokalnie:\n"+str(jp)+"\n"+str(hp),parent=top)
+        top.destroy()
+    row=tk.Frame(top,bg=t["bg"]);row.pack(fill="x",padx=14,pady=(0,12))
+    app.make_button(row,"ZAPISZ ZGŁOSZENIE JSON + HTML",save,"accent",side="left",ipady=6)
+    app.make_button(row,"ANULUJ",top.destroy,"card",side="left",ipady=6)
+
+def _u110_execute_service_action(app, group, action_id, settings=None):
+    settings=dict(settings or {})
+    if not is_windows():
+        return {"state":"warn","message":"Narzędzia serwisowe wymagają Windows 10/11."}
+    if action_id in _U110_PS_SCRIPTS:
+        return _u110_powershell_json(_U110_PS_SCRIPTS[action_id],timeout=240)
+    if action_id in _U110_PROBE_LINKS:
+        module,test_id=_U110_PROBE_LINKS[action_id]
+        return _u109_service_probe(app,module,test_id,{})
+    if action_id in ("sr_sensor_report","su_sensor_report"):
+        try:result=_u66_sensor_probe()
+        except Exception as exc:result={"state":"warn","error":str(type(exc).__name__)+": "+str(exc)}
+        if not isinstance(result,dict):result={"state":"warn","message":"Czujniki nie zwróciły raportu."}
+        result["note"]="Odczyt czujników, które faktycznie udostępnia sprzęt/sterownik."
+        return result
+    if action_id in ("sr_dism_check","sr_dism_scan","sr_dism_restore","sr_sfc_scan","sr_chkdsk_scan",
+                     "sr_defender_scan","su_defender_scan","su_flush_dns","su_power_requests","su_last_wake"):
+        commands={
+          "sr_dism_check":(["DISM.exe","/Online","/Cleanup-Image","/CheckHealth"],300),
+          "sr_dism_scan":(["DISM.exe","/Online","/Cleanup-Image","/ScanHealth"],2400),
+          "sr_dism_restore":(["DISM.exe","/Online","/Cleanup-Image","/RestoreHealth"],3600),
+          "sr_sfc_scan":(["sfc.exe","/scannow"],3600),
+          "sr_chkdsk_scan":(["chkdsk.exe",os.environ.get("SystemDrive","C:"),"/scan"],2400),
+          "su_flush_dns":(["ipconfig.exe","/flushdns"],60),
+          "su_power_requests":(["powercfg.exe","/requests"],60),
+          "su_last_wake":(["powercfg.exe","/lastwake"],60)
+        }
+        if action_id in ("sr_defender_scan","su_defender_scan"):
+            return _u110_powershell_json("Start-MpScan -ScanType FullScan -ErrorAction Stop\n[pscustomobject]@{state='started';scan_type='FullScan';started_at=(Get-Date).ToString('o')} | ConvertTo-Json -Compress",timeout=120)
+        args,timeout=commands[action_id]
+        result=_u110_native_command(args,timeout)
+        result["note"]="Sprawdzono kod wyjścia. Kod 0 oznacza zakończenie polecenia, nie ogólną gwarancję zdrowia komputera."
+        return result
+    if action_id=="sr_repair_sequence":
+        steps=[]
+        for args,timeout in [
+           (["DISM.exe","/Online","/Cleanup-Image","/RestoreHealth"],3600),
+           (["sfc.exe","/scannow"],3600),
+           (["chkdsk.exe",os.environ.get("SystemDrive","C:"),"/scan"],2400)]:
+            steps.append(_u110_native_command(args,timeout))
+        state="good" if all(x.get("returncode")==0 for x in steps) else "warn"
+        return {"state":state,"steps":steps,"note":"Każde zadanie ma osobny kod wyjścia. Brak kodu jest ostrzeżeniem."}
+    if action_id=="sr_bcd_backup":
+        folder=_u110_report_dir()/"boot";folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("BCD-backup-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".bak")
+        result=_u110_native_command(["bcdedit.exe","/export",str(target)],90)
+        result["backup_path"]=str(target) if target.is_file() else None
+        if not target.is_file() or result.get("returncode")!=0:result["state"]="warn"
+        return result
+    if action_id=="sr_bcd_repair_uefi":
+        folder=_u110_report_dir()/"boot";folder.mkdir(parents=True,exist_ok=True)
+        backup=folder/("BCD-before-repair-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".bak")
+        safe=str(backup).replace("'","''")
+        script=r"""
+$ErrorActionPreference='Stop'
+$fw='N/D';try{$fw=[string](Get-ComputerInfo -Property BiosFirmwareType -ErrorAction Stop).BiosFirmwareType}catch{}
+if($fw -notmatch 'Uefi'){[Console]::Error.WriteLine('Zatrzymano: firmware nie raportuje UEFI.');exit 20}
+if(Test-Path 'S:\'){[Console]::Error.WriteLine('Zatrzymano: litera S: jest używana.');exit 21}
+$backup='"""+safe+r"""'
+& bcdedit.exe /export $backup
+if($LASTEXITCODE -ne 0){[Console]::Error.WriteLine('Nie udało się wykonać kopii BCD.');exit 22}
+$mounted=$false
+try{
+ & mountvol.exe S: /S
+ if($LASTEXITCODE -ne 0){throw 'Nie udało się tymczasowo zamontować partycji EFI.'}
+ $mounted=$true
+ & bcdboot.exe $env:SystemRoot /s S: /f UEFI
+ $bc=$LASTEXITCODE
+ if($bc -ne 0){throw ('bcdboot zwrócił kod '+$bc)}
+}finally{if($mounted){& mountvol.exe S: /D | Out-Null}}
+[pscustomobject]@{state='good';firmware=$fw;bcd_backup=$backup;efi_mount='S: (odmontowano)';bcdboot_exit=$bc;note='Zapisano BCD/EFI po potwierdzeniu. Zweryfikuj rozruch.'} | ConvertTo-Json -Compress
+"""
+        result=_u110_powershell_json(script,timeout=180)
+        result["bcd_backup_path"]=str(backup)
+        if result.get("returncode")!=0:result["state"]="warn"
+        return result
+    if action_id=="sr_restore_point":
+        label="NaprawaPC-"+_U66_datetime.now().strftime("%Y%m%d-%H%M")
+        script="Checkpoint-Computer -Description '"+label+"' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop\n[pscustomobject]@{created=$true;description='"+label+"';time=(Get-Date).ToString('o')} | ConvertTo-Json -Compress"
+        return _u110_powershell_json(script,timeout=240)
+    if action_id=="sr_dxdiag_report":
+        folder=_u110_report_dir()/"dxdiag";folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("dxdiag-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".txt")
+        try:
+            proc=_u66_subprocess.run(["dxdiag.exe","/whql:off","/t",str(target)],capture_output=True,text=True,timeout=75,
+                creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+            ready=target.is_file() and target.stat().st_size>0
+            return {"state":"good" if ready and proc.returncode==0 else "warn","returncode":proc.returncode,
+                    "report_path":str(target) if ready else None,"stderr":(proc.stderr or "")[-4000:]}
+        except Exception as exc:return {"state":"error","error":str(type(exc).__name__)+": "+str(exc)}
+    if action_id=="sr_create_restore_point":
+        label="NaprawaPC-"+_U66_datetime.now().strftime("%Y%m%d-%H%M")
+        return _u110_powershell_json("Checkpoint-Computer -Description '"+label+"' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop\n[pscustomobject]@{created=$true;description='"+label+"'} | ConvertTo-Json -Compress",240)
+    if action_id in ("su_energy_report","su_sleepstudy"):
+        folder=_u110_report_dir()/"power";folder.mkdir(parents=True,exist_ok=True)
+        stem="energy" if action_id=="su_energy_report" else "sleepstudy"
+        target=folder/(stem+"-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".html")
+        args=["powercfg.exe","/energy","/duration","30","/output",str(target)] if action_id=="su_energy_report" else ["powercfg.exe","/sleepstudy","/output",str(target)]
+        result=_u110_native_command(args,180)
+        result["report_path"]=str(target) if target.is_file() else None
+        if not target.is_file():result["state"]="warn"
+        return result
+    if action_id=="su_network_stack_reset":
+        first=_u110_native_command(["netsh.exe","winsock","reset"],90)
+        second=_u110_native_command(["ipconfig.exe","/flushdns"],60)
+        return {"state":"good" if first.get("returncode")==0 and second.get("returncode")==0 else "warn",
+                "steps":[first,second],"restart_may_be_required":True}
+    if action_id=="su_hash_file":
+        file_path=str(settings.get("file_path") or "")
+        if not file_path or not Path(file_path).is_file():return {"state":"warn","message":"Nie wybrano istniejącego pliku."}
+        import hashlib as _u110_hashlib
+        digest=_u110_hashlib.sha256();size=0
+        with open(file_path,"rb") as stream:
+            while True:
+                chunk=stream.read(4*1024*1024)
+                if not chunk:break
+                digest.update(chunk);size+=len(chunk)
+        return {"state":"good","file_path":file_path,"size_bytes":size,"sha256":digest.hexdigest(),"method":"local streaming SHA-256"}
+    if action_id=="su_safe_copy":
+        source=Path(str(settings.get("source") or "")).resolve()
+        destination=Path(str(settings.get("destination") or "")).resolve()
+        if not source.is_dir():return {"state":"warn","message":"Nie wybrano folderu źródłowego."}
+        if destination.exists():return {"state":"warn","message":"Folder docelowy już istnieje; nie nadpisano go."}
+        try:
+            if os.path.commonpath([str(source),str(destination)])==str(source):
+                return {"state":"warn","message":"Folder docelowy nie może znajdować się wewnątrz źródła."}
+        except Exception:pass
+        import shutil as _u110_shutil
+        _u110_shutil.copytree(source,destination,symlinks=True)
+        return {"state":"good","source":str(source),"destination":str(destination),"note":"Źródło nie zostało usunięte ani zmodyfikowane."}
+    if action_id in ("sr_export_report","su_export_report"):
+        return _u110_export_report(app)
+    return {"state":"error","action_id":action_id,"message":"Brak handlera. Operacja nie została uruchomiona."}
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
