@@ -170,10 +170,12 @@ jobs:
           name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
           body: |
             Wydanie Windows x64.
-            - 90 odrębnych testów w 15 grupach oraz 90 unikalnych ID scen OpenGL.
-            - 20 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE.
-            - Pełniejsza tabela telemetrii live (czujniki + metryki OS) i profile Speed Test QUICK/STANDARD/MAX.
-            - 125 motywów UI, raporty per-test, aktualizator HTTPS i centrum napraw Windows.
+            - 110 odrębnych testów w 15 grupach oraz 110 unikalnych ID scen OpenGL.
+            - 40 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE (20 dodatkowych kontroli w tym wydaniu).
+            - 20 nowych rendererów 3D dla diagnostyk serwisowych; renderer bazowy zachowuje sceny 1–90.
+            - Pełniejsza tabela Sensor Bridge: zachowuje także wykryte sensory bez aktualnej wartości jako N/D, obok metryk OS.
+            - Speed Test QUICK/STANDARD/MAX oraz TURBO z 4 równoległymi strumieniami HTTPS; transfer Turbo jest raportowany oddzielnie.
+            - 125 motywów UI, indywidualne raporty i aktualizator HTTPS.
             - Brak danych czujnika jest oznaczany N/D; fizyczna weryfikacja zależy od sprzętu.
           files: |
             hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
