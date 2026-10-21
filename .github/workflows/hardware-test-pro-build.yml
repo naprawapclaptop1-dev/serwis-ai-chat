@@ -170,13 +170,14 @@ jobs:
           name: "NAPRAWA PC HARDWARE TEST PRO ${{ steps.prepare.outputs.app_version }}"
           body: |
             Wydanie Windows x64.
-            - 110 odrębnych testów w 15 grupach oraz 110 unikalnych ID scen OpenGL.
-            - 40 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE (20 dodatkowych kontroli w tym wydaniu).
-            - 20 nowych rendererów 3D dla diagnostyk serwisowych; renderer bazowy zachowuje sceny 1–90.
-            - Pełniejsza tabela Sensor Bridge: zachowuje także wykryte sensory bez aktualnej wartości jako N/D, obok metryk OS.
-            - Speed Test QUICK/STANDARD/MAX oraz TURBO z 4 równoległymi strumieniami HTTPS; transfer Turbo jest raportowany oddzielnie.
+            - 110 indywidualnych testów w 15 grupach i 110 unikalnych ID scen OpenGL.
+            - 40 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE: po 20 na aplikację w katalogu integracyjnym.
+            - Wszystkie 110 scen używają dedykowanego renderera: 90 scen w 9 rodzinach geometrii po 10 wariantów oraz 20 dodatkowych układów serwisowych; rzeczywiste FPS mierzone z synchronizacją renderowania.
+            - Sensor Bridge zachowuje wykryte sensory bez bieżącej wartości jako N/D oraz oddziela liczbę wykrytych sensorów od liczby bieżących odczytów.
+            - Speed Test QUICK/STANDARD/MAX oraz TURBO z 4 równoległymi strumieniami HTTPS; wynik równoległy jest raportowany oddzielnie od mediany bazowej.
             - 125 motywów UI, indywidualne raporty i aktualizator HTTPS.
-            - Brak danych czujnika jest oznaczany N/D; fizyczna weryfikacja zależy od sprzętu.
+            - Brak czujnika jest oznaczany N/D. Windows CI nie zastępuje testu fizycznego komputera użytkownika.
+            - Uwaga dotycząca zakresu: 40 sond to integracja diagnostyczna w katalogu; pełna zgodność 1:1 wszystkich wewnętrznych ekranów i funkcji z obydwoma archiwami źródłowymi nie została jeszcze potwierdzona.
           files: |
             hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
@@ -240,7 +241,7 @@ jobs:
               installer_sha256: process.env.INSTALLER_SHA256,
               installer_size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": 90 testów w 15 grupach, 90 unikalnych scen OpenGL, pełniejsza tabela telemetrii live, Speed Test QUICK/STANDARD/MAX i 20 odczytowych diagnostyk System Repair PRO / Serwis Ultimate; centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Brak czujnika pozostaje N/D.",
+              notes: "Wydanie " + version + ": 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk integracyjnych System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D i Speed Test TURBO z 4 równoległymi strumieniami HTTPS. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
