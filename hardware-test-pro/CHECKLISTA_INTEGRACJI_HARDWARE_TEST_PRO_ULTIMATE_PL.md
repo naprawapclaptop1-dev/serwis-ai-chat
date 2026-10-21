@@ -1,37 +1,40 @@
-# CHECKLISTA INTEGRACJI — NAPRAWA PC HARDWARE TEST PRO ULTIMATE
+# CHECKLISTA INTEGRACJI — HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-## Zweryfikowany stan wydania
-- [x] Wydanie 4.3.98 opublikowane przez GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39310567796
-- [x] Setup.exe i ALL-IN-ONE ZIP opublikowane.
-- [x] Manifest stable zaktualizowany dopiero po poprawnej kompilacji i publikacji.
-- [x] Windows CI zaliczył składnię, selftesty, budowę EXE i weryfikację Inno Setup.
-- [x] Katalog ma 70 unikalnych pozycji i oddzielne ekrany uruchamiania testów.
-- [x] Test „Tryby ekranu” jest oddzielony od skanu EDID.
-- [x] Mikrofon i głośniki wymagają potwierdzenia przed odczytem próbek lub odtworzeniem tonu.
-- [x] Wyniki rozróżniają stan, ostrzeżenie, błąd i brak danych.
+## Katalog / GPU 3D
+- [x] Zachowano 70 dotychczasowych wpisów hardware.
+- [x] Dodano 10 osobnych pozycji SYSTEM REPAIR PRO i 10 SERWIS ULTIMATE.
+- [x] Każdy z 90 wpisów ma własny identyfikator oraz mapowanie do profilu OpenGL 1–90.
+- [x] 90 profili w 30 rodzinach geometrycznych — trzy odmienne układy na rodzinę.
+- [ ] Windows CI potwierdza wszystkie selftesty i raporty renderera.
+- [ ] Potwierdzić render i FPS na fizycznych komputerach z różnymi sterownikami.
 
-## Katalog testów
-- [x] CPU — 7 wpisów: identyfikacja, single-thread, multi-thread, obciążenie, stabilność, czujniki i symulator.
-- [x] RAM — 7 wpisów: skan, bufory 512/1024/2048 MB, przepustowość, dłuższy przebieg i symulator.
-- [x] GPU — 8 wpisów: skan, pojedyncza scena, 3 zestawy 60 scen, telemetria, doradca gier i symulator.
-- [x] VRAM — 6 wpisów: inwentarz, testy 64/128/256 MB, stabilność i symulator.
-- [x] Dyski — 7 wpisów: skan, SMART/reliability, 512 MB/2 GB/4 GB, długi benchmark i symulator.
-- [x] Ekran — 5 wpisów: EDID, tryby, wzorce, RGB/gradienty i symulator.
-- [x] Bezpieczeństwo — 4 wpisy: skan, autostart, diagnostyka systemu i symulator.
-- [x] Bateria — 5 wpisów: skan, monitor 180/600 s, raport powercfg i symulator.
-- [x] Sieć — 5 wpisów: adaptery, DNS/HTTPS, Speed Test, zmienność czasów DNS i symulator.
-- [x] USB — 4 wpisy; audio — 5; klawiatura/touchpad — 4; kamera — 3.
+## System Repair PRO
+- [x] Informacje Windows/build/architektura.
+- [x] Status licencji bez ujawniania pełnego klucza.
+- [x] BIOS/UEFI, Secure Boot, TPM, moduły RAM.
+- [x] Inwentarz sterowników PnP i błędy urządzeń.
+- [x] DxDiag/DirectX.
+- [x] SFC /verifyonly oraz DISM /ScanHealth — bez /RestoreHealth.
+- [x] Dziennik błędów z ostatnich 72 h.
+- [x] Punkty przywracania — tylko odczyt.
+- [x] Lokalna baza wiedzy i wyszukiwanie artykułów.
 
-## Budowanie lokalne
-- [ ] Pełny build na komputerze użytkownika z Python x64, .NET 10 i Inno Setup.
-- [ ] Uruchomienie GUI na fizycznym komputerze i potwierdzenie nawigacji.
-- [ ] Osobne uruchomienie skanów i benchmarków na realnym sprzęcie.
-- [ ] Potwierdzenie odczytów CPU/GPU/VRAM/fan/power dla faktycznie dostępnych sterowników.
-- [ ] Weryfikacja instalacji oraz aktualizacji nad istniejącą instalacją.
+## Serwis Ultimate
+- [x] Pełny inspektor czujników/CSV.
+- [x] VRAM i raport baterii.
+- [x] Kamera, klawiatura/mysz, tryby ekranu, audio, USB.
+- [x] Inwentarz modeli CIM/WMI z filtrowaniem.
+- [x] UEFI/RAM readiness i jawne otwarcie Windows Memory Diagnostic.
 
-## Granice pomiaru
-- Symulator 3D jest wizualizacją edukacyjną, chyba że uruchomiono odrębny test renderowania.
-- RAM/VRAM testowane z procesu Windows nie obejmują gwarantowanie wszystkich fizycznych komórek.
-- Benchmark dysku korzysta z pliku tymczasowego; nie wykonuje destrukcyjnego testu sektorów.
-- Pusta lista USB/audio/kamery nie dowodzi sprawności fizycznego urządzenia.
-- FPS scen OpenGL nie jest prognozą FPS konkretnej gry.
+## Telemetria / Speed Test
+- [x] CPU per-core i agregat CPU/RAM/swap.
+- [x] I/O poszczególnych urządzeń dyskowych i wolne/zajęte miejsce woluminów.
+- [x] RX/TX per interfejs i agregat sieci.
+- [x] Rekordy Sensor Bridge/LibreHardwareMonitor, dodatkowe temperatury psutil/ACPI.
+- [x] Speed Test adaptacyjny z HTTPS RTT, warm-up, median/peak/jitter, realny payload i historia.
+- [ ] Zweryfikować odczyty na fizycznym sprzęcie; N/D oznacza brak źródła.
+
+## Bezpieczeństwo
+- SFC/DISM wymagają administratora i nie wykonują automatycznych napraw.
+- Brak czujnika lub klatek nie jest zaliczeniem.
+- Aplikacja nie wykonuje samoczynnego restartu i nie edytuje BCD.
