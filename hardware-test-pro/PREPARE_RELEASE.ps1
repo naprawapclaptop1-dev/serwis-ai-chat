@@ -1676,6 +1676,330 @@ def _u107_add_offline_tab(self,notebook,t,add_row,add_btn):
     add_btn(row,"SFC OFFLINE /SCANNOW",sfc_offline,"accent")
     return offline
 
+def _u109_service_audit_specs():
+    return [
+        ("BIOS / UEFI / SECURE BOOT", r"""$ErrorActionPreference='SilentlyContinue'
+$os=@(Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,LastBootUpTime)
+$bios=@(Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate,Status)
+$computer=@(Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer,Model,SystemType,TotalPhysicalMemory)
+$firmware='N/D';try{$firmware=(Get-ComputerInfo -Property BiosFirmwareType -ErrorAction Stop).BiosFirmwareType}catch{}
+$secureBoot='N/D';try{$secureBoot=Confirm-SecureBootUEFI -ErrorAction Stop}catch{$secureBoot='N/D — firmware/system nie udostępnił odczytu'}
+$tpm='N/D';try{$x=Get-Tpm -ErrorAction Stop;$tpm=[pscustomobject]@{Present=$x.TpmPresent;Ready=$x.TpmReady;Enabled=$x.TpmEnabled;Activated=$x.TpmActivated;Manufacturer=$x.ManufacturerIdTxt;SpecVersion=$x.SpecVersion}}catch{}
+[pscustomobject]@{OS=$os;BIOS=$bios;Computer=$computer;FirmwareType=$firmware;SecureBoot=$secureBoot;TPM=$tpm} | ConvertTo-Json -Depth 6 -Compress""", 90),
+        ("AKTYWACJA WINDOWS — BEZ KLUCZA", r"""$ErrorActionPreference='SilentlyContinue'
+$app='55c92734-d682-4d71-983e-d6ec3f16059f'
+$rows=@(Get-CimInstance SoftwareLicensingProduct | Where-Object {$_.ApplicationID -eq $app -and $_.Name -like '*Windows*' -and $_.PartialProductKey} | ForEach-Object {
+  $status=switch([int]$_.LicenseStatus){0{'Unlicensed'};1{'Licensed'};2{'OOBGrace'};3{'OOTGrace'};4{'NonGenuineGrace'};5{'Notification'};6{'ExtendedGrace'};default{'Unknown'}}
+  [pscustomobject]@{Name=$_.Name;Description=$_.Description;LicenseStatus=$status;GracePeriodMinutes=$_.GracePeriodRemaining}
+})
+[pscustomobject]@{Count=$rows.Count;Products=$rows;ProductKeyExposed=$false;Note='Odczyt statusu bez odczytu lub eksportu klucza produktu.'} | ConvertTo-Json -Depth 5 -Compress""", 90),
+        ("URZĄDZENIA PNP — PROBLEMY", r"""$ErrorActionPreference='Stop'
+$all=@(Get-PnpDevice -PresentOnly | Select-Object Class,FriendlyName,Status,Problem,InstanceId)
+$bad=@($all | Where-Object {$_.Status -notin @('OK','Unknown') -or ($_.Problem -and $_.Problem -ne 0)})
+[pscustomobject]@{DevicesSeen=$all.Count;ProblemCount=$bad.Count;ProblemDevices=$bad;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("STEROWNIKI — WERSJE I PODPIS", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-CimInstance Win32_PnPSignedDriver | Select-Object DeviceName,DeviceClass,Manufacturer,DriverVersion,DriverDate,IsSigned,InfName)
+[pscustomobject]@{Count=$rows.Count;Drivers=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("AUTOSTART WINDOWS", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-CimInstance Win32_StartupCommand | Select-Object Name,Command,Location,User)
+[pscustomobject]@{Count=$rows.Count;Entries=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 90),
+        ("USŁUGI AUTOMATYCZNE — NIEURUCHOMIONE", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-CimInstance Win32_Service | Where-Object {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'} | Select-Object Name,DisplayName,State,StartMode,StartName,ExitCode)
+[pscustomobject]@{Count=$rows.Count;StoppedAutoServices=$rows;Note='Zatrzymana usługa automatyczna nie zawsze oznacza usterkę; oceń kontekst.'} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("BŁĘDY KRYTYCZNE SYSTEMU — 7 DNI", r"""$ErrorActionPreference='SilentlyContinue'
+$since=(Get-Date).AddDays(-7)
+$rows=@(Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=$since} -MaxEvents 120 | Select-Object TimeCreated,ProviderName,Id,LevelDisplayName,Message)
+[pscustomobject]@{Since=$since;Count=$rows.Count;Events=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("OSTATNIE AKTUALIZACJE WINDOWS", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 100 HotFixID,Description,InstalledOn,InstalledBy)
+[pscustomobject]@{Count=$rows.Count;Updates=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 90),
+        ("SIEĆ — ADAPTERY / BRAMY / DNS", r"""$ErrorActionPreference='SilentlyContinue'
+$ip=@(Get-NetIPConfiguration | Select-Object InterfaceAlias,InterfaceDescription,NetProfile,IPv4Address,IPv4DefaultGateway,DNSServer)
+$dns=@(Get-DnsClientServerAddress | Select-Object InterfaceAlias,AddressFamily,ServerAddresses)
+[pscustomobject]@{Interfaces=$ip;DNSServers=$dns;ReadOnly=$true} | ConvertTo-Json -Depth 6 -Compress""", 90),
+        ("USB / PCI — URZĄDZENIA I KONTROLERY", r"""$ErrorActionPreference='SilentlyContinue'
+$all=@(Get-PnpDevice -PresentOnly | Select-Object Class,FriendlyName,Status,Problem,InstanceId)
+$rows=@($all | Where-Object {$_.Class -in @('USB','System','SCSIAdapter','HDC','DiskDrive') -or $_.InstanceId -match '^(PCI|USB|HID)\\'})
+[pscustomobject]@{Count=$rows.Count;Devices=$rows;ReadOnly=$true;Note='Enumeracja PnP nie mierzy przepustowości ani fizycznego zasilania portu.'} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("PUNKTY PRZYWRACANIA WINDOWS", r"""$ErrorActionPreference='SilentlyContinue'
+$cfg=@(Get-CimInstance SystemRestore -Namespace root/default | Select-Object CreationTime,Description,RestorePointType,SequenceNumber)
+$points=@(Get-ComputerRestorePoint | Sort-Object SequenceNumber -Descending | Select-Object -First 100 SequenceNumber,Description,CreationTime,RestorePointType,EventType)
+[pscustomobject]@{SystemRestoreConfiguration=$cfg;Count=$points.Count;RestorePoints=$points;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120)
+    ]
+
+def _u109_run_readonly_audit(self, label, script, timeout=120):
+    def job():
+        if not is_windows():
+            self.queue_log(str(label) + ": audyt wymaga Windows.")
+            return
+        script_path=None
+        try:
+            report_root=_u107_repair_report_root()
+            safe=re.sub(r"[^A-Za-z0-9_-]+","_",str(label))[:48] or "audit"
+            token=datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+_u55_uuid.uuid4().hex[:6]
+            script_path=report_root/(token+"-"+safe+".ps1")
+            report_path=report_root/(token+"-"+safe+".json")
+            powershell=Path(os.environ.get("WINDIR",r"C:\Windows"))/"System32"/"WindowsPowerShell"/"v1.0"/"powershell.exe"
+            if not powershell.is_file():
+                raise FileNotFoundError("Nie znaleziono Windows PowerShell.")
+            script_path.write_text("$ErrorActionPreference='Stop'\n"+str(script)+"\n",encoding="utf-8-sig")
+            out,err,rc=run_process([str(powershell),"-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",str(script_path)],max(10,int(timeout)))
+            raw=(out or "").strip()
+            data=None
+            if raw:
+                try:
+                    data=_u66_json.loads(raw.splitlines()[-1])
+                except Exception:
+                    data={"output":raw[-60000:]}
+            report={"label":str(label),"state":"good" if int(rc or 0)==0 else "warn",
+                "exit_code":int(rc or 0),"finished_at":datetime.now().isoformat(timespec="seconds"),
+                "read_only":True,"report_path":str(report_path),"data":data,
+                "stdout":(out or "")[-60000:],"stderr":(err or "")[-12000:]}
+            report_path.write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+            self.queue_log(f"AUDYT WINDOWS {label}: kod {rc}. Raport: {report_path}")
+            if raw:self.queue_log(raw[-5000:])
+            if err:self.queue_log("STDERR "+str(err)[-2000:])
+        except Exception as exc:
+            self.queue_log(f"AUDYT WINDOWS {label}: BŁĄD {type(exc).__name__}: {exc}")
+    try:
+        self.worker(job)
+    except Exception as exc:
+        messagebox.showerror("Diagnostyka Windows",f"{label}: {type(exc).__name__}: {exc}",parent=self)
+
+def _u109_create_restore_point(self):
+    warning="Windows spróbuje utworzyć punkt przywracania przed pracami serwisowymi. Wymagane są włączona Ochrona systemu i uprawnienia administratora; system może odmówić, jeśli punkt był niedawno tworzony. Kontynuować?"
+    if not messagebox.askyesno("Utwórz punkt przywracania",warning,parent=self):
+        self.queue_log("Utworzenie punktu przywracania anulowane.")
+        return
+    _u55_run_repair(self,"Utwórz punkt przywracania","powershell.exe",[
+        "-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-Command",
+        "Checkpoint-Computer -Description 'NaprawaPC przed pracą serwisową' -RestorePointType 'MODIFY_SETTINGS'"
+    ],600)
+
+def _u109_open_audit_folder(self):
+    try:
+        os.startfile(str(_u107_repair_report_root()))
+    except Exception as exc:
+        messagebox.showerror("Raporty diagnostyczne",f"{type(exc).__name__}: {exc}",parent=self)
+
+
+_U109_KNOWLEDGE_ARTICLES = [
+ {"id":"sfc_dism","title":"Uszkodzone pliki Windows — SFC i DISM","keywords":"sfc dism restorehealth checkhealth scanhealth system files corruption windows repair",
+  "summary":"SFC sprawdza chronione pliki systemowe. DISM kontroluje i naprawia magazyn składników Windows. Przy naprawie uruchom terminal jako administrator i zapewnij zasilanie.",
+  "steps":"1. Uruchom najpierw DISM /Online /Cleanup-Image /CheckHealth.\n2. Jeżeli trzeba, uruchom DISM /Online /Cleanup-Image /ScanHealth.\n3. Naprawa magazynu: DISM /Online /Cleanup-Image /RestoreHealth.\n4. Na końcu: sfc /scannow.\n5. Zachowaj kody końcowe i log CBS/DISM. Nie przerywaj naprawy w połowie.",
+  "source":"Microsoft Support — naprawa plików systemowych","url":"https://support.microsoft.com/windows"},
+ {"id":"boot","title":"Windows nie startuje — diagnostyka rozruchu","keywords":"boot bcd winre startup recovery boot manager bcdedit uefi efi",
+  "summary":"Najpierw ustal, czy problem dotyczy samego systemu, magazynu BCD, partycji EFI czy nośnika. Nie wykonuj przypadkowo bootrec/bcdboot na nieznanej partycji.",
+  "steps":"1. Zapisz dokładny kod błędu i sfotografuj ekran.\n2. Sprawdź stan WinRE przez reagentc /info.\n3. Odczytaj wpisy BCD przez bcdedit /enum all.\n4. Wykonaj kopię BCD przed zmianami.\n5. Naprawę offline wykonuj tylko po jednoznacznym wskazaniu instalacji Windows i partycji rozruchowej.",
+  "source":"Microsoft Support — opcje odzyskiwania","url":"https://support.microsoft.com/windows/recovery-options-in-windows"},
+ {"id":"disk","title":"SSD/HDD/NVMe — SMART i błędy dysku","keywords":"disk ssd hdd nvme smart reliability chkdsk bad sectors storage",
+  "summary":"Najpierw zabezpiecz ważne dane. Raport SMART/reliability może być niedostępny dla części kontrolerów lub mostków USB; brak wyniku nie oznacza sprawnego dysku.",
+  "steps":"1. Sprawdź model, pojemność i dane reliability/SMART, jeśli sterownik je udostępnia.\n2. Uruchom chkdsk C: /scan dla woluminu systemowego.\n3. Zapisuj odczyt/zapis wyłącznie na pliku tymczasowym w benchmarku.\n4. Przy błędach I/O, znikaniu dysku lub SMART Critical ogranicz dalsze zapisy i wykonaj kopię danych.\n5. Nie uruchamiaj /r na dysku podejrzanym o awarię przed zabezpieczeniem danych.",
+  "source":"Microsoft Support — sprawdzanie dysku","url":"https://support.microsoft.com/windows"},
+ {"id":"ram","title":"RAM — test wzorców i diagnostyka pamięci","keywords":"ram memory memtest address pattern bit flip crash blue screen",
+  "summary":"Test pamięci procesu sprawdza tylko zaalokowany bufor. Nie zastępuje pełnego testu każdej fizycznej komórki ani testu poza uruchomionym Windows.",
+  "steps":"1. Zamknij aplikacje i zabezpiecz otwarte dokumenty.\n2. Uruchom osobny test RAM i wybierz rozmiar bufora odpowiedni do wolnej pamięci.\n3. Powtórz przebieg na różnych wzorcach i zachowaj raport.\n4. Przy podejrzeniu błędów sprzętowych uruchom Windows Memory Diagnostic lub test bootowalny.\n5. Przy błędach powtarzających się na jednej kości sprawdź moduły/sloty zgodnie z instrukcją producenta.",
+  "source":"Microsoft Support — diagnostyka pamięci","url":"https://support.microsoft.com/windows"},
+ {"id":"cpu","title":"CPU — obciążenie, zegary i temperatury","keywords":"cpu processor stress test clocks temperature throttling overheat",
+  "summary":"Wynik zależy od chłodzenia, limitów mocy, BIOS/UEFI i planu zasilania. Brak odczytu temperatury lub mocy ma pozostać N/D.",
+  "steps":"1. Zanotuj model, liczbę rdzeni/wątków oraz wersję BIOS.\n2. Zapisz temperaturę bez obciążenia, jeśli czujnik jest dostępny.\n3. Uruchom krótki test, a następnie dłuższy tylko po sprawdzeniu chłodzenia.\n4. Obserwuj zegary, użycie, temperaturę i throttling.\n5. Przerwij test przy zapachu spalenizny, niestabilności lub temperaturach niebezpiecznych dla danego CPU.",
+  "source":"Dokumentacja producenta procesora","url":"https://support.microsoft.com/windows"},
+ {"id":"gpu","title":"GPU — benchmark OpenGL i sterownik","keywords":"gpu graphics card opengl fps furmark driver dxdiag crash artifacts",
+  "summary":"FPS sceny OpenGL jest pomiarem renderowania tej sceny — nie przewiduje automatycznie FPS konkretnej gry. Telemetria wymaga zgodnego sterownika lub bridge.",
+  "steps":"1. Zapisz model GPU, sterownik, rozdzielczość i wersję OpenGL.\n2. Uruchom jedną scenę na krótkim profilu, potem porównuj dłuższe przebiegi tej samej sceny.\n3. Sprawdź temperaturę, zegary, użycie i VRAM, gdy są udostępnione.\n4. Artefakty graficzne, reset sterownika lub zawieszenia traktuj jako objaw do dalszej diagnostyki.\n5. Sterownik pobieraj od producenta GPU/komputera; nie wyłączaj ochrony antywirusowej dla instalatora.",
+  "source":"Microsoft Support — aktualizacja sterowników","url":"https://support.microsoft.com/windows/update-drivers-through-device-manager-in-windows"},
+ {"id":"vram","title":"VRAM — alokacja i odczyt zwrotny","keywords":"vram graphics memory texture allocation readback artifacts",
+  "summary":"Test z poziomu aplikacji obejmuje wyłącznie zasoby, które przydzieli sterownik. Nie gwarantuje kontroli każdej fizycznej komórki VRAM.",
+  "steps":"1. Zidentyfikuj kartę i dostępną pamięć, jeśli sterownik ją raportuje.\n2. Zacznij od małego rozmiaru alokacji.\n3. Uruchom test wzorców i weryfikacji readback.\n4. Sprawdź, czy sterownik nie zredukował rozmiaru testu.\n5. Przy błędach powtórz na domyślnym zegarze GPU i bez podkręcania.",
+  "source":"Dokumentacja producenta GPU","url":"https://support.microsoft.com/windows"},
+ {"id":"temperature","title":"Przegrzewanie laptopa lub PC","keywords":"temperature overheating fan rpm thermal throttling cpu gpu laptop dust",
+  "summary":"Temperatury, RPM, napięcia i pobór mocy są zależne od sprzętu i sterownika. ACPI zone nie musi być temperaturą rdzenia CPU.",
+  "steps":"1. Odczytaj wszystkie dostępne czujniki i ich źródła.\n2. Sprawdź, czy wloty powietrza nie są zasłonięte.\n3. Zanotuj temperaturę przy bezczynności i podczas krótkiego obciążenia.\n4. Jeżeli wentylator nie działa, obudowa jest bardzo gorąca albo sprzęt sam się wyłącza, przerwij obciążenie.\n5. Czyszczenie wnętrza wykonuj po odłączeniu zasilania; przy sprzęcie na gwarancji stosuj procedurę producenta.",
+  "source":"Dokumentacja producenta komputera","url":"https://support.microsoft.com/windows"},
+ {"id":"battery","title":"Bateria laptopa — raport i zużycie","keywords":"battery laptop batteryreport powercfg capacity charge wear AC adapter",
+  "summary":"Raport powercfg porównuje pojemność projektową i ostatnią pojemność pełnego ładowania. Nie zastępuje pomiaru baterii pod obciążeniem.",
+  "steps":"1. Wygeneruj powercfg /batteryreport.\n2. Porównaj Design Capacity i Full Charge Capacity.\n3. Sprawdź stan zasilacza oraz raport zdarzeń zasilania.\n4. Przy puchnięciu baterii nie używaj laptopa i zleć bezpieczną wymianę.\n5. Nie interpretuj brakującej telemetrii jako wyniku 0 W.",
+  "source":"Microsoft Support — ustawienia zasilania","url":"https://support.microsoft.com/windows"},
+ {"id":"drivers","title":"Sterowniki — identyfikacja i aktualizacja","keywords":"driver drivers signed version device manager hardware id pnp",
+  "summary":"Zacznij od identyfikacji sprzętu i wersji sterownika. Nie instaluj przypadkowych pakietów driver-updater z nieznanych źródeł.",
+  "steps":"1. Sprawdź status PnP, nazwę urządzenia, Hardware ID i wersję sterownika.\n2. Odczytaj producenta i podpis cyfrowy.\n3. Najpierw sprawdź Windows Update lub stronę producenta komputera/podzespołu.\n4. Zapisz punkt przywracania przed większą zmianą sterowników, jeżeli Ochrona systemu jest dostępna.\n5. Po aktualizacji sprawdź ponownie status i dziennik zdarzeń.",
+  "source":"Microsoft Support — sterowniki w Menedżerze urządzeń","url":"https://support.microsoft.com/windows/update-drivers-through-device-manager-in-windows"},
+ {"id":"usb_pci","title":"USB/PCI — urządzenia i kody problemów","keywords":"usb pci pnp device manager code 10 code 43 controller",
+  "summary":"Enumeracja PnP odczytuje status systemowy urządzenia; nie dowodzi sprawności przewodu, zasilania portu ani realnej przepustowości.",
+  "steps":"1. Zapisz nazwę urządzenia, klasę, Instance ID i kod problemu.\n2. Sprawdź kontroler USB/PCI w Menedżerze urządzeń.\n3. Przetestuj port innym znanym, sprawnym urządzeniem i kablem.\n4. Zainstaluj właściwy chipset/USB driver od producenta płyty lub laptopa.\n5. Nie usuwaj sterowników kontrolera masowo bez punktu przywracania i planu odzyskania.",
+  "source":"Microsoft Support — Menedżer urządzeń","url":"https://support.microsoft.com/windows"},
+ {"id":"network","title":"Sieć — DNS, download, upload i jitter","keywords":"network wifi ethernet dns speed test latency jitter packet loss router",
+  "summary":"Speed Test używa rzeczywistych endpointów HTTPS. Czas DNS/HTTP nie jest tym samym co ping ICMP ani jitter pakietów.",
+  "steps":"1. Zapisz interfejs, link speed, bramę i DNS.\n2. Uruchom pobieranie i wysyłanie osobnymi próbkami.\n3. Porównuj medianę i stabilność próbek zamiast wyłącznie najlepszego wyniku.\n4. Powtórz test po kablu Ethernet i po Wi-Fi, jeśli możesz.\n5. Nie publikuj publicznie IP, adresów MAC ani raportów zawierających prywatne dane.",
+  "source":"Microsoft Support — rozwiązywanie problemów sieci","url":"https://support.microsoft.com/windows"},
+ {"id":"audio","title":"Audio — mikrofon i wyjście","keywords":"audio microphone speakers headphones sound no sound privacy",
+  "summary":"Samo wykrycie urządzenia nie potwierdza, że mikrofon zbiera dźwięk lub głośniki są słyszalne.",
+  "steps":"1. Sprawdź domyślne urządzenia wejścia/wyjścia i poziom głośności.\n2. Upewnij się, że ustawienia prywatności zezwalają aplikacji na mikrofon.\n3. Wykonaj test z potwierdzeniem; próbki mikrofonu nie powinny być zapisywane bez osobnej zgody.\n4. Odtwórz krótki, cichy ton i potwierdź słyszalność.\n5. Zaktualizuj sterownik audio od producenta urządzenia.",
+  "source":"Microsoft Support — ustawienia dźwięku","url":"https://support.microsoft.com/windows"},
+ {"id":"display","title":"Matryca, EDID, rozdzielczość i odświeżanie","keywords":"display monitor screen edid refresh rate dead pixel resolution",
+  "summary":"Odczyt EDID i trybów pochodzi od monitora/sterownika. Martwe piksele i nierównomierność podświetlenia wymagają oceny wzrokowej.",
+  "steps":"1. Zapisz model ekranu i aktualny tryb obrazu.\n2. Wyświetl jednolite wzorce kolorów i gradienty.\n3. Obejrzyj obraz pod różnymi kątami i przy niskiej/wysokiej jasności.\n4. Sprawdź, czy przewód, stacja dokująca i GPU obsługują wybraną częstotliwość.\n5. Brak listy wspieranych trybów WMI oznacz jako N/D.",
+  "source":"Microsoft Support — konfiguracja wyświetlacza","url":"https://support.microsoft.com/windows"},
+ {"id":"activation","title":"Licencja i aktywacja Windows","keywords":"activation license slmgr xpr product key windows license",
+  "summary":"Status aktywacji można odczytać bez ujawniania pełnego klucza produktu. Klucza nie należy publikować ani umieszczać w raporcie serwisowym.",
+  "steps":"1. Otwórz Ustawienia → System → Aktywacja.\n2. Sprawdź komunikat i edycję Windows.\n3. W razie potrzeby uruchom slmgr /xpr, aby zobaczyć status okresu aktywacji.\n4. Przy zmianie płyty sprawdź powiązanie licencji z kontem lub dokument zakupu.\n5. Nie udostępniaj zdjęć ani logów zawierających klucze lub tokeny aktywacji.",
+  "source":"Microsoft Support — aktywacja Windows","url":"https://support.microsoft.com/windows"},
+ {"id":"windows_update","title":"Windows Update — błędy instalacji","keywords":"windows update failed error code patches cumulative updates hotfix",
+  "summary":"Najpierw zachowaj kod błędu, datę i historię aktualizacji. Nie usuwaj hurtowo składników aktualizacji przed diagnozą.",
+  "steps":"1. Otwórz Ustawienia → Windows Update → Historia aktualizacji.\n2. Zapisz KB, kod błędu i moment niepowodzenia.\n3. Sprawdź miejsce na dysku i datę systemową.\n4. Uruchom diagnostykę SFC/DISM, jeżeli są przesłanki uszkodzeń systemu.\n5. Instaluj ręcznie wyłącznie aktualizację pasującą do edycji, architektury i wersji Windows.",
+  "source":"Microsoft Support — Windows Update","url":"https://support.microsoft.com/windows"},
+ {"id":"restore","title":"Ochrona systemu i punkt przywracania","keywords":"restore point system restore checkpoint recovery rollback",
+  "summary":"Punkt przywracania nie jest kopią zapasową plików użytkownika. Może być niedostępny, jeśli Ochrona systemu jest wyłączona lub obowiązuje ograniczenie częstotliwości.",
+  "steps":"1. Sprawdź Ochrona systemu w Właściwościach systemu.\n2. Utwórz punkt przed większą zmianą sterowników lub konfiguracji.\n3. Nie przerywaj tworzenia punktu i zachowaj raport.\n4. Przywracanie może cofnąć aplikacje/sterowniki, ale nie zastępuje kopii danych.\n5. W razie problemów uruchom rstrui.exe i wybierz właściwy punkt.",
+  "source":"Microsoft Support — odzyskiwanie Windows","url":"https://support.microsoft.com/windows/recovery-options-in-windows"},
+ {"id":"malware","title":"Podejrzenie złośliwego oprogramowania","keywords":"virus malware defender antivirus suspicious file quarantine bitdefender",
+  "summary":"Nie wyłączaj ochrony i nie przywracaj plików z kwarantanny tylko dlatego, że instalator jest potrzebny.",
+  "steps":"1. Zachowaj nazwę wykrycia, ścieżkę i raport ochrony.\n2. Zaktualizuj definicje i uruchom skanowanie zgodnie z polityką bezpieczeństwa.\n3. Nie uruchamiaj podejrzanego pliku w celu sprawdzenia.\n4. Przeanalizuj podpis, sumę SHA-256 i źródło pobrania.\n5. W razie podejrzenia infekcji odłącz system od wrażliwych zasobów i wykonaj kopię tylko niezbędnych danych.",
+  "source":"Microsoft Support — Zabezpieczenia Windows","url":"https://support.microsoft.com/windows"},
+ {"id":"logs","title":"Błędy systemowe, BSOD i Podgląd zdarzeń","keywords":"event viewer system log kernel power bsod crash dump error code",
+  "summary":"Pojedyncze zdarzenie nie zawsze oznacza przyczynę awarii. Porównaj czas, źródło, ID i zdarzenia bezpośrednio przed problemem.",
+  "steps":"1. Odczytaj kod stopu lub ID zdarzenia.\n2. Zapisz czas lokalny, źródło i pełny komunikat.\n3. Sprawdź powtarzalność oraz aktualizacje/sterowniki z tej samej chwili.\n4. Nie usuwaj logów przed zapisaniem raportu.\n5. Przy BSOD zachowaj minidump, o ile zawartość nie ujawnia danych wrażliwych.",
+  "source":"Microsoft Support — rozwiązywanie błędów Windows","url":"https://support.microsoft.com/windows"},
+ {"id":"camera","title":"Kamera laptopa — prywatność i podgląd","keywords":"camera webcam privacy camera not working black screen",
+  "summary":"Skan PnP pokazuje wykrycie urządzenia, a nie dowód poprawnego obrazu. Podgląd powinien być uruchamiany po potwierdzeniu i bez nagrywania domyślnie.",
+  "steps":"1. Sprawdź fizyczną przesłonę i klawisz skrótu kamery.\n2. Sprawdź uprawnienia prywatności kamery dla aplikacji.\n3. Zamknij aplikacje, które mogą zajmować urządzenie.\n4. Uruchom krótki podgląd i potwierdź obraz.\n5. Sprawdź sterownik i zdarzenia urządzenia.",
+  "source":"Microsoft Support — ustawienia prywatności","url":"https://support.microsoft.com/windows"},
+ {"id":"usb_storage","title":"USB — bezpieczne testowanie portów i dysków","keywords":"usb port flash drive external disk safe removal enumeration",
+  "summary":"Lista urządzeń nie dowodzi, że port przenosi dane lub dostarcza właściwe zasilanie. Test prędkości musi używać znanego nośnika i małej próbki.",
+  "steps":"1. Sprawdź inne urządzenie i kabel na porcie.\n2. Odczytaj status PnP oraz kontroler.\n3. Przy dysku zewnętrznym zabezpiecz dane przed testem zapisu.\n4. Zakończ benchmark i upewnij się, że plik tymczasowy został usunięty.\n5. Bezpiecznie wysuń nośnik przed odłączeniem.",
+  "source":"Microsoft Support — urządzenia USB","url":"https://support.microsoft.com/windows"}
+]
+
+def _u109_filter_articles(query, articles=None):
+    items=list(articles if articles is not None else _U109_KNOWLEDGE_ARTICLES)
+    terms=[x for x in re.split(r"\s+",str(query or "").casefold()) if x]
+    if not terms:
+        return items
+    result=[]
+    for article in items:
+        haystack=" ".join(str(article.get(k,"")) for k in ("title","keywords","summary","steps","source")).casefold()
+        if all(term in haystack for term in terms):
+            result.append(article)
+    return result
+
+def _u109_add_knowledge_tab(self, notebook, t):
+    frame=tk.Frame(notebook,bg=t["bg"])
+    notebook.add(frame,text="BAZA WIEDZY / NAUKA")
+    intro=self.panel(frame);intro.pack(fill="x",padx=10,pady=8)
+    tk.Label(intro,text="LOKALNA BAZA WIEDZY SERWISOWEJ",
+        bg=t["panel"],fg=t["accent"],font=self.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(intro,text="Wyszukuj procedury krok po kroku. Treść nie uruchamia automatycznie poleceń; działania naprawcze mają osobne przyciski i potwierdzenia. W poradach nie zapisujemy kluczy licencji ani prywatnych tokenów.",
+        bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    search_row=tk.Frame(frame,bg=t["bg"]);search_row.pack(fill="x",padx=12,pady=(0,6))
+    tk.Label(search_row,text="SZUKAJ OBJAWU / KODU / PODZESPOŁU:",bg=t["bg"],fg=t["fg"],font=self.fnt(9,"bold")).pack(side="left",padx=(0,8))
+    query_var=tk.StringVar(value="")
+    query_entry=ttk.Entry(search_row,textvariable=query_var)
+    query_entry.pack(side="left",fill="x",expand=True,padx=(0,8),ipady=3)
+    layout=tk.Frame(frame,bg=t["bg"]);layout.pack(fill="both",expand=True,padx=10,pady=(0,7))
+    left=tk.Frame(layout,bg=t["panel"]);left.pack(side="left",fill="y",padx=(0,6))
+    tk.Label(left,text="PROCEDURY",bg=t["panel"],fg=t["accent"],font=self.fnt(9,"bold")).pack(anchor="w",padx=8,pady=6)
+    list_frame=tk.Frame(left,bg=t["panel"]);list_frame.pack(fill="both",expand=True,padx=6,pady=(0,6))
+    scroll=ttk.Scrollbar(list_frame,orient="vertical")
+    listbox=tk.Listbox(list_frame,width=36,exportselection=False,yscrollcommand=scroll.set,
+        bg=t["card"],fg=t["fg"],selectbackground=t["accent"],selectforeground="#ffffff",
+        relief="flat",font=self.fnt(9))
+    scroll.config(command=listbox.yview)
+    listbox.pack(side="left",fill="both",expand=True);scroll.pack(side="right",fill="y")
+    right=tk.Frame(layout,bg=t["panel"]);right.pack(side="left",fill="both",expand=True)
+    detail=tk.Text(right,wrap="word",bg=t["card"],fg=t["fg"],insertbackground=t["fg"],relief="flat",
+        font=self.fnt(9),padx=10,pady=8)
+    detail.pack(fill="both",expand=True,padx=6,pady=6)
+    state={"items":[],"selected":None}
+    def render_article(article):
+        state["selected"]=article
+        lines=[article.get("title",""),"="*72,"",
+            "PODSUMOWANIE",article.get("summary",""),"",
+            "PROCEDURA",article.get("steps",""),"",
+            "ŹRÓDŁO",article.get("source",""),
+            article.get("url",""),"",
+            "WAŻNE: wynik diagnostyczny musi pochodzić z pomiaru. N/D nie oznacza PASS."]
+        detail.configure(state="normal");detail.delete("1.0","end")
+        detail.insert("1.0","\n".join(lines));detail.configure(state="disabled")
+    def refresh_articles(*_):
+        state["items"]=_u109_filter_articles(query_var.get())
+        listbox.delete(0,"end")
+        for article in state["items"]:
+            listbox.insert("end",article["title"])
+        if state["items"]:
+            listbox.selection_clear(0,"end");listbox.selection_set(0);listbox.activate(0)
+            render_article(state["items"][0])
+        else:
+            state["selected"]=None
+            detail.configure(state="normal");detail.delete("1.0","end")
+            detail.insert("1.0","Brak pasujących procedur. Spróbuj wpisać krótszy objaw, np. RAM, BIOS, BSOD, SMART, Wi-Fi albo aktywacja.")
+            detail.configure(state="disabled")
+    def selected_article(event=None):
+        sel=listbox.curselection()
+        if sel and 0<=sel[0]<len(state["items"]):
+            render_article(state["items"][sel[0]])
+    def open_article_source():
+        article=state.get("selected")
+        if not article or not article.get("url"):
+            messagebox.showinfo("Baza wiedzy","Ta procedura nie ma zewnętrznego odnośnika.",parent=self);return
+        try:
+            import webbrowser as _u109_webbrowser
+            ok=_u109_webbrowser.open(str(article["url"]))
+            self.queue_log("Baza wiedzy — otwarto źródło: "+str(article["source"]))
+            if not ok:messagebox.showinfo("Baza wiedzy","Przekazano link do domyślnej przeglądarki.",parent=self)
+        except Exception as exc:
+            messagebox.showerror("Baza wiedzy",f"{type(exc).__name__}: {exc}",parent=self)
+    def save_article():
+        article=state.get("selected")
+        if not article:return
+        try:
+            root=_u107_repair_report_root()
+            path=root/("Baza-wiedzy-"+str(article["id"])+"-"+datetime.now().strftime("%Y%m%d-%H%M%S")+".txt")
+            body=article.get("title","")+"\n\n"+article.get("summary","")+"\n\n"+article.get("steps","")+"\n\nŹródło: "+str(article.get("source",""))+"\n"+str(article.get("url",""))
+            path.write_text(body,encoding="utf-8")
+            self.queue_log("Baza wiedzy: zapisano artykuł "+str(article["title"])+" do "+str(path))
+            messagebox.showinfo("Baza wiedzy","Zapisano poradę do raportów:\n"+str(path),parent=self)
+        except Exception as exc:
+            messagebox.showerror("Baza wiedzy",f"Nie udało się zapisać porady: {type(exc).__name__}: {exc}",parent=self)
+    def copy_article():
+        article=state.get("selected")
+        if not article:return
+        value=article.get("title","")+"\n\n"+article.get("summary","")+"\n\n"+article.get("steps","")
+        try:
+            self.clipboard_clear();self.clipboard_append(value);self.update_idletasks()
+            self.queue_log("Baza wiedzy: skopiowano procedurę "+str(article["title"]))
+        except Exception as exc:
+            messagebox.showerror("Baza wiedzy",f"Nie udało się skopiować procedury: {type(exc).__name__}: {exc}",parent=self)
+    def search_online():
+        query=str(query_var.get() or "").strip()
+        if not query:
+            messagebox.showinfo("Baza wiedzy","Wpisz objaw, kod błędu lub nazwę podzespołu przed wyszukiwaniem online.",parent=self);return
+        try:
+            import webbrowser as _u109_webbrowser
+            import urllib.parse as _u109_urlparse
+            q=query+" site:support.microsoft.com OR site:learn.microsoft.com"
+            url="https://www.bing.com/search?q="+_u109_urlparse.quote_plus(q)
+            _u109_webbrowser.open(url)
+            self.queue_log("Baza wiedzy: otwarto wyszukiwanie online dla: "+query[:180])
+        except Exception as exc:
+            messagebox.showerror("Baza wiedzy",f"Nie udało się otworzyć wyszukiwarki: {type(exc).__name__}: {exc}",parent=self)
+    listbox.bind("<<ListboxSelect>>",selected_article)
+    query_var.trace_add("write",refresh_articles)
+    row=tk.Frame(frame,bg=t["bg"]);row.pack(fill="x",padx=10,pady=(0,8))
+    self.make_button(row,"OTWÓRZ ŹRÓDŁO",open_article_source,"accent",side="left",ipady=5)
+    self.make_button(row,"SZUKAJ ONLINE",search_online,"card",side="left",ipady=5)
+    self.make_button(row,"KOPIUJ PROCEDURĘ",copy_article,"card",side="left",ipady=5)
+    self.make_button(row,"ZAPISZ PORADĘ DO RAPORTU",save_article,"good",side="left",ipady=5)
+    self.make_button(row,"WYCZYŚĆ FILTR",lambda:query_var.set(""),"card",side="left",ipady=5)
+    refresh_articles()
+
+def _u109_selftest_knowledge_base():
+    ids=[a.get("id") for a in _U109_KNOWLEDGE_ARTICLES]
+    assert len(ids)>=18 and len(ids)==len(set(ids))
+    for keyword in ("RAM","GPU","USB","PRZYWRACANIA","BIOS","AKTYWACJA","SFC","SIEĆ"):
+        assert _u109_filter_articles(keyword), "Brak artykułu dla: "+keyword
+    assert callable(_u109_add_knowledge_tab)
+    print("LOCAL_SERVICE_KNOWLEDGE_BASE_SELFTEST_OK: searchable procedures, official sources, save-to-report")
+
 def _u55_show_service_center(self):
     self.current_view = "SERVICE_CENTER"
     self.clear()
@@ -1690,15 +2014,18 @@ def _u55_show_service_center(self):
     repair = tk.Frame(notebook, bg=t["bg"])
     tickets = tk.Frame(notebook, bg=t["bg"])
     tools = tk.Frame(notebook, bg=t["bg"])
+    audit = tk.Frame(notebook, bg=t["bg"])
     notebook.add(service, text="SERWIS ULTIMATE")
     notebook.add(repair, text="SYSTEM REPAIR PRO")
     notebook.add(tickets, text="ZGŁOSZENIA PRYWATNE")
     notebook.add(tools, text="NARZĘDZIA SERWISOWE")
+    notebook.add(audit, text="BIOS / STEROWNIKI / LOGI")
     def add_row(parent):
         row = tk.Frame(parent, bg=t["bg"]); row.pack(fill="x", padx=12, pady=4); return row
     def add_btn(row, caption, action, kind="accent"):
         self.make_button(row, caption, action, kind, side="left", ipady=6)
     _u107_add_offline_tab(self,notebook,t,add_row,add_btn)
+    _u109_add_knowledge_tab(self,notebook,t)
     sp = self.panel(service); sp.pack(fill="x", padx=10, pady=8)
     tk.Label(sp, text="SZYBKIE TESTY I DIAGNOSTYKA", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
     for labels in [
@@ -1719,6 +2046,23 @@ def _u55_show_service_center(self):
     for specs in repair_rows:
         row=add_row(rp)
         for caption,action in specs: add_btn(row,caption,action,"card" if "UPDATE" in caption or "ZABEZPIECZENIA" in caption else "accent")
+    restore_audit_script=next((spec[1] for spec in _u109_service_audit_specs() if spec[0]=="PUNKTY PRZYWRACANIA WINDOWS"),None)
+    row=add_row(rp)
+    add_btn(row,"UTWÓRZ PUNKT PRZYWRACANIA",lambda:_u109_create_restore_point(self),"good")
+    if restore_audit_script:
+        add_btn(row,"LISTA PUNKTÓW PRZYWRACANIA",lambda:_u109_run_readonly_audit(self,"PUNKTY PRZYWRACANIA WINDOWS",restore_audit_script,120),"card")
+    ap = self.panel(audit); ap.pack(fill="x", padx=10, pady=8)
+    tk.Label(ap,text="AUDYTY SYSTEMU WINDOWS — ODCZYT BEZ ZMIAN KONFIGURACJI",
+        bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(10,4))
+    tk.Label(ap,text="Raporty są zapisywane w folderze NaprawaPC\\RepairReports. Audyty nie ujawniają klucza produktu i nie naprawiają systemu automatycznie. Dla napraw użyj zakładki SYSTEM REPAIR PRO.",
+        bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    audit_specs=_u109_service_audit_specs()
+    for offset in range(0,len(audit_specs),3):
+        row=add_row(audit)
+        for caption,script,timeout in audit_specs[offset:offset+3]:
+            add_btn(row,caption,lambda caption=caption,script=script,timeout=timeout:_u109_run_readonly_audit(self,caption,script,timeout),"card")
+    row=add_row(audit)
+    add_btn(row,"OTWÓRZ FOLDER RAPORTÓW",lambda:_u109_open_audit_folder(self),"good")
     tp = self.panel(tools); tp.pack(fill="x", padx=10, pady=8)
     tk.Label(tp, text="DIAGNOSTYKA I NARZĘDZIA SYSTEMOWE", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
     for specs in [
@@ -1756,7 +2100,15 @@ def _u55_selftest_service_center():
     assert "SYSTEM REPAIR PRO" in center_constants and "SERWIS ULTIMATE" in center_constants
     # The Windows discovery routine is read-only and searches for the SOFTWARE hive marker.
     assert "System32" in repr(_u107_detect_windows_installations.__code__.co_consts)
-    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: encrypted tickets, repair tools, offline DISM/SFC, BCD backup and WinRE")
+    assert callable(_u109_run_readonly_audit) and callable(_u109_open_audit_folder)
+    audit_specs=_u109_service_audit_specs()
+    assert len(audit_specs)>=11 and len({x[0] for x in audit_specs})==len(audit_specs)
+    audit_names=repr(_u109_service_audit_specs.__code__.co_consts)
+    assert all(key in audit_names for key in ("BIOS / UEFI / SECURE BOOT","AKTYWACJA WINDOWS","URZĄDZENIA PNP","STEROWNIKI","AUTOSTART","BŁĘDY KRYTYCZNE","OSTATNIE AKTUALIZACJE","USB / PCI","PUNKTY PRZYWRACANIA WINDOWS"))
+    assert "_u109_service_audit_specs" in AppV43.show_service_center.__code__.co_names
+    assert "_u109_add_knowledge_tab" in AppV43.show_service_center.__code__.co_names
+    _u109_selftest_knowledge_base()
+    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: encrypted tickets, repair tools, offline DISM/SFC, BCD/WinRE, 11 Windows audits and local knowledge base")
 if __name__ == "__main__" and "--selftest-service-center" in sys.argv:
     try:
         _u55_selftest_service_center()

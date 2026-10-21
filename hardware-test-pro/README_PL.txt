@@ -2,7 +2,7 @@ NAPRAWA PC HARDWARE TEST PRO — PAKIET ŹRÓDŁOWY
 ================================================
 
 WERSJA / KANAŁ STABLE
-To repozytorium źródłowe i materiały do lokalnego builda. Aktualną wersję publiczną odczytuj z updates/hardware-test-pro/latest.json. Ostatnie zweryfikowane wydanie przed tą aktualizacją dokumentacji: 4.3.98 (19.10.2026). Numer następnego builda online jest nadawany automatycznie — nie wpisuj go ręcznie.
+To repozytorium źródłowe i materiały do builda. Bieżącą wersję publiczną zawsze odczytuj z updates/hardware-test-pro/latest.json; numer jest automatycznie nadawany przez workflow Windows x64 i nie należy go wpisywać ręcznie.
 
 ZAKRES FUNKCJI
 - 125 motywów UI; wyszukiwarka i podgląd skórki.
@@ -13,7 +13,7 @@ ZAKRES FUNKCJI
 - Każdy wpis katalogu prowadzi do oddzielnego ekranu testu, własnego uruchomienia i raportu.
 - CPU: skan, obciążenie i przepustowość SHA-256 single/multi-thread.
 - RAM: skan stanu systemu i wzorce/benchmark bufora z kontrolą danych; nie dowodzi to sprawdzenia wszystkich fizycznych komórek.
-- GPU: 60 nazwanych scen OpenGL, pojedyncza scena i zestawy benchmarkowe. FPS zależy od GPU, sterownika i rozdzielczości.
+- GPU: 90 scen OpenGL w 30 rodzinach (różne typy geometrii i obciążenia), indywidualny benchmark oraz zestawy. Katalog przypisuje 70 testom 70 oddzielnych scen; FPS zależy od GPU, sterownika i rozdzielczości.
 - VRAM: inwentarz i testy alokacji/readback tekstur; ograniczenia sterownika są raportowane.
 - Dyski: skan woluminu, dostępne dane reliability/SMART i benchmark plikowy z tymczasowym plikiem usuwanym po teście.
 - Ekran: skan EDID oraz oddzielny odczyt bieżących/udostępnionych trybów ekranu.
@@ -30,7 +30,7 @@ BUDOWANIE LOKALNE
 
 TESTY I GRANICE
 - Sukces CI potwierdza wyłącznie kroki i selftesty zapisane w workflow. Nie zastępuje testu sprzętu użytkownika.
-- Temperatura, moc, zegary, wentylatory, VRAM i użycie GPU zależą od czujników, sterowników i Sensor Bridge. Brak danych musi pozostać N/D, bez zgadywania.
+- Telemetria zbiera wszystkie dostępne wpisy z LibreHardwareMonitor/Sensor Bridge i dodatkowego odczytu WMI: temperatury, użycie, zegary, napięcia, moc, wentylatory, RAM, dyski i interfejsy sieciowe. W widoku MONITOR LIVE jest osobny przycisk pełnej tabeli czujników i eksportu CSV. Brak odczytu pozostaje N/D; sterownik może nie udostępniać wszystkich wartości.
 - RAM/VRAM testowane z poziomu procesu nie są pełnym testem wszystkich fizycznych komórek.
 - Test audio, kamery, klawiatury i matrycy może wymagać potwierdzenia operatora. Samo wykrycie urządzenia nie potwierdza sprawności fizycznej.
 - Speed Test przesyła rzeczywiste dane i zależy od sieci oraz endpointu.
