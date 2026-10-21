@@ -1,37 +1,38 @@
-# CHECKLISTA INTEGRACJI — NAPRAWA PC HARDWARE TEST PRO ULTIMATE
+# CHECKLISTA INTEGRACJI — NAPRAWA PC HARDWARE TEST PRO
 
-## Zweryfikowany stan wydania
-- [x] Wydanie 4.3.98 opublikowane przez GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39310567796
-- [x] Setup.exe i ALL-IN-ONE ZIP opublikowane.
-- [x] Manifest stable zaktualizowany dopiero po poprawnej kompilacji i publikacji.
-- [x] Windows CI zaliczył składnię, selftesty, budowę EXE i weryfikację Inno Setup.
-- [x] Katalog ma 70 unikalnych pozycji i oddzielne ekrany uruchamiania testów.
-- [x] Test „Tryby ekranu” jest oddzielony od skanu EDID.
-- [x] Mikrofon i głośniki wymagają potwierdzenia przed odczytem próbek lub odtworzeniem tonu.
-- [x] Wyniki rozróżniają stan, ostrzeżenie, błąd i brak danych.
+## Wydanie online 4.3.112
+- [x] Windows CI zakończył się sukcesem: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39656632819
+- [x] Setup.exe oraz ALL-IN-ONE ZIP opublikowane.
+- [x] Manifest stable aktualizowany po udanej budowie i publikacji.
+- [x] 15 grup katalogu i 90 unikalnych testów.
+- [x] 90 odrębnych ID scen OpenGL przypisanych do 90 testów.
+- [x] 20 dodatkowych testów dla grup SYSTEM REPAIR PRO i SERWIS ULTIMATE.
+- [x] Pełna tabela live: sensory, CPU per-core, RAM/swap, I/O i IOPS dysków, karty sieciowe i woluminy — tam, gdzie dane są dostępne.
+- [x] Speed Test QUICK/STANDARD/MAX; MAX wymaga zgody przed większym transferem.
+- [x] Test trybów ekranu oddzielony od EDID; audio wymaga jawnego potwierdzenia przed próbkowaniem/tonem.
+- [x] Wyniki katalogu są zapisywane jako indywidualne raporty JSON.
 
-## Katalog testów
-- [x] CPU — 7 wpisów: identyfikacja, single-thread, multi-thread, obciążenie, stabilność, czujniki i symulator.
-- [x] RAM — 7 wpisów: skan, bufory 512/1024/2048 MB, przepustowość, dłuższy przebieg i symulator.
-- [x] GPU — 8 wpisów: skan, pojedyncza scena, 3 zestawy 60 scen, telemetria, doradca gier i symulator.
-- [x] VRAM — 6 wpisów: inwentarz, testy 64/128/256 MB, stabilność i symulator.
-- [x] Dyski — 7 wpisów: skan, SMART/reliability, 512 MB/2 GB/4 GB, długi benchmark i symulator.
-- [x] Ekran — 5 wpisów: EDID, tryby, wzorce, RGB/gradienty i symulator.
-- [x] Bezpieczeństwo — 4 wpisy: skan, autostart, diagnostyka systemu i symulator.
-- [x] Bateria — 5 wpisów: skan, monitor 180/600 s, raport powercfg i symulator.
-- [x] Sieć — 5 wpisów: adaptery, DNS/HTTPS, Speed Test, zmienność czasów DNS i symulator.
-- [x] USB — 4 wpisy; audio — 5; klawiatura/touchpad — 4; kamera — 3.
+## Liczebność katalogu
+- [x] CPU — 7; RAM — 7; GPU — 8; VRAM — 6; dyski — 7; ekran — 5.
+- [x] Bezpieczeństwo — 4; bateria — 5; sieć — 5; USB — 4; audio — 5; klawiatura/touchpad — 4; kamera — 3.
+- [x] System Repair PRO — 10 diagnostyk.
+- [x] Serwis Ultimate — 10 diagnostyk.
 
-## Budowanie lokalne
-- [ ] Pełny build na komputerze użytkownika z Python x64, .NET 10 i Inno Setup.
-- [ ] Uruchomienie GUI na fizycznym komputerze i potwierdzenie nawigacji.
-- [ ] Osobne uruchomienie skanów i benchmarków na realnym sprzęcie.
-- [ ] Potwierdzenie odczytów CPU/GPU/VRAM/fan/power dla faktycznie dostępnych sterowników.
-- [ ] Weryfikacja instalacji oraz aktualizacji nad istniejącą instalacją.
+## Diagnostyka serwisowa
+- [x] Windows: wersja/status licencji, BIOS/UEFI/TPM/Secure Boot, PnP/sterowniki, Windows Update, zdarzenia błędów, usługi, storage, WinRE/BCD, usługi sieciowe, DISM CheckHealth.
+- [x] Serwis: sprzęt, oprogramowanie, autostart/zadania, historia awarii, konfiguracja sieci, WMI, hotfixy, usługi automatyczne, lokalne raporty, instalacje Windows offline.
+- [x] Nowe sondy są odczytowe; nie zmieniają samodzielnie konfiguracji Windows.
+- [x] Istniejące centrum zachowuje SFC/DISM naprawcze, CHKDSK, DNS/Winsock, raport baterii, narzędzia Windows i offline BCD/WinRE/DISM/SFC.
 
-## Granice pomiaru
-- Symulator 3D jest wizualizacją edukacyjną, chyba że uruchomiono odrębny test renderowania.
-- RAM/VRAM testowane z procesu Windows nie obejmują gwarantowanie wszystkich fizycznych komórek.
-- Benchmark dysku korzysta z pliku tymczasowego; nie wykonuje destrukcyjnego testu sektorów.
-- Pusta lista USB/audio/kamery nie dowodzi sprawności fizycznego urządzenia.
-- FPS scen OpenGL nie jest prognozą FPS konkretnej gry.
+## Do wykonania na rzeczywistym PC
+- [ ] Przetestować UI, nawigację i wszystkie moduły na sprzęcie użytkownika.
+- [ ] Potwierdzić czujniki w konkretnych sterownikach CPU/GPU/EC.
+- [ ] Osobno sprawdzić audio, kamerę, matrycę, klawiaturę/touchpad i porty USB.
+- [ ] Sprawdzić aktualizację nad istniejącą instalacją.
+- [ ] Porównać plik po pliku wszystkie funkcje z obu ZIP-ów źródłowych, aby potwierdzić pełną zgodność 1:1.
+
+## Granice
+- CI nie potwierdza wszystkich fizycznych urządzeń ani czujników.
+- RAM/VRAM testowane z procesu nie są pełnym testem wszystkich fizycznych komórek.
+- FPS OpenGL nie jest prognozą FPS w konkretnej grze.
+- Nowe 20 sond to integracja diagnostyczna w ramach znanego zakresu funkcji; nie jest to deklaracja pełnej kopi źródeł obu archiwów.
