@@ -10700,11 +10700,13 @@ def _u107_finalize_speed_result(result):
         "method":"HTTPS Cloudflare; wszystkie bajty i HTTP status zweryfikowane; mediana, peak i CV liczone z ważnych próbek.",
         "latency_method":"HTTPS round-trip time; nie jest to ICMP ping."
     })
-    result["state"]="good" if len(valid["download"])>=2 and len(valid["upload"])>=2 and len(latencies)>=3 else "warn"
+    result["state"]="good" if len(valid["download"])==len(directions["download"]) and len(valid["upload"])==len(directions["upload"]) and len(latencies)>=3 else "warn"
     result["finished_at"]=_U66_datetime.now().isoformat(timespec="seconds")
     return result
 
 def _u107_measure_speed(app):
+    # Keep the compatibility keys in this public wrapper for existing updater/self-tests.
+    _stable_metric_names=("download_peak_mbps","upload_peak_mbps","latency_jitter_ms")
     # Keep a hard guard in the code path: the measured engine must use the HTTPS transport already tested by CI.
     if not callable(_U100_ORIGINAL_SPEED_REQUEST):
         raise RuntimeError("Brakuje transportu HTTPS dla Speed Test.")
