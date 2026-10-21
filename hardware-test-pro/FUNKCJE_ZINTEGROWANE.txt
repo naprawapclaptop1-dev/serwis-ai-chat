@@ -1,19 +1,32 @@
-NAPRAWA PC HARDWARE TEST PRO 4.3.42 — JEDNA APLIKACJA
+NAPRAWA PC HARDWARE TEST PRO — ZINTEGROWANY KATALOG
+===================================================
 
-CPU: etapowe obciążenie i wykres próbek zegara.
-RAM: 26 pełnych wzorców w przydzielonym buforze, zapis/weryfikacja każdego bajtu, błąd z offsetem.
-GPU: benchmark OpenGL/FPS, wykrywanie kart, telemetria zegarów/VRAM gdy dostępna.
-VRAM: osobny test tekstur OpenGL 32/64/128/256 MB, 6 wzorców, odczyt zwrotny i porównanie każdego bajtu.
-DYSKI: odczyt/zapis pliku testowego, SMART kiedy udostępniony.
-MATRYCA: 20 wzorców/kolorów/gradientów/siatki/ruch i dane EDID.
-KLAWIATURA, MYSZ, KAMERA, MIKROFON, GŁOŚNIKI: testy wejść, podglądu i próbki, z wymaganym potwierdzeniem użytkownika tam, gdzie nie da się automatyzować oceny.
-BEZPIECZEŃSTWO, USB, SIEĆ, raporty i naprawa Windows w tym samym oknie.
-Aktualizacja: stały publiczny kanał HTTPS; klient nie podaje linku. Publikacja wydania wymaga
-zbudowania Setup.exe na Windows i uruchomienia PUBLISH_GLOBAL_UPDATE.ps1 przez właściciela.
+Katalog: 90 unikalnych testów = 70 hardware + 10 System Repair PRO + 10 Serwis Ultimate.
+Renderer: 90 profili OpenGL w 30 rodzinach; każdy wpis ma własny ekran, procedurę/raport i profil sceny.
 
-NOWE LABORATORIUM PODZESPOŁÓW:
-- 13 niezależnych modułów; każdy ma osobny SKAN + LIVE 3D, TEST/BENCHMARK lub TEST FUNKCJONALNY oraz SAMO SYMULATOR 3D.
-- GPU: 46 scen OpenGL z rzeczywistym pomiarem FPS.
-- Profile: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s.
-- Laboratorium dostępne z Centrum Testów i ekranów komponentów.
-- Checklista: CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md
+HARDWARE
+CPU (identyfikacja, obciążenie, single/multi throughput, czujniki); RAM (inwentarz, wzorce, przepustowość bufora);
+GPU (90 profili scen, FPS rzeczywisty); VRAM (alokacja/readback tekstur); dyski (woluminy, free space, per-device IO, SMART jeśli dostępny);
+ekran (EDID/tryby/wzorce); USB; audio; klawiatura/mysz; kamera; bateria; sieć; bezpieczeństwo Windows.
+
+SYSTEM REPAIR PRO — OSOBNE PROCEDURY
+Windows/build/architektura; aktywacja/licencja bez pełnego klucza; BIOS/UEFI/TPM/Secure Boot/RAM;
+inwentarz PnP i wersje sterowników; DxDiag/DirectX; SFC /verifyonly; DISM /ScanHealth; dziennik błędów;
+punkty przywracania; lokalna baza wiedzy/wyszukiwanie artykułów.
+
+SERWIS ULTIMATE — OSOBNE PROCEDURY
+Pełny inspector czujników/CSV; VRAM; raport baterii; kamera; klawiatura/mysz; tryby ekranu; audio; USB;
+inwentarz urządzeń CIM/WMI z filtrowaniem; gotowość UEFI/RAM i jawne otwarcie Windows Memory Diagnostic.
+
+TELEMETRIA
+CPU per-core, RAM/swap, urządzenia dyskowe i woluminy, sieć aggregate oraz per-interface RX/TX,
+rekordy Sensor Bridge/LibreHardwareMonitor, dodatkowe temperatury psutil/ACPI i dostępne odczyty GPU/VRAM/power/voltage/clock/fan.
+Brak danych = N/D/WARN, nie zero ani fikcyjne PASS.
+
+SPEED TEST
+Rzeczywiste transfery HTTPS Cloudflare, RTT, rozgrzewka, próbki DL/UL dopasowane do łącza,
+mediana/peak/jitter, rzeczywiste bajty i historia.
+
+OCHRONA
+SFC/DISM są skanami tylko do odczytu i wymagają administratora. Nie ma automatycznego /RestoreHealth,
+restartu, edycji BCD, wyłączania sterowników ani kasowania punktów przywracania.
