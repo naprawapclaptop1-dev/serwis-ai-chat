@@ -1,17 +1,17 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.121",
+  "version": "4.3.122",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.121.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.121/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.121.exe",
-  "sha256": "1f998319e9a91eb85d54fc724d4d710bb016ec8e9130135aae439891cd34aa69",
-  "size": 141902933,
-  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.121.exe",
-  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.121/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.121.exe",
-  "installer_sha256": "1f998319e9a91eb85d54fc724d4d710bb016ec8e9130135aae439891cd34aa69",
-  "installer_size": 141902933,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.122.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.122/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.122.exe",
+  "sha256": "3fa9e2f9af35f97c2b24462008bc4ae1d8a2fa3cfca4ee239b31194fc5473ff0",
+  "size": 142712561,
+  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.122.exe",
+  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.122/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.122.exe",
+  "installer_sha256": "3fa9e2f9af35f97c2b24462008bc4ae1d8a2fa3cfca4ee239b31194fc5473ff0",
+  "installer_size": 142712561,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.121: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk integracyjnych System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D i Speed Test TURBO z 4 równoległymi strumieniami HTTPS. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
-  "published_at": "2026-10-21T23:11:28.789Z"
+  "notes": "Wydanie 4.3.122: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii oraz lokalna baza wiedzy PDF/TXT/MD. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+  "published_at": "2026-10-21T23:16:45.272Z"
 }
