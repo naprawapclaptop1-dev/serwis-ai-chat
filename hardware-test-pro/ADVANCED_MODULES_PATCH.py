@@ -1001,7 +1001,7 @@ try{
         proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
         if proc.returncode==0 and proc.stdout.strip():
             payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
-            # Merge the WMI source even when the Bridge already returned sensors; otherwise board/NVMe/ACPI-related readings disappear.
+            # Merge WMI/LHM readings even when the Bridge returned a partial sensor list.
             collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
             result["acpi_zones"]=payload.get("zones") or []
             for sensor in result["sensors"]:
@@ -10291,7 +10291,23 @@ def _u106_selftest_sensor_mapping():
     assert {"CPU Package","GPU Core","Fan #1","Użycie CPU","Użycie RAM","Odczyt wszystkich dysków","gpu_load_percent"}.issubset(names)
     assert len(expanded)>=7, "Full inspector must merge raw bridge rows and system/GPU metrics"
     assert callable(_u106_open_sensor_inspector)
-    print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPEdef _u108_catalog_scene_id(test_id, selected_scene=1):
+    print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPECTOR_SELFTEST_OK")
+
+def _u106_selftest_adaptive_speed_payloads():
+    sample=_u106_speed_transfer_counts(
+        [{"state":"good","bytes":1234},{"state":"error","bytes":9999}],
+        [{"state":"good","requested_bytes":5678},{"state":"error","requested_bytes":1111}]
+    )
+    assert sample=={"download_data_bytes":1234,"upload_data_bytes":5678,"data_bytes":6912}
+    code=repr(_u100_measure_speed.__code__.co_consts)+repr(_u100_measure_speed.__code__.co_names)
+    assert "_U100_ORIGINAL_SPEED_REQUEST" in _u100_measure_speed.__code__.co_names
+    assert "download_peak_mbps" in code and "upload_peak_mbps" in code
+    assert "latency_jitter_ms" in code
+    assert callable(_u101_start_speed_test) and _u66_measure_speed is _u100_measure_speed
+    print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
+
+
+def _u108_catalog_scene_id(test_id, selected_scene=1):
     """A named catalog scene always resolves to its own fixed scene ID (1..90)."""
     scene=selected_scene
     try:
@@ -11008,7 +11024,6 @@ def _u109_selftest_unique_scene_per_catalog_test():
     assert callable(_u109_get_sensor_rows) and callable(_u109_measure_speed)
     assert "COMPONENT_TEST_DETAIL_" in _u109_open_component_simulator.__code__.co_consts
     print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 159 entries, 90 distinct GPU benchmark scenes")
-
 _u101_collect_os_metrics=_u109_collect_os_metrics
 _u104_sensor_records=_u109_sensor_records
 _u106_get_sensor_rows=_u109_get_sensor_rows
@@ -11020,23 +11035,6 @@ _u90_measure_speed=_u109_measure_speed
 _u66_measure_speed=_u109_measure_speed
 _u69_open_component_simulator=_u109_open_component_simulator
 AppV43.show_speed_test=_u109_show_speed_test
-llable(_u107_launch_scene_preview)
-    assert callable(_u107_get_sensor_rows) and callable(_u107_measure_speed)
-    assert "COMPONENT_TEST_DETAIL_" in _u107_open_component_simulator.__code__.co_consts
-    print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 70 different scene IDs")
-
-_u101_collect_os_metrics=_u107_collect_os_metrics
-_u104_sensor_records=_u107_sensor_records
-_u106_get_sensor_rows=_u107_get_sensor_rows
-_u106_open_sensor_inspector=_u107_open_sensor_inspector
-_u106_attach_sensor_table=_u107_attach_sensor_table
-_u81_attach_sensor_table=_u107_attach_sensor_table
-_u100_measure_speed=_u107_measure_speed
-_u90_measure_speed=_u107_measure_speed
-_u66_measure_speed=_u107_measure_speed
-_u69_open_component_simulator=_u107_open_component_simulator
-AppV43.show_speed_test=_u107_show_speed_test
-
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
