@@ -1971,7 +1971,7 @@ def _u55_show_service_center(self):
         [("CPU / PROCESOR",lambda:self.show_module("CPU")),("GPU / VRAM",lambda:self.show_module("GPU")),("RAM",lambda:self.show_module("RAM")),("SSD / HDD",lambda:self.show_module("DYSK"))],
         [("MATRYCA",lambda:self.show_module("EKRAN")),("BATERIA",self.show_battery),("BEZPIECZEŃSTWO",lambda:self.show_module("SECURITY")),("PEŁNY RAPORT",self.show_report)],
         [("ODŚWIEŻ SPRZĘT",self.refresh_hardware_async),("PEŁNA DIAGNOSTYKA",self.full_test),("RAPORT BATERII",lambda:_u55_run_repair(self,"Raport baterii","powercfg.exe",["/batteryreport","/output",str((Path(os.environ.get("LOCALAPPDATA") or Path.home())/"NaprawaPC"/"RepairReports")/"battery-report.html")],120))],
-        [("MONITOR LIVE — CZUJNIKI",lambda:getattr(self,"show_live_monitor",self.show_tests_hub)()),("SPEED TEST DOWNLOAD / UPLOAD",lambda:getattr(self,"show_speed_test",self.show_tests_hub)()),("GPU 3D STUDIO — 90 SCEN",lambda:getattr(self,"show_3d_studio",self.show_tests_hub)()),("LABORATORIUM — 70 TESTÓW",lambda:getattr(self,"show_component_lab",self.show_tests_hub)())]
+        [("MONITOR LIVE — CZUJNIKI",lambda:getattr(self,"show_live_monitor",self.show_tests_hub)()),("SPEED TEST DOWNLOAD / UPLOAD",lambda:getattr(self,"show_speed_test",self.show_tests_hub)()),("GPU 3D STUDIO — 90 SCEN",lambda:getattr(self,"show_3d_studio",self.show_tests_hub)()),("LABORATORIUM — 159 TESTÓW",lambda:getattr(self,"show_component_lab",self.show_tests_hub)())]
     ]:
         row=add_row(sp)
         for caption,action in labels: add_btn(row,caption,action)
