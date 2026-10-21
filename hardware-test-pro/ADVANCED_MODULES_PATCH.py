@@ -13350,7 +13350,7 @@ def _u120_selftest_system_repair_center():
 def _u119_selftest_furmark_scene():
     import types as _u119_types
     pending=[_u37_gpu_benchmark_child.__code__]
-    names=set();literals=set()
+    names=set();literals=set();numbers=set()
     while pending:
         code=pending.pop()
         names.update(code.co_names)
@@ -13359,15 +13359,14 @@ def _u119_selftest_furmark_scene():
                 pending.append(value)
             elif isinstance(value,str):
                 literals.add(value)
+            elif isinstance(value,(int,float)):
+                numbers.add(value)
     assert "_u119_draw_furmark" in names
     assert "glCallList" in names
     assert "FUR_DONUT_OPENGL_STRESS" in literals
-    assert len(_u119_furmark_scene_points())==12000
+    assert 12000 in numbers, "Renderer must create 12,000 hair strands in the real scene code."
+    assert "GL_LINES" in names
     print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 12,000 fur strands; animated OpenGL display list; synchronized FPS")
-
-def _u119_furmark_scene_points():
-    # Small deterministic geometry-count helper used by the regression test.
-    return tuple(range(12000))
 
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
