@@ -1960,10 +1960,34 @@ def _u109_add_knowledge_tab(self, notebook, t):
             messagebox.showinfo("Baza wiedzy","Zapisano poradę do raportów:\n"+str(path),parent=self)
         except Exception as exc:
             messagebox.showerror("Baza wiedzy",f"Nie udało się zapisać porady: {type(exc).__name__}: {exc}",parent=self)
+    def copy_article():
+        article=state.get("selected")
+        if not article:return
+        value=article.get("title","")+"\n\n"+article.get("summary","")+"\n\n"+article.get("steps","")
+        try:
+            self.clipboard_clear();self.clipboard_append(value);self.update_idletasks()
+            self.queue_log("Baza wiedzy: skopiowano procedurę "+str(article["title"]))
+        except Exception as exc:
+            messagebox.showerror("Baza wiedzy",f"Nie udało się skopiować procedury: {type(exc).__name__}: {exc}",parent=self)
+    def search_online():
+        query=str(query_var.get() or "").strip()
+        if not query:
+            messagebox.showinfo("Baza wiedzy","Wpisz objaw, kod błędu lub nazwę podzespołu przed wyszukiwaniem online.",parent=self);return
+        try:
+            import webbrowser as _u109_webbrowser
+            import urllib.parse as _u109_urlparse
+            q=query+" site:support.microsoft.com OR site:learn.microsoft.com"
+            url="https://www.bing.com/search?q="+_u109_urlparse.quote_plus(q)
+            _u109_webbrowser.open(url)
+            self.queue_log("Baza wiedzy: otwarto wyszukiwanie online dla: "+query[:180])
+        except Exception as exc:
+            messagebox.showerror("Baza wiedzy",f"Nie udało się otworzyć wyszukiwarki: {type(exc).__name__}: {exc}",parent=self)
     listbox.bind("<<ListboxSelect>>",selected_article)
     query_var.trace_add("write",refresh_articles)
     row=tk.Frame(frame,bg=t["bg"]);row.pack(fill="x",padx=10,pady=(0,8))
     self.make_button(row,"OTWÓRZ ŹRÓDŁO",open_article_source,"accent",side="left",ipady=5)
+    self.make_button(row,"SZUKAJ ONLINE",search_online,"card",side="left",ipady=5)
+    self.make_button(row,"KOPIUJ PROCEDURĘ",copy_article,"card",side="left",ipady=5)
     self.make_button(row,"ZAPISZ PORADĘ DO RAPORTU",save_article,"good",side="left",ipady=5)
     self.make_button(row,"WYCZYŚĆ FILTR",lambda:query_var.set(""),"card",side="left",ipady=5)
     refresh_articles()
