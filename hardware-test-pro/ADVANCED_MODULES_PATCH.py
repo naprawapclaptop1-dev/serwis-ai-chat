@@ -11433,6 +11433,59 @@ def _u109_service_probe(app, module, test_id, settings):
                        "su_crash_history","su_software_inventory","su_windows_update_history",
                        "su_startup_audit","su_hardware_inventory","su_network_config","su_system_services") and not raw:
             state="warn";warnings.append("Puste dane — test nie jest oznaczony jako PASS.")
+        # A successful PowerShell invocation alone is not enough to call every probe PASS.
+        # Missing provider data or non-zero native-command exits are explicitly surfaced.
+        if test_id=="sr_os_activation":
+            if not result.get("os"):
+                state="warn";warnings.append("Brak informacji o wydaniu systemu operacyjnego.")
+            licenses=result.get("license_products") or []
+            if not licenses:
+                state="warn";warnings.append("Dostawca licencjonowania nie zwrócił statusu; nie odczytano klucza produktu.")
+            elif not any(int(item.get("LicenseStatus",-1) or 0)==1 for item in licenses if isinstance(item,dict)):
+                state="warn";warnings.append("Nie wykryto aktywnego statusu licencji w rekordach zwróconych przez Windows.")
+        if test_id=="sr_bios_uefi":
+            if not result.get("bios") or not result.get("board"):
+                state="warn";warnings.append("Brak części danych BIOS/płyty głównej.")
+            if result.get("secure_boot") is None:
+                state="warn";warnings.append("Secure Boot jest niedostępny/N/D na tym systemie.")
+            if not result.get("tpm"):
+                state="warn";warnings.append("Get-Tpm nie zwrócił stanu TPM.")
+        if test_id=="sr_driver_audit" and not int(result.get("device_count",0) or 0) and not int(result.get("driver_count",0) or 0):
+            state="warn";warnings.append("Nie uzyskano listy urządzeń ani sterowników.")
+        if test_id=="sr_update_audit" and not int(result.get("service_count",0) or 0):
+            state="warn";warnings.append("Nie uzyskano statusów usług aktualizacji.")
+        if test_id=="sr_service_health" and not int(result.get("checked_count",0) or 0):
+            state="warn";warnings.append("Nie udało się odczytać usług z listy kontrolnej.")
+        if test_id=="sr_storage_health" and not int(result.get("volume_count",0) or 0):
+            state="warn";warnings.append("Nie uzyskano informacji o woluminach.")
+        if test_id=="sr_recovery_bcd":
+            if not result.get("winre_info") and not result.get("bcd_current"):
+                state="warn";warnings.append("WinRE i bieżący wpis BCD nie zwróciły danych.")
+            output=(str(result.get("winre_info",""))+" "+str(result.get("bcd_current",""))).lower()
+            if any(word in output for word in ("access is denied","access denied","error:","failure")):
+                state="warn";warnings.append("Wyjście WinRE/BCD zawiera komunikat błędu; wymagany jest przegląd szczegółów.")
+        if test_id=="sr_network_services" and not int(result.get("adapter_count",0) or 0) and not result.get("services"):
+            state="warn";warnings.append("Nie uzyskano informacji o kartach ani usługach sieciowych.")
+        if test_id=="sr_component_store" and int(result.get("dism_exit_code",-1) or 0)!=0:
+            state="warn";warnings.append("DISM /CheckHealth zwrócił kod inny niż 0; odczytaj szczegóły wyniku.")
+        if test_id=="su_hardware_inventory" and not any(result.get(key) for key in ("cpu","gpu","ram","motherboard","bios")):
+            state="warn";warnings.append("Nie uzyskano danych inwentarza sprzętu.")
+        if test_id=="su_software_inventory" and not int(result.get("application_count",0) or 0):
+            state="warn";warnings.append("Rejestr Uninstall nie zwrócił zainstalowanych aplikacji.")
+        if test_id=="su_network_config" and not int(result.get("interface_count",0) or 0):
+            state="warn";warnings.append("Get-NetIPConfiguration nie zwrócił interfejsów.")
+        if test_id=="su_wmi_health":
+            verification=str(result.get("repository_verification","")).lower()
+            if "inconsistent" in verification or "not consistent" in verification:
+                state="warn";warnings.append("Narzędzie WMI zgłosiło niespójność repozytorium; aplikacja nie podjęła naprawy.")
+        if test_id=="su_windows_update_history" and not int(result.get("installed_update_count",0) or 0):
+            state="warn";warnings.append("Get-HotFix nie zwrócił listy aktualizacji — źródło może nie być dostępne.")
+        if test_id=="su_system_services" and not int(result.get("automatic_service_count",0) or 0):
+            state="warn";warnings.append("Nie uzyskano listy usług automatycznych.")
+        if test_id=="su_report_folder" and not int(result.get("report_count",0) or 0):
+            state="warn";warnings.append("Nie znaleziono raportów w sprawdzonych lokalnych katalogach.")
+        if test_id=="su_windows_installations" and not int(result.get("installation_count",0) or 0):
+            state="warn";warnings.append("Nie znaleziono markerów instalacji Windows na widocznych woluminach.")
         result.update({"state":state,"test_id":str(test_id),"module":str(module),
             "checked_at":_U66_datetime.now().isoformat(timespec="seconds"),
             "method":"Windows PowerShell read-only diagnostic",
