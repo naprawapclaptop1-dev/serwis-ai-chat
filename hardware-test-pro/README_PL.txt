@@ -10,14 +10,14 @@ https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases
 KATALOG DIAGNOSTYCZNY
 - 15 grup i 110 odrębnych pozycji katalogu. Każdy wpis ma osobny ekran, własną procedurę i raport JSON.
 - CPU (7), RAM (7), GPU (8), VRAM (6), dyski (7), ekran/EDID (5), bezpieczeństwo Windows (4), bateria (5), sieć (5), USB (4), audio (5), klawiatura/touchpad (4), kamera (3), System Repair PRO (20), Serwis Ultimate (20).
-- 110 unikalnych przypisań scen OpenGL: 90 istniejących scen plus 20 nowych layoutów dla diagnostyk serwisowych. Renderer mierzy rzeczywiste FPS. To osobna wizualizacja — nie zastępuje wyniku testu CPU, RAM, dysku ani skanowania Windows.
+- 110 unikalnych układów renderowania OpenGL. ID 1–90 używają dziewięciu rodzin geometrii po dziesięć wariantów, a ID 91–110 — dwudziestu oddzielnych scen serwisowych. Renderer mierzy rzeczywiste FPS po synchronizacji GPU. To test renderera, nie prognoza FPS w konkretnej grze.
 - 125 odrębnych motywów UI z różnymi układami, gęstością, kartami, wykresami i przyciskami.
 - Każda procedura zapisuje swój wynik. N/D lub ostrzeżenie nie jest przedstawiane jako zaliczenie.
 
 CPU / RAM / GPU / DYSKI
 - CPU: identyfikacja, obciążenie oraz benchmark przepustowości SHA-256 single/multi-thread.
 - RAM: odczyt stanu pamięci oraz wzorce i benchmarki bufora z kontrolą danych; nie jest to pełny test wszystkich fizycznych komórek.
-- GPU/VRAM: odrębne sceny OpenGL mierzące rzeczywiste FPS, zestawy 90 scen i testy alokacji/readback tekstur. Wynik zależy od GPU, sterownika i konfiguracji.
+- GPU/VRAM: 110 różnych układów renderowania OpenGL z rzeczywistym pomiarem FPS oraz testy alokacji/readback tekstur. Wynik zależy od GPU, sterownika i konfiguracji.
 - Dyski: odczyt woluminów, dostępnych rekordów reliability/SMART oraz benchmark plikowy z plikiem tymczasowym usuwanym po teście.
 - Ekran: EDID jest oddzielony od odczytu trybów; wizualna ocena martwych pikseli wymaga obserwacji operatora.
 
@@ -44,4 +44,4 @@ WAŻNE GRANICE
 - Temperatura, moc, wentylatory, napięcia, zegary i VRAM zależą od sterowników oraz sensorów faktycznie dostępnych na danym sprzęcie.
 - Testy RAM/VRAM wykonywane z poziomu procesu nie gwarantują sprawdzenia wszystkich fizycznych komórek.
 - Wyniki scen OpenGL nie przewidują FPS każdej gry; edukacyjny symulator nie jest pomiarem, jeśli jego test nie wykonuje realnego renderowania.
-- Wydanie 4.3.114 zawiera 40 diagnostycznych sond opartych na zakresie tych aplikacji oraz 20 nowych scen OpenGL. Nie jest to potwierdzenie pełnej kopii 1:1 każdego wewnętrznego modułu z archiwów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3; kompletna zgodność źródłowa wymaga osobnego przeglądu wszystkich plików tych projektów.
+- Wydanie 4.3.114 zawiera 40 diagnostycznych sond integracyjnych i 110 układów scen OpenGL. Nie jest to potwierdzenie pełnej kopii 1:1 każdego wewnętrznego modułu z archiwów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3; kompletna zgodność źródłowa wymaga osobnego przeglądu wszystkich plików tych projektów.
