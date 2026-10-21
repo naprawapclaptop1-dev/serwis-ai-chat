@@ -41,4 +41,4 @@ Przywrócono właściwy test regresyjny unikalnego mapowania 110 pozycji katalog
 
 ## Status prawdy
 
-Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To potwierdza build i testy automatyczne z tego przebiegu, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
+Buildy online 4.3.119, 4.3.120 i 4.3.121 zakończyły się sukcesem. Wersja 4.3.122 z bazą wiedzy jest opublikowana; build 4.3.123 z profilami napraw przechodzi publikację, a 4.3.124 z dodatkowymi testami Serwis Ultimate jest przygotowywany. CI potwierdza składnię, selftesty i kompilację, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
