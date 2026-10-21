@@ -7233,6 +7233,9 @@ def _u100_selftest_unique_gpu_scenes():
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
     assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "resolution_limited_by_display" in _u37_gpu_benchmark_child.__code__.co_consts
+    assert "desktop_resolution" in _u37_gpu_benchmark_child.__code__.co_consts
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
     assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
     print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 60 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
