@@ -8,9 +8,9 @@ Instalator i pełny pakiet ALL-IN-ONE są dostępne w GitHub Releases:
 https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases
 
 KATALOG DIAGNOSTYCZNY
-- 15 grup i 90 odrębnych pozycji katalogu. Każdy wpis ma osobny ekran, własną procedurę i raport JSON.
-- CPU (7), RAM (7), GPU (8), VRAM (6), dyski (7), ekran/EDID (5), bezpieczeństwo Windows (4), bateria (5), sieć (5), USB (4), audio (5), klawiatura/touchpad (4), kamera (3), System Repair PRO (10), Serwis Ultimate (10).
-- 90 unikalnych przypisań scen OpenGL dla katalogu; 30 bazowych rodzin geometrii z różnymi układami i animacją. Scena 3D jest odrębną wizualizacją i nie zastępuje wyniku testu sprzętowego.
+- 15 grup i 110 odrębnych pozycji katalogu. Każdy wpis ma osobny ekran, własną procedurę i raport JSON.
+- CPU (7), RAM (7), GPU (8), VRAM (6), dyski (7), ekran/EDID (5), bezpieczeństwo Windows (4), bateria (5), sieć (5), USB (4), audio (5), klawiatura/touchpad (4), kamera (3), System Repair PRO (20), Serwis Ultimate (20).
+- 110 unikalnych przypisań scen OpenGL: 90 istniejących scen plus 20 nowych layoutów dla diagnostyk serwisowych. Renderer mierzy rzeczywiste FPS. To osobna wizualizacja — nie zastępuje wyniku testu CPU, RAM, dysku ani skanowania Windows.
 - 125 odrębnych motywów UI z różnymi układami, gęstością, kartami, wykresami i przyciskami.
 - Każda procedura zapisuje swój wynik. N/D lub ostrzeżenie nie jest przedstawiane jako zaliczenie.
 
@@ -22,15 +22,15 @@ CPU / RAM / GPU / DYSKI
 - Ekran: EDID jest oddzielony od odczytu trybów; wizualna ocena martwych pikseli wymaga obserwacji operatora.
 
 TELEMETRIA LIVE
-Tabela łączy czujniki z Sensor Bridge z odczytami systemowymi, jeśli są dostępne: temperatury, napięcia, zegary, wentylatory, moc, obciążenie CPU na rdzeń, RAM/swap, I/O i IOPS dysków, transfer kart sieciowych, woluminy/partycje oraz inne zgłoszone sensory. Brak danych sterownika oznacza N/D; aplikacja nie zgaduje odczytów.
+Pełna tabela łączy czujniki z Sensor Bridge z odczytami systemowymi: temperatury, napięcia, zegary, wentylatory, moc, CPU na rdzeń, RAM/swap, I/O/IOPS dysków, transfer kart sieciowych i woluminy/partycje. Wykryty sensor bez aktualnej wartości nadal pozostaje na liście z N/D; liczba sensorów i liczba dostępnych pomiarów są rozróżniane. Dane N/D nigdy nie są zamieniane na zero.
 
 SPEED TEST
-- Profil QUICK (mniejszy transfer), STANDARD (adaptacyjny) i MAX (dłuższe próbki; prosi o zgodę przed większym transferem).
+- Profile QUICK (mniejszy transfer), STANDARD (adaptacyjny), MAX (dłuższe próbki; prosi o zgodę przed większym transferem) i TURBO (cztery równoległe strumienie HTTPS; wymaga osobnego potwierdzenia i raportuje transfer równoległy poza medianą bazową).
 - Pomiar używa rzeczywistych odpowiedzi HTTP, wielu próbek download/upload oraz czasu odpowiedzi. Nie jest to test sieci LAN bez transferu; wynik zależy od łącza i endpointu.
 - Wyniki zawierają profil, próbki i podsumowanie; historia jest zapisywana lokalnie.
 
 SYSTEM REPAIR PRO / SERWIS ULTIMATE
-Dodatkowe 20 testów odczytowych: wersja i status licencji Windows (bez kluczy), BIOS/UEFI/Secure Boot/TPM, PnP i sterowniki, stan Windows Update, błędy dziennika, usługi krytyczne, woluminy/nośniki, BCD/WinRE, usługi sieciowe, DISM CheckHealth, inwentarz sprzętu i oprogramowania, autostart/zadania, historia awarii, konfiguracja IP/DNS, WMI, lista hotfixów, usługi automatyczne, lokalne raporty i wykrywanie instalacji Windows na widocznych woluminach. Każdy ma swój raport. Test DISM CheckHealth wymaga potwierdzenia i nie naprawia automatycznie.
+40 testów odczytowych — 20 poprzednich oraz 20 dodatkowych kontroli w tym wydaniu: wersja i status licencji Windows (bez kluczy), BIOS/UEFI/Secure Boot/TPM, PnP i sterowniki, stan Windows Update, błędy dziennika, usługi krytyczne, woluminy/nośniki, BCD/WinRE, usługi sieciowe, DISM CheckHealth, inwentarz sprzętu i oprogramowania, autostart/zadania, historia awarii, konfiguracja IP/DNS, WMI, lista hotfixów, usługi automatyczne, lokalne raporty i wykrywanie instalacji Windows na widocznych woluminach. Każdy ma swój raport. Test DISM CheckHealth wymaga potwierdzenia i nie naprawia automatycznie.
 Centrum serwisu zawiera także istniejące narzędzia SFC/DISM RestoreHealth, CHKDSK, DNS/Winsock, raport baterii, narzędzia Windows, offline DISM/SFC, BCD/WinRE oraz lokalne szyfrowane zgłoszenia.
 
 BUDOWANIE LOKALNE
@@ -44,4 +44,4 @@ WAŻNE GRANICE
 - Temperatura, moc, wentylatory, napięcia, zegary i VRAM zależą od sterowników oraz sensorów faktycznie dostępnych na danym sprzęcie.
 - Testy RAM/VRAM wykonywane z poziomu procesu nie gwarantują sprawdzenia wszystkich fizycznych komórek.
 - Wyniki scen OpenGL nie przewidują FPS każdej gry; edukacyjny symulator nie jest pomiarem, jeśli jego test nie wykonuje realnego renderowania.
-- Wydanie 4.3.112 dodaje 20 diagnostycznych sond opartych na zakresie tych aplikacji. Nie jest to potwierdzenie pełnej kopii 1:1 każdego wewnętrznego modułu z archiwów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3; kompletna zgodność źródłowa wymaga osobnego przeglądu wszystkich plików tych projektów.
+- Wydanie 4.3.114 zawiera 40 diagnostycznych sond opartych na zakresie tych aplikacji oraz 20 nowych scen OpenGL. Nie jest to potwierdzenie pełnej kopii 1:1 każdego wewnętrznego modułu z archiwów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3; kompletna zgodność źródłowa wymaga osobnego przeglądu wszystkich plików tych projektów.
