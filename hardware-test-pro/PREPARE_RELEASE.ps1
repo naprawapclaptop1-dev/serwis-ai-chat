@@ -1512,6 +1512,170 @@ def _u55_open_windows_tool(self, target):
     except Exception as exc:
         messagebox.showerror("Narzędzia Windows", f"Nie udało się uruchomić {target}: {exc}", parent=self)
 
+def _u107_detect_windows_installations():
+    """Find Windows installations by marker files; never modify discovered volumes."""
+    results=[]
+    try:
+        if os.name!="nt":
+            return results
+        current=Path(os.environ.get("WINDIR",r"C:\Windows")).resolve()
+        import string as _u107_string
+        for letter in _u107_string.ascii_uppercase:
+            root=Path(letter+":\\")
+            try:
+                marker=root/"Windows"/"System32"/"config"/"SOFTWARE"
+                if not marker.is_file():
+                    continue
+                try:
+                    resolved=(root/"Windows").resolve()
+                except Exception:
+                    resolved=root/"Windows"
+                try:
+                    is_current=str(resolved).casefold()==str(current).casefold()
+                except Exception:
+                    is_current=False
+                results.append({
+                    "root":str(root),
+                    "windows_dir":str(root/"Windows"),
+                    "registry_hive":str(marker),
+                    "is_current":is_current
+                })
+            except Exception:
+                continue
+    except Exception:
+        return results
+    return results
+
+def _u107_repair_report_root():
+    roots=[
+        Path(os.environ.get("LOCALAPPDATA") or Path.home())/"NaprawaPC"/"RepairReports",
+        Path(tempfile.gettempdir())/"NaprawaPC"/"RepairReports"
+    ]
+    for root in roots:
+        try:
+            root.mkdir(parents=True,exist_ok=True)
+            probe=root/("probe-"+_u55_uuid.uuid4().hex+".tmp")
+            with open(probe,"xb") as f:
+                f.write(b"ok")
+            probe.unlink()
+            return root
+        except Exception:
+            try:probe.unlink(missing_ok=True)
+            except Exception:pass
+    raise OSError("Brak zapisywalnego folderu raportów naprawy.")
+
+def _u107_confirm_and_run(self,label,exe,args,timeout=900,warning=None):
+    text_value=(warning or "Operacja może zmienić stan systemu. Przed uruchomieniem przeczytaj nazwę i parametry.")
+    if not messagebox.askyesno(label,text_value,parent=self):
+        self.queue_log(label+": anulowano przez użytkownika.")
+        return
+    _u55_run_repair(self,label,exe,args,timeout)
+
+def _u107_bcd_backup_path():
+    root=_u107_repair_report_root()
+    return str(root/("BCD-backup-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+_u55_uuid.uuid4().hex[:6]+".bcd"))
+
+def _u107_open_windows_catalog(self):
+    try:
+        import webbrowser as _u107_webbrowser
+        if not _u107_webbrowser.open("https://www.catalog.update.microsoft.com/"):
+            raise RuntimeError("Nie udało się przekazać adresu do domyślnej przeglądarki.")
+        self.queue_log("Katalog Microsoft Update: otwarto stronę pobierania sterowników i aktualizacji.")
+    except Exception as exc:
+        messagebox.showerror("Katalog Microsoft Update",f"{type(exc).__name__}: {exc}",parent=self)
+
+def _u107_add_offline_tab(self,notebook,t,add_row,add_btn):
+    offline=tk.Frame(notebook,bg=t["bg"])
+    notebook.add(offline,text="OFFLINE / BCD / WINRE")
+    intro=self.panel(offline);intro.pack(fill="x",padx=10,pady=8)
+    tk.Label(intro,text="OFFLINE WINDOWS • ROZRUCH • ŚRODOWISKO ODZYSKIWANIA",
+        bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(intro,text="Wykrywanie jest tylko odczytem. Skan DISM jest oddzielony od napraw. SFC /RestoreHealth i eksport BCD są opisane i wymagają osobnego potwierdzenia.",
+        bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    select_frame=tk.Frame(offline,bg=t["bg"]);select_frame.pack(fill="x",padx=12,pady=(0,5))
+    tk.Label(select_frame,text="Instalacja Windows:",bg=t["bg"],fg=t["fg"],font=self.fnt(9,"bold")).pack(side="left",padx=(0,8))
+    choices=_u107_detect_windows_installations()
+    labels=[f'{x["root"]}  {"(aktualny system)" if x["is_current"] else "(instalacja offline)"}' for x in choices]
+    root_var=tk.StringVar(value=labels[0] if labels else "Nie znaleziono instalacji Windows")
+    picker=ttk.Combobox(select_frame,textvariable=root_var,values=labels,state="readonly",width=42)
+    picker.pack(side="left",padx=(0,6))
+    state_label=tk.Label(select_frame,text=f"Wykryto: {len(choices)}",bg=t["bg"],fg=t["muted"],font=self.fnt(8))
+    state_label.pack(side="left",padx=4)
+
+    def selected():
+        text_value=str(root_var.get() or "")
+        for item,label in zip(choices,labels):
+            if label==text_value:
+                return item
+        return None
+
+    def refresh():
+        nonlocal choices,labels
+        choices=_u107_detect_windows_installations()
+        labels=[f'{x["root"]}  {"(aktualny system)" if x["is_current"] else "(instalacja offline)"}' for x in choices]
+        picker.configure(values=labels)
+        root_var.set(labels[0] if labels else "Nie znaleziono instalacji Windows")
+        state_label.config(text=f"Wykryto: {len(choices)}")
+        self.queue_log("Offline Windows: wykryto "+str(len(choices))+" instalacji; tylko odczyt.")
+    add_btn(select_frame,"WYKRYJ WINDOWS",refresh,"card")
+
+    for specs in [
+        [
+            ("BCD / ROZRUCH — ODCZYT",lambda:_u55_run_repair(self,"BCDEdit /enum all","bcdedit.exe",["/enum","all"],120)),
+            ("WINRE — STATUS",lambda:_u55_run_repair(self,"WinRE status","reagentc.exe",["/info"],120)),
+            ("WINDOWS MEMORY DIAGNOSTIC",lambda:_u55_open_windows_tool(self,"mdsched.exe"))
+        ],
+        [
+            ("ZAPISZ KOPIĘ BCD",lambda:_u107_confirm_and_run(self,"Eksport BCD",
+                "bcdedit.exe",["/export",_u107_bcd_backup_path()],120,
+                "Zostanie zapisany plik kopii magazynu BCD w folderze raportów. Ta operacja nie zmienia konfiguracji rozruchu. Kontynuować?")),
+            ("PRZYWRACANIE SYSTEMU",lambda:_u55_open_windows_tool(self,"rstrui.exe")),
+            ("OCHRONA SYSTEMU / PUNKTY",lambda:_u55_open_windows_tool(self,"SystemPropertiesProtection.exe"))
+        ],
+        [
+            ("MICROSOFT UPDATE CATALOG",lambda:_u107_open_windows_catalog(self)),
+            ("STEROWNIKI / WINDOWS UPDATE",lambda:_u55_open_windows_tool(self,"ms-settings:windowsupdate")),
+            ("MENEDŻER URZĄDZEŃ",lambda:_u55_open_windows_tool(self,"devmgmt.msc"))
+        ]
+    ]:
+        row=add_row(offline)
+        for caption,action in specs:
+            add_btn(row,caption,action,"card" if "UPDATE" in caption or "PRZYWRACANIE" in caption else "accent")
+
+    scan=self.panel(offline);scan.pack(fill="x",padx=10,pady=8)
+    tk.Label(scan,text="DIAGNOSTYKA OBRAZU OFFLINE — ODCZYT PRZED NAPRAWĄ",
+        bg=t["panel"],fg=t["accent"],font=self.fnt(10,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(scan,text="Wybierz wykrytą instalację. DISM /CheckHealth i /ScanHealth są skanami. /RestoreHealth oraz SFC /scannow mogą zmieniać pliki wybranego Windows i wymagają potwierdzenia.",
+        bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,7))
+    def dism_offline(mode):
+        item=selected()
+        if not item:
+            messagebox.showwarning("Offline Windows","Najpierw wykryj i wybierz instalację Windows.",parent=self);return
+        if item["is_current"] and mode=="RestoreHealth":
+            messagebox.showwarning("Offline Windows","Wybrano aktualnie uruchomiony Windows. Ten przycisk obsługuje tylko obraz wskazany jako instalacja offline; użyj zakładki SYSTEM REPAIR PRO dla bieżącego systemu.",parent=self);return
+        args=["/Image:"+item["root"],"/Cleanup-Image","/"+mode]
+        if mode=="RestoreHealth":
+            _u107_confirm_and_run(self,"DISM Offline /RestoreHealth","DISM.exe",args,5400,
+                "To naprawa obrazu Windows na "+item["root"]+". Może zmienić pliki instalacji; potrzebne jest zasilanie i kopia danych. Kontynuować?")
+        else:
+            _u55_run_repair(self,"DISM Offline /"+mode,"DISM.exe",args,1800)
+    def sfc_offline():
+        item=selected()
+        if not item:
+            messagebox.showwarning("Offline Windows","Najpierw wykryj i wybierz instalację Windows.",parent=self);return
+        if item["is_current"]:
+            messagebox.showwarning("Offline Windows","Wybrano aktualnie uruchomiony system. Dla niego użyj SFC /SCANNOW w zakładce SYSTEM REPAIR PRO.",parent=self);return
+        root=item["root"]
+        args=["/scannow","/offbootdir="+root,"/offwindir="+str(Path(root)/"Windows")]
+        _u107_confirm_and_run(self,"SFC Offline /scannow","sfc.exe",args,5400,
+            "SFC spróbuje naprawić chronione pliki instalacji "+root+". Jeśli pliki rozruchowe są na osobnej partycji, /offbootdir może wymagać innego woluminu. Kontynuować?")
+    row=add_row(offline)
+    add_btn(row,"DISM OFFLINE /CHECKHEALTH",lambda:dism_offline("CheckHealth"),"card")
+    add_btn(row,"DISM OFFLINE /SCANHEALTH",lambda:dism_offline("ScanHealth"),"card")
+    add_btn(row,"DISM OFFLINE /RESTOREHEALTH",lambda:dism_offline("RestoreHealth"),"accent")
+    add_btn(row,"SFC OFFLINE /SCANNOW",sfc_offline,"accent")
+    return offline
+
 def _u55_show_service_center(self):
     self.current_view = "SERVICE_CENTER"
     self.clear()
@@ -1534,6 +1698,7 @@ def _u55_show_service_center(self):
         row = tk.Frame(parent, bg=t["bg"]); row.pack(fill="x", padx=12, pady=4); return row
     def add_btn(row, caption, action, kind="accent"):
         self.make_button(row, caption, action, kind, side="left", ipady=6)
+    _u107_add_offline_tab(self,notebook,t,add_row,add_btn)
     sp = self.panel(service); sp.pack(fill="x", padx=10, pady=8)
     tk.Label(sp, text="SZYBKIE TESTY I DIAGNOSTYKA", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
     for labels in [
@@ -1581,8 +1746,14 @@ def _u55_selftest_service_center():
     token = _u55_Fernet(key).encrypt(b'{"selftest":true}')
     assert _u55_Fernet(key).decrypt(token) == b'{"selftest":true}'
     assert _u55_ticket_path().name == "zgloszenia.npcdata"
-    assert "_U55_INTEGRATED_SERVICE_REPAIR_CENTER" in globals() or callable(AppV43.show_service_center)
-    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: service UI, private tickets encryption, PBKDF2 verifier, repair tooling")
+    assert callable(_u107_detect_windows_installations)
+    assert callable(_u107_confirm_and_run) and callable(_u107_bcd_backup_path)
+    center_constants=repr(AppV43.show_service_center.__code__.co_consts)
+    assert "OFFLINE / BCD / WINRE" in center_constants
+    assert "SYSTEM REPAIR PRO" in center_constants and "SERWIS ULTIMATE" in center_constants
+    # The Windows discovery routine is read-only and searches for the SOFTWARE hive marker.
+    assert "System32" in repr(_u107_detect_windows_installations.__code__.co_consts)
+    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: encrypted tickets, repair tools, offline DISM/SFC, BCD backup and WinRE")
 if __name__ == "__main__" and "--selftest-service-center" in sys.argv:
     try:
         _u55_selftest_service_center()
