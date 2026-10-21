@@ -6935,7 +6935,7 @@ def _u100_measure_speed(app):
             result=_U100_ORIGINAL_SPEED_REQUEST(url,body,timeout,
                 lambda p,d,t,e,i,a,b=total_data:_u90_emit_speed_progress(app,p,d,t,e,i,a,b),kind)
             result.update({"requested_bytes":size,"sample_index":index,"sample_count":total,"state":"good","kind":kind})
-            total_data+=int(result.get("bytes",0))
+            total_data += (int(result.get("bytes",0)) if kind=="download" else int(result.get("requested_bytes",size)) if result.get("state")=="good" else 0)
             return result
         except Exception as exc:
             msg=f"{type(exc).__name__}: {exc}"
@@ -6944,20 +6944,21 @@ def _u100_measure_speed(app):
                     "bytes":0,"seconds":None,"mbps":None,"error":msg}
     def valid(rows):
         return [r for r in rows if r.get("state")=="good" and isinstance(r.get("mbps"),(int,float)) and r.get("bytes",0)>0]
-    for i in range(1,5):
-        phase(f"Speed Test: HTTPS RTT {i}/4…")
+    for i in range(1,7):
+        phase(f"Speed Test: HTTPS RTT {i}/6…")
         start=_tm.perf_counter()
         try:
             _U100_ORIGINAL_SPEED_REQUEST("https://speed.cloudflare.com/__down?bytes=0&r="+_u66_uuid.uuid4().hex,None,25,None,"ping")
             data["latency_ms"].append(round((_tm.perf_counter()-start)*1000,2))
         except Exception as exc:
             data.setdefault("latency_errors",[]).append(f"{type(exc).__name__}: {exc}")
-    download_sizes=[8_000_000]
+    download_sizes=[12_000_000]
     first=run_one("download",download_sizes[0],1,3)
     data["download"].append(first)
     rate=float(first.get("mbps") or 0) if first.get("state")=="good" else 0
-    if rate>=500: rest=(50_000_000,25_000_000)
-    elif rate>=150: rest=(30_000_000,15_000_000)
+    if rate>=900: rest=(50_000_000,25_000_000)
+    elif rate>=500: rest=(40_000_000,20_000_000)
+    elif rate>=150: rest=(25_000_000,15_000_000)
     elif rate>=50: rest=(15_000_000,8_000_000)
     else: rest=(8_000_000,4_000_000)
     for idx,size in enumerate(rest,2):data["download"].append(run_one("download",size,idx,3))
@@ -6965,8 +6966,9 @@ def _u100_measure_speed(app):
     first_up=run_one("upload",upload_first,1,3)
     data["upload"].append(first_up)
     rate_up=float(first_up.get("mbps") or 0) if first_up.get("state")=="good" else 0
-    if rate_up>=500: up_rest=(30_000_000,15_000_000)
-    elif rate_up>=150: up_rest=(16_000_000,8_000_000)
+    if rate_up>=900: up_rest=(30_000_000,15_000_000)
+    elif rate_up>=500: up_rest=(25_000_000,12_000_000)
+    elif rate_up>=150: up_rest=(15_000_000,8_000_000)
     elif rate_up>=50: up_rest=(8_000_000,4_000_000)
     else: up_rest=(4_000_000,2_000_000)
     for idx,size in enumerate(up_rest,2):data["upload"].append(run_one("upload",size,idx,3))
@@ -6980,7 +6982,9 @@ def _u100_measure_speed(app):
     data["upload_min_mbps"]=round(min(up_rates),2) if up_rates else None
     data["latency_average_ms"]=round(_u90_median(data["latency_ms"]),2) if data["latency_ms"] else None
     data["latency_jitter_ms"]=round(max(data["latency_ms"])-min(data["latency_ms"]),2) if len(data["latency_ms"])>1 else None
-    data["data_bytes"]=total_data
+    data["download_data_bytes"]=sum(int(x.get("bytes",0) or 0) for x in data["download"] if x.get("state")=="good")
+    data["upload_data_bytes"]=sum(int(x.get("requested_bytes",0) or 0) for x in data["upload"] if x.get("state")=="good")
+    data["data_bytes"]=data["download_data_bytes"]+data["upload_data_bytes"]
     data["download_samples_valid"]=len(down);data["upload_samples_valid"]=len(up)
     data["state"]="good" if len(down)>=2 and len(up)>=2 else "warn"
     data["finished_at"]=_U66_datetime.now().isoformat(timespec="seconds")
@@ -9472,9 +9476,342 @@ _u68_draw_component_scene=_u105_draw_component_scene
 _u67_stage_live_panel=_u105_stage_live_panel
 _u67_refresh_visible_charts=_u105_refresh_visible_charts
 
+
+# v4.3.106 — robust CPU sensor mapping, full searchable sensor inspector and accurate adaptive Speed Test byte accounting.
+import csv as _u106_csv
+
+def _u106_extract_cpu_sensor_values(probe):
+    rows=(probe or {}).get("sensors") or []
+    candidates={
+        "cpu_temp_c":[],"cpu_power_w":[],"cpu_clock_mhz":[],
+        "cpu_voltage_v":[],"cpu_fan_rpm":[]
+    }
+    counts={}
+    for row in rows:
+        if not isinstance(row,dict):
+            continue
+        st=str(row.get("sensorType") or row.get("sensor_type") or row.get("type") or "").strip().lower()
+        unit=str(row.get("unit") or "").strip().lower()
+        hardware=str(row.get("hardware") or "")
+        hardware_type=str(row.get("hardwareType") or row.get("hardware_type") or "")
+        name=str(row.get("sensor") or row.get("name") or "")
+        parent=str(row.get("parent") or "")
+        label=(hardware+" "+hardware_type+" "+parent+" "+name).lower()
+        htype=hardware_type.lower()
+        cpu_like=("cpu" in htype or "processor" in htype
+                  or "processor" in label or "cpu" in label
+                  or ("core" in label and ("amd" in hardware.lower() or "intel" in hardware.lower())))
+        if not cpu_like:
+            continue
+        try:
+            value=float(row.get("value"))
+            if not _u66_math.isfinite(value):
+                continue
+        except Exception:
+            continue
+        if st=="temperature" or unit in ("°c","c"):
+            # Package/Tctl/Tdie/CCD are preferred over a generic core or board reading.
+            if any(k in label for k in ("tctl","tdie","cpu die","ccd")):
+                priority=60
+            elif "package" in label:
+                priority=55
+            elif "core" in label:
+                priority=45
+            elif "cpu" in label or "processor" in label:
+                priority=35
+            else:
+                priority=10
+            candidates["cpu_temp_c"].append((priority,value,name))
+            counts["temperature"]=counts.get("temperature",0)+1
+        elif st=="power" or unit in ("w","watt","watts"):
+            priority=60 if any(k in label for k in ("package","ppt","cpu package")) else 40
+            candidates["cpu_power_w"].append((priority,value,name))
+            counts["power"]=counts.get("power",0)+1
+        elif st=="clock" or unit in ("mhz","ghz"):
+            if unit=="ghz":
+                value*=1000.0
+            priority=60 if any(k in label for k in ("effective","core clock","core #","cpu clock")) else 35
+            candidates["cpu_clock_mhz"].append((priority,value,name))
+            counts["clock"]=counts.get("clock",0)+1
+        elif st=="voltage" or unit in ("v","mv"):
+            if unit=="mv":
+                value/=1000.0
+            priority=60 if any(k in label for k in ("vcore","core voltage","cpu core")) else 35
+            candidates["cpu_voltage_v"].append((priority,value,name))
+            counts["voltage"]=counts.get("voltage",0)+1
+        elif st=="fan" or unit=="rpm":
+            candidates["cpu_fan_rpm"].append((50 if "cpu" in label else 30,value,name))
+            counts["fan"]=counts.get("fan",0)+1
+    result={}
+    for field,items in candidates.items():
+        if items:
+            result[field]=max(items,key=lambda x:x[0])[1]
+        else:
+            result[field]=None
+    result["cpu_sensor_candidates"]=counts
+    result["sensor_count"]=len([x for x in rows if isinstance(x,dict)])
+    return result
+
+_U106_ORIGINAL_SENSOR_PROBE=_u66_sensor_probe
+def _u106_sensor_probe():
+    result=_U106_ORIGINAL_SENSOR_PROBE()
+    if not isinstance(result,dict):
+        return result
+    mapped=_u106_extract_cpu_sensor_values(result)
+    for field in ("cpu_temp_c","cpu_power_w","cpu_clock_mhz","cpu_voltage_v","cpu_fan_rpm"):
+        value=mapped.get(field)
+        if value is not None:
+            result[field]=value
+    result["sensor_count"]=mapped.get("sensor_count",len(result.get("sensors") or []))
+    result["cpu_sensor_candidates"]=mapped.get("cpu_sensor_candidates",{})
+    rows=result.get("sensors") or []
+    result["sensor_category_counts"]={}
+    for row in rows:
+        if not isinstance(row,dict):
+            continue
+        category=str(row.get("sensorType") or row.get("sensor_type") or row.get("type") or "other")
+        result["sensor_category_counts"][category]=result["sensor_category_counts"].get(category,0)+1
+    # Use all-vendor GPU sensor matching for drivers whose labels omit "GPU Core".
+    try:
+        gpu_values=_u100_gpu_from_sensors(result)
+        mapping={
+            "gpu_temp_c":"temperature_c",
+            "gpu_power_w":"power_draw_w",
+            "gpu_clock_mhz":"gpu_clock_mhz",
+            "gpu_fan_rpm":"fan_speed_rpm"
+        }
+        for target,source in mapping.items():
+            if result.get(target) is None and gpu_values.get(source) is not None:
+                result[target]=gpu_values[source]
+    except Exception:
+        pass
+    return result
+
+def _u106_get_sensor_rows(app):
+    tree=getattr(app,"_u100_sensor_tree",None)
+    rows=[]
+    try:
+        if tree is not None and tree.winfo_exists():
+            for item in tree.get_children(""):
+                values=tree.item(item,"values") or ()
+                if len(values)>=6:
+                    rows.append({
+                        "category":str(values[0]),"hardware":str(values[1]),
+                        "sensor":str(values[2]),"value":str(values[3]),
+                        "unit":str(values[4]),"source":str(values[5])
+                    })
+    except Exception:
+        rows=[]
+    if rows:
+        return rows
+    cache=getattr(app,"_u66_sensor_cache",{}) or {}
+    temps=cache.get("temps",{}) or {}
+    system=cache.get("system",{}) or {}
+    gpu=cache.get("gpu",{}) or {}
+    for row in temps.get("sensors",[]) or []:
+        if not isinstance(row,dict):
+            continue
+        rows.append({
+            "category":row.get("sensorType") or row.get("sensor_type") or "other",
+            "hardware":row.get("hardware") or row.get("hardwareType") or "N/D",
+            "sensor":row.get("sensor") or row.get("name") or "N/D",
+            "value":row.get("value"),"unit":row.get("unit") or "",
+            "source":row.get("source") or temps.get("method") or "sensor bridge"
+        })
+    for key,value in system.items():
+        if not isinstance(value,(dict,list,tuple)):
+            rows.append({"category":"System","hardware":"Windows","sensor":key,"value":value,"unit":"","source":"Windows / psutil"})
+    for key,value in gpu.items():
+        if key not in ("sensor_rows","message","available","provider","error") and not isinstance(value,(dict,list,tuple)):
+            rows.append({"category":"GPU","hardware":"GPU","sensor":key,"value":value,"unit":"","source":gpu.get("provider") or "GPU telemetry"})
+    return rows
+
+def _u106_open_sensor_inspector(app):
+    try:
+        existing=getattr(app,"_u106_sensor_window",None)
+        if existing is not None and existing.winfo_exists():
+            existing.deiconify()
+            existing.lift()
+            refresh=getattr(app,"_u106_sensor_refresh",None)
+            if callable(refresh):
+                refresh()
+            return
+    except Exception:
+        pass
+    win=tk.Toplevel(app)
+    app._u106_sensor_window=win
+    win.title("NAPRAWA PC — PEŁNY INSPEKTOR CZUJNIKÓW")
+    win.geometry("1280x780")
+    try:
+        win.minsize(900,520)
+    except Exception:
+        pass
+    t=app.colors()
+    root=tk.Frame(win,bg=t["bg"]);root.pack(fill="both",expand=True,padx=10,pady=10)
+    headline=tk.Frame(root,bg=t["panel"]);headline.pack(fill="x",pady=(0,6))
+    tk.Label(headline,text="PEŁNE ODCZYTY SPRZĘTOWE — WSZYSTKIE DOSTĘPNE SENSORY",
+             bg=t["panel"],fg=t["accent"],font=app.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(9,2))
+    tk.Label(headline,text="Dane z LibreHardwareMonitor/Sensor Bridge, Windows/psutil i sterowników. Brak pomiaru = N/D; lista może obejmować setki odczytów.",
+             bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1200,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    controls=tk.Frame(root,bg=t["bg"]);controls.pack(fill="x",pady=(0,6))
+    tk.Label(controls,text="Szukaj:",bg=t["bg"],fg=t["fg"],font=app.fnt(9,"bold")).pack(side="left",padx=(0,5))
+    search_var=tk.StringVar()
+    search=ttk.Entry(controls,textvariable=search_var,width=34)
+    search.pack(side="left",padx=(0,10))
+    tk.Label(controls,text="Kategoria:",bg=t["bg"],fg=t["fg"],font=app.fnt(9,"bold")).pack(side="left",padx=(0,5))
+    category_var=tk.StringVar(value="Wszystkie")
+    category=ttk.Combobox(controls,textvariable=category_var,state="readonly",width=18,
+        values=("Wszystkie","Temperature","Load","Clock","Voltage","Fan","Power","Memory","Throughput","Battery","System","ACPI / Temperature","Other"))
+    category.pack(side="left",padx=(0,10))
+    count_label=tk.Label(controls,text="Odczyty: 0",bg=t["bg"],fg=t["muted"],font=app.fnt(9,"bold"))
+    count_label.pack(side="left",padx=6)
+    status_label=tk.Label(controls,text="Odświeżanie co 3 s",bg=t["bg"],fg=t["muted"],font=app.fnt(8))
+    status_label.pack(side="right",padx=4)
+    table_frame=tk.Frame(root,bg=t["panel"]);table_frame.pack(fill="both",expand=True)
+    cols=("category","hardware","sensor","value","unit","source")
+    tree=ttk.Treeview(table_frame,columns=cols,show="headings")
+    labels={"category":"KATEGORIA","hardware":"PODZESPÓŁ","sensor":"CZUJNIK / METRYKA","value":"WARTOŚĆ","unit":"JEDNOSTKA","source":"ŹRÓDŁO"}
+    widths={"category":130,"hardware":230,"sensor":300,"value":120,"unit":90,"source":270}
+    for col in cols:
+        tree.heading(col,text=labels[col])
+        tree.column(col,width=widths[col],minwidth=70,stretch=col in ("hardware","sensor","source"))
+    vs=ttk.Scrollbar(table_frame,orient="vertical",command=tree.yview)
+    hs=ttk.Scrollbar(table_frame,orient="horizontal",command=tree.xview)
+    tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
+    tree.grid(row=0,column=0,sticky="nsew");vs.grid(row=0,column=1,sticky="ns");hs.grid(row=1,column=0,sticky="ew")
+    table_frame.grid_rowconfigure(0,weight=1);table_frame.grid_columnconfigure(0,weight=1)
+    footer=tk.Frame(root,bg=t["bg"]);footer.pack(fill="x",pady=(6,0))
+    def export_csv():
+        full_rows=_u106_get_sensor_rows(app)
+        filename=filedialog.asksaveasfilename(parent=win,title="Eksport wszystkich odczytów czujników",
+            defaultextension=".csv",filetypes=(("CSV","*.csv"),("Wszystkie pliki","*.*")),
+            initialfile="NaprawaPC-Czujniki-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".csv")
+        if not filename:
+            return
+        try:
+            with open(filename,"w",newline="",encoding="utf-8-sig") as stream:
+                writer=_u106_csv.DictWriter(stream,fieldnames=("category","hardware","sensor","value","unit","source"))
+                writer.writeheader()
+                writer.writerows(full_rows)
+            status_label.config(text=f"CSV zapisany • {len(full_rows)} odczytów")
+            app.queue_log(f"INSPEKTOR CZUJNIKÓW: eksport CSV {filename} ({len(full_rows)} odczytów)")
+        except Exception as exc:
+            messagebox.showerror("Eksport czujników",f"{type(exc).__name__}: {exc}",parent=win)
+    tk.Button(footer,text="EKSPORTUJ PEŁNĄ LISTĘ CSV",command=export_csv,bg=t["accent"],fg="#06111c",
+        activebackground=t["accent2"],relief="flat",padx=12,pady=6).pack(side="left")
+    tk.Button(footer,text="ODŚWIEŻ TERAZ",command=lambda:refresh(),bg=t["card"],fg=t["fg"],
+        activebackground=t["accent2"],relief="flat",padx=12,pady=6).pack(side="left",padx=5)
+    tk.Button(footer,text="ZAMKNIJ",command=win.destroy,bg=t["card"],fg=t["fg"],
+        activebackground=t["accent2"],relief="flat",padx=12,pady=6).pack(side="right")
+    state={"signature":None,"closed":False}
+    def refresh():
+        try:
+            if not win.winfo_exists():
+                state["closed"]=True
+                return
+            rows=_u106_get_sensor_rows(app)
+            query=str(search_var.get() or "").strip().casefold()
+            wanted=str(category_var.get() or "Wszystkie").casefold()
+            if wanted=="wszystkie":
+                filtered=rows
+            else:
+                filtered=[r for r in rows if wanted in str(r.get("category","")).casefold()
+                    or (wanted=="system" and any(k in str(r.get("category","")).casefold() for k in ("system","memory","throughput","battery")))
+                    or (wanted=="other" and str(r.get("category","")).casefold() not in {
+                        "temperature","load","clock","voltage","fan","power","memory","throughput","battery","system"})]
+            if query:
+                filtered=[r for r in filtered if query in " ".join(str(r.get(k,"")) for k in ("category","hardware","sensor","value","unit","source")).casefold()]
+            signature=tuple(tuple(str(r.get(k,"")) for k in cols) for r in filtered)
+            if signature!=state["signature"]:
+                tree.delete(*tree.get_children(""))
+                for index,row in enumerate(filtered):
+                    tree.insert("","end",iid=f"sensor-{index}",values=tuple(row.get(k,"") if row.get(k) is not None else "N/D" for k in cols))
+                state["signature"]=signature
+            count_label.config(text=f"Wyświetlane: {len(filtered)} / {len(rows)}")
+            status_label.config(text="Źródło aktualizowane w tle • odświeżenie 3 s")
+        except Exception as exc:
+            try:status_label.config(text=f"Błąd odświeżania: {type(exc).__name__}")
+            except Exception:pass
+        try:
+            if win.winfo_exists():
+                win.after(3000,refresh)
+        except Exception:
+            pass
+    app._u106_sensor_refresh=refresh
+    search.bind("<KeyRelease>",lambda _event:refresh())
+    category.bind("<<ComboboxSelected>>",lambda _event:refresh())
+    def on_close():
+        state["closed"]=True
+        try:win.destroy()
+        except Exception:pass
+    win.protocol("WM_DELETE_WINDOW",on_close)
+    refresh()
+    try:
+        if callable(globals().get("_u101_sensor_poll")):
+            _u101_sensor_poll(app)
+    except Exception:
+        pass
+
+_U106_ORIGINAL_ATTACH_SENSOR_TABLE=_u100_attach_sensor_table
+def _u106_attach_sensor_table(app,parent,height=10):
+    panel=_U106_ORIGINAL_ATTACH_SENSOR_TABLE(app,parent,height)
+    try:
+        if panel is None or not panel.winfo_exists():
+            return panel
+        if getattr(panel,"_u106_inspector_button_added",False):
+            return panel
+        children=panel.winfo_children()
+        top=children[0] if children else None
+        if top is not None and top.winfo_exists():
+            t=app.colors()
+            tk.Button(top,text="PEŁNY INSPEKTOR / CSV",
+                command=lambda a=app:_u106_open_sensor_inspector(a),
+                bg=t["card"],fg=t["fg"],activebackground=t["accent"],relief="flat",
+                font=app.fnt(8,"bold"),padx=7,pady=3).pack(side="right",padx=(5,4))
+            panel._u106_inspector_button_added=True
+    except Exception as exc:
+        try:app.queue_log("Inspektor czujników UI: "+repr(exc))
+        except Exception:pass
+    return panel
+
+_U106_ORIGINAL_SPEED_STARTER=_u101_start_speed_test
+_u66_sensor_probe=_u106_sensor_probe
+_u100_attach_sensor_table=_u106_attach_sensor_table
+_u81_attach_sensor_table=_u106_attach_sensor_table
+_u81_refresh_sensor_table=_u101_refresh_sensor_table
+
+def _u106_selftest_sensor_mapping():
+    synthetic={"sensors":[
+        {"hardware":"AMD Ryzen 7","hardwareType":"CpuAmd","sensor":"Core (Tctl/Tdie)","sensorType":"Temperature","value":77.5,"unit":"°C"},
+        {"hardware":"AMD Ryzen 7","hardwareType":"CpuAmd","sensor":"Core #1","sensorType":"Temperature","value":63.0,"unit":"°C"},
+        {"hardware":"Intel CPU","hardwareType":"CpuIntel","sensor":"CPU Package","sensorType":"Power","value":84.2,"unit":"W"},
+        {"hardware":"Intel CPU","hardwareType":"CpuIntel","sensor":"Core Clock","sensorType":"Clock","value":4.2,"unit":"GHz"},
+        {"hardware":"Intel CPU","hardwareType":"CpuIntel","sensor":"Core Voltage","sensorType":"Voltage","value":1100,"unit":"mV"},
+        {"hardware":"Intel CPU","hardwareType":"CpuIntel","sensor":"CPU Fan","sensorType":"Fan","value":1250,"unit":"RPM"}
+    ]}
+    mapped=_u106_extract_cpu_sensor_values(synthetic)
+    assert mapped["cpu_temp_c"]==77.5
+    assert mapped["cpu_power_w"]==84.2
+    assert mapped["cpu_clock_mhz"]==4200.0
+    assert mapped["cpu_voltage_v"]==1.1
+    assert mapped["cpu_fan_rpm"]==1250
+    assert mapped["sensor_count"]==6
+    assert callable(_u106_open_sensor_inspector)
+    print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPECTOR_SELFTEST_OK")
+
+def _u106_selftest_adaptive_speed_payloads():
+    code=repr(_u100_measure_speed.__code__.co_consts)+repr(_u100_measure_speed.__code__.co_names)
+    assert "download_data_bytes" in code and "upload_data_bytes" in code
+    assert "latency_jitter_ms" in code and "download_peak_mbps" in code
+    assert "15_000_000" not in code, "A stale sample profile survived."
+    assert callable(_u101_start_speed_test)
+    print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u106_selftest_sensor_mapping()
+        _u106_selftest_adaptive_speed_payloads()
         _u105_selftest_visual_quality()
         _u104_selftest_speed_and_sensors()
         _u102_selftest_ram_visible_progress()
