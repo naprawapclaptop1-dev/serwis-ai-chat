@@ -1,4 +1,4 @@
-# NAPRAWA PC HARDWARE TEST PRO — Advanced Knowledge, Live Metrics, Speed Test, 20-scene 3D Studio and Sequential Test Runner.
+# NAPRAWA PC HARDWARE TEST PRO — Advanced Knowledge, Live Metrics, Speed Test, 90-scene GPU Stress Studio and Sequential Test Runner.
 # Injected by PREPARE_RELEASE.ps1 before __main__. Real measurements only; unsupported sensors stay N/D.
 import json as _u66_json
 import re as _u66_re
@@ -1197,6 +1197,7 @@ def _u66_show_tests_hub(self):
     quick=tk.Frame(self.content,bg=t["bg"]); quick.pack(fill="x",pady=(0,6))
     self.make_button(quick,"▶ URUCHOM SPEED TEST INTERNETU",self.show_speed_test,"accent",side="left",ipady=7)
     self.make_button(quick,"TELEMETRIA LIVE: TEMPERATURY / W / V / MHZ",self.show_live_monitor,"good",side="left",ipady=7)
+    self.make_button(quick,"PEŁNY INSPEKTOR CZUJNIKÓW / CSV",lambda:_u106_open_sensor_inspector(self),"card",side="left",ipady=7)
     outer=tk.Frame(self.content,bg=t["bg"]); outer.pack(fill="both",expand=True)
     c=tk.Canvas(outer,bg=t["bg"],highlightthickness=0)
     sb=ttk.Scrollbar(outer,orient="vertical",command=c.yview)
@@ -8132,7 +8133,7 @@ if callable(_U102_ORIGINAL_RAM_METHOD):
     AppV43._ram_test = _u102_ram_test_guard
 
 
-# v4.3.103 — sixty separately rendered 3D scene layouts; no shared 3-scenes-per-family renderer.
+# v4.3.103 — ninety individually rendered GPU stress scenes; no shared 3-scenes-per-family renderer.
 def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1920x1080"):
     import math as _m, random as _r, time as _tm, json as _j
     from pathlib import Path as _P
@@ -9974,42 +9975,43 @@ def _u106_sensor_probe():
     return result
 
 def _u106_get_sensor_rows(app):
-    tree=getattr(app,"_u100_sensor_tree",None)
+    # Merge compact dashboard values with every raw sensor exposed by the bridge, Windows and GPU telemetry.
     rows=[]
     try:
+        tree=getattr(app,"_u100_sensor_tree",None)
         if tree is not None and tree.winfo_exists():
             for item in tree.get_children(""):
                 values=tree.item(item,"values") or ()
                 if len(values)>=6:
-                    rows.append({
-                        "category":str(values[0]),"hardware":str(values[1]),
-                        "sensor":str(values[2]),"value":str(values[3]),
-                        "unit":str(values[4]),"source":str(values[5])
-                    })
+                    rows.append({"category":str(values[0]),"hardware":str(values[1]),
+                        "sensor":str(values[2]),"value":str(values[3]),"unit":str(values[4]),"source":str(values[5])})
     except Exception:
-        rows=[]
-    if rows:
-        return rows
+        pass
+    def signature(row):
+        return tuple(str(row.get(k,"") if row.get(k) is not None else "N/D").strip().casefold()
+            for k in ("hardware","sensor","unit"))
+    seen={signature(row) for row in rows}
+    def add(row):
+        sig=signature(row)
+        if sig not in seen:
+            rows.append(row)
+            seen.add(sig)
     cache=getattr(app,"_u66_sensor_cache",{}) or {}
     temps=cache.get("temps",{}) or {}
     system=cache.get("system",{}) or {}
     gpu=cache.get("gpu",{}) or {}
     for row in temps.get("sensors",[]) or []:
-        if not isinstance(row,dict):
-            continue
-        rows.append({
-            "category":row.get("sensorType") or row.get("sensor_type") or "other",
-            "hardware":row.get("hardware") or row.get("hardwareType") or "N/D",
-            "sensor":row.get("sensor") or row.get("name") or "N/D",
-            "value":row.get("value"),"unit":row.get("unit") or "",
-            "source":row.get("source") or temps.get("method") or "sensor bridge"
-        })
+        if not isinstance(row,dict): continue
+        add({"category":row.get("sensorType") or row.get("sensor_type") or "Other",
+            "hardware":row.get("hardware") or row.get("hardwareType") or row.get("parent") or "N/D",
+            "sensor":row.get("sensor") or row.get("name") or "N/D","value":row.get("value"),
+            "unit":row.get("unit") or "","source":row.get("source") or temps.get("method") or "LibreHardwareMonitor / Sensor Bridge"})
     for key,value in system.items():
         if not isinstance(value,(dict,list,tuple)):
-            rows.append({"category":"System","hardware":"Windows","sensor":key,"value":value,"unit":"","source":"Windows / psutil"})
+            add({"category":"System","hardware":"Windows","sensor":key,"value":value,"unit":"","source":"Windows / psutil"})
     for key,value in gpu.items():
         if key not in ("sensor_rows","message","available","provider","error") and not isinstance(value,(dict,list,tuple)):
-            rows.append({"category":"GPU","hardware":"GPU","sensor":key,"value":value,"unit":"","source":gpu.get("provider") or "GPU telemetry"})
+            add({"category":"GPU","hardware":"GPU","sensor":key,"value":value,"unit":"","source":gpu.get("provider") or "GPU telemetry"})
     return rows
 
 def _u106_open_sensor_inspector(app):
@@ -10222,6 +10224,18 @@ def _u106_selftest_sensor_mapping():
     assert mapped["cpu_voltage_v"]==1.1
     assert mapped["cpu_fan_rpm"]==1250
     assert mapped["sensor_count"]==6
+    class _U106FakeApp:
+        _u100_sensor_tree=None
+        _u66_sensor_cache={"temps":{"method":"test bridge","sensors":[
+            {"hardware":"CPU Package","sensor":"CPU Package","sensorType":"Temperature","value":77.5,"unit":"°C"},
+            {"hardware":"GPU Core","sensor":"GPU Core","sensorType":"Temperature","value":68.0,"unit":"°C"},
+            {"hardware":"Motherboard","sensor":"Fan #1","sensorType":"Fan","value":1250,"unit":"RPM"}]},
+            "system":{"cpu_percent":37.5,"ram_percent":61.0,"disk_read_mbps":12.5},
+            "gpu":{"provider":"test GPU","gpu_load_percent":88.0,"temperature_c":68.0}}
+    expanded=_u106_get_sensor_rows(_U106FakeApp())
+    names={str(row.get("sensor")) for row in expanded}
+    assert {"CPU Package","GPU Core","Fan #1","cpu_percent","ram_percent","disk_read_mbps","gpu_load_percent"}.issubset(names)
+    assert len(expanded)>=7, "Full inspector must merge raw bridge rows and system/GPU metrics"
     assert callable(_u106_open_sensor_inspector)
     print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPECTOR_SELFTEST_OK")
 
