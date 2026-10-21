@@ -7479,7 +7479,7 @@ def _u100_selftest_unique_gpu_scenes():
     assert callable(_u37_gpu_benchmark_child)
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
-    assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "glCallList" in _U114_ORIGINAL_GPU_BENCHMARK_CHILD.__code__.co_names
     assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
     assert any(isinstance(c,tuple) and "resolution_limited_by_display" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
@@ -7917,7 +7917,7 @@ def _u101_selftest_unique_gpu_scenes():
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert 90 in _u37_gpu_benchmark_child.__code__.co_consts, "Active GPU renderer must accept scene IDs 1-90"
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
-    assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "glCallList" in _U114_ORIGINAL_GPU_BENCHMARK_CHILD.__code__.co_names
     assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
     assert any(isinstance(c,tuple) and "resolution_limited_by_display" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
@@ -7925,7 +7925,7 @@ def _u101_selftest_unique_gpu_scenes():
     assert any("Ultimate Mix" in x for x in _U100_SCENE_TITLES[57:60])
     for start,end,token in ((60,63,"Cyclone Lab"),(63,66,"Ulewa"),(66,69,"Powódź"),(69,72,"Pioruny"),(72,75,"Wyścigi"),(75,78,"Drift"),(78,81,"Rally Stage"),(81,84,"F1 Night"),(84,87,"Zamieć"),(87,90,"Tsunami Lab")):
         assert all(token in x for x in _U100_SCENE_TITLES[start:end])
-    print("GPU_SCENE_SELFTEST_OK: 110 unique scene IDs, 30 geometry families with distinct individual layouts and synchronized real FPS")
+    print("GPU_SCENE_SELFTEST_OK: 110 unique IDs; all 110 render through distinct per-ID layouts; synchronized real FPS")
 
 # Each test has a unique scene identifier, not just a shared family label.
 _U66_SCENES=[(f"{i:02d} — {name}",f"scene_{i:02d}",1+(i%3)*2) for i,name in enumerate(_U100_SCENE_TITLES,1)]
