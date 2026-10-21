@@ -12342,6 +12342,20 @@ def _u114_measure_speed(app):
     result["profile_note"]="Test bazowy z medianą próbek oraz dodatkowy, rzeczywisty równoległy transfer 4 strumieni."
     result["data_bytes"]=int(result.get("data_bytes",0) or 0)+parallel_down["bytes"]+parallel_up["bytes"]
     if result["parallel_test"]["state"]!="good":result["state"]="warn"
+    # Replace the just-written base row with the completed Turbo record so history contains its parallel measurements too.
+    try:
+        history_path=result.get("history_path")
+        if history_path:
+            from pathlib import Path as _u114_HistoryPath
+            history_file=_u114_HistoryPath(history_path)
+            records=_u66_json.loads(history_file.read_text(encoding="utf-8"))
+            for index in range(len(records)-1,-1,-1):
+                if records[index].get("started_at")==result.get("started_at"):
+                    records[index].update(result)
+                    history_file.write_text(_u66_json.dumps(records[-100:],ensure_ascii=False,indent=2),encoding="utf-8")
+                    break
+    except Exception as exc:
+        result["history_warning"]=f"Nie udało się zapisać rozszerzonego raportu Turbo: {type(exc).__name__}: {exc}"
     try:
         def turbo_ui():
             controls=getattr(app,"_u114_turbo_labels",{}) or {}
