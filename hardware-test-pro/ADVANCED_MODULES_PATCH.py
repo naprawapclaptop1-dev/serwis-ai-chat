@@ -7870,6 +7870,7 @@ def _u101_selftest_unique_gpu_scenes():
     assert len({row[0] for row in _U66_SCENES})==90
     assert callable(_u37_gpu_benchmark_child)
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
+    assert 90 in _u37_gpu_benchmark_child.__code__.co_consts, "Active GPU renderer must accept scene IDs 1-90"
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
     assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
     assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
@@ -8786,6 +8787,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             budget["scene_id"]=sid_local
 
         def draw_dynamic_scene(elapsed):
+            sid_local=sid
             v=(sid_local-61)%3
             def vehicle(x,y,z,scale,paint,heading):
                 gl.glPushMatrix();gl.glTranslatef(x,y,z);gl.glRotatef(heading,0,1,0)
@@ -8888,7 +8890,7 @@ def _u104_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             gl.glRotatef(elapsed*(14+(sid%11)*2.2),.35+(sid%3)*.3,1,.22+(sid%5)*.08)
             gl.glRotatef(10*_m.sin(elapsed*.7+sid),1,0,0)
             gl.glCallList(list_id)
-            if sid_local>=61:
+            if sid>=61:
                 draw_dynamic_scene(elapsed)
             gl.glFinish()
             pg.display.flip();frames+=1;win_frames+=1;now=_tm.perf_counter()
