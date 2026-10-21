@@ -6500,11 +6500,41 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         family = (sid-1)//3
         variant = (sid-1)%3
         title = _U100_SCENE_TITLES[sid-1]
+        requested_resolution=str(resolution or "1920x1080")
+        desktop_w=desktop_h=0
+        resolution_limited=False
         try:
-            rw,rh=[int(x) for x in str(resolution).lower().split("x",1)]
-            rw=max(640,min(7680,rw)); rh=max(480,min(4320,rh))
+            rw,rh=[int(x) for x in requested_resolution.lower().split("x",1)]
+            rw=max(640,min(7680,rw));rh=max(480,min(4320,rh))
         except Exception:
-            rw,rh=1920,1080
+            requested_resolution="1920x1080";rw,rh=1920,1080
+
+        # Cap initial OpenGL window to usable desktop area; 1920x1080 may be off-screen on small laptops/high-DPI PCs.
+        try:
+            if os.name=="nt":
+                import ctypes as _u105_ctypes
+                desktop_w=int(_u105_ctypes.windll.user32.GetSystemMetrics(0))
+                desktop_h=int(_u105_ctypes.windll.user32.GetSystemMetrics(1))
+                if desktop_w>=640 and desktop_h>=480:
+                    usable_w=max(640,desktop_w-48)
+                    usable_h=max(480,desktop_h-112)
+                    display_scale=min(1.0,usable_w/float(rw),usable_h/float(rh))
+                    if display_scale<0.999:
+                        rw=max(640,int(rw*display_scale))
+                        rh=max(480,int(rh*display_scale))
+                        if rw>usable_w or rh>usable_h:
+                            correction=min(usable_w/float(rw),usable_h/float(rh))
+                            rw=max(640,int(rw*correction))
+                            rh=max(480,int(rh*correction))
+                        resolution_limited=True
+        except Exception:
+            desktop_w=desktop_h=0
+        result.update({
+            "resolution_requested":requested_resolution,
+            "resolution_rendered":f"{rw}x{rh}",
+            "desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
+            "resolution_limited_by_display":resolution_limited
+        })
         seconds=max(3,min(900,int(seconds)))
         pg.init()
         try:
@@ -6820,7 +6850,9 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
         display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()
         profile = {
           "scene_id":sid,"scene_name":_U66_SCENES[sid-1][0],"family":_U100_SCENE_TITLES[sid-1],
-          "profile_variant":variant+1,"resolution_requested":f"{rw}x{rh}",
+          "profile_variant":variant+1,"resolution_requested":requested_resolution,"resolution_rendered":f"{rw}x{rh}",
+          "desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
+          "resolution_limited_by_display":resolution_limited,
           "geometry_primitives_estimate":primitive_counter["value"],
           "gpu_renderer":renderer,"opengl_version":gl_version,
           "method":"OpenGL real draw calls + display list; synchronized frame presentation with glFinish",
@@ -7633,6 +7665,9 @@ def _u101_selftest_unique_gpu_scenes():
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
     assert "glCallList" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "GetSystemMetrics" in _u37_gpu_benchmark_child.__code__.co_names
+    assert "resolution_limited_by_display" in _u37_gpu_benchmark_child.__code__.co_consts
+    assert "desktop_resolution" in _u37_gpu_benchmark_child.__code__.co_consts
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
     assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
     print("GPU_SCENE_SELFTEST_OK: 60 unique scene IDs, 20 geometry families with distinct individual layouts and synchronized real FPS")
@@ -8840,6 +8875,8 @@ def _u105_draw_live_gauges(app):
     cache=getattr(app,"_u66_sensor_cache",{}) or {}
     temps=cache.get("temps",{}) or {}
     gpu=cache.get("gpu",{}) or {}
+    system=cache.get("system",{}) or {}
+    telemetry=getattr(app,"_u84_gpu_last_telemetry",{}) or {}
     def number(value):
         try:
             result=float(value)
@@ -8847,10 +8884,14 @@ def _u105_draw_live_gauges(app):
         except Exception:
             return None
     cpu=number(vals.get("cpu"))
+    if cpu is None: cpu=number(system.get("cpu_percent",getattr(app,"_cpu_util",None)))
     ram=number(vals.get("ram"))
-    gpu_load=number(gpu.get("gpu_load_percent",gpu.get("load_percent",getattr(app,"_gpu_util",None))))
+    if ram is None: ram=number(system.get("ram_percent",getattr(app,"_ram_util",None)))
+    gpu_load=number(gpu.get("gpu_load_percent",gpu.get("load_percent")))
+    if gpu_load is None: gpu_load=number(telemetry.get("gpu_load_percent",telemetry.get("load_percent",getattr(app,"_gpu_util",None))))
     cpu_temp=number(temps.get("cpu_temp_c"))
     gpu_temp=number(gpu.get("temperature_c",temps.get("gpu_temp_c")))
+    if gpu_temp is None: gpu_temp=number(telemetry.get("temperature_c"))
     source={
         "cpu":(cpu,100.0,"%",_U105_COLORS["cyan"]),
         "ram":(ram,100.0,"%",_U105_COLORS["violet"]),
@@ -9230,13 +9271,18 @@ def _u105_open_component_base(self,module,run_test=False,mode="scan"):
     self._u68_sim_status=tk.Label(self.content,text="Gotowy — tryb "+str(mode).upper()+".",
         bg=t["bg"],fg=t["accent"],font=self.fnt(9,"bold"),anchor="w")
     self._u68_sim_status.pack(fill="x",padx=5,pady=(2,2))
-    self._u68_sim_canvas=tk.Canvas(self.content,height=335,bg=_U105_COLORS["bg"],highlightthickness=0,bd=0)
+    try: screen_h=max(600,int(self.winfo_screenheight()))
+    except Exception: screen_h=900
+    canvas_h=max(220,min(420,int(screen_h*0.34)))
+    gauge_h=max(72,min(98,int(screen_h*0.09)))
+    chart_h=max(56,min(86,int(screen_h*0.08)))
+    self._u68_sim_canvas=tk.Canvas(self.content,height=canvas_h,bg=_U105_COLORS["bg"],highlightthickness=0,bd=0)
     self._u68_sim_canvas.pack(fill="x",expand=True,padx=2,pady=(0,3))
     self._u68_sim_canvas.bind("<Configure>",lambda _e:self.after_idle(lambda:_u105_draw_component_scene(self)))
     gauges=tk.Frame(self.content,bg=t["bg"],bd=0);gauges.pack(fill="x",padx=2,pady=(0,1))
     self._u105_sim_gauges={}
     for i,key in enumerate(("cpu","ram","gpu","temp")):
-        gauge=tk.Canvas(gauges,width=136,height=98,bg=t["bg"],highlightthickness=0,bd=0)
+        gauge=tk.Canvas(gauges,width=136,height=gauge_h,bg=t["bg"],highlightthickness=0,bd=0)
         gauge.grid(row=0,column=i,sticky="nsew",padx=8)
         self._u105_sim_gauges[key]=gauge
         gauges.grid_columnconfigure(i,weight=1)
@@ -9256,9 +9302,9 @@ def _u105_open_component_base(self,module,run_test=False,mode="scan"):
         value.pack(anchor="w");self._u67_stage_values[key]=value
     for c in range(4):strip.grid_columnconfigure(c,weight=1)
     charts=tk.Frame(self.content,bg=t["bg"],bd=0);charts.pack(fill="x",padx=2,pady=(1,2))
-    self._u67_stage_chart_hw=tk.Canvas(charts,height=86,bg=t["bg"],highlightthickness=0,bd=0)
+    self._u67_stage_chart_hw=tk.Canvas(charts,height=chart_h,bg=t["bg"],highlightthickness=0,bd=0)
     self._u67_stage_chart_hw.grid(row=0,column=0,sticky="nsew",padx=4,pady=2)
-    self._u67_stage_chart_io=tk.Canvas(charts,height=86,bg=t["bg"],highlightthickness=0,bd=0)
+    self._u67_stage_chart_io=tk.Canvas(charts,height=chart_h,bg=t["bg"],highlightthickness=0,bd=0)
     self._u67_stage_chart_io.grid(row=0,column=1,sticky="nsew",padx=4,pady=2)
     for c in range(2):charts.grid_columnconfigure(c,weight=1)
     self._u67_stage_chart_power=None;self._u67_stage_chart_temp=None
