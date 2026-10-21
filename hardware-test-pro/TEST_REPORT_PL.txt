@@ -1,47 +1,45 @@
-RAPORT WERYFIKACJI WYDANIA — NAPRAWA PC HARDWARE TEST PRO 4.3.98
-=================================================================
+RAPORT WERYFIKACJI ONLINE — NAPRAWA PC HARDWARE TEST PRO 4.3.112
+==================================================================
 
-Data weryfikacji online: 2026-10-19
-GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39310567796
-Commit wydania: f338f255b303e4eede88abca920af14437b2be1a
-Status całego workflow: success
+GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39656632819
+Status workflow: success
+Data publikacji: 2026-10-21
+Tag: hardware-test-pro-v4.3.112
 
-POTWIERDZONE PRZEZ CI
-[OK] Środowisko Windows x64 i Python.
-[OK] Budowa self-contained Hardware Sensor Bridge (.NET 10).
-[OK] Odtworzenie głównego źródła i zasobów graficznych.
-[OK] Przygotowanie numeru wersji i modyfikacji motywów.
-[OK] Instalacja zależności Python.
-[OK] py_compile i wbudowane testy: core, deep, updater, launcher, antivirus, themes, service center, update flow i advanced modules.
-[OK] Selftest katalogu: 70 unikalnych pozycji, oddzielny ekran i dispatcher testów.
-[OK] Budowa aplikacji EXE przez PyInstaller.
-[OK] Kompilacja i weryfikacja Setup.exe.
-[OK] Publikacja ZIP ALL-IN-ONE oraz instalatora.
-[OK] Aktualizacja manifestu stable po poprawnej publikacji.
+POTWIERDZONE PRZEZ WINDOWS CI
+[OK] Windows x64 / Python 3.12 oraz .NET 10.
+[OK] Samodzielny Hardware Sensor Bridge.
+[OK] Odtworzenie źródła i zasobów graficznych.
+[OK] Kontrola składni Pythona.
+[OK] Selftesty core, deep, updater, launcher, antivirus, themes, service center i update flow.
+[OK] LIVE_SENSOR_INSPECTOR_PER_CORE_DISK_NIC_PARTITION_SELFTEST_OK.
+[OK] FULL_LIVE_SENSOR_TABLE_SELFTEST_OK: temperatury, obciążenie na rdzeń, RAM/swap, I/O dysków, NIC i woluminy.
+[OK] SPEED_TEST_PROFILE_SELFTEST_OK: QUICK < STANDARD < MAX.
+[OK] SYSTEM_REPAIR_PRO_SERWIS_ULTIMATE_CATALOG_SELFTEST_OK: 20 dodatkowych diagnoz, 15 grup i 90 unikalnych testów/scen.
+[OK] UNQIUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 90 odrębnych ID scen.
+[OK] Pozostałe testy modułów zaawansowanych.
+[OK] PyInstaller EXE.
+[OK] Inno Setup — kompilacja instalatora.
+[OK] Opublikowanie Setup.exe i ALL-IN-ONE ZIP.
+[OK] Manifest stable zaktualizowany dopiero po pomyślnej publikacji.
 
-PLIKI OPUBLIKOWANE DLA 4.3.98
-Installer: NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.98.exe
-Rozmiar: 141,549,687 bajtów
-SHA-256: 84ff4f5c99bc1804f22f623d0115374fe00b9593719ae356866c53b89c0822f8
-URL: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.98/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.98.exe
+OPUBLIKOWANE PLIKI
+Setup:
+https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.112/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.112.exe
+Rozmiar: 141,815,175 bajtów
+SHA-256: 3d552aa556f177ae98e970c2e9bd00496a3603ea3be0157caa4cb22dbe0a01f9
 
-ALL-IN-ONE: NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.98.zip
-Rozmiar: 283,652,271 bajtów
-SHA-256: 06d7e2b2502a76a627daea5b0134c798e0146bbe2804a042f8e8cf273fd9410b
-URL: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.98/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.98.zip
+ALL-IN-ONE ZIP:
+https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.112/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.112.zip
+Rozmiar: 284,301,395 bajtów
+SHA-256: 9ac93b3457dc44fe4c95bada668f02680d30d4ff25d91b8719ff825693afddbe
 
-GIT TAG: hardware-test-pro-v4.3.98
-Manifest stable wskazywał release_ready=true i te same dane instalatora.
+WERYFIKACJE NIEWYKONANE NA MASZYNIE BUILDOWEJ
+[ ] Uruchomienie GUI na fizycznym komputerze użytkownika.
+[ ] Rzeczywiste odczyty temperatur/mocy/fanów na każdym konkretnym sterowniku.
+[ ] Fizyczne testy audio, kamery, klawiatury, matrycy i USB.
+[ ] Instalacja/aktualizacja nad istniejącą instalacją na komputerze użytkownika.
+[ ] File-by-file parity check całych archiwów źródłowych System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3.
 
-DALSZE WERYFIKACJE
-[ ] Test uruchomienia GUI na fizycznym komputerze użytkownika.
-[ ] Potwierdzenie czujników na rzeczywistym sprzęcie.
-[ ] Weryfikacja audio, kamery, klawiatury, ekranu i USB na urządzeniach fizycznych.
-[ ] Test instalacji i aktualizacji nad istniejącą instalacją.
-
-OGRANICZENIA
-- CI używa maszyny buildowej Windows; nie oznacza to testu wszystkich fizycznych komputerów.
-- Odczyty czujników zależą od sterownika i sprzętu; N/D nie jest wynikiem pozytywnym.
-- Testy pamięci aplikacyjnej nie udowadniają sprawdzenia wszystkich komórek RAM/VRAM.
-- Benchmarki syntetyczne/OpenGL nie przeliczają się bezpośrednio na FPS w konkretnej grze.
-- Raport dokumentuje stan 4.3.98; bieżący stable sprawdzaj w updates/hardware-test-pro/latest.json.
+GRANICE
+CI nie zastępuje pomiarów fizycznego sprzętu. N/D oznacza brak danych. Testy pamięci aplikacyjnej nie obejmują gwarantowanie wszystkich komórek. Speed Test zależy od sieci i endpointu. 20 nowych sond są odczytową integracją diagnostyczną, a nie potwierdzeniem pełnej zgodności 1:1 wszystkich źródłowych funkcji obu ZIP-ów.
