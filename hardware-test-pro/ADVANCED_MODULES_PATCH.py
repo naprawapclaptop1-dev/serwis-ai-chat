@@ -1059,7 +1059,7 @@ def _u66_show_live_monitor(self):
         val=tk.Label(card,text="N/D",bg=t["panel"],fg=t["accent"],font=self.fnt(14,"bold"))
         val.pack(pady=(0,8)); self._u66_live_labels[key]=val
     for col in range(5): grid.grid_columnconfigure(col,weight=1)
-    _u81_attach_sensor_table(self,self.content,height=6)
+    _u81_attach_sensor_table(self,self.content,height=12
     charts=tk.Frame(self.content,bg=t["bg"]); charts.pack(fill="both",expand=True,pady=6)
     left=self.panel(charts); left.pack(side="left",fill="both",expand=True,padx=(0,4))
     right=self.panel(charts); right.pack(side="left",fill="both",expand=True,padx=(4,0))
@@ -2993,7 +2993,7 @@ def _u76_disk_scan_selected_volume(self):
     return result
 
 def _u76_selftest_workbenches():
-    assert len(_U66_SCENES) == 60 and len({str(x[0]) for x in _U66_SCENES}) == 60
+    assert len(_U66_SCENES) == 90 and len({str(x[0]) for x in _U66_SCENES}) == 60
     assert callable(_u76_component_report_text) and callable(_u76_refresh_component_report)
     assert callable(_u76_open_component_simulator) and callable(_u76_run_component_worker)
     assert callable(_u76_disk_scan_selected_volume)
@@ -3002,7 +3002,7 @@ def _u76_selftest_workbenches():
     assert "RAM_BENCHMARK" in _u76_component_result_keys("RAM", "benchmark")
     assert "VRAM_TEST" in _u76_component_result_keys("VRAM", "benchmark")
     assert "3D_SUITE" in _u76_component_result_keys("GPU", "benchmark")
-    print("COMPONENT_REPORT_60_SCENES_SELFTEST_OK")
+    print("COMPONENT_REPORT_90_SCENES_SELFTEST_OK")
 
 _U69_ORIGINAL_COMPONENT_WORKER = _u69_run_component_worker
 _U69_ORIGINAL_STATUS_TEXT_V76 = _u69_status_text
@@ -3113,7 +3113,7 @@ def _u78_selftest_component_lab():
     checks = [
         ("13 unique module entries", len(keys) == 13 and len(set(keys)) == 13),
         ("same set as component simulators", set(keys) == set(_U69_COMPONENT_LABELS)),
-        ("60 unique OpenGL scenes", len(_U66_SCENES) == 60 and len({str(x[0]) for x in _U66_SCENES}) == 60),
+        ("90 unique OpenGL scenes", len(_U66_SCENES) == 90 and len({str(x[0]) for x in _U66_SCENES}) == 60),
         ("component lab callable", callable(_u78_show_component_lab) and callable(_u78_launch_from_lab)),
         ("real component launcher callable", callable(_u69_open_component_simulator) and callable(_u69_launch_component_test)),
         ("MAX 900-second profile", len(_U68_PROFILE_CHOICES) >= 6 and str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")),
@@ -3127,7 +3127,7 @@ def _u78_selftest_component_lab():
     print("COMPONENT_LAB_13_MODULES_SELFTEST_OK: " + ", ".join(name for name, _ in checks))
 
 def _u66_selftest_advanced():
-    assert len(_U66_SCENES)==60, "Studio must have 60 separately named scenes"
+    assert len(_U66_SCENES)==90, "Studio must have 90 separately named scenes"
     assert len(_U66_KNOWLEDGE_SEED)>=30, "Knowledge seed should cover at least 30 topics"
     assert all(x.get("source","").startswith("https://") for x in _U66_KNOWLEDGE_SEED), "ADVANCED self-test check 1: all(x.get('source','').startswith('https://') for x in _U66_KNOWLEDGE_SEED)"
     assert _U66_KNOWLEDGE_PACK_FORMAT == "naprawapc-ai-reader-knowledge", "ADVANCED self-test check 2: _U66_KNOWLEDGE_PACK_FORMAT == 'naprawapc-ai-reader-knowledge'"
@@ -3143,7 +3143,7 @@ def _u66_selftest_advanced():
     assert callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic), "ADVANCED self-test check 11: callable(_u67_start_selected_diagnostic) and callable(_u67_run_selected_diagnostic)"
     assert callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel), "ADVANCED self-test check 12: callable(_u67_refresh_visible_charts) and callable(_u67_stage_live_panel)"
     assert callable(_u67_set_suite_status), "ADVANCED self-test check 13: callable(_u67_set_suite_status)"
-    assert len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES), "ADVANCED self-test check 14: len(_U66_SCENES)==60 and all(sc[1] for sc in _U66_SCENES)"
+    assert len(_U66_SCENES)==90 and all(sc[1] for sc in _U66_SCENES), "ADVANCED self-test check 14: len(_U66_SCENES)==90 and all(sc[1] for sc in _U66_SCENES)"
     assert "900 s" in ("3 s","5 s","10 s","20 s","30 s","60 s","120 s","180 s","300 s","600 s","900 s"), "ADVANCED self-test check 15: '900 s' in ('3 s','5 s','10 s','20 s','30 s','60 s','120 s','180 s','300 s','600 s','900 s"
     assert callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator), "ADVANCED self-test check 16: callable(_u68_show_module_with_workbench) and callable(_u68_open_component_simulator)"
     assert callable(_u68_run_component_worker) and callable(_u68_draw_component_scene), "ADVANCED self-test check 17: callable(_u68_run_component_worker) and callable(_u68_draw_component_scene)"
@@ -3155,7 +3155,7 @@ def _u66_selftest_advanced():
     assert AppV43.show_component_lab is _u93_show_lab, "ADVANCED self-test check 19: final component catalog must be wired"
     assert AppV43.show_module in (_u69_show_module, _u84_show_module_with_gpu_live, _u86_show_module_with_component_workbench, _u88_show_module_with_independent_tests), "ADVANCED self-test check 20: AppV43.show_module is a supported final view wrapper"
     assert AppV43.show_simple_module in (_u83_show_simple_module_speed_entry, _u86_show_simple_module_with_component_workbench, _u88_show_simple_module_with_independent_tests), "ADVANCED self-test check 21: AppV43.show_simple_module is a supported final view wrapper"
-    assert len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==60 and len({scene[0] for scene in _U66_SCENES})==60"
+    assert len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==60, "ADVANCED self-test check 22: len(_U66_SCENES)==90 and len({scene[0] for scene in _U66_SCENES})==60"
     assert AppV43._start_selected_diagnostic is _u91_start_selected_diagnostic, "ADVANCED self-test check 23: final guarded selected-test route is installed"
     assert "N/D" in _u67_refresh_visible_charts.__code__.co_consts, "ADVANCED self-test check 24: 'N/D' in _u67_refresh_visible_charts.__code__.co_consts"
     assert _u66_format_rate(1_000_000)=="8.00 Mbps" and _u66_format_rate(0)=="0.00 Mbps", "ADVANCED self-test check 25: _u66_format_rate(1_000_000)=='8.00 Mbps' and _u66_format_rate(0)=='0.00 Mbps'"
@@ -3826,7 +3826,7 @@ def _u86_draw_bar_chart(self,canvas,items,title=""):
     _U86_ORIGINAL_DRAW_BAR_CHART(self,canvas,items,title)
 
 def _u86_selftest_component_ui():
-    assert len(_U66_SCENES)==60 and len({x[0] for x in _U66_SCENES})==60
+    assert len(_U66_SCENES)==90 and len({x[0] for x in _U66_SCENES})==60
     assert str(_U68_PROFILE_CHOICES[-1]).endswith("900 s")
     assert callable(_u86_stage_live_panel) and callable(_u86_launch_component_test)
     assert callable(_u86_render_component_report) and callable(_u86_component_monitor_tick)
@@ -4778,7 +4778,7 @@ def _u88_run_selected_diagnostic(app, selected):
         expanded.append(item)
         if item[0] == "GPU":
             expanded.append((
-                "__3D__", "GPU — 60 scen OpenGL, pomiar FPS",
+                "__3D__", "GPU — 90 scen OpenGL, pomiar FPS",
                 lambda: _u90_show_3d_studio(app),
                 lambda: _u88_run_3d_suite(app, 5), ["3D_SUITE"]
             ))
@@ -4876,7 +4876,7 @@ def _u88_start_selected_diagnostic(app):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz co najmniej jeden moduł na pulpicie.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 60 scen 3D + VRAM", "RAM": "RAM",
+        "CPU": "CPU", "GPU": "GPU + 90 scen 3D + VRAM", "RAM": "RAM",
         "DYSKI": "SSD/HDD/NVMe", "MATRYCA": "Matryca", "BATERIA": "Bateria",
         "KLAWIATURA": "Klawiatura", "AUDIO": "Audio", "SIEC": "Speed Test + USB",
         "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
@@ -4884,7 +4884,7 @@ def _u88_start_selected_diagnostic(app):
     message = (
         "Uruchomić zaznaczone testy po kolei, każdy na osobnym ekranie?\n\n"
         "Wyniki czujników na żywo, wykresy i raport są aktualizowane w trakcie. "
-        "GPU: 60 scen po 5 s (około 5 minut) oraz osobny test VRAM 15 s. "
+        "GPU: 90 scen po 5 s (około 5 minut) oraz osobny test VRAM 15 s. "
         "RAM wykorzysta bezpieczny bufor maks. 2 GB. STOP TEST przerywa przebieg.\n\n"
         "Kolejność: " + " → ".join(labels.get(k, k) for k in selected)
     )
@@ -4902,7 +4902,7 @@ def _u88_start_all_tests(app):
     message = (
         "Uruchomić WSZYSTKIE testy po kolei, każdy na osobnym ekranie?\n\n"
         "Przebieg zawiera CPU, GPU, RAM, dyski, matrycę, baterię, klawiaturę, audio, "
-        "60 scen 3D po 5 s, osobny test VRAM, Speed Test, USB, Windows/bezpieczeństwo i kamerę. "
+        "90 scen 3D po 5 s, osobny test VRAM, Speed Test, USB, Windows/bezpieczeństwo i kamerę. "
         "GPU+VRAM dodają około 5 minut i 15 sekund; Speed Test przesyła około 24 MB. "
         "Można przerwać przez STOP TEST."
     )
@@ -5130,7 +5130,7 @@ def _u91_start_selected_diagnostic(app):
         messagebox.showwarning("Pełna diagnostyka", "Zaznacz co najmniej jeden moduł na pulpicie.")
         return
     labels = {
-        "CPU": "CPU", "GPU": "GPU + 60 scen 3D + VRAM", "RAM": "RAM",
+        "CPU": "CPU", "GPU": "GPU + 90 scen 3D + VRAM", "RAM": "RAM",
         "DYSKI": "SSD/HDD/NVMe", "MATRYCA": "Matryca", "BATERIA": "Bateria",
         "KLAWIATURA": "Klawiatura", "AUDIO": "Audio", "SIEC": "Speed Test + USB",
         "SYSTEM_SECURITY": "Windows / bezpieczeństwo", "KAMERA": "Kamera"
@@ -5178,9 +5178,9 @@ def _u88_selftest_final_wiring():
     assert AppV43._u66_ui_wait is _u88_ui_wait
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "MAX — 600 s"})()})()) == 60
     assert _u88_scene_seconds_from_profile(type("FakeProfile", (), {"_u68_profile_var": type("V", (), {"get": lambda s: "ULTRA — 300 s"})()})()) == 30
-    assert len(_U66_SCENES) == 60
+    assert len(_U66_SCENES) == 90
     assert callable(_u68_attach_component_workbench)
-    print("COMPONENT_INDEPENDENT_WORKBENCH_3D_SUITE_SELFTEST_OK: 13 modules, separate screen per test, 60 scenes, 4K MAX and bounded 3D timing")
+    print("COMPONENT_INDEPENDENT_WORKBENCH_3D_SUITE_SELFTEST_OK: 13 modules, separate screen per test, 90 scenes, 4K MAX and bounded 3D timing")
 
 
 
@@ -5359,9 +5359,9 @@ _U93_TEST_CATALOG = {
  "GPU":[
   ("gpu_scan","Skan GPU — karta i sterownik","Identyfikacja adaptera/sterownika Windows.","gpu_scan"),
   ("gpu_scene","Jedna scena OpenGL — wybór 1–60","Mierzy FPS/klatki jednej wskazanej sceny i zapisuje renderer.","gpu_scene"),
-  ("gpu_std","Benchmark 60 scen — STANDARD","60 scen po 10 sekund każda, rzeczywiste FPS.","gpu_suite10"),
-  ("gpu_ultra","Benchmark 60 scen — ULTRA","60 scen po 30 sekund każda, około 30 min renderowania.","gpu_suite30"),
-  ("gpu_max","Benchmark 60 scen — MAX","60 scen po 60 sekund każda, około 60 min renderowania.","gpu_suite60"),
+  ("gpu_std","Benchmark 90 scen — STANDARD","90 scen po 10 sekund każda, rzeczywiste FPS.","gpu_suite10"),
+  ("gpu_ultra","Benchmark 90 scen — ULTRA","90 scen po 30 sekund każda, około 30 min renderowania.","gpu_suite30"),
+  ("gpu_max","Benchmark 90 scen — MAX","90 scen po 60 sekund każda, około 60 min renderowania.","gpu_suite60"),
   ("gpu_sensor","Czujniki GPU — temperatura/VRAM/zegar/moc","N/D gdy sterownik nie udostępnia pomiaru.","gpu_sensor"),
   ("gpu_games","Doradca gier — ustawienia grafiki","Oddziela pomiary syntetyczne od szacunków FPS w grach.","games"),
   ("gpu_sim","Symulator 3D GPU","Schemat karty; FPS mierzą tylko testy renderowania.","sim")
@@ -6252,7 +6252,7 @@ def _u93_selftest_catalog_routing():
         assert entries,f"Pusty katalog {module}"
         for test_id,title,description,kind in entries:
             ids.append(test_id);kinds.add(kind);assert title and description
-    assert len(ids)==70 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
+    assert len(ids)==90 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
     assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
     assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
     assert AppV43.show_component_lab is _u93_show_lab
@@ -6476,7 +6476,37 @@ _U100_SCENE_TITLES = [
  "Sphere Field — gęste pole sfer",
  "Ultimate Mix — geometria mieszana I",
  "Ultimate Mix — geometria mieszana II",
- "Ultimate Mix — geometria mieszana MAX"
+ "Ultimate Mix — geometria mieszana MAX",
+ "FurMark Inferno — pojedynczy ognisty donut",
+ "FurMark Inferno — podwójny wir futrzastych torusów",
+ "FurMark Inferno — gęsty wir MAX",
+ "Crystal Forge — pryzmatyczna komora",
+ "Crystal Forge — wielowarstwowe kryształy",
+ "Crystal Forge — gęsty ogród kryształów MAX",
+ "Triangle Prism Storm — pojedyncza fala siatki",
+ "Triangle Prism Storm — potrójna fala trójkątów",
+ "Triangle Prism Storm — ekstremalny strumień trójkątów",
+ "Neon City Grid — osiedle neonowych wież",
+ "Neon City Grid — centrum o wielu poziomach",
+ "Neon City Grid — nocna megastruktura MAX",
+ "Galaxy Orbit — planeta z pierścieniami",
+ "Galaxy Orbit — układ podwójnej gwiazdy",
+ "Galaxy Orbit — gęsta galaktyka orbit MAX",
+ "Mechanical Core — pojedynczy wirnik",
+ "Mechanical Core — zębatki i współosiowe pierścienie",
+ "Mechanical Core — mechanizm wielowarstwowy MAX",
+ "Fractal Tree — pojedyncze rozgałęzienie 3D",
+ "Fractal Tree — fraktalna korona",
+ "Fractal Tree — gęsta korona fraktalna MAX",
+ "Ribbon Helix — pojedyncza wstęga przestrzenna",
+ "Ribbon Helix — splecione wstęgi",
+ "Ribbon Helix — wielohelikalny tunel MAX",
+ "Particle Vortex — wir punktów",
+ "Particle Vortex — spiralny strumień cząstek",
+ "Particle Vortex — burza cząstek EXTREME",
+ "Ultimate Mix MAX — geometria wielowarstwowa I",
+ "Ultimate Mix MAX — mieszany stress renderera II",
+ "Ultimate Mix MAX — maksymalny miks geometrii"
 ]
 _U66_SCENES = [
  (f"{i:02d} — {name}", name.split(" — ",1)[0], 1 + (i % 3) * 2)
@@ -6839,7 +6869,7 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                 for i in range(count):
                     x=rand.uniform(-2.5,2.5);y=rand.uniform(-1.9,1.9);z=rand.uniform(-2.5,2.5)
                     sphere(x,y,z,0.06+rand.random()*0.1,(0.12+rand.random()*0.7,0.2+rand.random()*0.7,0.55+rand.random()*0.4),7+variant*2,12+variant*2)
-            else:
+            elif family==19:
                 draw_fur_torus(0.9,0.28,800+variant*1200,(0.08,0.25,0.8))
                 for i in range(80+variant*80):
                     x=rand.uniform(-2.2,2.2);y=rand.uniform(-1.4,1.4);z=rand.uniform(-2.2,2.2)
@@ -6847,6 +6877,193 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
                     else:box(x,y,z,0.11,0.11,0.11,(0.13,0.5,0.85))
                 for i in range(25+variant*30):
                     wire_box(rand.uniform(-1.5,1.5),rand.uniform(-1,1),rand.uniform(-1.5,1.5),0.25+rand.random()*0.35,(0.12,0.8,0.65))
+            elif family==20:
+                if variant==0:
+                    draw_fur_torus(1.28,0.40,2600,(0.08,0.22,0.86));torus(1.32,0.05,(0.95,0.24,0.08),44,10)
+                elif variant==1:
+                    for q in (-1,1):
+                        gl.glPushMatrix();gl.glTranslatef(q*0.9,0,0);gl.glRotatef(q*28,1,0,1)
+                        draw_fur_torus(0.72,0.26,2400,(0.06,0.42,0.98));gl.glPopMatrix()
+                    for i in range(64):
+                        a=2*_m.pi*i/64;sphere(1.8*_m.cos(a),0.4*_m.sin(a*5),1.8*_m.sin(a),0.045,(1.0,0.28+0.45*rand.random(),0.06),5,7)
+                else:
+                    draw_fur_torus(1.0,0.38,5200,(0.05,0.19,0.82));draw_fur_torus(0.54,0.2,2200,(0.08,0.6,0.95))
+            elif family==21:
+                if variant==0:
+                    for i in range(32):
+                        a=2*_m.pi*i/32;r=1.25+(i%4)*0.12
+                        wire_box(r*_m.cos(a),0.45*_m.sin(a*3),r*_m.sin(a),0.28,(0.1,0.72,0.96))
+                        sphere(r*_m.cos(a),0.45*_m.sin(a*3),r*_m.sin(a),0.09,(0.42,0.75,1.0),7,9)
+                elif variant==1:
+                    for i in range(54):
+                        a=i*2.39996;r=0.22+0.19*_m.sqrt(i);x=r*_m.cos(a);y=r*_m.sin(a*0.7);z=r*_m.sin(a)
+                        gl.glPushMatrix();gl.glTranslatef(x,y,z);gl.glRotatef(i*17,1,1,0)
+                        wire_box(0,0,0,0.18+(i%4)*0.07,(0.3+rand.random()*0.4,0.6,0.95));gl.glPopMatrix()
+                else:
+                    for i in range(76):
+                        x=rand.uniform(-2.1,2.1);y=rand.uniform(-1.8,1.8);z=rand.uniform(-2.1,2.1)
+                        size=0.10+rand.random()*0.22;wire_box(x,y,z,size,(0.12+rand.random()*0.3,0.55+rand.random()*0.35,0.9))
+                        line((x-size,y-size,z-size),(x+size,y+size,z+size),(0.25,0.86,1.0),0.8)
+            elif family==22:
+                if variant==0:
+                    for layer in range(28):
+                        z=-2.6+layer*0.19;pts=[]
+                        for i in range(360):
+                            a=2*_m.pi*i/360;r=1.5+0.24*_m.sin(7*a+layer*0.28)
+                            pts.append((r*_m.cos(a),r*_m.sin(a),z+0.18*_m.sin(5*a)))
+                        path_line(pts,(0.08+layer*0.012,0.35,0.82),1.0)
+                elif variant==1:
+                    for layer in range(3):
+                        gl.glBegin(gl.GL_TRIANGLES)
+                        for i in range(2400):
+                            a=i*0.031+layer*0.7;r=0.3+(i%89)*0.027;z=-1+layer+(i%17)*0.08
+                            gl.glColor3f(0.1+layer*0.2,0.35+(i%5)*0.1,0.7+(i%3)*0.08)
+                            gl.glVertex3f(r*_m.cos(a),r*_m.sin(a),z)
+                            gl.glVertex3f((r+0.12)*_m.cos(a+0.07),(r+0.12)*_m.sin(a+0.07),z+0.08)
+                            gl.glVertex3f((r+0.18)*_m.cos(a-0.03),(r+0.18)*_m.sin(a-0.03),z-0.06)
+                        gl.glEnd();primitive_counter["value"]+=7200
+                else:
+                    n=74
+                    for row in range(n):
+                        z0=-2.8+5.6*row/n;z1=-2.8+5.6*(row+1)/n
+                        gl.glBegin(gl.GL_TRIANGLE_STRIP)
+                        for col in range(n+1):
+                            x=-2.8+5.6*col/n
+                            for z in (z0,z1):
+                                h=0.42*_m.sin(x*2.3)*_m.cos(z*2.0)+0.2*_m.sin((x-z)*4)
+                                gl.glColor3f(0.06+0.12*(h+1),0.2+0.2*(h+1),0.35+0.25*(h+1))
+                                gl.glVertex3f(x,h,z)
+                        gl.glEnd()
+                    primitive_counter["value"]+=n*n*2
+            elif family==23:
+                levels=(18,30,46)[variant]
+                for i in range(levels):
+                    x=(i%12-5.5)*0.38;z=(i//12-1.5)*0.54;height=0.45+rand.random()*(1.2+variant*0.6)
+                    box(x,height/2,z,0.28,height,0.28,(0.025+rand.random()*0.09,0.04,0.18+rand.random()*0.25))
+                    for floor in range(max(1,int(height*8))):
+                        if (floor+i)%3!=0:box(x+0.145,floor*0.12+0.08,z+0.145,0.025,0.035,0.02,(0.05,0.72+0.2*rand.random(),0.98))
+                if variant>0:
+                    for i in range(80+variant*120):
+                        x=rand.uniform(-2.5,2.5);z=rand.uniform(-2.5,2.5)
+                        line((x,-1.1,z),(x+0.05,1.1,z+0.05),(0.08,0.35,0.82),0.5)
+            elif family==24:
+                if variant==0:
+                    sphere(0,0,0,0.55,(1.0,0.38,0.08),14,22)
+                    for i in range(9):
+                        radius=0.8+i*0.24;torus(radius,0.015,(0.12+0.035*i,0.42,0.9-0.04*i),52,5)
+                        a=i*1.73;sphere(radius*_m.cos(a),0.06*i,radius*_m.sin(a),0.075,(0.45,0.74,0.98),8,11)
+                elif variant==1:
+                    for k in range(2):
+                        x=-0.75+k*1.5;sphere(x,0,0,0.42,(0.98-0.6*k,0.34+0.45*k,0.1+0.65*k),13,20)
+                        for i in range(6):
+                            r=0.66+i*0.22;gl.glPushMatrix();gl.glTranslatef(x,0,0);gl.glRotatef(k*35+i*7,1,0,1)
+                            torus(r,0.013,(0.2,0.67,0.93),40,5);gl.glPopMatrix()
+                else:
+                    gl.glDisable(gl.GL_LIGHTING);gl.glPointSize(3);gl.glBegin(gl.GL_POINTS)
+                    for i in range(6400):
+                        a=rand.random()*2*_m.pi;r=0.3+rand.random()*2.5;y=rand.uniform(-0.5,0.5)
+                        gl.glColor3f(0.2+rand.random()*0.6,0.25+rand.random()*0.65,0.65+rand.random()*0.35)
+                        gl.glVertex3f(r*_m.cos(a),y,r*_m.sin(a))
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=6400
+            elif family==25:
+                if variant==0:
+                    for i in range(9):
+                        x=(i-4)*0.42;gl.glPushMatrix();gl.glTranslatef(x,0,0);gl.glRotatef(i*13,0,1,0)
+                        torus(0.42,0.09,(0.38+0.04*i,0.68,0.82),30,8)
+                        for b in range(12):
+                            a=2*_m.pi*b/12;box(0.42*_m.cos(a),0.08,0.42*_m.sin(a),0.1,0.23,0.08,(0.7,0.73,0.78))
+                        gl.glPopMatrix()
+                elif variant==1:
+                    for i in range(16):
+                        a=2*_m.pi*i/16;gl.glPushMatrix();gl.glRotatef(i*22.5,1,0.3,0)
+                        torus(1.2,0.025,(0.1,0.7,0.98),48,4);gl.glPopMatrix()
+                        line((0,0,0),(1.2*_m.cos(a),1.2*_m.sin(a),0),(0.9,0.38,0.1),1.2)
+                    for i in range(60):
+                        a=i*0.19;r=0.9+0.45*_m.sin(3*a);sphere(r*_m.cos(a),r*_m.sin(a),0,0.04,(0.75,0.78,0.82),5,8)
+                else:
+                    for i in range(64):
+                        r=0.8+(i%4)*0.2;gl.glPushMatrix();gl.glRotatef(i*11,0.2,1,0)
+                        torus(r,0.025,(0.12,0.65+0.2*(i%3),0.95),28,5);gl.glPopMatrix()
+                    for i in range(20):
+                        box((i-10)*0.2,rand.uniform(-1,1),rand.uniform(-0.8,0.8),0.16,0.16,0.16,(0.95,0.4,0.08))
+            elif family==26:
+                def branch(x,y,z,length,depth,angle):
+                    if depth<=0:return
+                    ex=x+length*_m.sin(angle);ey=y+length;ez=z+length*_m.cos(angle)
+                    line((x,y,z),(ex,ey,ez),(0.15,0.7-0.05*depth,0.25+0.08*depth),max(0.5,depth*0.32))
+                    branch(ex,ey,ez,length*0.71,depth-1,angle+0.58)
+                    branch(ex,ey,ez,length*0.71,depth-1,angle-0.58)
+                    if variant>0:branch(ex,ey,ez,length*0.69,depth-1,angle+0.1)
+                branch(0,-1.7,0,0.48,5+variant,0.0)
+                if variant==2:
+                    for i in range(120):
+                        a=i*2.39996;r=0.25+1.8*_m.sqrt(i/120)
+                        sphere(r*_m.cos(a),-0.8+1.5*rand.random(),r*_m.sin(a),0.045,(0.15,0.75,0.35),5,8)
+            elif family==27:
+                if variant==0:
+                    for q in range(2):
+                        pts=[]
+                        for i in range(1100):
+                            t=i/1099*7*_m.pi;pts.append((1.0*_m.cos(t+q*_m.pi),1.8*i/1099-0.9,1.0*_m.sin(t+q*_m.pi)))
+                        path_line(pts,(0.12+q*0.3,0.6,0.98-q*0.2),2)
+                elif variant==1:
+                    for q in range(5):
+                        pts=[]
+                        for i in range(760):
+                            t=i/759*6*_m.pi;rad=0.55+q*0.18
+                            pts.append((rad*_m.cos(t+q*0.7),rad*_m.sin(t*0.65+q),rad*_m.sin(t+q*0.7)))
+                        path_line(pts,(0.14+q*0.12,0.45+q*0.08,0.92),1.4)
+                else:
+                    for q in range(9):
+                        pts=[]
+                        for i in range(800):
+                            t=i/799*5*_m.pi;rad=0.32+q*0.11
+                            pts.append((rad*_m.cos(t+q*0.23),rad*_m.sin(t*0.7+q*0.5),rad*_m.sin(t+q*0.23)))
+                        path_line(pts,(0.08+q*0.09,0.38,0.78+q*0.02),1.1)
+            elif family==28:
+                if variant==0:
+                    gl.glDisable(gl.GL_LIGHTING);gl.glPointSize(2);gl.glBegin(gl.GL_POINTS)
+                    for i in range(2800):
+                        a=i*0.17;r=0.2+1.9*i/2800;y=0.65*_m.sin(i*0.037)
+                        gl.glColor3f(0.1+(i%7)*0.1,0.28+(i%5)*0.12,0.7+(i%3)*0.1)
+                        gl.glVertex3f(r*_m.cos(a),y,r*_m.sin(a))
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=2800
+                elif variant==1:
+                    for i in range(260):
+                        a=i*0.31;r=0.6+0.008*i;y=(i%17-8)*0.12
+                        sphere(r*_m.cos(a),y,r*_m.sin(a),0.035+0.015*(i%4),(0.13,0.5+0.1*(i%4),0.92),5,8)
+                else:
+                    gl.glDisable(gl.GL_LIGHTING);gl.glPointSize(3);gl.glBegin(gl.GL_POINTS)
+                    for i in range(9000):
+                        a=rand.random()*2*_m.pi;r=rand.uniform(0.3,2.4);y=rand.uniform(-1.7,1.7)
+                        gl.glColor3f(0.12+rand.random()*0.65,0.2+rand.random()*0.65,0.65+rand.random()*0.3)
+                        gl.glVertex3f(r*_m.cos(a),y,r*_m.sin(a))
+                    gl.glEnd();gl.glEnable(gl.GL_LIGHTING);primitive_counter["value"]+=9000
+            elif family==29:
+                if variant==0:
+                    draw_fur_torus(0.92,0.29,3600,(0.05,0.28,0.92))
+                    for i in range(180):
+                        x=rand.uniform(-2,2);y=rand.uniform(-1.4,1.4);z=rand.uniform(-2,2)
+                        box(x,y,z,0.08,0.08,0.08,(0.8,0.38,0.12))
+                elif variant==1:
+                    draw_fur_torus(0.75,0.24,2800,(0.08,0.5,0.98))
+                    for i in range(80):
+                        x=rand.uniform(-2.1,2.1);y=rand.uniform(-1.5,1.5);z=rand.uniform(-2.1,2.1)
+                        sphere(x,y,z,0.055,(0.25,0.76,0.98),6,9)
+                    gl.glBegin(gl.GL_TRIANGLES)
+                    for i in range(7200):
+                        x=rand.uniform(-2.2,2.2);y=rand.uniform(-1.7,1.7);z=rand.uniform(-2.2,2.2);q=0.04+rand.random()*0.12
+                        gl.glColor3f(0.08+rand.random()*0.45,0.35+rand.random()*0.4,0.75+rand.random()*0.25)
+                        gl.glVertex3f(x,y,z);gl.glVertex3f(x+q,y+q,z);gl.glVertex3f(x,y,z+q)
+                    gl.glEnd();primitive_counter["value"]+=7200
+                else:
+                    draw_fur_torus(1.0,0.34,6200,(0.04,0.18,0.85))
+                    for i in range(900):
+                        x=rand.uniform(-2.3,2.3);y=rand.uniform(-1.6,1.6);z=rand.uniform(-2.3,2.3)
+                        if i%2:sphere(x,y,z,0.045,(0.9,0.32,0.12),5,7)
+                        else:wire_box(x,y,z,0.1,(0.12,0.78,0.98))
+            else:
+                draw_fur_torus(0.9,0.28,800+variant*1200,(0.08,0.25,0.8))
         display_list=gl.glGenLists(1);gl.glNewList(display_list,gl.GL_COMPILE);build_scene();gl.glEndList()
         profile = {
           "scene_id":sid,"scene_name":_U66_SCENES[sid-1][0],"family":_U100_SCENE_TITLES[sid-1],
@@ -6878,7 +7095,7 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             now=_tm.perf_counter()
             if now-last>=1.0:
                 fps=bucket_frames/(now-last);fps_samples.append(fps);bucket_frames=0;last=now
-                pg.display.set_caption(f"NAPRAWA PC FURMARK STYLE | SCENA {sid}/60 | {title} | FPS {fps:.1f} | {renderer[:65]} | ESC STOP")
+                pg.display.set_caption(f"NAPRAWA PC FURMARK STYLE | SCENA {sid}/{len(_U66_SCENES)} | {title} | FPS {fps:.1f} | {renderer[:65]} | ESC STOP")
             clock.tick(0)
         elapsed=max(.001,_tm.perf_counter()-start)
         avg=frames/elapsed
@@ -7231,8 +7448,8 @@ def _u100_selftest_adaptive_speed():
     print("ADAPTIVE_SPEED_AND_ALL_VENDOR_SENSOR_SELFTEST_OK")
 
 def _u100_selftest_unique_gpu_scenes():
-    assert len(_U66_SCENES)==60 and len(_U100_SCENE_TITLES)==60
-    assert len(set(_U100_SCENE_TITLES))==60
+    assert len(_U66_SCENES)==90 and len(_U100_SCENE_TITLES)==90
+    assert len(set(_U100_SCENE_TITLES))==90
     assert callable(_u37_gpu_benchmark_child)
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
@@ -7242,7 +7459,7 @@ def _u100_selftest_unique_gpu_scenes():
     assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
     assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
-    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 60 distinct named scenes, 20 visual families with 3 different layouts each, synchronized real FPS")
+    print("UNIQUE_3D_GPU_RENDERER_SELFTEST_OK: 90 distinct named scenes, 30 visual families with 3 different layouts each, synchronized real FPS")
 
 _u37_gpu_benchmark_child = _u100_gpu_benchmark_child
 
@@ -7267,95 +7484,98 @@ def _u101_fmt(value, decimals=2):
 
 def _u101_collect_os_metrics(app):
     metrics={}
-    if not psutil:
-        return metrics
-    try:
-        metrics["cpu_percent"]=psutil.cpu_percent(interval=0.15)
-    except Exception:
-        metrics["cpu_percent"]=None
+    if not psutil:return metrics
+    try:metrics["cpu_percent"]=psutil.cpu_percent(interval=0.15)
+    except Exception:metrics["cpu_percent"]=None
+    try:metrics["cpu_per_core_percent"]=[float(v) for v in (psutil.cpu_percent(interval=None,percpu=True) or [])]
+    except Exception:metrics["cpu_per_core_percent"]=[]
     try:
         freq=psutil.cpu_freq()
         metrics["cpu_clock_mhz"]=float(freq.current) if freq and freq.current else None
         metrics["cpu_clock_max_mhz"]=float(freq.max) if freq and freq.max else None
-    except Exception:
-        metrics["cpu_clock_mhz"]=metrics["cpu_clock_max_mhz"]=None
+    except Exception:metrics["cpu_clock_mhz"]=metrics["cpu_clock_max_mhz"]=None
     try:
         metrics["cpu_logical"]=int(psutil.cpu_count(logical=True) or 0) or None
         metrics["cpu_physical"]=int(psutil.cpu_count(logical=False) or 0) or None
-    except Exception:
-        metrics["cpu_logical"]=metrics["cpu_physical"]=None
+    except Exception:metrics["cpu_logical"]=metrics["cpu_physical"]=None
     try:
-        vm=psutil.virtual_memory()
-        metrics.update({
-            "ram_total_bytes":int(vm.total),"ram_used_bytes":int(vm.used),
-            "ram_available_bytes":int(vm.available),"ram_percent":float(vm.percent)
-        })
-    except Exception:
-        metrics.update({"ram_total_bytes":None,"ram_used_bytes":None,"ram_available_bytes":None,"ram_percent":None})
+        vm=psutil.virtual_memory();metrics.update({"ram_total_bytes":int(vm.total),"ram_used_bytes":int(vm.used),"ram_available_bytes":int(vm.available),"ram_percent":float(vm.percent)})
+    except Exception:metrics.update({"ram_total_bytes":None,"ram_used_bytes":None,"ram_available_bytes":None,"ram_percent":None})
     try:
-        swap=psutil.swap_memory()
-        metrics.update({"swap_total_bytes":int(swap.total),"swap_used_bytes":int(swap.used),"swap_percent":float(swap.percent)})
-    except Exception:
-        metrics.update({"swap_total_bytes":None,"swap_used_bytes":None,"swap_percent":None})
+        swap=psutil.swap_memory();metrics.update({"swap_total_bytes":int(swap.total),"swap_used_bytes":int(swap.used),"swap_percent":float(swap.percent)})
+    except Exception:metrics.update({"swap_total_bytes":None,"swap_used_bytes":None,"swap_percent":None})
     now=_u66_time.monotonic()
-    try:
-        io=psutil.disk_io_counters()
-    except Exception:
-        io=None
-    try:
-        net=psutil.net_io_counters()
-    except Exception:
-        net=None
-    prev=getattr(app,"_u101_io_prev",None)
-    disk_read=disk_write=None
+    try:io=psutil.disk_io_counters()
+    except Exception:io=None
+    try:net=psutil.net_io_counters()
+    except Exception:net=None
+    prev=getattr(app,"_u101_io_prev",None);disk_read=disk_write=net_down=net_up=None
     if io is not None and prev and now>prev.get("time",now):
-        dt=max(.05,now-prev["time"])
-        disk_read=max(0.0,(io.read_bytes-prev.get("read",io.read_bytes))/dt/1_000_000)
+        dt=max(.05,now-prev["time"]);disk_read=max(0.0,(io.read_bytes-prev.get("read",io.read_bytes))/dt/1_000_000)
         disk_write=max(0.0,(io.write_bytes-prev.get("write",io.write_bytes))/dt/1_000_000)
-    net_down=net_up=None
     if net is not None and prev and now>prev.get("time",now):
-        dt=max(.05,now-prev["time"])
-        net_down=max(0.0,(net.bytes_recv-prev.get("recv",net.bytes_recv))*8/dt/1_000_000)
+        dt=max(.05,now-prev["time"]);net_down=max(0.0,(net.bytes_recv-prev.get("recv",net.bytes_recv))*8/dt/1_000_000)
         net_up=max(0.0,(net.bytes_sent-prev.get("sent",net.bytes_sent))*8/dt/1_000_000)
-    metrics["disk_read_mbps"]=disk_read
-    metrics["disk_write_mbps"]=disk_write
-    metrics["net_down_mbps"]=net_down
-    metrics["net_up_mbps"]=net_up
-    current={
-        "time":now,
-        "read":int(io.read_bytes) if io is not None else 0,
-        "write":int(io.write_bytes) if io is not None else 0,
-        "recv":int(net.bytes_recv) if net is not None else 0,
-        "sent":int(net.bytes_sent) if net is not None else 0
-    }
-    app._u101_io_prev=current
+    metrics.update({"disk_read_mbps":disk_read,"disk_write_mbps":disk_write,"net_down_mbps":net_down,"net_up_mbps":net_up})
+    app._u101_io_prev={"time":now,"read":int(io.read_bytes) if io is not None else 0,"write":int(io.write_bytes) if io is not None else 0,
+        "recv":int(net.bytes_recv) if net is not None else 0,"sent":int(net.bytes_sent) if net is not None else 0}
+    try:
+        perdev=psutil.disk_io_counters(perdisk=True) or {};previous=getattr(app,"_u101_disk_io_prev",{}) or {};rows=[]
+        for name,counter in perdev.items():
+            old=previous.get(name,{});dt=max(.05,now-float(old.get("time",now))) if old else None
+            rows.append({"device":str(name),"read_mbps":max(0.0,(counter.read_bytes-old.get("read",counter.read_bytes))/dt/1_000_000) if dt else None,
+                "write_mbps":max(0.0,(counter.write_bytes-old.get("write",counter.write_bytes))/dt/1_000_000) if dt else None,
+                "read_bytes":int(counter.read_bytes),"write_bytes":int(counter.write_bytes)})
+            previous[name]={"time":now,"read":int(counter.read_bytes),"write":int(counter.write_bytes)}
+        app._u101_disk_io_prev=previous;metrics["disk_devices"]=rows[:256]
+    except Exception:metrics["disk_devices"]=[]
+    try:
+        volumes=[]
+        for part in psutil.disk_partitions(all=False) or []:
+            mount=str(getattr(part,"mountpoint","") or "")
+            if not mount:continue
+            try:
+                usage=psutil.disk_usage(mount)
+                volumes.append({"device":str(getattr(part,"device","") or ""),"mountpoint":mount,"filesystem":str(getattr(part,"fstype","") or ""),
+                    "total_bytes":int(usage.total),"used_bytes":int(usage.used),"free_bytes":int(usage.free),"percent":float(usage.percent)})
+            except Exception as exc:
+                volumes.append({"device":str(getattr(part,"device","") or ""),"mountpoint":mount,"filesystem":str(getattr(part,"fstype","") or ""),
+                    "total_bytes":None,"used_bytes":None,"free_bytes":None,"percent":None,"error":str(exc)})
+        metrics["disk_volumes"]=volumes[:256]
+    except Exception:metrics["disk_volumes"]=[]
+    try:
+        pernic=psutil.net_io_counters(pernic=True) or {};previous=getattr(app,"_u101_nic_io_prev",{}) or {}
+        stats=psutil.net_if_stats() or {};addresses=psutil.net_if_addrs() or {};rows=[]
+        for name,counter in pernic.items():
+            old=previous.get(name,{});dt=max(.05,now-float(old.get("time",now))) if old else None;st=stats.get(name);ipv4=[]
+            for addr in addresses.get(name,[]) or []:
+                if getattr(addr,"family",None)==getattr(__import__("socket"),"AF_INET",None):ipv4.append(str(getattr(addr,"address","")))
+            rows.append({"name":str(name),"is_up":bool(st.isup) if st else None,"speed_mbps":getattr(st,"speed",None) if st else None,
+                "rx_mbps":max(0.0,(counter.bytes_recv-old.get("recv",counter.bytes_recv))*8/dt/1_000_000) if dt else None,
+                "tx_mbps":max(0.0,(counter.bytes_sent-old.get("sent",counter.bytes_sent))*8/dt/1_000_000) if dt else None,
+                "bytes_recv":int(counter.bytes_recv),"bytes_sent":int(counter.bytes_sent),"ipv4":ipv4})
+            previous[name]={"time":now,"recv":int(counter.bytes_recv),"sent":int(counter.bytes_sent)}
+        app._u101_nic_io_prev=previous;metrics["network_interfaces"]=rows[:256]
+    except Exception:metrics["network_interfaces"]=[]
     try:
         battery=psutil.sensors_battery()
         metrics["battery_percent"]=float(battery.percent) if battery and battery.percent is not None else None
         metrics["battery_plugged"]=bool(battery.power_plugged) if battery else None
         metrics["battery_seconds_left"]=int(battery.secsleft) if battery and isinstance(battery.secsleft,(int,float)) and battery.secsleft>=0 else None
-    except Exception:
-        metrics.update({"battery_percent":None,"battery_plugged":None,"battery_seconds_left":None})
-    try:
-        metrics["uptime_seconds"]=max(0,int(_u66_time.time()-(psutil.boot_time() if psutil else _u66_time.time())))
-    except Exception:
-        metrics["uptime_seconds"]=None
-    # Some Windows builds expose extra thermal devices through psutil even without the bridge.
+    except Exception:metrics.update({"battery_percent":None,"battery_plugged":None,"battery_seconds_left":None})
+    try:metrics["uptime_seconds"]=max(0,int(_u66_time.time()-(psutil.boot_time() if psutil else _u66_time.time())))
+    except Exception:metrics["uptime_seconds"]=None
     temps=[]
     try:
-        getter=getattr(psutil,"sensors_temperatures",None)
-        readings=getter() if callable(getter) else {}
-        for sensor_group,records in (readings or {}).items():
+        getter=getattr(psutil,"sensors_temperatures",None);readings=getter() if callable(getter) else {}
+        for group,records in (readings or {}).items():
             for record in records or []:
-                value=getattr(record,"current",None)
-                try:
-                    value=float(value)
-                    if not _u66_math.isfinite(value):continue
+                try:value=float(getattr(record,"current",None))
                 except Exception:continue
-                temps.append({"hardware":str(sensor_group),"hardwareType":"OS","sensor":str(getattr(record,"label","") or sensor_group),
+                if not _u66_math.isfinite(value):continue
+                temps.append({"hardware":str(group),"hardwareType":"OS","sensor":str(getattr(record,"label","") or group),
                     "sensorType":"Temperature","value":value,"unit":"°C","source":"psutil"})
-    except Exception:
-        pass
+    except Exception:pass
     metrics["extra_temperature_sensors"]=temps
     return metrics
 
@@ -7438,6 +7658,28 @@ def _u101_refresh_sensor_table(app):
         for row in temps.get("acpi_zones",[]) or []:
             if isinstance(row,dict):
                 add("Temperature / ACPI",row.get("name","ACPI"),"Strefa termiczna",row.get("value"),"°C","WMI ACPI — nie jest to automatycznie temperatura rdzenia CPU")
+        for index,value in enumerate(system.get("cpu_per_core_percent",[]) or []):
+            add("Load",f"CPU Core {index+1}","Użycie rdzenia",value,"%","Windows / psutil per-core")
+        for drive in system.get("disk_devices",[]) or []:
+            if not isinstance(drive,dict):continue
+            add("Throughput",drive.get("device","Dysk"),"Odczyt urządzenia",drive.get("read_mbps"),"MB/s","Windows / psutil per-disk")
+            add("Throughput",drive.get("device","Dysk"),"Zapis urządzenia",drive.get("write_mbps"),"MB/s","Windows / psutil per-disk")
+        for volume in system.get("disk_volumes",[]) or []:
+            if not isinstance(volume,dict):continue
+            target=str(volume.get("device","") or volume.get("mountpoint","Wolumin"))
+            add("Storage",target,"Punkt montowania",volume.get("mountpoint"),"","Windows / psutil")
+            add("Storage",target,"System plików",volume.get("filesystem"),"","Windows / psutil")
+            add("Storage",target,"Zajętość",volume.get("percent"),"%","Windows / psutil")
+            add("Storage",target,"Wolne",volume.get("free_bytes")/1073741824 if volume.get("free_bytes") is not None else None,"GiB","Windows / psutil")
+            add("Storage",target,"Pojemność",volume.get("total_bytes")/1073741824 if volume.get("total_bytes") is not None else None,"GiB","Windows / psutil")
+        for nic in system.get("network_interfaces",[]) or []:
+            if not isinstance(nic,dict):continue
+            name=nic.get("name","Adapter")
+            add("Throughput",name,"RX / pobieranie",nic.get("rx_mbps"),"Mbps","Windows / psutil per-interface")
+            add("Throughput",name,"TX / wysyłanie",nic.get("tx_mbps"),"Mbps","Windows / psutil per-interface")
+            add("Network",name,"Link aktywny",nic.get("is_up"),"","Windows / psutil")
+            add("Network",name,"Szybkość linku",nic.get("speed_mbps"),"Mbps","Windows / psutil")
+            for ip in nic.get("ipv4",[]) or []:add("Network",name,"IPv4",ip,"","Windows / psutil")
         normalized=normalized[:3500]
         signature=tuple((r[0],r[1],r[2],r[4],r[5]) for r in normalized)
         old_signature=getattr(app,"_u101_sensor_signature",None)
@@ -7665,9 +7907,9 @@ def _u101_selftest_adaptive_speed():
     print("ADAPTIVE_SPEED_ALL_ENTRYPOINTS_AND_FULL_TELEMETRY_SELFTEST_OK")
 
 def _u101_selftest_unique_gpu_scenes():
-    assert len(_U66_SCENES)==60 and len(_U100_SCENE_TITLES)==60
-    assert len(set(_U100_SCENE_TITLES))==60
-    assert len({row[1] for row in _U66_SCENES})==60
+    assert len(_U66_SCENES)==90 and len(_U100_SCENE_TITLES)==90
+    assert len(set(_U100_SCENE_TITLES))==90
+    assert len({row[1] for row in _U66_SCENES})==90
     assert callable(_u37_gpu_benchmark_child)
     assert _u37_gpu_benchmark_child.__code__.co_argcount>=4
     assert "glFinish" in _u37_gpu_benchmark_child.__code__.co_names
@@ -7677,7 +7919,7 @@ def _u101_selftest_unique_gpu_scenes():
     assert any(isinstance(c,tuple) and "desktop_resolution" in c for c in _u37_gpu_benchmark_child.__code__.co_consts)
     assert "FurMark Style" in _U100_SCENE_TITLES[0]
     assert "Ultimate Mix" in _U100_SCENE_TITLES[-1]
-    print("GPU_SCENE_SELFTEST_OK: 60 unique scene IDs, 20 geometry families with distinct individual layouts and synchronized real FPS")
+    print("GPU_SCENE_SELFTEST_OK: 90 unique scene IDs, 30 geometry families with distinct individual layouts and synchronized real FPS")
 
 # Each test has a unique scene identifier, not just a shared family label.
 _U66_SCENES=[(f"{i:02d} — {name}",f"scene_{i:02d}",1+(i%3)*2) for i,name in enumerate(_U100_SCENE_TITLES,1)]
@@ -9852,9 +10094,413 @@ def _u106_selftest_adaptive_speed_payloads():
     assert callable(_u101_start_speed_test) and _u66_measure_speed is _u100_measure_speed
     print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
 
+
+# v4.3.100 — add 20 integrated procedures from System Repair PRO and Serwis Ultimate.
+_U107_EXTRA_TESTS = {
+ "SYSTEM REPAIR PRO":[
+  ("system_os_summary","System Repair PRO — stan Windows","Wersja/build Windows, architektura i podstawowe informacje.","system_os_summary"),
+  ("system_license","Licencja Windows — status aktywacji","Odczyt statusu licencji Windows; pełny klucz produktu nie jest ujawniany.","system_license"),
+  ("system_bios_uefi","BIOS/UEFI/TPM/Secure Boot","Odczyt BIOS, modelu, Secure Boot, TPM i modułów pamięci.","system_bios_uefi"),
+  ("system_driver_health","Sterowniki — inwentarz i błędy PnP","Lista obecnych urządzeń i stanów PnP oraz wersji podpisanych sterowników.","system_driver_health"),
+  ("system_directx12","DirectX 12 / GPU — raport diagnostyczny","Uruchamia DxDiag i zestawia raport z adapterami GPU Windows.","system_directx12"),
+  ("system_sfc_verify","Windows — SFC /verifyonly","Weryfikuje pliki systemowe bez automatycznej naprawy; wymaga administratora.","system_sfc_verify"),
+  ("system_dism_scan","Windows — DISM /ScanHealth","Skan magazynu składników bez /RestoreHealth; wymaga administratora.","system_dism_scan"),
+  ("system_event_errors","Dziennik zdarzeń — błędy 72 h","Odczyt krytycznych zdarzeń System i Application z ostatnich 72 godzin.","system_event_errors"),
+  ("system_restore_points","Punkty przywracania Windows","Odczyt istniejących punktów przywracania; niczego nie tworzy ani nie usuwa.","system_restore_points"),
+  ("system_knowledge_base","Baza wiedzy / PDF / lekcje","Przeszukuje lokalną bazę wiedzy aplikacji i zapisane artykuły.","system_knowledge_base")
+ ],
+ "SERWIS ULTIMATE":[
+  ("service_full_sensor_map","Serwis Ultimate — pełne czujniki","Migawka dostępnych sensorów i metryk; pełny inspector pokazuje listę/CSV.","service_full_sensor_map"),
+  ("service_vram_benchmark","Serwis Ultimate — test VRAM","Rzeczywista alokacja i test readback tekstur OpenGL.","service_vram_benchmark"),
+  ("service_battery_health","Serwis Ultimate — raport baterii","Raport powercfg i dane kontrolera baterii, jeśli dostępne.","service_battery_health"),
+  ("service_camera_inventory","Serwis Ultimate — kamera","Skan obecnych urządzeń kamery; podgląd obrazu jest osobną próbą.","service_camera_inventory"),
+  ("service_keyboard_inventory","Serwis Ultimate — klawiatura/mysz","Inwentarz PnP klawiatur i myszy; mechaniczny test klawiszy pozostaje osobny.","service_keyboard_inventory"),
+  ("service_display_modes","Serwis Ultimate — tryby ekranu","Odczyt bieżących i wspieranych trybów monitora, oddzielnie od EDID.","service_display_modes"),
+  ("service_audio_inventory","Serwis Ultimate — urządzenia audio","Skan wejść/wyjść audio; wykrycie nie potwierdza fizycznego działania.","service_audio_inventory"),
+  ("service_usb_inventory","Serwis Ultimate — porty/urządzenia USB","Odczyt obecnych urządzeń PnP USB i statusów.","service_usb_inventory"),
+  ("service_device_catalog","Serwis Ultimate — katalog urządzeń","Inwentarz modeli CPU/GPU/płyty/RAM/dysków/sieci/BIOS z CIM/WMI i filtrowanie.","service_device_catalog"),
+  ("service_uefi_ram_readiness","Serwis Ultimate — gotowość UEFI/RAM","Sprawdza UEFI/Secure Boot/TPM/RAM oraz Windows Memory Diagnostic; nie wymusza restartu.","service_uefi_ram_readiness")
+ ]
+}
+for module,entries in _U107_EXTRA_TESTS.items():
+    _U93_TEST_CATALOG[module]=entries
+_U93_MODULES.extend([
+ ("SYSTEM REPAIR PRO","SYSTEM REPAIR PRO — DIAGNOSTYKA WINDOWS"),
+ ("SERWIS ULTIMATE","SERWIS ULTIMATE — LABORATORIUM SERWISOWE")
+])
+_U93_ALIASES.update({"SYSTEM REPAIR PRO":"SYSTEM REPAIR PRO","SYSTEM REPAIR":"SYSTEM REPAIR PRO",
+ "SERWIS ULTIMATE":"SERWIS ULTIMATE","SERWIS":"SERWIS ULTIMATE","ULTIMATE":"SERWIS ULTIMATE"})
+_U93_SUPPORTED_TEST_KINDS.update({entry[3] for group in _U107_EXTRA_TESTS.values() for entry in group})
+_U107_ORIGINAL_NORM=_u93_norm
+_U107_ORIGINAL_SHOW_LAB=_u93_show_lab
+_U107_ORIGINAL_SHOW_CATALOG=_u93_show_catalog
+_U107_ORIGINAL_SHOW_DETAIL=_u93_show_test_detail
+_U107_ORIGINAL_EXECUTE_TEST=_u93_execute_catalog_test
+_U107_ORIGINAL_START_TEST=_u93_start_catalog_test
+
+def _u107_norm(module):
+    raw=str(module or "").upper()
+    if "SYSTEM REPAIR PRO" in raw or "SYSTEM REPAIR" in raw:return "SYSTEM REPAIR PRO"
+    if "SERWIS ULTIMATE" in raw or raw.strip()=="SERWIS" or "ULTIMATE" in raw:return "SERWIS ULTIMATE"
+    return _U107_ORIGINAL_NORM(module)
+_u93_norm=_u107_norm
+
+def _u107_is_admin():
+    if _u66_os.name!="nt":return False
+    try:
+        import ctypes as _u107_ctypes
+        return bool(_u107_ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:return False
+
+def _u107_rows(value):
+    if isinstance(value,dict):return [value]
+    return _v4319_normalize_items(value if value is not None else [])
+
+def _u107_ps(script,default=None):
+    if not is_windows():return default
+    try:return ps_json(script,default=default)
+    except Exception:return default
+
+def _u107_run_process(args,timeout=60):
+    encoding="mbcs" if _u66_os.name=="nt" else "utf-8"
+    return _u66_subprocess.run(args,capture_output=True,text=True,encoding=encoding,errors="replace",
+        timeout=timeout,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+
+def _u107_store_report(name,content):
+    try:
+        folder=_u66_store_dir()/"reports"/"integrated-diagnostics";folder.mkdir(parents=True,exist_ok=True)
+        path=folder/(name+"-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".json")
+        path.write_text(_u66_json.dumps(content,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+        return str(path)
+    except Exception:return None
+
+def _u107_execute_catalog_test(app,module,test_id,kind,settings):
+    extra_kinds={entry[3] for group in _U107_EXTRA_TESTS.values() for entry in group}
+    if kind not in extra_kinds:return _U107_ORIGINAL_EXECUTE_TEST(app,module,test_id,kind,settings)
+    if not is_windows():return {"state":"warn","message":"Ta procedura wymaga Windows 10/11 x64; nie uruchomiono zastępczej symulacji."}
+    result={"state":"warn","test_id":test_id,"module":module}
+    if kind=="system_os_summary":
+        data=_u107_ps(r"""$os=Get-CimInstance Win32_OperatingSystem;$cs=Get-CimInstance Win32_ComputerSystem
+[pscustomobject]@{caption=$os.Caption;version=$os.Version;build=$os.BuildNumber;architecture=$os.OSArchitecture;last_boot=$os.LastBootUpTime;
+manufacturer=$cs.Manufacturer;model=$cs.Model;system_type=$cs.SystemType;windows_directory=$os.WindowsDirectory;system_drive=$os.SystemDrive} | ConvertTo-Json -Compress -Depth 4""",default={})
+        if isinstance(data,list) and data and isinstance(data[0],dict):data=data[0]
+        result={"state":"good" if isinstance(data,dict) and data.get("version") else "warn","windows":data,
+            "note":"Odczyt CIM/WMI; dane komputera nie są wysyłane do Internetu."}
+    elif kind=="system_license":
+        data=_u107_rows(_u107_ps(r"""Get-CimInstance SoftwareLicensingProduct -ErrorAction SilentlyContinue |
+ Where-Object { $_.Name -like '*Windows*' -and $_.PartialProductKey } |
+ Select-Object Name,Description,LicenseStatus,GracePeriodRemaining,PartialProductKey | ConvertTo-Json -Compress -Depth 4""",default=[]))
+        states={0:"NIELICENCJONOWANY",1:"LICENCJONOWANY",2:"OKRES OOB GRACE",3:"OKRES OOT GRACE",4:"NON-GENUINE GRACE",5:"POWIADOMIENIE",6:"EXTENDED GRACE"}
+        records=[]
+        for item in data:
+            if not isinstance(item,dict):continue
+            try:ls=int(item.get("LicenseStatus"))
+            except Exception:ls=-1
+            records.append({"name":item.get("Name"),"description":item.get("Description"),"license_status_code":ls,
+                "license_status":states.get(ls,"N/D"),"grace_minutes":item.get("GracePeriodRemaining"),"partial_product_key_last5":item.get("PartialProductKey")})
+        result={"state":"good" if any(x.get("license_status_code")==1 for x in records) else "warn","records":records,"count":len(records),
+            "note":"Odczyt licencjonowania. Pełny klucz produktu nie jest wyświetlany ani eksportowany."}
+    elif kind=="system_bios_uefi":
+        data=_u107_ps(r"""$bios=Get-CimInstance Win32_BIOS;$cs=Get-CimInstance Win32_ComputerSystem
+$secure='N/D';try{$secure=[string](Confirm-SecureBootUEFI -ErrorAction Stop)}catch{$secure='N/D — '+$_.Exception.Message}
+$tpm='N/D';try{$x=Get-Tpm -ErrorAction Stop;$tpm=[pscustomobject]@{present=$x.TpmPresent;ready=$x.TpmReady;enabled=$x.TpmEnabled;activated=$x.TpmActivated}}catch{}
+$mem=@(Get-CimInstance Win32_PhysicalMemory | Select-Object BankLabel,DeviceLocator,Manufacturer,PartNumber,Capacity,Speed,ConfiguredClockSpeed)
+[pscustomobject]@{bios=[pscustomobject]@{manufacturer=$bios.Manufacturer;version=$bios.SMBIOSBIOSVersion;release=$bios.ReleaseDate};
+computer=[pscustomobject]@{manufacturer=$cs.Manufacturer;model=$cs.Model;total_physical_memory=$cs.TotalPhysicalMemory};
+system_type=$cs.SystemType;secure_boot=$secure;tpm=$tpm;memory_modules=$mem;memory_module_count=$mem.Count} | ConvertTo-Json -Compress -Depth 7""",default={})
+        if isinstance(data,list) and data and isinstance(data[0],dict):data=data[0]
+        result={"state":"good" if isinstance(data,dict) and data.get("bios") else "warn","diagnostics":data,
+            "note":"Secure Boot/TPM może pozostać N/D, gdy firmware lub polityka Windows nie udostępnia odczytu."}
+    elif kind=="system_driver_health":
+        data=_u107_ps(r"""$all=@(Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue)
+$bad=@($all | Where-Object { $_.Status -ne 'OK' } | Select-Object -First 250 Class,FriendlyName,Status,InstanceId)
+$drivers=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue)
+[pscustomobject]@{present_device_count=$all.Count;non_ok_count=$bad.Count;non_ok_devices=$bad;signed_driver_count=$drivers.Count;
+unsigned_driver_count=@($drivers | Where-Object { $_.IsSigned -eq $false }).Count;
+recent_drivers=@($drivers | Sort-Object DriverDate -Descending | Select-Object -First 30 DeviceName,DriverVersion,DriverDate,DriverProviderName,IsSigned)} |
+ ConvertTo-Json -Compress -Depth 6""",default={})
+        if isinstance(data,list) and data and isinstance(data[0],dict):data=data[0]
+        count=int(data.get("non_ok_count",0) or 0) if isinstance(data,dict) else 0
+        result={"state":"warn" if count else ("good" if isinstance(data,dict) and data.get("present_device_count") else "warn"),"driver_health":data,
+            "note":"Skan tylko do odczytu. Nie usuwa ani nie aktualizuje sterowników."}
+    elif kind=="system_directx12":
+        folder=_u66_store_dir()/"reports"/"directx";folder.mkdir(parents=True,exist_ok=True)
+        target=folder/("dxdiag-"+_U66_datetime.now().strftime("%Y%m%d-%H%M%S")+".txt")
+        try:
+            proc=_u107_run_process(["dxdiag.exe","/whql:off","/t",str(target)],timeout=75)
+            if target.exists():
+                text_data=target.read_text(encoding="utf-8",errors="replace")
+                lines=[line.strip() for line in text_data.splitlines() if any(k in line.lower() for k in
+                    ("directx version","feature levels","driver model","card name","current mode","display memory","dedicated memory","shared memory","driver version","whql logo"))]
+                gpu=_u107_rows(_u107_ps(r"""Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,VideoProcessor,
+CurrentHorizontalResolution,CurrentVerticalResolution,CurrentRefreshRate,AdapterRAM | ConvertTo-Json -Compress""",default=[]))
+                result={"state":"good" if text_data.strip() else "warn","returncode":proc.returncode,"report_path":str(target),
+                    "diagnostic_lines":lines[:120],"gpu_controllers":gpu,
+                    "note":"Raport DxDiag i adaptery Windows; nie gwarantuje zgodności każdej funkcji DirectX 12 Ultimate."}
+            else:result={"state":"warn","returncode":proc.returncode,"stdout":(proc.stdout or "")[-4000:],"stderr":(proc.stderr or "")[-4000:],
+                "message":"DxDiag nie utworzył raportu w limicie czasu."}
+        except Exception as exc:result={"state":"warn","error":f"{type(exc).__name__}: {exc}"}
+    elif kind in ("system_sfc_verify","system_dism_scan"):
+        if not _u107_is_admin():
+            result={"state":"warn","message":"Test nie został uruchomiony: wymaga uruchomienia aplikacji jako administrator.",
+                "required_privilege":"Administrator","command":"sfc /verifyonly" if kind=="system_sfc_verify" else "DISM /Online /Cleanup-Image /ScanHealth"}
+        else:
+            command=["sfc.exe","/verifyonly"] if kind=="system_sfc_verify" else ["dism.exe","/Online","/Cleanup-Image","/ScanHealth"]
+            _u93_detail_status_only(app,"Uruchomiono diagnostykę tylko do odczytu. Operacja może potrwać kilka minut…")
+            try:
+                proc=_u107_run_process(command,timeout=1200);output=((proc.stdout or "")+"\n"+(proc.stderr or ""))[-24000:];low=output.casefold()
+                good_phrases=("did not find any integrity violations","nie znalazł naruszeń integralności","no component store corruption detected","nie wykryto uszkodzenia magazynu składników")
+                issue_phrases=("found integrity violations","found corrupt files","component store is repairable","magazyn składników można naprawić","wykryto uszkodzenia")
+                clear=any(x in low for x in good_phrases);issue=any(x in low for x in issue_phrases)
+                state="good" if proc.returncode==0 and clear else "warn" if proc.returncode==0 or issue else "error"
+                result={"state":state,"command":" ".join(command),"returncode":proc.returncode,"administrator":True,"stdout_stderr":output,
+                    "note":"SFC /verifyonly lub DISM /ScanHealth; nie uruchomiono automatycznej naprawy ani /RestoreHealth."}
+            except Exception as exc:result={"state":"error","command":" ".join(command),"error":f"{type(exc).__name__}: {exc}"}
+    elif kind=="system_event_errors":
+        data=_u107_ps(r"""$since=(Get-Date).AddHours(-72)
+$rows=@(Get-WinEvent -FilterHashtable @{LogName=@('System','Application');StartTime=$since;Level=@(1,2)} -MaxEvents 100 -ErrorAction SilentlyContinue |
+ Select-Object TimeCreated,LogName,ProviderName,Id,LevelDisplayName,Message)
+[pscustomobject]@{window_hours=72;event_count=$rows.Count;events=$rows} | ConvertTo-Json -Compress -Depth 5""",default=[])
+        if isinstance(data,list) and len(data)==1 and isinstance(data[0],dict) and "events" in data[0]:data=data[0]
+        if isinstance(data,dict):result={"state":"warn" if int(data.get("event_count",0) or 0)>0 else "good","event_count":data.get("event_count",0),"events":data.get("events",[]),"window_hours":72}
+        else:result={"state":"warn","event_count":len(data) if isinstance(data,list) else 0,"events":data if isinstance(data,list) else [],"window_hours":72}
+        result["note"]="Odczyt zdarzeń krytycznych/błędów; nie usuwa dzienników i nie orzeka automatycznie o awarii sprzętu."
+    elif kind=="system_restore_points":
+        data=_u107_rows(_u107_ps(r"""Get-ComputerRestorePoint -ErrorAction SilentlyContinue | Sort-Object SequenceNumber -Descending |
+ Select-Object -First 50 SequenceNumber,Description,CreationTime,RestorePointType,EventType | ConvertTo-Json -Compress -Depth 4""",default=[]))
+        result={"state":"good" if data else "warn","restore_points":data,"count":len(data),"note":"Odczyt istniejących punktów przywracania; niczego nie tworzy ani nie usuwa."}
+    elif kind=="system_knowledge_base":
+        try:
+            docs=_u66_all_knowledge()
+            tags=sorted({tag.strip() for doc in docs if isinstance(doc,dict) for tag in str(doc.get("tags","")).replace(",", ";").split(";") if tag.strip()})
+            result={"state":"good" if docs else "warn","document_count":len(docs),"seed_count":len(_U66_KNOWLEDGE_SEED),"saved_count":len(_u66_saved_knowledge()),
+                "topics":tags[:160],"note":"Lokalna baza wiedzy i zapisane artykuły; nie zakłada dostępności Internetu."}
+        except Exception as exc:result={"state":"warn","error":f"{type(exc).__name__}: {exc}"}
+    elif kind=="service_full_sensor_map":
+        try:temps=_u106_sensor_probe()
+        except Exception as exc:temps={"sensors":[],"error":f"{type(exc).__name__}: {exc}"}
+        try:system=_u101_collect_os_metrics(app)
+        except Exception as exc:system={"error":f"{type(exc).__name__}: {exc}"}
+        rows=temps.get("sensors",[]) or []
+        result={"state":"good" if rows or system else "warn","sensor_count":len(rows),
+            "temps_summary":{k:temps.get(k) for k in ("cpu_temp_c","gpu_temp_c","cpu_power_w","gpu_power_w","cpu_clock_mhz","gpu_clock_mhz","cpu_voltage_v","gpu_voltage_v","cpu_fan_rpm","gpu_fan_rpm")},
+            "system_summary":{k:system.get(k) for k in ("cpu_percent","cpu_per_core_percent","ram_total_bytes","ram_used_bytes","ram_available_bytes","ram_percent",
+                "disk_read_mbps","disk_write_mbps","net_down_mbps","net_up_mbps","disk_devices","disk_volumes","network_interfaces","battery_percent","uptime_seconds")},
+            "sensor_method":temps.get("method"),"bridge_errors":temps.get("bridge_errors",[]),
+            "note":"Przycisk PEŁNY INSPEKTOR CZUJNIKÓW otwiera pełną listę i eksport CSV; N/D oznacza brak źródła pomiaru."}
+    elif kind=="service_vram_benchmark":
+        mb=max(32,min(256,int(settings.get("memory_mb",128) or 128)))
+        try:result=_u90_run_vram_profile_worker(app,mb,60,False) or _u93_existing_result(app,["VRAM_TEST"])
+        except Exception as exc:result={"state":"error","error":f"{type(exc).__name__}: {exc}"}
+        if not result:result={"state":"warn","message":"Test VRAM nie zwrócił raportu."}
+    elif kind=="service_battery_health":
+        basic=_U107_ORIGINAL_EXECUTE_TEST(app,"BATERIA",test_id,"battery_report",settings);readings={}
+        try:
+            battery=psutil.sensors_battery() if psutil else None
+            readings={"present":battery is not None,"percent":battery.percent if battery else None,"plugged":battery.power_plugged if battery else None,
+                "seconds_left":battery.secsleft if battery and battery.secsleft>=0 else None}
+        except Exception as exc:readings={"error":f"{type(exc).__name__}: {exc}"}
+        result={"state":basic.get("state","warn") if isinstance(basic,dict) else "warn","battery_report":basic,"live_controller":readings,
+            "note":"Raport zasilania i kontrolera; PC bez baterii otrzyma N/D/ostrzeżenie."}
+    elif kind=="service_camera_inventory":
+        result=_u69_camera_scan(app) or {"state":"warn","message":"Skan kamery nie zwrócił raportu."}
+    elif kind=="service_keyboard_inventory":
+        data=_u107_rows(_u107_ps(r"""Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue |
+ Where-Object { $_.Class -in @('Keyboard','Mouse') -or $_.FriendlyName -match 'keyboard|mouse|klawiatura|mysz|touchpad' } |
+ Select-Object Class,FriendlyName,Status,InstanceId | ConvertTo-Json -Compress -Depth 4""",default=[]))
+        bad=[x for x in data if str(x.get("Status","")).upper() not in ("OK","UNKNOWN")]
+        result={"state":"warn" if bad else ("good" if data else "warn"),"devices":data,"count":len(data),"non_ok_count":len(bad),
+            "note":"Inwentarz PnP; mechaniczną pracę klawiszy sprawdza oddzielny test rejestracji naciśnięć."}
+    elif kind=="service_display_modes":
+        result=_U107_ORIGINAL_EXECUTE_TEST(app,"EKRAN",test_id,"screen_modes",settings)
+        if not isinstance(result,dict):result={"state":"warn","message":"Tryby ekranu nie zwróciły raportu."}
+        result["service_module"]="Serwis Ultimate — tryby monitora"
+    elif kind=="service_audio_inventory":
+        result=_U107_ORIGINAL_EXECUTE_TEST(app,"AUDIO",test_id,"audio_scan",settings)
+        if not isinstance(result,dict):result={"state":"warn","message":"Skan audio nie zwrócił raportu."}
+        result["service_module"]="Serwis Ultimate — inwentarz audio"
+    elif kind=="service_usb_inventory":
+        result=_U107_ORIGINAL_EXECUTE_TEST(app,"USB",test_id,"usb_scan",settings)
+        if not isinstance(result,dict):result={"state":"warn","message":"Skan USB nie zwrócił raportu."}
+        result["service_module"]="Serwis Ultimate — urządzenia USB"
+    elif kind=="service_device_catalog":
+        data=_u107_ps(r"""$rows=@()
+foreach($x in @(Get-CimInstance Win32_Processor)){$rows += [pscustomobject]@{category='CPU';name=$x.Name;manufacturer=$x.Manufacturer;model=$x.Name;version=$x.Description;status=$x.Status;capacity_bytes=$null}}
+foreach($x in @(Get-CimInstance Win32_VideoController)){$rows += [pscustomobject]@{category='GPU';name=$x.Name;manufacturer=$x.AdapterCompatibility;model=$x.Name;version=$x.DriverVersion;status=$x.Status;capacity_bytes=$x.AdapterRAM}}
+foreach($x in @(Get-CimInstance Win32_BaseBoard)){$rows += [pscustomobject]@{category='PŁYTA';name=$x.Product;manufacturer=$x.Manufacturer;model=$x.Product;version=$x.Version;status='N/D';capacity_bytes=$null}}
+foreach($x in @(Get-CimInstance Win32_BIOS)){$rows += [pscustomobject]@{category='BIOS/UEFI';name=$x.SMBIOSBIOSVersion;manufacturer=$x.Manufacturer;model=$x.Name;version=$x.ReleaseDate;status='N/D';capacity_bytes=$null}}
+foreach($x in @(Get-CimInstance Win32_PhysicalMemory)){$rows += [pscustomobject]@{category='RAM';name=$x.DeviceLocator;manufacturer=$x.Manufacturer;model=$x.PartNumber;version=([string]$x.Speed+' MHz');status='N/D';capacity_bytes=$x.Capacity}}
+foreach($x in @(Get-CimInstance Win32_DiskDrive)){$rows += [pscustomobject]@{category='DYSK';name=$x.Caption;manufacturer=$x.Manufacturer;model=$x.Model;version=$x.FirmwareRevision;status=$x.Status;capacity_bytes=$x.Size}}
+foreach($x in @(Get-CimInstance Win32_NetworkAdapter -Filter "PhysicalAdapter=True")){$rows += [pscustomobject]@{category='SIEĆ';name=$x.Name;manufacturer=$x.Manufacturer;model=$x.ProductName;version=$x.MACAddress;status=$x.NetEnabled;capacity_bytes=$null}}
+$rows | ConvertTo-Json -Compress -Depth 5""",default=[])
+        data=_u107_rows(data)
+        result={"state":"good" if data else "warn","items":data,"count":len(data),"note":"Lokalny inwentarz CIM/WMI; filtr działa na uzyskanym wyniku."}
+    elif kind=="service_uefi_ram_readiness":
+        data=_u107_ps(r"""$bios=Get-CimInstance Win32_BIOS;$cs=Get-CimInstance Win32_ComputerSystem;$mem=@(Get-CimInstance Win32_PhysicalMemory)
+$secure='N/D';try{$secure=[string](Confirm-SecureBootUEFI -ErrorAction Stop)}catch{$secure='N/D — '+$_.Exception.Message}
+$boot='N/D';try{$boot=(& bcdedit.exe /enum '{current}' 2>$null | Select-String 'path|device|osdevice|winload').Line -join '; '}catch{}
+[pscustomobject]@{bios_type=$cs.SystemType;bios_version=$bios.SMBIOSBIOSVersion;physical_memory_bytes=($mem | Measure-Object -Property Capacity -Sum).Sum;
+memory_module_count=$mem.Count;secure_boot=$secure;current_boot_entries=$boot;windows_memory_diagnostic=(Test-Path "$env:WINDIR\System32\mdsched.exe");system_drive=$env:SystemDrive} | ConvertTo-Json -Compress -Depth 4""",default={})
+        if isinstance(data,list) and data and isinstance(data[0],dict):data=data[0]
+        result={"state":"good" if isinstance(data,dict) and data.get("memory_module_count") else "warn","diagnostics":data,
+            "note":"Skan gotowości UEFI/RAM; nie tworzy partycji EFI, nie nadpisuje BCD i nie planuje restartu."}
+    else:result={"state":"warn","message":"Brak procedury dla tego modułu.","kind":kind}
+    report_path=_u107_store_report(str(test_id),result)
+    if report_path:result["diagnostic_report_path"]=report_path
+    return result
+
+def _u107_start_catalog_test(app,module,test_id,title,kind):
+    if kind in ("system_sfc_verify","system_dism_scan") and not _u107_is_admin():
+        messagebox.showwarning("Wymagane uprawnienia administratora","Ten test nie został uruchomiony. Uruchom aplikację jako administrator i ponów test.")
+        _u93_update_detail(app,test_id,"NIE URUCHOMIONO — BRAK ADMINISTRATORA",{"state":"warn","required_privilege":"Administrator","test_id":test_id})
+        return
+    if kind in ("system_sfc_verify","system_dism_scan"):
+        command="SFC /verifyonly (weryfikacja bez naprawy)" if kind=="system_sfc_verify" else "DISM /Online /Cleanup-Image /ScanHealth (bez /RestoreHealth)"
+        if not messagebox.askyesno("Potwierdź diagnostykę Windows",f"Uruchomić: {command}?\n\nOperacja może potrwać kilka minut. Nie uruchomi automatycznej naprawy."):
+            _u93_update_detail(app,test_id,"ANULOWANO",{"state":"warn","message":"Diagnostykę anulował użytkownik."})
+            return
+    return _U107_ORIGINAL_START_TEST(app,module,test_id,title,kind)
+
+def _u107_scene_id_for_test(module,test_id):
+    normalized=_u107_norm(module);ordinal=0
+    for key,entries in _U93_TEST_CATALOG.items():
+        for entry in entries:
+            ordinal+=1
+            if _u107_norm(key)==normalized and entry[0]==test_id:return ordinal
+    return 1
+
+def _u107_render_scene_for_test(app,module,test_id,title):
+    scene_id=_u107_scene_id_for_test(module,test_id)
+    if scene_id<1 or scene_id>len(_U66_SCENES):messagebox.showerror("Render 3D","Brak osobnego profilu sceny dla tego testu.");return
+    if getattr(app,"running",False):messagebox.showinfo("Render 3D","Zatrzymaj bieżący test przed uruchomieniem renderera.");return
+    def job():
+        started=_u66_time.monotonic()
+        try:
+            result=_u66_execute_gpu_scene(app,scene_id,8)
+            result.update({"catalog_test_id":str(test_id),"catalog_test_title":str(title),"catalog_scene_id":scene_id,"scene_profile_count":len(_U66_SCENES)})
+            if result.get("state") not in ("good","warn","error"):result["state"]="warn"
+        except Exception as exc:result={"state":"error","error":f"{type(exc).__name__}: {exc}","scene_id":scene_id}
+        report=_u93_persist_result(app,module,str(test_id)+"-3d",str(title)+" — renderer OpenGL",result,_u66_time.monotonic()-started)
+        _u93_put_result(app,"CATALOG_3D_"+str(test_id),report)
+        status="FPS ZMIERZONE" if report.get("state")=="good" and report.get("frames",0)>0 else "RENDER OSTRZEŻENIE"
+        _u93_update_detail(app,test_id,status,report)
+        app.queue_log(f"SCENA 3D DLA TESTU {test_id}: scena {scene_id}/90; stan={report.get('state')}; FPS={report.get('average_fps','N/D')}")
+    app.worker(job)
+
+def _u107_walk(widget):
+    yield widget
+    try:children=widget.winfo_children()
+    except Exception:children=[]
+    for child in children:yield from _u107_walk(child)
+
+def _u107_rewire_button(button,app,module,test_id,title,label):
+    try:
+        button.configure(text=label,command=lambda a=app,m=module,k=test_id,t=title:_u107_render_scene_for_test(a,m,k,t));return True
+    except Exception:return False
+
+def _u107_show_test_detail(app,module,test_id):
+    normalized=_u107_norm(module);meta=_u93_find_test(normalized,test_id);title=meta[1]
+    _U107_ORIGINAL_SHOW_DETAIL(app,normalized,test_id);scene_id=_u107_scene_id_for_test(normalized,test_id)
+    try:
+        widgets=list(_u107_walk(app.content));action_row=None
+        for widget in widgets:
+            if getattr(widget,"winfo_class",lambda:"")() not in ("Button","TButton"):continue
+            value=str(widget.cget("text"))
+            if any(k in value for k in ("URUCHOM TEN TEST","START REJESTRACJI KLAWISZY","URUCHOM PODGLĄD","OTWÓRZ TEST WZORCÓW MATRYCY","OTWÓRZ DORADCĘ GIER")):
+                action_row=widget.master
+                if "OTWÓRZ DORADCĘ GIER" not in value:break
+        if action_row is None:action_row=tk.Frame(app.content,bg=app.colors()["bg"]);action_row.pack(fill="x",pady=(0,5))
+        sim=next((w for w in _u107_walk(action_row) if getattr(w,"winfo_class",lambda:"")() in ("Button","TButton") and "SYMULATOR 3D" in str(w.cget("text")).upper()),None)
+        label=f"FURMARK 3D — SCENA {scene_id:02d}/90"
+        if sim is not None:_u107_rewire_button(sim,app,normalized,test_id,title,label)
+        else:app.make_button(action_row,label,lambda a=app,m=normalized,k=test_id,t=title:_u107_render_scene_for_test(a,m,k,t),"good",side="left",ipady=5)
+        if meta[3]=="service_full_sensor_map":
+            app.make_button(action_row,"PEŁNY INSPEKTOR CZUJNIKÓW / CSV",lambda a=app:_u106_open_sensor_inspector(a),"card",side="left",ipady=5)
+        if meta[3]=="system_knowledge_base":
+            q=tk.StringVar(master=app,value="");app._u107_kb_query_var=q
+            tk.Label(action_row,text="Szukaj w bazie:",bg=app.colors()["bg"],fg=app.colors()["fg"]).pack(side="left",padx=(6,3))
+            ttk.Entry(action_row,textvariable=q,width=24).pack(side="left",padx=3)
+            def search_kb():
+                query=str(q.get() or "").strip()
+                if not query:messagebox.showinfo("Baza wiedzy","Wpisz temat, np. DISM, BIOS, RAM lub sterowniki.");return
+                matches=_u66_rank_knowledge(query,docs=_u66_all_knowledge(),limit=12)
+                result={"state":"good" if matches else "warn","query":query,"result_count":len(matches),
+                    "results":[{"title":x.get("title"),"tags":x.get("tags"),"source":x.get("source"),"text":str(x.get("text",""))[:2400]} for x in matches]}
+                _u93_put_result(app,"SYSTEM_KNOWLEDGE_SEARCH",result);_u93_update_detail(app,test_id,"WYNIKI WYSZUKIWANIA BAZY WIEDZY",result)
+            app.make_button(action_row,"SZUKAJ W BAZIE",search_kb,"accent",side="left",ipady=4)
+        if meta[3]=="service_device_catalog":
+            q=tk.StringVar(master=app,value="");app._u107_device_query_var=q
+            tk.Label(action_row,text="Szukaj urządzenia:",bg=app.colors()["bg"],fg=app.colors()["fg"]).pack(side="left",padx=(6,3))
+            ttk.Entry(action_row,textvariable=q,width=22).pack(side="left",padx=3)
+            def search_devices():
+                query=str(q.get() or "").casefold().strip();rows=_u93_existing_result(app,["SERVICE_DEVICE_CATALOG"]).get("items",[])
+                matches=[x for x in rows if query in _u66_json.dumps(x,ensure_ascii=False).casefold()] if query else rows
+                result={"state":"good" if matches else "warn","query":query,"count":len(matches),"items":matches}
+                _u93_put_result(app,"SERVICE_DEVICE_CATALOG_SEARCH",result);_u93_update_detail(app,test_id,"WYNIKI KATALOGU URZĄDZEŃ",result)
+            app.make_button(action_row,"FILTRUJ",search_devices,"accent",side="left",ipady=4)
+        if meta[3]=="service_uefi_ram_readiness":
+            def launch_mdsched():
+                if not messagebox.askyesno("Windows Memory Diagnostic","Otworzyć diagnostykę RAM Windows? Może zaproponować test po restarcie. Zapisz dokumenty; aplikacja sama nie wykona restartu."):return
+                try:_u66_subprocess.Popen(["mdsched.exe"])
+                except Exception as exc:messagebox.showerror("Windows Memory Diagnostic",f"{type(exc).__name__}: {exc}")
+            app.make_button(action_row,"OTWÓRZ WINDOWS MEMORY DIAGNOSTIC",launch_mdsched,"card",side="left",ipady=4)
+    except Exception as exc:
+        try:app.queue_log("Integracja 3D/katalogu testu: "+repr(exc))
+        except Exception:pass
+
+def _u107_show_catalog(app,module):
+    normalized=_u107_norm(module);_U107_ORIGINAL_SHOW_CATALOG(app,normalized)
+    try:
+        entries=_U93_TEST_CATALOG.get(normalized,[])
+        if not entries:return
+        test_id,title=entries[0][0],entries[0][1];scene_id=_u107_scene_id_for_test(normalized,test_id)
+        for widget in _u107_walk(app.content):
+            if getattr(widget,"winfo_class",lambda:"")() in ("Button","TButton") and "SYMULATOR 3D TEGO PODZESPOŁU" in str(widget.cget("text")):
+                _u107_rewire_button(widget,app,normalized,test_id,title,f"FURMARK 3D — PROFIL {scene_id:02d}/90")
+    except Exception as exc:
+        try:app.queue_log("Katalog renderera: "+repr(exc))
+        except Exception:pass
+
+def _u107_show_lab(app):
+    _U107_ORIGINAL_SHOW_LAB(app)
+    try:
+        buttons=[w for w in _u107_walk(app.content) if getattr(w,"winfo_class",lambda:"")() in ("Button","TButton") and str(w.cget("text")).strip()=="SYMULATOR 3D"]
+        for index,button in enumerate(buttons):
+            if index>=len(_U93_MODULES):break
+            module=_U93_MODULES[index][0];entries=_U93_TEST_CATALOG.get(module,[])
+            if entries:
+                test_id,title=entries[0][0],entries[0][1];scene_id=_u107_scene_id_for_test(module,test_id)
+                _u107_rewire_button(button,app,module,test_id,title,f"SCENA OPENGL {scene_id:02d}/90")
+    except Exception as exc:
+        try:app.queue_log("Laboratorium — profile scen: "+repr(exc))
+        except Exception:pass
+
+def _u107_selftest_integrated_catalog():
+    ids=[];kinds=set();profiles=[]
+    for module,entries in _U93_TEST_CATALOG.items():
+        assert entries,f"Pusty katalog {module}"
+        for test_id,title,description,kind in entries:
+            ids.append(test_id);kinds.add(kind);profiles.append(_u107_scene_id_for_test(module,test_id))
+            assert title and description
+    assert len(ids)==90 and len(set(ids))==90,f"Katalog musi mieć 90 unikalnych testów; znaleziono {len(ids)}"
+    assert sorted(profiles)==list(range(1,91)),"Każdy test katalogu musi mieć własny profil OpenGL 1–90"
+    assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
+    assert len(_U100_SCENE_TITLES)==90 and len(set(_U100_SCENE_TITLES))==90
+    assert len({title.split(" — ",1)[0] for title in _U100_SCENE_TITLES})==30
+    assert callable(_u107_execute_catalog_test) and callable(_u107_show_test_detail)
+    print("INTEGRATED_90_TEST_CATALOG_SELFTEST_OK: 70 hardware + 10 System Repair PRO + 10 Serwis Ultimate; each test maps to a unique OpenGL profile")
+
+_u93_execute_catalog_test=_u107_execute_catalog_test
+_u93_start_catalog_test=_u107_start_catalog_test
+_u93_show_test_detail=_u107_show_test_detail
+_u93_show_catalog=_u107_show_catalog
+_u93_show_lab=_u107_show_lab
+AppV43.show_component_lab=_u107_show_lab
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u107_selftest_integrated_catalog()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
         _u105_selftest_visual_quality()
