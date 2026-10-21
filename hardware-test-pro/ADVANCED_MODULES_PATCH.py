@@ -788,6 +788,30 @@ def _u66_start_speed_test(self):
             self.queue_action(fail)
     _u66_threading.Thread(target=job,name="NaprawaPCSpeedTest",daemon=True).start()
 
+def _u107_merge_sensor_rows(existing, incoming, source, limit=2500):
+    """Merge distinct sensor records from the bridge and WMI without dropping source-only readings."""
+    merged=[]
+    seen={}
+    def key(row):
+        return tuple(str(row.get(field) or "").strip().casefold() for field in
+                     ("hardware","hardwareType","hardware_type","parent","sensor","name","sensorType","sensor_type","unit"))
+    for candidate in list(existing or [])+list(incoming or []):
+        if not isinstance(candidate,dict):
+            continue
+        row=dict(candidate)
+        if not row.get("source"):
+            row["source"]=str(source or "N/D")
+        identity=key(row)
+        # Prefer an existing bridge record for an identical physical sensor; append otherwise unseen records.
+        old=seen.get(identity)
+        if old is not None:
+            if old.get("value") is None and row.get("value") is not None:
+                old["value"]=row.get("value")
+            continue
+        seen[identity]=row
+        merged.append(row)
+    return merged[-max(1,int(limit or 2500)):]
+
 def _u66_sensor_probe():
     result={"cpu_temp_c":None,"gpu_temp_c":None,"cpu_power_w":None,"gpu_power_w":None,
             "system_power_w":None,"battery_power_w":None,"cpu_voltage_v":None,"gpu_voltage_v":None,
@@ -800,7 +824,7 @@ def _u66_sensor_probe():
     def collect_sensor_rows(rows, source):
         if not isinstance(rows,list):
             return
-        result["sensors"]=rows[:2000]
+        result["sensors"]=_u107_merge_sensor_rows(result.get("sensors",[]),rows,source,2500)
         power_rows=[]
         cpu_power_candidates=[]
         gpu_power_candidates=[]
@@ -841,7 +865,7 @@ def _u66_sensor_probe():
                     system_power_candidates.append(value)
                 elif "battery" in label and any(k in label for k in ("discharge","power")):
                     result["battery_power_w"]=value
-        result["power_sensors"]=power_rows
+        result["power_sensors"]=_u107_merge_sensor_rows(result.get("power_sensors",[]),power_rows,source,2500)
         if cpu_power_candidates:
             result["cpu_power_w"]=sorted(cpu_power_candidates,key=lambda x:x[0],reverse=True)[0][1]
         if gpu_power_candidates:
@@ -891,13 +915,22 @@ def _u66_sensor_probe():
             elif category=="fan":
                 if cpu_like: chosen["cpu_fan"].append(value)
                 if gpu_like: chosen["gpu_fan"].append(value)
-        result["sensor_groups"]=groups
+        current_groups=result.get("sensor_groups",{}) or {}
+        for group_name,group_rows in groups.items():
+            current_groups[group_name]=_u107_merge_sensor_rows(current_groups.get(group_name,[]),group_rows,source,2500)
+        result["sensor_groups"]=current_groups
         for key,values in chosen.items():
             if values:
-                result[{"cpu_voltage":"cpu_voltage_v","gpu_voltage":"gpu_voltage_v",
+                target={"cpu_voltage":"cpu_voltage_v","gpu_voltage":"gpu_voltage_v",
                         "cpu_clock":"cpu_clock_mhz","gpu_clock":"gpu_clock_mhz",
-                        "cpu_fan":"cpu_fan_rpm","gpu_fan":"gpu_fan_rpm"}[key]]=values[0]
-        result["method"]=source
+                        "cpu_fan":"cpu_fan_rpm","gpu_fan":"gpu_fan_rpm"}[key]
+                if result.get(target) is None:
+                    result[target]=values[0]
+        methods=list(result.get("source_methods",[]) or [])
+        if source not in methods:
+            methods.append(source)
+        result["source_methods"]=methods
+        result["method"]=" + ".join(methods) if methods else "N/D — brak czujnika"
 
     bridge_name="NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe"
     candidates=[]
@@ -935,9 +968,21 @@ $ErrorActionPreference='SilentlyContinue'
 $sensors=@()
 foreach($ns in @('root/LibreHardwareMonitor','root/OpenHardwareMonitor')){
   try{
-    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $_.SensorType -in @('Temperature','Power') -and $null -ne $_.Value } | Select-Object Name,Parent,Value,SensorType)
+    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $_.SensorType -in @('Temperature','Power','Voltage','Clock','Fan','Load','Current','Throughput','Data','SmallData') -and $null -ne $_.Value } | Select-Object Name,Parent,Value,SensorType)
     foreach($x in $xs){
-      $unit=if($x.SensorType -eq 'Power'){'W'}elseif($x.SensorType -eq 'Temperature'){'°C'}else{''}
+      $unit = switch ([string]$x.SensorType) {
+        'Power' {'W'}
+        'Temperature' {'°C'}
+        'Voltage' {'V'}
+        'Clock' {'MHz'}
+        'Fan' {'RPM'}
+        'Load' {'%'}
+        'Current' {'A'}
+        'Throughput' {'MB/s'}
+        'Data' {'MB'}
+        'SmallData' {'MB'}
+        default {''}
+      }
       $sensors += [pscustomobject]@{name=[string]$x.Name; parent=[string]$x.Parent; value=[double]$x.Value; sensorType=[string]$x.SensorType; unit=$unit; source=$ns}
     }
   }catch{}
@@ -956,8 +1001,8 @@ try{
         proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
         if proc.returncode==0 and proc.stdout.strip():
             payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
-            if not result["sensors"]:
-                collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
+            # Merge the WMI source even when the Bridge already returned sensors; otherwise board/NVMe/ACPI-related readings disappear.
+            collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
             result["acpi_zones"]=payload.get("zones") or []
             for sensor in result["sensors"]:
                 if not isinstance(sensor,dict): continue
@@ -2773,7 +2818,7 @@ def _u69_selftest_component_workbenches():
         ("component launch", callable(_u69_launch_component_test)),
         ("disk benchmark", callable(_u69_disk_throughput_benchmark)),
         ("unique safe disk benchmark", callable(_u69_safe_disk_benchmark)),
-        ("simulator original delegate", "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names or "_U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names),
+        ("simulator original delegate", "_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names or "_U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names or "_U109_ORIGINAL_OPEN_COMPONENT_SIMULATOR" in _u69_open_component_simulator.__code__.co_names),
         ("open function", "open" in _u69_safe_disk_benchmark.__code__.co_names),
         ("exclusive create mode", "xb" in _u69_safe_disk_benchmark.__code__.co_consts),
         ("RAM bandwidth", callable(_u69_ram_throughput_benchmark)),
@@ -4456,7 +4501,7 @@ def _u90_selftest_release_fixes():
     assert "DŁUGI — 180 s" in _U68_PROFILE_CHOICES
     assert "900 s" in _U68_PROFILE_CHOICES[-1]
     assert AppV43._u41_start_vram_test is _u90_start_vram_profile_test
-    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test, _u107_show_speed_test)
+    assert AppV43.show_speed_test in (_u90_show_speed_test, _u100_show_speed_test, _u101_show_speed_test, _u109_show_speed_test)
     assert _u66_measure_speed in (_u90_measure_speed, _u100_measure_speed)
     assert callable(_u90_error_alarm) and AppV43.queue_results is _u90_queue_results_with_error_alarm
 
@@ -6167,8 +6212,13 @@ def _u93_show_test_detail(app,module,test_id):
         ttk.Combobox(settings,textvariable=app._u93_drive_var,values=drives or ("N/D",),state="readonly",width=10).pack(side="left",padx=4)
     if kind=="gpu_scene":
         names=[f"{i:02d} — {scene[0]}" for i,scene in enumerate(_U66_SCENES,1)]
-        app._u93_scene_var=tk.StringVar(value=names[0])
-        ttk.Combobox(settings,textvariable=app._u93_scene_var,values=names,state="readonly",width=30).pack(side="left",padx=4)
+        if str(test_id).startswith("gpu_scene_"):
+            fixed_scene=_u108_catalog_scene_id(test_id,1)
+            app._u93_scene_var=tk.StringVar(value=names[fixed_scene-1])
+            ttk.Combobox(settings,textvariable=app._u93_scene_var,values=(names[fixed_scene-1],),state="readonly",width=30).pack(side="left",padx=4)
+        else:
+            app._u93_scene_var=tk.StringVar(value=names[0])
+            ttk.Combobox(settings,textvariable=app._u93_scene_var,values=names,state="readonly",width=30).pack(side="left",padx=4)
     box=app.panel(app.content);box.pack(fill="both",expand=True,pady=(0,5))
     app._u93_detail_status=tk.Label(box,text="GOTOWY — wybrano jeden test.",bg=t["panel"],fg=t["muted"],font=app.fnt(9,"bold"),anchor="w")
     app._u93_detail_status.pack(fill="x",padx=10,pady=(7,3))
@@ -6253,7 +6303,11 @@ def _u93_selftest_catalog_routing():
         assert entries,f"Pusty katalog {module}"
         for test_id,title,description,kind in entries:
             ids.append(test_id);kinds.add(kind);assert title and description
-    assert len(ids)==70 and len(set(ids))==70,"Katalog powinien mieć 70 unikalnych testów"
+    assert len(ids)==159 and len(set(ids))==159,"Katalog powinien mieć 159 unikalnych testów"
+    gpu_scene_rows=[entry for entry in _U93_TEST_CATALOG.get("GPU",[]) if str(entry[0]).startswith("gpu_scene_")]
+    assert len(gpu_scene_rows)==90,"GPU musi mieć 90 niezależnych pozycji scen OpenGL"
+    assert sorted(int(entry[0].rsplit("_",1)[-1]) for entry in gpu_scene_rows)==list(range(1,91))
+    assert len({entry[1] for entry in gpu_scene_rows})==90
     assert kinds.issubset(_U93_SUPPORTED_TEST_KINDS),f"Nieobsłużone rodzaje: {kinds-_U93_SUPPORTED_TEST_KINDS}"
     assert callable(_u93_show_test_detail) and callable(_u93_execute_catalog_test)
     assert AppV43.show_component_lab is _u93_show_lab
@@ -7862,7 +7916,7 @@ def _u101_selftest_adaptive_speed():
     assert tele["gpu_clock_mhz"]==2400 and tele["fan_speed_rpm"]==1600 and tele["power_draw_w"]==185
     assert callable(_u101_refresh_sensor_table) and callable(_u101_sensor_poll)
     assert _u66_measure_speed is _u100_measure_speed
-    assert AppV43.show_speed_test is _u107_show_speed_test
+    assert AppV43.show_speed_test is _u109_show_speed_test
     print("ADAPTIVE_SPEED_ALL_ENTRYPOINTS_AND_FULL_TELEMETRY_SELFTEST_OK")
 
 def _u101_selftest_unique_gpu_scenes():
@@ -10237,35 +10291,96 @@ def _u106_selftest_sensor_mapping():
     assert {"CPU Package","GPU Core","Fan #1","Użycie CPU","Użycie RAM","Odczyt wszystkich dysków","gpu_load_percent"}.issubset(names)
     assert len(expanded)>=7, "Full inspector must merge raw bridge rows and system/GPU metrics"
     assert callable(_u106_open_sensor_inspector)
-    print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPECTOR_SELFTEST_OK")
+    print("CPU_SENSOR_MAPPING_AND_FULL_SENSOR_INSPEdef _u108_catalog_scene_id(test_id, selected_scene=1):
+    """A named catalog scene always resolves to its own fixed scene ID (1..90)."""
+    scene=selected_scene
+    try:
+        ident=str(test_id or "")
+        if ident.startswith("gpu_scene_"):
+            scene=int(ident.rsplit("_",1)[-1])
+        else:
+            scene=int(selected_scene or 1)
+    except Exception:
+        scene=1
+    return max(1,min(90,int(scene)))
 
-def _u106_selftest_adaptive_speed_payloads():
-    sample=_u106_speed_transfer_counts(
-        [{"state":"good","bytes":1234},{"state":"error","bytes":9999}],
-        [{"state":"good","requested_bytes":5678},{"state":"error","requested_bytes":1111}]
-    )
-    assert sample=={"download_data_bytes":1234,"upload_data_bytes":5678,"data_bytes":6912}
-    code=repr(_u100_measure_speed.__code__.co_consts)+repr(_u100_measure_speed.__code__.co_names)
-    assert "_U100_ORIGINAL_SPEED_REQUEST" in _u100_measure_speed.__code__.co_names
-    assert "download_peak_mbps" in code and "upload_peak_mbps" in code
-    assert "latency_jitter_ms" in code
-    assert callable(_u101_start_speed_test) and _u66_measure_speed is _u100_measure_speed
-    print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
+def _u108_expand_gpu_scene_catalog():
+    gpu=_U93_TEST_CATALOG.get("GPU",[])
+    if any(str(item[0]).startswith("gpu_scene_") for item in gpu):
+        return
+    # Replace the old generic scene picker with 90 independent, individually named tests.
+    gpu[:]=[item for item in gpu if item[0]!="gpu_scene"]
+    if len(_U100_SCENE_TITLES)!=90 or len(_U66_SCENES)!=90:
+        raise AssertionError("OpenGL catalog expansion requires exactly 90 defined scenes.")
+    for number,scene_title in enumerate(_U100_SCENE_TITLES,1):
+        ident=f"gpu_scene_{number:02d}"
+        gpu.append((ident,
+            f"GPU OpenGL — Scena {number:02d}: {scene_title}",
+            f"Niezależny pomiar rzeczywistego FPS/klatek dla sceny {number:02d}: {scene_title}. Scena jest przypisana do tego ID i nie uruchomi sceny nr 1 zamiast wybranej.",
+            "gpu_scene"))
 
+def _u108_selftest_gpu_scene_catalog():
+    rows=[item for item in _U93_TEST_CATALOG.get("GPU",[]) if str(item[0]).startswith("gpu_scene_")]
+    assert len(rows)==90
+    assert [int(item[0].rsplit("_",1)[-1]) for item in rows]==list(range(1,91))
+    assert len({item[1] for item in rows})==90
+    for item in rows:
+        scene=_u108_catalog_scene_id(item[0],1)
+        assert scene==int(item[0].rsplit("_",1)[-1])
+        assert item[3]=="gpu_scene"
+        assert item[1].endswith(_U100_SCENE_TITLES[scene-1])
+    assert _u108_catalog_scene_id("gpu_scene_37",1)==37
+    assert _u108_catalog_scene_id("gpu_scene_90",1)==90
+    print("GPU_SCENE_CATALOG_SELFTEST_OK: 90 unique scene IDs mapped 1:1 to 90 distinct OpenGL scene titles")
 
-# v4.3.111 — fix live sensor refresh, expose per-core/per-device metrics, validate throughput samples, and give every catalog test its own OpenGL scene.
-_U107_ORIGINAL_COLLECT_OS_METRICS = _u101_collect_os_metrics
-_U107_ORIGINAL_SENSOR_RECORDS = _u104_sensor_records
-_U107_ORIGINAL_SENSOR_ROWS = _u106_get_sensor_rows
-_U107_ORIGINAL_OPEN_SENSOR_INSPECTOR = _u106_open_sensor_inspector
-_U107_ORIGINAL_ATTACH_SENSOR_TABLE = _u106_attach_sensor_table
-_U107_ORIGINAL_MEASURE_SPEED = _u100_measure_speed
-_U107_ORIGINAL_SHOW_SPEED_TEST = AppV43.show_speed_test
-_U107_ORIGINAL_OPEN_COMPONENT_SIMULATOR = _u69_open_component_simulator
+_u108_expand_gpu_scene_catalog()
+
+def _u107_selftest_sensor_source_merge():
+    bridge=[
+        {"hardware":"CPU Package","sensor":"CPU Package","sensorType":"Temperature","value":72.0,"unit":"°C","source":"bridge"},
+        {"hardware":"GPU Core","sensor":"GPU Core","sensorType":"Temperature","value":67.0,"unit":"°C","source":"bridge"},
+        {"hardware":"GPU Core","sensor":"GPU Load","sensorType":"Load","value":93.0,"unit":"%","source":"bridge"}
+    ]
+    wmi=[
+        {"hardware":"CPU Package","sensor":"CPU Package","sensorType":"Temperature","value":71.0,"unit":"°C","source":"wmi"},
+        {"hardware":"Motherboard","parent":"Motherboard","sensor":"System Temperature","sensorType":"Temperature","value":41.0,"unit":"°C","source":"wmi"},
+        {"hardware":"NVMe","parent":"NVMe","sensor":"Drive Temperature","sensorType":"Temperature","value":48.0,"unit":"°C","source":"wmi"}
+    ]
+    merged=_u107_merge_sensor_rows(bridge,wmi,"test")
+    names={x.get("sensor") for x in merged}
+    assert {"CPU Package","GPU Core","GPU Load","System Temperature","Drive Temperature"}.issubset(names)
+    assert sum(1 for x in merged if x.get("sensor")=="CPU Package")==1
+    assert next(x for x in merged if x.get("sensor")=="CPU Package")["value"]==72.0
+    assert all(x.get("source") for x in merged)
+    assert _u66_measure_speed is _u109_measure_speed
+    assert AppV43.show_speed_test is _u109_show_speed_test
+    assert callable(_u101_collect_os_metrics)
+    deep_names=_u93_deep_code_names(_u100_sensor_poll)
+    assert "_u101_collect_os_metrics" in deep_names
+    def nested_constants(function):
+        import types as _u107_types
+        pending=[function.__code__];values=[]
+        while pending:
+            code=pending.pop()
+            values.extend(code.co_consts)
+            pending.extend(item for item in code.co_consts if isinstance(item,_u107_types.CodeType))
+        return values
+    assert "system" in repr(nested_constants(_u100_sensor_poll))
+    print("FULL_SENSOR_SOURCE_MERGE_AND_ACTIVE_SPEED_UI_SELFTEST_OK")
+
+# v4.3.112 — fix live sensor refresh, expose per-core/per-device metrics, validate throughput samples, and give every catalog test its own OpenGL scene.
+_U109_ORIGINAL_COLLECT_OS_METRICS = _u101_collect_os_metrics
+_U109_ORIGINAL_SENSOR_RECORDS = _u104_sensor_records
+_U109_ORIGINAL_SENSOR_ROWS = _u106_get_sensor_rows
+_U109_ORIGINAL_OPEN_SENSOR_INSPECTOR = _u106_open_sensor_inspector
+_U109_ORIGINAL_ATTACH_SENSOR_TABLE = _u106_attach_sensor_table
+_U109_ORIGINAL_MEASURE_SPEED = _u100_measure_speed
+_U109_ORIGINAL_SHOW_SPEED_TEST = AppV43.show_speed_test
+_U109_ORIGINAL_OPEN_COMPONENT_SIMULATOR = _u69_open_component_simulator
 
 # One explicitly assigned renderer scene for each of the 70 independent catalog tests.
 # Each scene ID is unique; the renderer measures real OpenGL FPS and reports GPU renderer/API.
-_U107_TEST_SCENES = {
+_U109_TEST_SCENES = {
     "cpu_scan":46, "cpu_single":47, "cpu_multi":48, "cpu_load60":49, "cpu_max":50, "cpu_sensor":51, "cpu_sim":12,
     "ram_scan":25, "ram_512":26, "ram_1024":27, "ram_2048":28, "ram_bw":29, "ram_max":30, "ram_sim":24,
     "gpu_scan":1, "gpu_scene":2, "gpu_std":3, "gpu_ultra":16, "gpu_max":17, "gpu_sensor":18, "gpu_games":58, "gpu_sim":59,
@@ -10281,15 +10396,15 @@ _U107_TEST_SCENES = {
     "cam_scan":76, "cam_preview":77, "cam_sim":78
 }
 
-def _u107_finite_number(value):
+def _u109_finite_number(value):
     try:
         number=float(value)
         return number if _u66_math.isfinite(number) else None
     except Exception:
         return None
 
-def _u107_collect_os_metrics(app):
-    metrics=_U107_ORIGINAL_COLLECT_OS_METRICS(app) or {}
+def _u109_collect_os_metrics(app):
+    metrics=_U109_ORIGINAL_COLLECT_OS_METRICS(app) or {}
     if not psutil:
         return metrics
     try:
@@ -10303,7 +10418,7 @@ def _u107_collect_os_metrics(app):
         disk_now=psutil.disk_io_counters(perdisk=True) or {}
     except Exception:
         disk_now={}
-    disk_prev=getattr(app,"_u107_disk_io_prev",{}) or {}
+    disk_prev=getattr(app,"_u109_disk_io_prev",{}) or {}
     disk_dt=max(.05,now-float(disk_prev.get("time",now))) if disk_prev else None
     disk_rows=[]
     disk_snapshot={}
@@ -10323,7 +10438,7 @@ def _u107_collect_os_metrics(app):
             "read_iops":read_iops,"write_iops":write_iops,"read_bytes_total":read,
             "write_bytes_total":write,"read_operations_total":read_count,"write_operations_total":write_count})
         disk_snapshot[str(name)]={"read":read,"write":write,"read_count":read_count,"write_count":write_count}
-    app._u107_disk_io_prev={"time":now,"items":disk_snapshot}
+    app._u109_disk_io_prev={"time":now,"items":disk_snapshot}
     metrics["disk_devices"]=disk_rows
 
     # Per-network-interface throughput, adapter state, link speed and addresses.
@@ -10331,7 +10446,7 @@ def _u107_collect_os_metrics(app):
         net_now=psutil.net_io_counters(pernic=True) or {}
     except Exception:
         net_now={}
-    net_prev=getattr(app,"_u107_net_io_prev",{}) or {}
+    net_prev=getattr(app,"_u109_net_io_prev",{}) or {}
     net_dt=max(.05,now-float(net_prev.get("time",now))) if net_prev else None
     try: iface_stats=psutil.net_if_stats() or {}
     except Exception: iface_stats={}
@@ -10357,7 +10472,7 @@ def _u107_collect_os_metrics(app):
             "link_speed_mbps":getattr(stat,"speed",None) if stat else None,
             "mtu":getattr(stat,"mtu",None) if stat else None,"addresses":addresses})
         net_snapshot[str(name)]={"recv":recv,"sent":sent}
-    app._u107_net_io_prev={"time":now,"items":net_snapshot}
+    app._u109_net_io_prev={"time":now,"items":net_snapshot}
     metrics["network_interfaces"]=net_rows
 
     # Filesystem capacity per mounted volume. A failed/unavailable mount remains absent, not zero.
@@ -10382,7 +10497,7 @@ def _u107_collect_os_metrics(app):
     metrics["sampled_at"]=_U66_datetime.now().isoformat(timespec="seconds")
     return metrics
 
-def _u107_sensor_category(sensor_type,unit=""):
+def _u109_sensor_category(sensor_type,unit=""):
     st=str(sensor_type or "Other").strip().lower()
     un=str(unit or "").strip().lower()
     if st=="temperature" or un in ("°c","c"): return "Temperature"
@@ -10395,7 +10510,7 @@ def _u107_sensor_category(sensor_type,unit=""):
     if st in ("throughput","current","energy","timespan"): return st.title()
     return "Other"
 
-def _u107_get_sensor_rows(app):
+def _u109_get_sensor_rows(app):
     # Rebuild from the freshest cache first. The prior implementation could prefer stale Treeview text over new readings.
     cache=getattr(app,"_u66_sensor_cache",{}) or {}
     temps=cache.get("temps",{}) or {}
@@ -10441,7 +10556,7 @@ def _u107_get_sensor_rows(app):
         stype=sensor.get("sensorType") or sensor.get("sensor_type") or sensor.get("type") or "Other"
         hardware=(str(sensor.get("hardware") or sensor.get("parent") or "N/D")
             +(" / "+str(sensor.get("hardwareType") or sensor.get("hardware_type")) if (sensor.get("hardwareType") or sensor.get("hardware_type")) else ""))
-        add(_u107_sensor_category(stype,unit),hardware,
+        add(_u109_sensor_category(stype,unit),hardware,
             sensor.get("sensor") or sensor.get("name") or "N/D",sensor.get("value"),unit,
             sensor.get("source") or temps.get("method") or temps.get("bridge_provider") or "Sensor Bridge")
 
@@ -10551,7 +10666,7 @@ def _u107_get_sensor_rows(app):
         add("GPU","GPU",str(key),value,"",gpu.get("provider") or "GPU telemetry")
     for sensor in gpu.get("sensors",[]) or []:
         if isinstance(sensor,dict):
-            add(_u107_sensor_category(sensor.get("sensorType"),sensor.get("unit")),
+            add(_u109_sensor_category(sensor.get("sensorType"),sensor.get("unit")),
                 sensor.get("hardware") or sensor.get("hardwareType") or "GPU",
                 sensor.get("sensor") or sensor.get("name") or "N/D",sensor.get("value"),
                 sensor.get("unit") or "",sensor.get("source") or gpu.get("provider") or "GPU telemetry")
@@ -10568,10 +10683,10 @@ def _u107_get_sensor_rows(app):
         pass
     return rows
 
-def _u107_sensor_records(app):
+def _u109_sensor_records(app):
     # The compact dashboard uses the same data source as the full inspector; add per-core, disk and NIC rows.
-    rows=_U107_ORIGINAL_SENSOR_RECORDS(app)
-    expanded=_u107_get_sensor_rows(app)
+    rows=_U109_ORIGINAL_SENSOR_RECORDS(app)
+    expanded=_u109_get_sensor_rows(app)
     seen=set((str(r.get("hardware","")).casefold(),str(r.get("sensor","")).casefold(),str(r.get("unit","")).casefold()) for r in rows)
     for row in expanded:
         key=(str(row.get("hardware","")).casefold(),str(row.get("sensor","")).casefold(),str(row.get("unit","")).casefold())
@@ -10580,8 +10695,8 @@ def _u107_sensor_records(app):
         rows.append(row);seen.add(key)
     return rows
 
-def _u107_attach_sensor_table(app,parent,height=10):
-    panel=_U107_ORIGINAL_ATTACH_SENSOR_TABLE(app,parent,height)
+def _u109_attach_sensor_table(app,parent,height=10):
+    panel=_U109_ORIGINAL_ATTACH_SENSOR_TABLE(app,parent,height)
     try:
         tree=getattr(app,"_u100_sensor_tree",None)
         if tree is not None and tree.winfo_exists():
@@ -10590,8 +10705,8 @@ def _u107_attach_sensor_table(app,parent,height=10):
         pass
     return panel
 
-def _u107_open_sensor_inspector(app):
-    result=_U107_ORIGINAL_OPEN_SENSOR_INSPECTOR(app)
+def _u109_open_sensor_inspector(app):
+    result=_U109_ORIGINAL_OPEN_SENSOR_INSPECTOR(app)
     try:
         win=getattr(app,"_u106_sensor_window",None)
         if win is not None and win.winfo_exists():
@@ -10603,7 +10718,7 @@ def _u107_open_sensor_inspector(app):
     return result
 
 # Validate HTTP status, transferred bytes and elapsed time before accepting a throughput sample.
-def _u107_validate_speed_sample(row,direction):
+def _u109_validate_speed_sample(row,direction):
     if not isinstance(row,dict):
         return {"state":"error","direction":direction,"error":"Brak rekordu próbki."}
     sample=dict(row)
@@ -10620,7 +10735,7 @@ def _u107_validate_speed_sample(row,direction):
     except Exception:requested=0
     try:seconds=float(sample.get("seconds"))
     except Exception:seconds=None
-    if not _u107_finite_number(seconds) or float(seconds)<=0:
+    if not _u109_finite_number(seconds) or float(seconds)<=0:
         sample.update({"state":"error","direction":direction,"error":"Brak poprawnego czasu pomiaru."})
         return sample
     if amount<=0:
@@ -10633,20 +10748,20 @@ def _u107_validate_speed_sample(row,direction):
         "mbps":round(amount*8/float(seconds)/1_000_000,3)})
     return sample
 
-def _u107_finalize_speed_result(result):
-    import statistics as _u107_stats
+def _u109_finalize_speed_result(result):
+    import statistics as _u109_stats
     if not isinstance(result,dict):
         return result
     latencies=[]
     for value in result.get("latency_ms",[]) or []:
-        number=_u107_finite_number(value)
+        number=_u109_finite_number(value)
         if number is not None and number>=0:latencies.append(float(number))
     errors=[]
     directions={}
     for direction in ("download","upload"):
         checked=[]
         for original in result.get(direction,[]) or []:
-            row=_u107_validate_speed_sample(original,direction)
+            row=_u109_validate_speed_sample(original,direction)
             checked.append(row)
             if row.get("state")!="good":
                 errors.append({"direction":direction,"sample_index":row.get("sample_index"),
@@ -10657,7 +10772,7 @@ def _u107_finalize_speed_result(result):
     checked_warm={}
     for direction,original in warmup.items():
         if direction in ("download","upload") and isinstance(original,dict):
-            row=_u107_validate_speed_sample(original,direction+"-warmup")
+            row=_u109_validate_speed_sample(original,direction+"-warmup")
             checked_warm[direction]=row
             if row.get("state")!="good":
                 errors.append({"direction":direction+"-warmup","sample_index":row.get("sample_index"),
@@ -10670,8 +10785,8 @@ def _u107_finalize_speed_result(result):
     def stats(direction):
         values=rates[direction]
         if not values:return {"median":None,"mean":None,"minimum":None,"peak":None,"cv":None}
-        mean=float(_u107_stats.fmean(values))
-        cv=float(_u107_stats.pstdev(values)/mean*100) if mean>0 and len(values)>1 else (0.0 if mean>0 else None)
+        mean=float(_u109_stats.fmean(values))
+        cv=float(_u109_stats.pstdev(values)/mean*100) if mean>0 and len(values)>1 else (0.0 if mean>0 else None)
         return {"median":round(_u90_median(values),2),"mean":round(mean,2),
             "minimum":round(min(values),2),"peak":round(max(values),2),"cv":round(cv,2) if cv is not None else None}
     down=stats("download");up=stats("upload")
@@ -10704,14 +10819,14 @@ def _u107_finalize_speed_result(result):
     result["finished_at"]=_U66_datetime.now().isoformat(timespec="seconds")
     return result
 
-def _u107_measure_speed(app):
+def _u109_measure_speed(app):
     # Keep the compatibility keys in this public wrapper for existing updater/self-tests.
     _stable_metric_names=("download_peak_mbps","upload_peak_mbps","latency_jitter_ms")
     # Keep a hard guard in the code path: the measured engine must use the HTTPS transport already tested by CI.
     if not callable(_U100_ORIGINAL_SPEED_REQUEST):
         raise RuntimeError("Brakuje transportu HTTPS dla Speed Test.")
-    result=_U107_ORIGINAL_MEASURE_SPEED(app)
-    result=_u107_finalize_speed_result(result)
+    result=_U109_ORIGINAL_MEASURE_SPEED(app)
+    result=_u109_finalize_speed_result(result)
     if not isinstance(result,dict):
         return result
     try:
@@ -10725,7 +10840,7 @@ def _u107_measure_speed(app):
     except Exception as exc:
         result["history_warning"]=f"Nie udało się zsynchronizować historii: {type(exc).__name__}: {exc}"
     def update_metrics():
-        controls=getattr(app,"_u107_speed_metrics",{}) or {}
+        controls=getattr(app,"_u109_speed_metrics",{}) or {}
         values={
             "sample_count":f"DL {result.get('download_samples_valid',0)}/{result.get('total_download_samples',0)} • UL {result.get('upload_samples_valid',0)}/{result.get('total_upload_samples',0)}",
             "rtt_spread":f"{result['latency_spread_ms']:.1f} ms" if isinstance(result.get("latency_spread_ms"),(int,float)) else "N/D",
@@ -10741,8 +10856,8 @@ def _u107_measure_speed(app):
     except Exception:pass
     return result
 
-def _u107_show_speed_test(app):
-    _U107_ORIGINAL_SHOW_SPEED_TEST(app)
+def _u109_show_speed_test(app):
+    _U109_ORIGINAL_SHOW_SPEED_TEST(app)
     try:
         t=app.colors()
         pane=app.panel(app.content)
@@ -10754,7 +10869,7 @@ def _u107_show_speed_test(app):
         tk.Label(pane,text="Prędkość główna = mediana; peak pokazuje maksimum. CV pokazuje rozrzut próbek (mniej = stabilniej). Transfery z błędnym HTTP, niepełnymi bajtami lub czasem są odrzucane.",
             bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1320,justify="left").pack(fill="x",padx=8,pady=(0,4))
         row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=5,pady=(0,5))
-        app._u107_speed_metrics={}
+        app._u109_speed_metrics={}
         specs=(("UDANE PRÓBKI","sample_count"),("ROZPIĘTOŚĆ RTT","rtt_spread"),
             ("STABILNOŚĆ DOWNLOAD","download_cv"),("STABILNOŚĆ UPLOAD","upload_cv"))
         for caption,key in specs:
@@ -10762,12 +10877,12 @@ def _u107_show_speed_test(app):
             card.pack(side="left",fill="both",expand=True,padx=2)
             tk.Label(card,text=caption,bg=t["card"],fg=t["muted"],font=app.fnt(8,"bold")).pack(pady=(5,1))
             label=tk.Label(card,text="N/D",bg=t["card"],fg=t["accent2"],font=app.fnt(11,"bold"))
-            label.pack(pady=(0,5));app._u107_speed_metrics[key]=label
+            label.pack(pady=(0,5));app._u109_speed_metrics[key]=label
     except Exception as exc:
         try:app.queue_log("Speed Test extended UI: "+repr(exc))
         except Exception:pass
 
-def _u107_launch_scene_preview(app,module,test_id,scene_id):
+def _u109_launch_scene_preview(app,module,test_id,scene_id):
     scene_title=_U100_SCENE_TITLES[int(scene_id)-1]
     if not messagebox.askyesno("Unikalna scena OpenGL",
         f"Uruchomić własną scenę {int(scene_id):02d}/90 dla testu {test_id}?\n\n"
@@ -10803,18 +10918,18 @@ def _u107_launch_scene_preview(app,module,test_id,scene_id):
             app.queue_log(f"Raport sceny {test_id}: {type(exc).__name__}: {exc}")
     app.worker(job)
 
-def _u107_open_component_simulator(app,module,fullscreen=False,mode="scan"):
+def _u109_open_component_simulator(app,module,fullscreen=False,mode="scan"):
     # Catalog screens use a dedicated real OpenGL scene; non-catalog callers retain the existing module simulator.
     view=str(getattr(app,"current_view","") or "")
     if view.startswith("COMPONENT_TEST_DETAIL_"):
         test_id=view.split("COMPONENT_TEST_DETAIL_",1)[1]
-        scene_id=_U107_TEST_SCENES.get(test_id)
+        scene_id=_u108_catalog_scene_id(test_id,1) if str(test_id).startswith("gpu_scene_") else _U109_TEST_SCENES.get(test_id)
         if scene_id is not None:
-            _u107_launch_scene_preview(app,module,test_id,scene_id)
+            _u109_launch_scene_preview(app,module,test_id,scene_id)
             return
-    return _U107_ORIGINAL_OPEN_COMPONENT_SIMULATOR(app,module,fullscreen,mode)
+    return _U109_ORIGINAL_OPEN_COMPONENT_SIMULATOR(app,module,fullscreen,mode)
 
-def _u107_selftest_sensor_inspector():
+def _u109_selftest_sensor_inspector():
     class FakeTree:
         def __init__(self,values):self._values=values
         def winfo_exists(self):return True
@@ -10834,7 +10949,7 @@ def _u107_selftest_sensor_inspector():
             "network_interfaces":[{"name":"Ethernet","download_mbps":92.0,"upload_mbps":8.0,"is_up":True,"link_speed_mbps":1000,"addresses":["192.0.2.5"]}],
             "partitions":[{"mountpoint":"C:\\\\","total_bytes":1000000,"used_bytes":500000,"free_bytes":500000,"used_percent":50,"filesystem":"NTFS"}],
             "extra_temperature_sensors":[{"hardware":"OS","sensor":"ACPI package","value":43.0,"unit":"°C","source":"test"}]}}
-    rows=_u107_get_sensor_rows(FakeApp())
+    rows=_u109_get_sensor_rows(FakeApp())
     signatures={(r["hardware"],r["sensor"],r["unit"]) for r in rows}
     assert any("Tctl/Tdie" in x[1] for x in signatures)
     assert any(x[1]=="Rdzeń logiczny 2 — użycie" and x[2]=="%" for x in signatures)
@@ -10847,7 +10962,7 @@ def _u107_selftest_sensor_inspector():
     assert len(rows)>=20
     print("LIVE_SENSOR_INSPECTOR_PER_CORE_DISK_NIC_PARTITION_SELFTEST_OK")
 
-def _u107_selftest_speed_validation():
+def _u109_selftest_speed_validation():
     sample={
       "state":"good","latency_ms":[22.0,24.0,25.0,23.0],
       "download":[
@@ -10859,7 +10974,7 @@ def _u107_selftest_speed_validation():
         {"state":"good","status":200,"requested_bytes":1000000,"bytes":1000000,"seconds":2.0,"mbps":4.0}],
       "warmup":{"download":{"state":"good","status":200,"requested_bytes":256000,"bytes":256000,"seconds":.3},
                 "upload":{"state":"good","status":200,"requested_bytes":256000,"bytes":256000,"seconds":.4}}}
-    result=_u107_finalize_speed_result(sample)
+    result=_u109_finalize_speed_result(sample)
     assert result["download_samples_valid"]==2 and result["upload_samples_valid"]==2
     assert result["download_mbps"]==12.0 and result["upload_mbps"]==4.0
     assert result["download"][2]["state"]=="error" and result["state"]=="warn"
@@ -10869,19 +10984,43 @@ def _u107_selftest_speed_validation():
     assert result["download_cv_percent"] is not None and result["upload_cv_percent"]==0.0
     print("SPEED_TEST_HTTP_BYTES_MEDIAN_JITTER_STABILITY_SELFTEST_OK")
 
-def _u107_selftest_unique_scene_per_catalog_test():
+def _u109_selftest_unique_scene_per_catalog_test():
     catalog_ids=[]
+    gpu_scene_ids=[]
+    other_scene_ids=[]
     for module,entries in _U93_TEST_CATALOG.items():
         for test_id,title,description,kind in entries:
             catalog_ids.append(test_id)
-            assert test_id in _U107_TEST_SCENES, "Brak indywidualnej sceny dla "+str(test_id)
-            scene_id=_U107_TEST_SCENES[test_id]
+            if str(test_id).startswith("gpu_scene_"):
+                scene_id=_u108_catalog_scene_id(test_id,1)
+                assert kind=="gpu_scene"
+                gpu_scene_ids.append(scene_id)
+            else:
+                assert test_id in _U109_TEST_SCENES, "Brak przypisanej sceny podglądu dla "+str(test_id)
+                scene_id=_U109_TEST_SCENES[test_id]
+                other_scene_ids.append(scene_id)
             assert 1<=scene_id<=len(_U100_SCENE_TITLES)
-            assert "SIMULATOR" not in str(title).upper() or scene_id>0
-    assert len(catalog_ids)==70 and len(set(catalog_ids))==70
-    scene_ids=[_U107_TEST_SCENES[test_id] for test_id in catalog_ids]
-    assert len(set(scene_ids))==70, "Dwa testy katalogu wskazują na tę samą scenę OpenGL."
-    assert callable(_u107_open_component_simulator) and callable(_u107_launch_scene_preview)
+    assert len(catalog_ids)==159 and len(set(catalog_ids))==159
+    assert len(gpu_scene_ids)==90 and sorted(gpu_scene_ids)==list(range(1,91))
+    assert len(set(gpu_scene_ids))==90, "GPU benchmark ma ponownie użyte ID sceny."
+    assert len(other_scene_ids)==69 and len(set(other_scene_ids))==69
+    assert callable(_u109_open_component_simulator) and callable(_u109_launch_scene_preview)
+    assert callable(_u109_get_sensor_rows) and callable(_u109_measure_speed)
+    assert "COMPONENT_TEST_DETAIL_" in _u109_open_component_simulator.__code__.co_consts
+    print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 159 entries, 90 distinct GPU benchmark scenes")
+
+_u101_collect_os_metrics=_u109_collect_os_metrics
+_u104_sensor_records=_u109_sensor_records
+_u106_get_sensor_rows=_u109_get_sensor_rows
+_u106_open_sensor_inspector=_u109_open_sensor_inspector
+_u106_attach_sensor_table=_u109_attach_sensor_table
+_u81_attach_sensor_table=_u109_attach_sensor_table
+_u100_measure_speed=_u109_measure_speed
+_u90_measure_speed=_u109_measure_speed
+_u66_measure_speed=_u109_measure_speed
+_u69_open_component_simulator=_u109_open_component_simulator
+AppV43.show_speed_test=_u109_show_speed_test
+llable(_u107_launch_scene_preview)
     assert callable(_u107_get_sensor_rows) and callable(_u107_measure_speed)
     assert "COMPONENT_TEST_DETAIL_" in _u107_open_component_simulator.__code__.co_consts
     print("UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 70 different scene IDs")
@@ -10901,9 +11040,11 @@ AppV43.show_speed_test=_u107_show_speed_test
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
-        _u107_selftest_sensor_inspector()
-        _u107_selftest_speed_validation()
-        _u107_selftest_unique_scene_per_catalog_test()
+        _u108_selftest_gpu_scene_catalog()
+        _u107_selftest_sensor_source_merge()
+        _u109_selftest_sensor_inspector()
+        _u109_selftest_speed_validation()
+        _u109_selftest_unique_scene_per_catalog_test()
         _u106_selftest_sensor_mapping()
         _u106_selftest_adaptive_speed_payloads()
         _u105_selftest_visual_quality()
