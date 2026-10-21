@@ -8139,7 +8139,10 @@ def _u102_selftest_ram_visible_progress():
     assert "progress_callback" in repr(_u102_ram_pattern_suite.__code__.co_consts) or "progress_callback" in _u102_ram_pattern_suite.__code__.co_names
     assert "ram_pattern_test" in _u102_ram_pattern_suite.__code__.co_names
     assert "pygame" not in _u102_ram_pattern_suite.__code__.co_names
-    assert _u93_execute_catalog_test is _u102_execute_catalog_test
+    assert (_u93_execute_catalog_test is _u102_execute_catalog_test
+            or getattr(_u93_execute_catalog_test, "__name__", "") == "_u109_execute_catalog_test")
+    if getattr(_u93_execute_catalog_test, "__name__", "") == "_u109_execute_catalog_test":
+        assert "_U109_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names
     assert _u93_show_test_detail is _u102_show_test_detail
     assert getattr(AppV43._ram_test, "_u102_ram_guard", False)
     print("RAM_VISIBLE_PROGRESS_SELFTEST_OK: isolated in-app progress, safe allocation cap, no OpenGL/pygame path")
