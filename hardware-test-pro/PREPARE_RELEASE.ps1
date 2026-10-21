@@ -1676,6 +1676,94 @@ def _u107_add_offline_tab(self,notebook,t,add_row,add_btn):
     add_btn(row,"SFC OFFLINE /SCANNOW",sfc_offline,"accent")
     return offline
 
+def _u109_service_audit_specs():
+    return [
+        ("BIOS / UEFI / SECURE BOOT", r"""$ErrorActionPreference='SilentlyContinue'
+$os=@(Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture,LastBootUpTime)
+$bios=@(Get-CimInstance Win32_BIOS | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate,Status)
+$computer=@(Get-CimInstance Win32_ComputerSystem | Select-Object Manufacturer,Model,SystemType,TotalPhysicalMemory)
+$firmware='N/D';try{$firmware=(Get-ComputerInfo -Property BiosFirmwareType -ErrorAction Stop).BiosFirmwareType}catch{}
+$secureBoot='N/D';try{$secureBoot=Confirm-SecureBootUEFI -ErrorAction Stop}catch{$secureBoot='N/D — firmware/system nie udostępnił odczytu'}
+$tpm='N/D';try{$x=Get-Tpm -ErrorAction Stop;$tpm=[pscustomobject]@{Present=$x.TpmPresent;Ready=$x.TpmReady;Enabled=$x.TpmEnabled;Activated=$x.TpmActivated;Manufacturer=$x.ManufacturerIdTxt;SpecVersion=$x.SpecVersion}}catch{}
+[pscustomobject]@{OS=$os;BIOS=$bios;Computer=$computer;FirmwareType=$firmware;SecureBoot=$secureBoot;TPM=$tpm} | ConvertTo-Json -Depth 6 -Compress""", 90),
+        ("AKTYWACJA WINDOWS — BEZ KLUCZA", r"""$ErrorActionPreference='SilentlyContinue'
+$app='55c92734-d682-4d71-983e-d6ec3f16059f'
+$rows=@(Get-CimInstance SoftwareLicensingProduct | Where-Object {$_.ApplicationID -eq $app -and $_.Name -like '*Windows*' -and $_.PartialProductKey} | ForEach-Object {
+  $status=switch([int]$_.LicenseStatus){0{'Unlicensed'};1{'Licensed'};2{'OOBGrace'};3{'OOTGrace'};4{'NonGenuineGrace'};5{'Notification'};6{'ExtendedGrace'};default{'Unknown'}}
+  [pscustomobject]@{Name=$_.Name;Description=$_.Description;LicenseStatus=$status;GracePeriodMinutes=$_.GracePeriodRemaining}
+})
+[pscustomobject]@{Count=$rows.Count;Products=$rows;ProductKeyExposed=$false;Note='Odczyt statusu bez odczytu lub eksportu klucza produktu.'} | ConvertTo-Json -Depth 5 -Compress""", 90),
+        ("URZĄDZENIA PNP — PROBLEMY", r"""$ErrorActionPreference='Stop'
+$all=@(Get-PnpDevice -PresentOnly | Select-Object Class,FriendlyName,Status,Problem,InstanceId)
+$bad=@($all | Where-Object {$_.Status -notin @('OK','Unknown') -or ($_.Problem -and $_.Problem -ne 0)})
+[pscustomobject]@{DevicesSeen=$all.Count;ProblemCount=$bad.Count;ProblemDevices=$bad;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("STEROWNIKI — WERSJE I PODPIS", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-CimInstance Win32_PnPSignedDriver | Select-Object DeviceName,DeviceClass,Manufacturer,DriverVersion,DriverDate,IsSigned,InfName)
+[pscustomobject]@{Count=$rows.Count;Drivers=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("AUTOSTART WINDOWS", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-CimInstance Win32_StartupCommand | Select-Object Name,Command,Location,User)
+[pscustomobject]@{Count=$rows.Count;Entries=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 90),
+        ("USŁUGI AUTOMATYCZNE — NIEURUCHOMIONE", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-CimInstance Win32_Service | Where-Object {$_.StartMode -eq 'Auto' -and $_.State -ne 'Running'} | Select-Object Name,DisplayName,State,StartMode,StartName,ExitCode)
+[pscustomobject]@{Count=$rows.Count;StoppedAutoServices=$rows;Note='Zatrzymana usługa automatyczna nie zawsze oznacza usterkę; oceń kontekst.'} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("BŁĘDY KRYTYCZNE SYSTEMU — 7 DNI", r"""$ErrorActionPreference='SilentlyContinue'
+$since=(Get-Date).AddDays(-7)
+$rows=@(Get-WinEvent -FilterHashtable @{LogName='System';Level=1,2;StartTime=$since} -MaxEvents 120 | Select-Object TimeCreated,ProviderName,Id,LevelDisplayName,Message)
+[pscustomobject]@{Since=$since;Count=$rows.Count;Events=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 120),
+        ("OSTATNIE AKTUALIZACJE WINDOWS", r"""$ErrorActionPreference='Stop'
+$rows=@(Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 100 HotFixID,Description,InstalledOn,InstalledBy)
+[pscustomobject]@{Count=$rows.Count;Updates=$rows;ReadOnly=$true} | ConvertTo-Json -Depth 5 -Compress""", 90),
+        ("SIEĆ — ADAPTERY / BRAMY / DNS", r"""$ErrorActionPreference='SilentlyContinue'
+$ip=@(Get-NetIPConfiguration | Select-Object InterfaceAlias,InterfaceDescription,NetProfile,IPv4Address,IPv4DefaultGateway,DNSServer)
+$dns=@(Get-DnsClientServerAddress | Select-Object InterfaceAlias,AddressFamily,ServerAddresses)
+[pscustomobject]@{Interfaces=$ip;DNSServers=$dns;ReadOnly=$true} | ConvertTo-Json -Depth 6 -Compress""", 90)
+    ]
+
+def _u109_run_readonly_audit(self, label, script, timeout=120):
+    def job():
+        if not is_windows():
+            self.queue_log(str(label) + ": audyt wymaga Windows.")
+            return
+        script_path=None
+        try:
+            report_root=_u107_repair_report_root()
+            safe=re.sub(r"[^A-Za-z0-9_-]+","_",str(label))[:48] or "audit"
+            token=datetime.now().strftime("%Y%m%d-%H%M%S")+"-"+_u55_uuid.uuid4().hex[:6]
+            script_path=report_root/(token+"-"+safe+".ps1")
+            report_path=report_root/(token+"-"+safe+".json")
+            powershell=Path(os.environ.get("WINDIR",r"C:\Windows"))/"System32"/"WindowsPowerShell"/"v1.0"/"powershell.exe"
+            if not powershell.is_file():
+                raise FileNotFoundError("Nie znaleziono Windows PowerShell.")
+            script_path.write_text("$ErrorActionPreference='Stop'\n"+str(script)+"\n",encoding="utf-8-sig")
+            out,err,rc=run_process([str(powershell),"-NoProfile","-NonInteractive","-ExecutionPolicy","Bypass","-File",str(script_path)],max(10,int(timeout)))
+            raw=(out or "").strip()
+            data=None
+            if raw:
+                try:
+                    data=_u66_json.loads(raw.splitlines()[-1])
+                except Exception:
+                    data={"output":raw[-60000:]}
+            report={"label":str(label),"state":"good" if int(rc or 0)==0 else "warn",
+                "exit_code":int(rc or 0),"finished_at":datetime.now().isoformat(timespec="seconds"),
+                "read_only":True,"report_path":str(report_path),"data":data,
+                "stdout":(out or "")[-60000:],"stderr":(err or "")[-12000:]}
+            report_path.write_text(_u66_json.dumps(report,ensure_ascii=False,indent=2,default=str),encoding="utf-8")
+            self.queue_log(f"AUDYT WINDOWS {label}: kod {rc}. Raport: {report_path}")
+            if raw:self.queue_log(raw[-5000:])
+            if err:self.queue_log("STDERR "+str(err)[-2000:])
+        except Exception as exc:
+            self.queue_log(f"AUDYT WINDOWS {label}: BŁĄD {type(exc).__name__}: {exc}")
+    try:
+        self.worker(job)
+    except Exception as exc:
+        messagebox.showerror("Diagnostyka Windows",f"{label}: {type(exc).__name__}: {exc}",parent=self)
+
+def _u109_open_audit_folder(self):
+    try:
+        os.startfile(str(_u107_repair_report_root()))
+    except Exception as exc:
+        messagebox.showerror("Raporty diagnostyczne",f"{type(exc).__name__}: {exc}",parent=self)
+
 def _u55_show_service_center(self):
     self.current_view = "SERVICE_CENTER"
     self.clear()
@@ -1690,10 +1778,12 @@ def _u55_show_service_center(self):
     repair = tk.Frame(notebook, bg=t["bg"])
     tickets = tk.Frame(notebook, bg=t["bg"])
     tools = tk.Frame(notebook, bg=t["bg"])
+    audit = tk.Frame(notebook, bg=t["bg"])
     notebook.add(service, text="SERWIS ULTIMATE")
     notebook.add(repair, text="SYSTEM REPAIR PRO")
     notebook.add(tickets, text="ZGŁOSZENIA PRYWATNE")
     notebook.add(tools, text="NARZĘDZIA SERWISOWE")
+    notebook.add(audit, text="BIOS / STEROWNIKI / LOGI")
     def add_row(parent):
         row = tk.Frame(parent, bg=t["bg"]); row.pack(fill="x", padx=12, pady=4); return row
     def add_btn(row, caption, action, kind="accent"):
@@ -1719,6 +1809,18 @@ def _u55_show_service_center(self):
     for specs in repair_rows:
         row=add_row(rp)
         for caption,action in specs: add_btn(row,caption,action,"card" if "UPDATE" in caption or "ZABEZPIECZENIA" in caption else "accent")
+    ap = self.panel(audit); ap.pack(fill="x", padx=10, pady=8)
+    tk.Label(ap,text="AUDYTY SYSTEMU WINDOWS — ODCZYT BEZ ZMIAN KONFIGURACJI",
+        bg=t["panel"],fg=t["accent"],font=self.fnt(11,"bold")).pack(anchor="w",padx=12,pady=(10,4))
+    tk.Label(ap,text="Raporty są zapisywane w folderze NaprawaPC\\RepairReports. Audyty nie ujawniają klucza produktu i nie naprawiają systemu automatycznie. Dla napraw użyj zakładki SYSTEM REPAIR PRO.",
+        bg=t["panel"],fg=t["muted"],font=self.fnt(8),wraplength=1250,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    audit_specs=_u109_service_audit_specs()
+    for offset in range(0,len(audit_specs),3):
+        row=add_row(audit)
+        for caption,script,timeout in audit_specs[offset:offset+3]:
+            add_btn(row,caption,lambda caption=caption,script=script,timeout=timeout:_u109_run_readonly_audit(self,caption,script,timeout),"card")
+    row=add_row(audit)
+    add_btn(row,"OTWÓRZ FOLDER RAPORTÓW",lambda:_u109_open_audit_folder(self),"good")
     tp = self.panel(tools); tp.pack(fill="x", padx=10, pady=8)
     tk.Label(tp, text="DIAGNOSTYKA I NARZĘDZIA SYSTEMOWE", bg=t["panel"], fg=t["accent"], font=self.fnt(11,"bold")).pack(anchor="w", padx=12, pady=(10,4))
     for specs in [
@@ -1756,7 +1858,13 @@ def _u55_selftest_service_center():
     assert "SYSTEM REPAIR PRO" in center_constants and "SERWIS ULTIMATE" in center_constants
     # The Windows discovery routine is read-only and searches for the SOFTWARE hive marker.
     assert "System32" in repr(_u107_detect_windows_installations.__code__.co_consts)
-    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: encrypted tickets, repair tools, offline DISM/SFC, BCD backup and WinRE")
+    assert callable(_u109_run_readonly_audit) and callable(_u109_open_audit_folder)
+    audit_specs=_u109_service_audit_specs()
+    assert len(audit_specs)>=9 and len({x[0] for x in audit_specs})==len(audit_specs)
+    audit_names=repr(_u109_service_audit_specs.__code__.co_consts)
+    assert all(key in audit_names for key in ("BIOS / UEFI / SECURE BOOT","AKTYWACJA WINDOWS","URZĄDZENIA PNP","STEROWNIKI","AUTOSTART","BŁĘDY KRYTYCZNE","OSTATNIE AKTUALIZACJE"))
+    assert "_u109_service_audit_specs" in AppV43.show_service_center.__code__.co_names
+    print("SERVICE_REPAIR_CENTER_SELFTEST_OK: encrypted tickets, repair tools, offline DISM/SFC, BCD/WinRE and 9 Windows read-only audits")
 if __name__ == "__main__" and "--selftest-service-center" in sys.argv:
     try:
         _u55_selftest_service_center()
