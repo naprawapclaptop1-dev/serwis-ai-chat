@@ -800,7 +800,9 @@ def _u66_sensor_probe():
     def collect_sensor_rows(rows, source):
         if not isinstance(rows,list):
             return
-        result["sensors"]=rows[:2000]
+        rows=_u108_merge_sensor_rows(result.get("sensors",[]), rows, source)
+        result["sensors"]=rows[:5000]
+        rows=result["sensors"]
         power_rows=[]
         cpu_power_candidates=[]
         gpu_power_candidates=[]
@@ -897,7 +899,11 @@ def _u66_sensor_probe():
                 result[{"cpu_voltage":"cpu_voltage_v","gpu_voltage":"gpu_voltage_v",
                         "cpu_clock":"cpu_clock_mhz","gpu_clock":"gpu_clock_mhz",
                         "cpu_fan":"cpu_fan_rpm","gpu_fan":"gpu_fan_rpm"}[key]]=values[0]
-        result["method"]=source
+        methods=list(result.get("methods") or [])
+        if source not in methods:
+            methods.append(source)
+        result["methods"]=methods
+        result["method"]=" + ".join(methods)
 
     bridge_name="NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe"
     candidates=[]
@@ -935,10 +941,26 @@ $ErrorActionPreference='SilentlyContinue'
 $sensors=@()
 foreach($ns in @('root/LibreHardwareMonitor','root/OpenHardwareMonitor')){
   try{
-    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $_.SensorType -in @('Temperature','Power') -and $null -ne $_.Value } | Select-Object Name,Parent,Value,SensorType)
+    $xs=@(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction Stop | Where-Object { $null -ne $_.Value } | Select-Object Name,Parent,Identifier,Value,SensorType)
     foreach($x in $xs){
-      $unit=if($x.SensorType -eq 'Power'){'W'}elseif($x.SensorType -eq 'Temperature'){'°C'}else{''}
-      $sensors += [pscustomobject]@{name=[string]$x.Name; parent=[string]$x.Parent; value=[double]$x.Value; sensorType=[string]$x.SensorType; unit=$unit; source=$ns}
+      $type=[string]$x.SensorType
+      $unit=switch($type){
+        'Temperature' {'°C'}
+        'Voltage' {'V'}
+        'Clock' {'MHz'}
+        'Fan' {'RPM'}
+        'Load' {'%'}
+        'Level' {'%'}
+        'Power' {'W'}
+        'Current' {'A'}
+        'Data' {'GB'}
+        'SmallData' {'MB'}
+        'Throughput' {'B/s'}
+        'Energy' {'mWh'}
+        'TimeSpan' {'s'}
+        default {''}
+      }
+      $sensors += [pscustomobject]@{name=[string]$x.Name; parent=[string]$x.Parent; identifier=[string]$x.Identifier; value=[double]$x.Value; sensorType=$type; unit=$unit; source=$ns}
     }
   }catch{}
 }
@@ -956,8 +978,8 @@ try{
         proc=_u66_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",script],capture_output=True,text=True,timeout=8,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
         if proc.returncode==0 and proc.stdout.strip():
             payload=_u66_json.loads(proc.stdout.strip().splitlines()[-1])
-            if not result["sensors"]:
-                collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
+            # Merge fallback WMI readings even when the bridge worked; it may expose additional sensor types.
+            collect_sensor_rows(payload.get("sensors") or [],"LibreHardwareMonitor/OpenHardwareMonitor WMI")
             result["acpi_zones"]=payload.get("zones") or []
             for sensor in result["sensors"]:
                 if not isinstance(sensor,dict): continue
@@ -1069,6 +1091,7 @@ def _u66_show_live_monitor(self):
     self._u66_net_chart=tk.Canvas(right,bg=t["panel"],height=200,highlightthickness=0); self._u66_net_chart.pack(fill="both",expand=True,padx=8,pady=8)
     row=tk.Frame(self.content,bg=t["bg"]); row.pack(fill="x")
     self.make_button(row,"▶ SPEED TEST",self.show_speed_test,"accent",side="left",ipady=6)
+    self.make_button(row,"PEŁNA LISTA CZUJNIKÓW / CSV",lambda:_u107_open_sensor_inspector(self),"good",side="left",ipady=6)
     self.make_button(row,"ODŚWIEŻ SPRZĘT",self.refresh_hardware_async,"card",side="left",ipady=6)
     self.make_button(row,"← TESTY",self.show_tests_hub,"card",side="left",ipady=6)
     if not hasattr(self,"_u66_live_history"):
@@ -10898,9 +10921,68 @@ _u66_measure_speed=_u107_measure_speed
 _u69_open_component_simulator=_u107_open_component_simulator
 AppV43.show_speed_test=_u107_show_speed_test
 
+
+# v4.3.111 — merge every available hardware sensor provider rather than overwriting bridge readings with WMI.
+def _u108_sensor_row_identity(row):
+    def val(*keys):
+        for key in keys:
+            value=row.get(key)
+            if value is not None and str(value).strip():
+                return str(value).strip().casefold()
+        return ""
+    return (val("hardware","parent","hardwareId"),val("sensor","name"),
+            val("sensorType","sensor_type","type"),val("unit"))
+
+def _u108_merge_sensor_rows(existing,incoming,source="N/D"):
+    # Preserve first-seen order while replacing an old reading with the newest matching sample.
+    merged={}
+    for collection in (existing or [],incoming or []):
+        for original in collection or []:
+            if not isinstance(original,dict):continue
+            row=dict(original)
+            row.setdefault("source",str(source or "N/D"))
+            if not row.get("sensor") and row.get("name"):row["sensor"]=row.get("name")
+            if not row.get("hardware") and row.get("parent"):row["hardware"]=row.get("parent")
+            identity=_u108_sensor_row_identity(row)
+            if not any(identity):continue
+            if identity in merged:
+                previous=merged[identity]
+                for key,value in row.items():
+                    if value is not None and str(value).strip():previous[key]=value
+            else:
+                merged[identity]=row
+            if len(merged)>=5000:break
+        if len(merged)>=5000:break
+    return list(merged.values())
+
+def _u108_selftest_sensor_merge():
+    bridge=[
+      {"hardware":"CPU Package","hardwareType":"CpuAmd","sensor":"Tctl/Tdie","sensorType":"Temperature","value":61.5,"unit":"°C"},
+      {"hardware":"CPU","sensor":"Core Clock","sensorType":"Clock","value":4200,"unit":"MHz"},
+      {"hardware":"GPU","sensor":"GPU Core","sensorType":"Temperature","value":67.0,"unit":"°C"}
+    ]
+    wmi=[
+      {"hardware":"CPU Package","hardwareType":"CpuAmd","sensor":"Tctl/Tdie","sensorType":"Temperature","value":62.0,"unit":"°C","source":"WMI"},
+      {"hardware":"CPU","sensor":"Core Voltage","sensorType":"Voltage","value":1.18,"unit":"V"},
+      {"hardware":"CPU Fan","sensor":"CPU Fan #1","sensorType":"Fan","value":1180,"unit":"RPM"},
+      {"hardware":"GPU","sensor":"GPU Load","sensorType":"Load","value":81.0,"unit":"%"}
+    ]
+    rows=_u108_merge_sensor_rows(bridge,wmi,"test-WMI")
+    keys={_u108_sensor_row_identity(row):row for row in rows}
+    assert len(rows)==6,f"Expected 6 distinct readings; got {len(rows)}"
+    assert keys[_u108_sensor_row_identity(wmi[0])]["value"]==62.0,"Newest duplicate reading must win"
+    assert any(row.get("sensorType")=="Clock" for row in rows)
+    assert any(row.get("sensorType")=="Voltage" for row in rows)
+    assert any(row.get("sensorType")=="Fan" for row in rows)
+    assert any(row.get("sensorType")=="Load" for row in rows)
+    assert all(row.get("source") for row in rows),"Every row must show its source"
+    assert len(_u108_merge_sensor_rows(rows,rows))==len(rows),"Repeated merge must not duplicate rows"
+    print("SENSOR_BRIDGE_WMI_MERGE_SELFTEST_OK: all types preserved, duplicate samples refreshed, no duplicate rows")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u92_selftest_crash_guard()
+        _u108_selftest_sensor_merge()
         _u107_selftest_sensor_inspector()
         _u107_selftest_speed_validation()
         _u107_selftest_unique_scene_per_catalog_test()
