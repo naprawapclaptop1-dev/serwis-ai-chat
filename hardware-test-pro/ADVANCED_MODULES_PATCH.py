@@ -7176,7 +7176,8 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             gl.glTranslatef(0.0,0.0,-8.6 if family<16 else -9.5)
             gl.glRotatef(elapsed*(22.0+sid%27),0.2,1.0,0.13)
             gl.glRotatef(11.0+14.0*_m.sin(elapsed*0.63+sid),1.0,0.0,0.2)
-            gl.glScalef(1.22,1.22,1.22)
+            _scene_scale = 1.95 if family==0 else (1.38 if family<16 else 1.22)
+            gl.glScalef(_scene_scale,_scene_scale,_scene_scale)
             gl.glCallList(display_list)
             if family>=20:
                 draw_dynamic(elapsed)

@@ -200,6 +200,9 @@ def _u147_wrap_start_real_3d(app,module):
 def _u147_execute_gpu_scene(self,scene_id,seconds=5):
     result=_U147_ORIGINAL_GPU_SCENE(self,scene_id,seconds)
     self.queue_results("GPU_3D",result)
+    try:
+        if isinstance(getattr(self,"results",None),dict):self.results["GPU_3D"]=result
+    except Exception:pass
     _u146_save_quality_report("GPU",f"3D_SCENE_{scene_id}",result)
     def refresh():
         try:
@@ -220,6 +223,9 @@ def _u147_run_gpu_suite(self,seconds=5):
     suite=result if isinstance(result,dict) else (getattr(self,"results",{}) or {}).get("3D_SUITE")
     if isinstance(suite,dict):
         self.queue_results("GPU_3D",suite)
+        try:
+            if isinstance(getattr(self,"results",None),dict):self.results["GPU_3D"]=suite
+        except Exception:pass
         _u146_save_quality_report("GPU","3D_SUITE",suite)
         self.queue_action(lambda:_u86_render_component_report(self,"GPU") if callable(globals().get("_u86_render_component_report")) else None)
     return result
