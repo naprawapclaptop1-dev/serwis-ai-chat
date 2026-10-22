@@ -14608,8 +14608,265 @@ AppV43.show_speed_test=_u124_show_speed_test
 # Preserve the compatibility name expected by the existing adaptive-engine dispatcher.
 _u66_measure_speed=_u124_measure_speed
 
+
+# v4.3.126 — Serwis Ultimate process monitor, with sampled CPU usage and safe controls.
+def _u126_get_process_rows(app):
+    if _u66_os.name!="nt":
+        raise RuntimeError("Monitor procesów wymaga Windows x64.")
+    script=r"""
+$ErrorActionPreference='SilentlyContinue'
+$rows=@(Get-Process | ForEach-Object {
+  $path=$null; $cpu=$null; $started=$null
+  try { $path=[string]$_.Path } catch {}
+  try { $cpu=[double]$_.CPU } catch {}
+  try { $started=$_.StartTime.ToString('o') } catch {}
+  [pscustomobject]@{
+    name=[string]$_.ProcessName
+    pid=[int]$_.Id
+    cpu_seconds=$cpu
+    working_set_bytes=[int64]$_.WorkingSet64
+    private_bytes=[int64]$_.PrivateMemorySize64
+    handles=[int]$_.HandleCount
+    path=$path
+    start_time=$started
+  }
+})
+ConvertTo-Json -InputObject $rows -Compress -Depth 3
+"""
+    proc=_u66_subprocess.run(["powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-Command",script],
+        capture_output=True,text=True,timeout=20,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+    raw=(proc.stdout or "").strip()
+    if not raw:
+        raise RuntimeError((proc.stderr or "PowerShell nie zwrócił listy procesów.")[:1200])
+    parsed=_u66_json.loads(raw)
+    if isinstance(parsed,dict):parsed=[parsed]
+    stamp=_u66_time.monotonic();previous=getattr(app,"_u126_proc_cpu_cache",{}) or {}
+    current={};rows=[];cores=max(1,int(_u66_os.cpu_count() or 1))
+    for item in parsed if isinstance(parsed,list) else []:
+        if not isinstance(item,dict):continue
+        try:pid=int(item.get("pid",0))
+        except Exception:continue
+        if pid<=0:continue
+        cpu_seconds=item.get("cpu_seconds")
+        try:cpu_seconds=float(cpu_seconds) if cpu_seconds is not None else None
+        except Exception:cpu_seconds=None
+        cpu_percent=None
+        old=previous.get(pid)
+        if cpu_seconds is not None and old and isinstance(old,tuple) and len(old)==2:
+            try:
+                elapsed=max(.001,stamp-float(old[1]))
+                delta=max(0.0,cpu_seconds-float(old[0]))
+                cpu_percent=max(0.0,min(100.0,100.0*delta/elapsed/cores))
+            except Exception:cpu_percent=None
+        if cpu_seconds is not None:current[pid]=(cpu_seconds,stamp)
+        try:working=int(item.get("working_set_bytes") or 0)
+        except Exception:working=0
+        try:private=int(item.get("private_bytes") or 0)
+        except Exception:private=0
+        try:handles=int(item.get("handles") or 0)
+        except Exception:handles=0
+        rows.append({
+            "name":str(item.get("name") or "N/D"),"pid":pid,"cpu_percent":cpu_percent,
+            "ram_mb":working/(1024.0*1024.0),"private_mb":private/(1024.0*1024.0),
+            "handles":handles,"path":str(item.get("path") or "N/D"),
+            "start_time":str(item.get("start_time") or "N/D"),"cpu_seconds":cpu_seconds
+        })
+    app._u126_proc_cpu_cache=current
+    rows.sort(key=lambda r:(r["cpu_percent"] if r["cpu_percent"] is not None else -1),reverse=True)
+    return rows
+
+def _u126_stop_selected_process(app,tree,status,refresh):
+    selection=tree.selection()
+    if not selection:
+        messagebox.showinfo("Monitor procesów","Najpierw zaznacz proces.");return
+    try:
+        values=tree.item(selection[0],"values") or ()
+        name=str(values[0]);pid=int(values[1])
+    except Exception:
+        messagebox.showerror("Monitor procesów","Nie udało się odczytać zaznaczonego procesu.");return
+    protected={"system","registry","idle","smss","csrss","wininit","services","lsass","winlogon"}
+    if pid<=4 or pid==_u66_os.getpid() or name.casefold() in protected:
+        messagebox.showwarning("Zablokowano operację","To proces systemowy lub proces samej aplikacji. Zakończenie jest zablokowane.");return
+    if not messagebox.askyesno("Zakończyć proces?",
+        f"Zakończyć proces {name} (PID {pid})?\n\nMożesz utracić niezapisane dane. Nie używam wymuszonego zakończenia. Kontynuować?"):
+        return
+    script=f"$ErrorActionPreference='Stop'; Stop-Process -Id {pid} -ErrorAction Stop; Write-Output 'STOPPED'"
+    try:
+        result=_u66_subprocess.run(["powershell.exe","-NoProfile","-ExecutionPolicy","Bypass","-Command",script],
+            capture_output=True,text=True,timeout=12,creationflags=getattr(_u66_subprocess,"CREATE_NO_WINDOW",0))
+        if result.returncode!=0:
+            raise RuntimeError((result.stderr or result.stdout or "Windows odmówił zakończenia procesu.")[:1200])
+        status.config(text=f"Zakończono proces {name} (PID {pid}).",fg=app.colors()["good"])
+        app.queue_log(f"Monitor procesów: użytkownik potwierdził zakończenie {name} PID {pid}.")
+        refresh()
+    except Exception as exc:
+        status.config(text=f"Nie zakończono {name} (PID {pid}): {exc}",fg=app.colors()["warn"])
+        app.queue_log(f"Monitor procesów — błąd zakończenia PID {pid}: {exc}")
+
+def _u126_show_process_monitor(app):
+    existing=getattr(app,"_u126_proc_window",None)
+    try:
+        if existing is not None and existing.winfo_exists():
+            existing.deiconify();existing.lift();existing.focus_force();return existing
+    except Exception:pass
+    win=tk.Toplevel(app);app._u126_proc_window=win
+    win.title("SERWIS ULTIMATE — MONITOR PROCESÓW")
+    win.geometry("1480x850");win.minsize(1000,600)
+    t=app.colors();win.configure(bg=t["bg"])
+    head=tk.Frame(win,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1);head.pack(fill="x",padx=8,pady=(8,5))
+    tk.Label(head,text="MONITOR PROCESÓW • CPU • RAM • ŚCIEŻKI",bg=t["panel"],fg=t["accent"],font=app.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(8,2))
+    tk.Label(head,text="CPU% jest obliczane z różnicy czasu CPU między próbkami; przy pierwszej próbce pokazuje N/D. Ścieżka może być niedostępna z powodu uprawnień Windows. Zakończenie procesu wymaga osobnego potwierdzenia.",bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    controls=tk.Frame(win,bg=t["bg"]);controls.pack(fill="x",padx=8,pady=(0,4))
+    tk.Label(controls,text="SZUKAJ",bg=t["bg"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    search_var=tk.StringVar(value="");search=tk.Entry(controls,textvariable=search_var,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat",font=app.fnt(10))
+    search.pack(side="left",fill="x",expand=True,padx=(0,10),ipady=5)
+    status=tk.Label(win,text="Pobieranie listy procesów…",bg=t["bg"],fg=t["accent"],anchor="w",font=app.fnt(9,"bold"))
+    status.pack(fill="x",padx=10,pady=(0,5))
+    frame=tk.Frame(win,bg=t["panel"]);frame.pack(fill="both",expand=True,padx=8,pady=(0,6))
+    cols=("name","pid","cpu_percent","ram_mb","private_mb","handles","path")
+    labels={"name":"PROCES","pid":"PID","cpu_percent":"CPU %","ram_mb":"RAM MB","private_mb":"PAMIĘĆ PRYW. MB","handles":"UCHWYTY","path":"ŚCIEŻKA"}
+    widths={"name":200,"pid":75,"cpu_percent":90,"ram_mb":100,"private_mb":130,"handles":85,"path":600}
+    tree=ttk.Treeview(frame,columns=cols,show="headings",height=24)
+    for col in cols:
+        tree.heading(col,text=labels[col],command=lambda c=col:sort_by(c))
+        tree.column(col,width=widths[col],minwidth=65,stretch=col in ("name","path"),anchor="w" if col in ("name","path") else "center")
+    vs=ttk.Scrollbar(frame,orient="vertical",command=tree.yview);hs=ttk.Scrollbar(frame,orient="horizontal",command=tree.xview)
+    tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
+    tree.grid(row=0,column=0,sticky="nsew");vs.grid(row=0,column=1,sticky="ns");hs.grid(row=1,column=0,sticky="ew")
+    frame.grid_rowconfigure(0,weight=1);frame.grid_columnconfigure(0,weight=1)
+    try:tree.tag_configure("hot",foreground=t.get("warn","#ffc857"))
+    except Exception:pass
+    buttons=tk.Frame(win,bg=t["bg"]);buttons.pack(fill="x",padx=8,pady=(0,8))
+    app._u126_proc_rows=[];app._u126_proc_loading=False;sort_state={"key":"cpu_percent","reverse":True}
+    def value_key(row,key):
+        value=row.get(key)
+        if value is None:return -1
+        if key in ("pid","cpu_percent","ram_mb","private_mb","handles"):
+            try:return float(value)
+            except Exception:return -1
+        return str(value).casefold()
+    def sort_by(key):
+        if sort_state["key"]==key:sort_state["reverse"]=not sort_state["reverse"]
+        else:sort_state["key"]=key;sort_state["reverse"]=key in ("cpu_percent","ram_mb","private_mb")
+        render_rows()
+    def visible_rows():
+        needle=str(search_var.get() or "").strip().casefold()
+        rows=getattr(app,"_u126_proc_rows",[]) or []
+        return [r for r in rows if not needle or needle in " ".join(str(r.get(k,"")) for k in ("name","pid","path","start_time")).casefold()]
+    def render_rows():
+        try:
+            if not win.winfo_exists():return
+            rows=visible_rows()
+            rows.sort(key=lambda r:value_key(r,sort_state["key"]),reverse=sort_state["reverse"])
+            desired={f"proc_{r['pid']}" for r in rows}
+            for iid in tree.get_children(""):
+                if iid not in desired:tree.delete(iid)
+            for row in rows:
+                iid=f"proc_{row['pid']}"
+                cpu="N/D" if row.get("cpu_percent") is None else f"{row['cpu_percent']:.1f}"
+                values=(row["name"],row["pid"],cpu,f"{row['ram_mb']:.1f}",f"{row['private_mb']:.1f}",row["handles"],row["path"])
+                tags=("hot",) if isinstance(row.get("cpu_percent"),(int,float)) and row["cpu_percent"]>=80 else ()
+                if tree.exists(iid):tree.item(iid,values=values,tags=tags)
+                else:tree.insert("","end",iid=iid,values=values,tags=tags)
+            status.config(text=f"Procesy: {len(getattr(app,'_u126_proc_rows',[]) or [])} • Widoczne: {len(rows)} • CPU% z próbek • odświeżanie automatyczne co 3 s")
+        except Exception as exc:
+            try:app.queue_log("Monitor procesów — render: "+repr(exc))
+            except Exception:pass
+    def finish_refresh(rows,error):
+        app._u126_proc_loading=False
+        try:
+            if not win.winfo_exists():return
+            if error:
+                status.config(text="Nie udało się odczytać procesów: "+str(error),fg=t["warn"])
+                return
+            app._u126_proc_rows=rows
+            status.config(fg=t["accent"])
+            render_rows()
+        except Exception:pass
+    def refresh():
+        if getattr(app,"_u126_proc_loading",False):return
+        app._u126_proc_loading=True
+        def worker():
+            try:rows=_u126_get_process_rows(app);error=None
+            except Exception as exc:rows=[];error=str(exc)
+            try:app.queue_action(lambda:finish_refresh(rows,error))
+            except Exception:
+                try:app._u126_proc_loading=False
+                except Exception:pass
+        _u66_threading.Thread(target=worker,name="ProcessMonitorRefresh",daemon=True).start()
+    def export_csv():
+        rows=visible_rows()
+        if not rows:
+            messagebox.showinfo("Eksport procesów","Brak widocznych wierszy do eksportu.");return
+        path=_u66_filedialog.asksaveasfilename(title="Eksport widocznych procesów",defaultextension=".csv",
+            filetypes=(("CSV","*.csv"),("Wszystkie pliki","*.*")),initialfile="naprawapc-processes.csv")
+        if not path:return
+        import csv as _u126_csv
+        try:
+            with open(path,"w",newline="",encoding="utf-8-sig") as handle:
+                writer=_u126_csv.DictWriter(handle,fieldnames=("name","pid","cpu_percent","ram_mb","private_mb","handles","path","start_time","cpu_seconds"))
+                writer.writeheader();writer.writerows(rows)
+            status.config(text=f"Wyeksportowano {len(rows)} procesów: {path}",fg=t["good"])
+        except Exception as exc:messagebox.showerror("Eksport CSV",str(exc))
+    app.make_button(buttons,"ODŚWIEŻ TERAZ",refresh,"good",side="left",ipady=5)
+    app.make_button(buttons,"ZAKOŃCZ ZAZNACZONY PROCES",lambda:_u126_stop_selected_process(app,tree,status,refresh),"danger",side="left",ipady=5)
+    app.make_button(buttons,"EKSPORT CSV",export_csv,"accent",side="left",ipady=5)
+    app.make_button(buttons,"ZAMKNIJ",lambda:close_window(),"card",side="right",ipady=5)
+    def close_window():
+        try:win.destroy()
+        except Exception:pass
+        try:app._u126_proc_window=None
+        except Exception:pass
+    search_var.trace_add("write",lambda *_:render_rows())
+    win.protocol("WM_DELETE_WINDOW",close_window)
+    def tick():
+        try:
+            if not win.winfo_exists():return
+            refresh();win.after(3000,tick)
+        except Exception:pass
+    refresh();win.after(3000,tick)
+    return win
+
+_U126_ORIGINAL_SHOW_COMPONENT_LAB=AppV43.show_component_lab
+def _u126_show_component_lab(app):
+    result=_U126_ORIGINAL_SHOW_COMPONENT_LAB(app)
+    try:
+        t=app.colors()
+        pane=app.panel(app.content);pane.pack(fill="x",padx=3,pady=4)
+        tk.Label(pane,text="SERWIS ULTIMATE • MONITOR PROCESÓW",bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,2))
+        tk.Label(pane,text="Lista procesów, CPU% z różnicy próbek, pamięć, uchwyty, ścieżka i eksport CSV. Zakończenie procesu jest osobną operacją z potwierdzeniem.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1200,justify="left").pack(anchor="w",padx=8,pady=(0,5))
+        app.make_button(pane,"OTWÓRZ MONITOR PROCESÓW",lambda:app.show_process_monitor(),"accent",side="left",ipady=5)
+    except Exception as exc:
+        try:app.queue_log("Skrót monitora procesów: "+repr(exc))
+        except Exception:pass
+    return result
+
+def _u126_selftest_process_monitor():
+    import types as _u126_types
+    def names(code):
+        result=set();pending=[code]
+        while pending:
+            current=pending.pop();result.update(current.co_names);result.update(current.co_varnames)
+            pending.extend(value for value in current.co_consts if isinstance(value,_u126_types.CodeType))
+        return result
+    get_names=names(_u126_get_process_rows.__code__)
+    stop_names=names(_u126_stop_selected_process.__code__)
+    ui_names=names(_u126_show_process_monitor.__code__)
+    assert "Get-Process" in _u126_get_process_rows.__code__.co_consts
+    assert "ConvertTo-Json" in _u126_get_process_rows.__code__.co_consts
+    assert "cpu_seconds" in _u126_get_process_rows.__code__.co_consts and "working_set_bytes" in _u126_get_process_rows.__code__.co_consts
+    assert "Stop-Process" in _u126_stop_selected_process.__code__.co_consts and "askyesno" in stop_names
+    assert "protected" in stop_names and "pid" in stop_names
+    assert "Treeview" in ui_names and "after" in ui_names and "asksaveasfilename" in ui_names
+    assert callable(AppV43.show_process_monitor)
+    print("SERWIS_ULTIMATE_PROCESS_MONITOR_SELFTEST_OK: live CPU delta, RAM/private memory, paths, CSV and confirmed process stop")
+
+AppV43.show_process_monitor=_u126_show_process_monitor
+AppV43.show_component_lab=_u126_show_component_lab
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u126_selftest_process_monitor()
         _u125_selftest_unique_scene_families()
         _u124_selftest_gpu_hud()
         _u124_selftest_speed_quality()
