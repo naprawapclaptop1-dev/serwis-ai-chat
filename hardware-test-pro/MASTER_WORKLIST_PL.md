@@ -202,10 +202,16 @@
 
 
 ## Kandydat 4.3.134 — RAM Live Dashboard i unikalność testów
-- [x] Dodano ekran RAM Live Dashboard: użycie RAM, dostępna pamięć, swap/commit, CPU na rdzeń, lista 15 procesów z największym użyciem RAM oraz przewijalna historia 90 próbek.
-- [x] Ekran aktualizuje odczyty co sekundę, nie zapisuje danych do pliku i zatrzymuje odświeżanie po opuszczeniu widoku.
+- [x] Dodano ekran RAM Live Dashboard: użycie RAM, dostępna pamięć, rzeczywisty Windows commit charge przez GetPerformanceInfo, swap/pagefile, CPU na rdzeń, lista 15 procesów z największym użyciem RAM oraz przewijalna historia 90 próbek.
+- [x] Ekran aktualizuje odczyty co sekundę, nie zapisuje danych do pliku i zatrzymuje odświeżanie po opuszczeniu widoku. Gdy Windows API nie zwraca commit charge, wartość jest N/D.
 - [x] Dodano test unikalności tytułów wszystkich 110 testów.
 - [x] Dodano test, że 40 sond System Repair PRO / Serwis Ultimate ma 40 unikalnych ID, nazw i skryptów PowerShell.
 - [ ] Pełny Windows CI, Setup, ALL-IN-ONE ZIP, manifest i SHA-256.
 - [ ] Sprawdzenie RAM Live Dashboard na rzeczywistym Windows i pod dużym obciążeniem pamięci.
 - [ ] Pełna parzystość 1:1 obu aplikacji źródłowych nadal otwarta.
+
+
+## Naprawa testu CI dla kandydata 4.3.134
+- [x] Pierwszy workflow 39778215930 zatrzymał się na asercji selftestu, który sprawdzał nazwy wyłącznie w kodzie zewnętrznej funkcji, a pomijał zagnieżdżony timer odświeżania.
+- [x] Asercja została poprawiona, aby analizowała także zagnieżdżone funkcje; dodano osobny odczyt Windows commit charge.
+- [ ] Ponowić pełny Windows CI przed publikacją; stable pozostaje 4.3.133 do czasu sukcesu.
