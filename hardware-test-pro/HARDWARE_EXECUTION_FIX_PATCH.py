@@ -102,6 +102,8 @@ def _u148_refresh_main_ram(app, force=False, message=None):
                             widget.configure(state="disabled")
                         except Exception:
                             pass
+            except Exception:
+                pass
 
     try:
         queue = getattr(app, "queue_action", None)
