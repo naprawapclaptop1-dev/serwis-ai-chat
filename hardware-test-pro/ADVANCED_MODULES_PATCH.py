@@ -15337,7 +15337,7 @@ def _u132_service_dashboard_routes(app):
         ("SPEED TEST", "Rzeczywiste HTTPS download/upload, mediana oraz profile równoległe.", lambda:app.show_speed_test()),
         ("DYSKI / SSD / HDD", "Otwórz indywidualne testy dysków i raporty.", lambda:app.show_module("DYSK")),
         ("BEZPIECZEŃSTWO WINDOWS", "Otwórz testy bezpieczeństwa i stan ochrony.", lambda:app.show_module("SECURITY")),
-        ("SIEĆ / WI-FI / LAN", "Otwórz diagnostykę interfejsów sieciowych.", lambda:app.show_simple_module("SIEĆ")),
+        ("SIEĆ / WI-FI / LAN", "Otwórz diagnostykę interfejsów sieciowych.", lambda:app.show_simple_module("SIEĆ / WI-FI / LAN")),
         ("PULPIT", "Powrót do głównego pulpitu aplikacji.", lambda:app.show_dashboard()),
     ]
 
@@ -15397,8 +15397,39 @@ def _u132_selftest_service_dashboard():
     assert AppV43.show_system_repair_center is _u132_show_system_repair_center
     print("INTEGRATED_SERVICE_DASHBOARD_SELFTEST_OK: 18 routed screens; 20 System Repair PRO + 20 Serwis Ultimate probes")
 
+_U133_ORIGINAL_BUILD_SHELL=AppV43._build_shell
+def _u133_build_shell(self):
+    result=_U133_ORIGINAL_BUILD_SHELL(self)
+    try:
+        t=self.colors()
+        button=tk.Button(self.sidebar,text="🛠  CENTRUM SERWISU",
+            command=self.show_service_ultimate_dashboard,anchor="w",relief="flat",bd=0,
+            bg=t["accent"],fg="#ffffff",activebackground=t["accent2"],
+            activeforeground="#ffffff",font=self.fnt(9,"bold"),cursor="hand2")
+        button.pack(fill="x",padx=12,pady=3,ipady=9)
+        self.nav.append(button)
+        self._u133_service_nav_button=button
+    except Exception as exc:
+        try:self.queue_log("Nawigacja centrum serwisu: "+repr(exc))
+        except Exception:pass
+    return result
+
+AppV43._build_shell=_u133_build_shell
+
+def _u133_selftest_service_dashboard_navigation():
+    routes=_u132_service_dashboard_routes(object())
+    network=next(row for row in routes if row[0]=="SIEĆ / WI-FI / LAN")
+    assert "SIEĆ / WI-FI / LAN" in network[2].__code__.co_consts
+    assert callable(AppV43.show_service_ultimate_dashboard)
+    assert AppV43._build_shell is _u133_build_shell
+    names=set(_u133_build_shell.__code__.co_names)
+    assert "show_service_ultimate_dashboard" in names and "nav" in names
+    assert "CENTRUM SERWISU" in _u133_build_shell.__code__.co_consts
+    print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u133_selftest_service_dashboard_navigation()
         _u132_selftest_service_dashboard()
         _u131_selftest_parallel_progress()
         _u125_selftest_unique_scene_families()
