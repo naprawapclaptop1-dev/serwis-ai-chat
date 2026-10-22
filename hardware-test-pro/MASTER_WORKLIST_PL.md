@@ -201,12 +201,12 @@
 - [ ] Parzystość 1:1 obu aplikacji źródłowych pozostaje otwarta.
 
 
-## Kandydat 4.3.134 — RAM Live Dashboard i unikalność testów
+## Stable 4.3.134 — RAM Live Dashboard i unikalność testów
 - [x] Dodano ekran RAM Live Dashboard: użycie RAM, dostępna pamięć, rzeczywisty Windows commit charge przez GetPerformanceInfo, swap/pagefile, CPU na rdzeń, lista 15 procesów z największym użyciem RAM oraz przewijalna historia 90 próbek.
 - [x] Ekran aktualizuje odczyty co sekundę, nie zapisuje danych do pliku i zatrzymuje odświeżanie po opuszczeniu widoku. Gdy Windows API nie zwraca commit charge, wartość jest N/D.
 - [x] Dodano test unikalności tytułów wszystkich 110 testów.
 - [x] Dodano test, że 40 sond System Repair PRO / Serwis Ultimate ma 40 unikalnych ID, nazw i skryptów PowerShell.
-- [ ] Pełny Windows CI, Setup, ALL-IN-ONE ZIP, manifest i SHA-256.
+- [x] Windows CI, Setup, ALL-IN-ONE ZIP, manifest i SHA-256 — zakończone sukcesem.
 - [ ] Sprawdzenie RAM Live Dashboard na rzeczywistym Windows i pod dużym obciążeniem pamięci.
 - [ ] Pełna parzystość 1:1 obu aplikacji źródłowych nadal otwarta.
 
@@ -215,3 +215,10 @@
 - [x] Pierwszy workflow 39778215930 zatrzymał się na asercji selftestu, który sprawdzał nazwy wyłącznie w kodzie zewnętrznej funkcji, a pomijał zagnieżdżony timer odświeżania.
 - [x] Asercja została poprawiona, aby analizowała także zagnieżdżone funkcje; dodano osobny odczyt Windows commit charge.
 - [ ] Ponowić pełny Windows CI przed publikacją; stable pozostaje 4.3.133 do czasu sukcesu.
+
+
+## Status końcowy bieżącej partii — stable 4.3.134
+- [x] Online build przeszedł: workflow 39778893231.
+- [x] Opublikowano Setup x64 i ALL-IN-ONE ZIP; manifest wskazuje 4.3.134.
+- [x] Testy automatyczne: 110 unikalnych tytułów, 40 unikalnych skryptów, 19 tras centrum serwisu, RAM Live Dashboard i postęp równoległego Speed Testu.
+- [ ] Pełna parzystość 1:1 z oryginalnymi archiwami 5.6.25 i 1.15.3 nie jest potwierdzona; patrz audyt i lista otwartych prac.
