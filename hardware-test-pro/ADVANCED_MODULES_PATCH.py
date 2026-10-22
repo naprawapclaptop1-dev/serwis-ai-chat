@@ -15626,7 +15626,7 @@ _U135_SERWIS_TESTS = {
  "dxdiag_report": {
   "title":"Raport DirectX / DxDiag",
   "description":"Tworzy osobny raport diagnostyczny DirectX i sterowników ekranu; nie zmienia ustawień.",
-  "command":"$p=Join-Path $env:TEMP ('NaprawaPC-DxDiag-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.txt');$err=$null;try{$proc=Start-Process -FilePath 'dxdiag.exe' -ArgumentList @('/whql:off','/t',$p) -PassThru -Wait -ErrorAction Stop;for($i=0;$i -lt 30 -and !(Test-Path -LiteralPath $p);$i++){Start-Sleep -Milliseconds 500};if(Test-Path -LiteralPath $p){$txt=Get-Content -LiteralPath $p -Raw -ErrorAction Stop;[pscustomobject]@{state='PASS';report_path=$p;process_exit=$proc.ExitCode;characters=$txt.Length;report_preview=$txt.Substring(0,[Math]::Min(18000,$txt.Length))} | ConvertTo-Json -Depth 4}else{throw 'DxDiag nie utworzył raportu'}}catch{[pscustomobject]@{state='WARN';error=$_.Exception.Message;report_path=$p} | ConvertTo-Json -Depth 3}"
+  "command":"$p=Join-Path $env:TEMP ('NaprawaPC-DxDiag-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.txt');$err=$null;try{$proc=Start-Process -FilePath 'dxdiag.exe' -ArgumentList (('/whql:off /t \"{0}\"' -f $p)) -PassThru -Wait -ErrorAction Stop;for($i=0;$i -lt 30 -and !(Test-Path -LiteralPath $p);$i++){Start-Sleep -Milliseconds 500};if(Test-Path -LiteralPath $p){$txt=Get-Content -LiteralPath $p -Raw -ErrorAction Stop;[pscustomobject]@{state='PASS';report_path=$p;process_exit=$proc.ExitCode;characters=$txt.Length;report_preview=$txt.Substring(0,[Math]::Min(18000,$txt.Length))} | ConvertTo-Json -Depth 4}else{throw 'DxDiag nie utworzył raportu'}}catch{[pscustomobject]@{state='WARN';error=$_.Exception.Message;report_path=$p} | ConvertTo-Json -Depth 3}"
  },
  "printer_subsystem": {
   "title":"Drukarki i kolejka wydruku",
