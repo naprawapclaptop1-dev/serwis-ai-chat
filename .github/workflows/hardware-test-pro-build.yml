@@ -174,8 +174,8 @@ jobs:
             - 40 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE: po 20 na aplikację w katalogu integracyjnym.
             - Wszystkie 110 scen używają dedykowanego renderera: 90 scen w 9 rodzinach geometrii po 10 wariantów oraz 20 dodatkowych układów serwisowych; rzeczywiste FPS mierzone z synchronizacją renderowania.
             - Sensor Bridge zachowuje wykryte sensory bez bieżącej wartości jako N/D oraz oddziela liczbę wykrytych sensorów od liczby bieżących odczytów.
-            - Speed Test QUICK/STANDARD/MAX oraz TURBO z 4 równoległymi strumieniami HTTPS; wynik równoległy jest raportowany oddzielnie od mediany bazowej.
-            - Serwis Ultimate: zlecenia serwisowe z lokalną historią i eksportem HTML; 7 osobnych testów zasilania/baterii.
+            - Speed Test: STANDARD dodaje 2 równoległe strumienie HTTPS; MAX/TURBO dodają 4; wynik równoległy jest oddzielony od mediany bazowej, a większy transfer wymaga potwierdzenia.
+            - Serwis Ultimate: zlecenia serwisowe z lokalną historią/HTML, 7 testów zasilania/baterii, menedżer procesów z ochroną procesów krytycznych oraz odczytowa diagnostyka gier.
             - System Repair PRO: lokalna baza wiedzy z importem TXT/MD/PDF, SHA-256 i wyszukiwaniem źródeł; skrypty są tylko tekstem.
             - System Repair PRO: 14 profili problemów z odczytowymi skanami PowerShell, skrótami do narzędzi Windows, analizą błędu i raportem HTML.
             - 125 motywów UI, indywidualne raporty i aktualizator HTTPS.
@@ -244,7 +244,7 @@ jobs:
               installer_sha256: process.env.INSTALLER_SHA256,
               installer_size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+              notes: "Wydanie " + version + ": 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test STANDARD z 2 równoległymi strumieniami oraz MAX/TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, menedżer procesów, diagnostyka gier, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
