@@ -77,3 +77,9 @@ Testy są dostępne z Centrum napraw i nie zastępują oryginalnych modułów ap
 Windows CI dla pull requestów wykonuje testy i budowanie bez publikowania stable. Po scaleniu do main publikacja Setup.exe, ALL-IN-ONE ZIP i manifestu następuje dopiero po pomyślnym buildzie i weryfikacji SHA-256.
 
 Wersjonowanie wydań: pipeline pobiera najnowszy manifest z main przed wyliczeniem kolejnego numeru, aby nie odtworzyć starego tagu, gdy poprzednie wydanie zostało opublikowane po utworzeniu commita wyzwalającego build.
+
+
+AUDYT WINDOWS / STEROWNIKÓW — NOWY MODUŁ
+-----------------------------------------
+Centrum Testów zawiera audyt odczytowy Windows, który sprawdza bieżący stan urządzeń PnP i kody problemów, sterowniki bez raportowanego podpisu, stan Microsoft Defender, profile zapory, Secure Boot/UEFI, TPM, dostępny stan dysków fizycznych, wolne miejsce, znaczniki oczekującego restartu, zdarzenia System z ostatnich 24 godzin, podstawowe usługi/Windows Update, presję RAM, adaptery sieciowe i stan baterii.
+Po zakończeniu tworzone są raporty HTML oraz JSON w %LOCALAPPDATA%\\NaprawaPC\\WindowsAudits. Raport zawiera stan PASS/WARN/INFO/N/D, szczegóły oraz zalecenia. Niepodpisany sterownik nie jest automatycznie uznawany za malware, N/D nie jest zaliczeniem, a odczyt SMART/WMI nie zastępuje testu fizycznego.

@@ -1,7 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stan online sprawdzony:** stable **4.3.131**. Windows workflow 39775574086 zakończył się sukcesem; opublikowano Setup x64 i ALL-IN-ONE ZIP. Testy automatyczne potwierdziły też agregowanie postępu równoległych strumieni Speed Test. To nie zastępuje testu na fizycznym komputerze.  
-**Kandydat roboczy:** 4.3.132 — dodano wspólny pulpit z bezpośrednim dostępem do 18 istniejących ekranów diagnostyki/naprawy; wymaga pełnego Windows CI i sprawdzenia artefaktów/manifestu.
+**Stan online sprawdzony przed następną zmianą:** stable **4.3.140** — Setup x64 i ALL-IN-ONE ZIP opublikowane, `latest.json` wskazuje SHA-256 instalatora.  
+**Kandydat 4.3.141:** nowy, rzeczywisty audyt Windows/sterowników z 16 kontrolami odczytowymi i raportami HTML+JSON. To wymaga Windows CI; odczyty Secure Boot, TPM, dysków i sensorów trzeba potem zweryfikować na fizycznym komputerze.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.

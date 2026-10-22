@@ -1787,6 +1787,19 @@ if ($src -notmatch 'range\(1,\s*126\)' -or !$src.Contains("_U443_ICON_HOVER_GLOW
 $advancedPatchPath = Join-Path $PSScriptRoot "ADVANCED_MODULES_PATCH.py"
 if (!(Test-Path -LiteralPath $advancedPatchPath)) { throw "Missing advanced feature patch: $advancedPatchPath" }
 $advancedPatch = [IO.File]::ReadAllText($advancedPatchPath,[Text.Encoding]::UTF8)
+# Add a real Windows read-only audit to the existing Test Center and route it through the app.
+$routeAnchor = '      "USB_LIST":lambda:self._start_module_test("USB")'
+$itemAnchor = '      ("RAPORT I HISTORIA","Wyniki faktycznie zapisanych pomiarów, nie przykładowe wartości.","RAPORT")'
+if (!$advancedPatch.Contains('"AUDYT_WINDOWS":lambda:self.show_windows_audit(),')) {
+  if (!$advancedPatch.Contains($routeAnchor)) { throw "Missing test-center route for Windows Audit." }
+  $advancedPatch = $advancedPatch.Replace($routeAnchor, $routeAnchor + [Environment]::NewLine + '      "AUDYT_WINDOWS":lambda:self.show_windows_audit(),')
+}
+if (!$advancedPatch.Contains('("AUDYT WINDOWS / STEROWNIKI"')) {
+  if (!$advancedPatch.Contains($itemAnchor)) { throw "Missing test-center card insertion point for Windows Audit." }
+  $newItem = $itemAnchor + ',' + [Environment]::NewLine + '      ("AUDYT WINDOWS / STEROWNIKI","16 rzeczywistych kontroli Windows: PnP, sterowniki, Defender, zapora, UEFI/TPM, dyski, wolne miejsce, restart, zdarzenia, RAM, sieć i bateria. Tworzy raport HTML + JSON.","AUDYT_WINDOWS")'
+  $advancedPatch = $advancedPatch.Replace($itemAnchor,$newItem)
+}
+if (!$advancedPatch.Contains('"AUDYT_WINDOWS":lambda:self.show_windows_audit(),') -or !$advancedPatch.Contains('("AUDYT WINDOWS / STEROWNIKI"')) { throw "Windows Audit route/card integration failed." }
 $oldGpuDispatch = '            _u37_gpu_benchmark_child(_u37_output, 30)'
 $newGpuDispatch = @'
             _u66_scene = int(sys.argv[_u37_index + 2]) if _u37_index + 2 < len(sys.argv) else 1
@@ -1809,6 +1822,15 @@ if (($src | Select-String -Pattern 'ADVANCED_MODULES_PATCH' -AllMatches).Matches
     # The patch source itself is external; only its contents are added to the generated main program.
     throw "Wykryto błędny marker nazwy pliku patcha w źródle aplikacji."
 }
+
+$windowsAuditPatchPath = Join-Path $PSScriptRoot "WINDOWS_AUDIT_MODULE_PATCH.py"
+if (!(Test-Path -LiteralPath $windowsAuditPatchPath)) { throw "Missing Windows Audit module patch: $windowsAuditPatchPath" }
+$windowsAuditPatch = [IO.File]::ReadAllText($windowsAuditPatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $windowsAuditPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U141_WINDOWS_AUDIT_VERSION") -or !$src.Contains("WINDOWS_AUDIT_SELFTEST_OK") -or !$src.Contains("AUDYT_WINDOWS")) { throw "Windows Audit integration markers are missing." }
 
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
