@@ -2785,7 +2785,8 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     self.make_button(row,"SKAN",lambda m=module:_u69_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
     self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
-    self.make_button(row,"RZECZYWISTE OPENGL / FPS",lambda m=module:_u135_start_real_3d(self,m),"accent",side="left",ipady=4)
+    if module=="GPU":
+        self.make_button(row,"RZECZYWISTE OPENGL / FPS",lambda m=module:_u135_start_real_3d(self,m),"accent",side="left",ipady=4)
     if module=="SIEĆ":
         self.make_button(row,"SPEED TEST DOWNLOAD / UPLOAD",self.show_speed_test,"accent",side="left",ipady=4)
     def back(m=module):
@@ -7175,6 +7176,7 @@ def _u100_gpu_benchmark_child(output_path, seconds=30, scene_id=1, resolution="1
             gl.glTranslatef(0.0,0.0,-8.6 if family<16 else -9.5)
             gl.glRotatef(elapsed*(22.0+sid%27),0.2,1.0,0.13)
             gl.glRotatef(11.0+14.0*_m.sin(elapsed*0.63+sid),1.0,0.0,0.2)
+            gl.glScalef(1.22,1.22,1.22)
             gl.glCallList(display_list)
             if family>=20:
                 draw_dynamic(elapsed)

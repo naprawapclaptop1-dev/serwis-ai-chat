@@ -46,3 +46,10 @@
 - [ ] Windows CI, instalator i ALL-IN-ONE ZIP — do potwierdzenia po uruchomieniu workflow.
 - [ ] Test GUI i rzeczywistych wyników na fizycznym Windows — wymaga walidacji sprzętowej.
 - [ ] Porównanie wszystkich ekranów i handlerów z oryginalnym Serwis Ultimate 1.15.3 — nadal otwarte.
+
+
+## Kandydat 4.3.144 — naprawy CPU/RAM/GPU
+- [x] Dodano selftest pełnego bufora RAM, przerywania testu i mapowania raportu GPU.
+- [x] Postęp i finalny wynik trafiają do widoków RAM/CPU oraz lokalnych raportów JSON.
+- [ ] Windows CI, Setup, All-in-One ZIP i zgodność manifestu/SHA-256 — do zaliczenia.
+- [ ] Fizyczny komputer: obciążenie CPU, weryfikacja RAM, FPS/renderer OpenGL i osobny test VRAM.

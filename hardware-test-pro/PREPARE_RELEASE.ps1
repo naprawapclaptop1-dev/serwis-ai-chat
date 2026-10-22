@@ -1853,6 +1853,25 @@ if (!$src.Contains("_U145_CPU_RAM_GPU_PATCH_VERSION") -or !$src.Contains("CPU_RA
     throw "CPU/RAM/GPU live-test patch verification failed."
 }
 
+# Quality/regression fixes: correct full-buffer RAM patterns, sample CPU during load,
+# and route actual OpenGL FPS into the component report.
+$qualityCorePath = Join-Path $PSScriptRoot "QUALITY_TESTS_CORE_PATCH.py"
+$qualityAliasesPath = Join-Path $PSScriptRoot "QUALITY_TESTS_ALIASES_PATCH.py"
+$qualityWiringPath = Join-Path $PSScriptRoot "QUALITY_TESTS_WIRING_PATCH.py"
+foreach ($qualityPath in @($qualityCorePath,$qualityAliasesPath,$qualityWiringPath)) {
+    if (!(Test-Path -LiteralPath $qualityPath)) { throw "Missing quality-test patch file: $qualityPath" }
+}
+$qualityPatch = [IO.File]::ReadAllText($qualityCorePath,[Text.Encoding]::UTF8).TrimEnd() + [Environment]::NewLine +
+    [IO.File]::ReadAllText($qualityAliasesPath,[Text.Encoding]::UTF8).TrimEnd() + [Environment]::NewLine +
+    [IO.File]::ReadAllText($qualityWiringPath,[Text.Encoding]::UTF8).TrimEnd()
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $qualityPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U146_QUALITY_PATCH_VERSION") -or !$src.Contains("QUALITY_TESTS_SELFTEST_OK") -or !$src.Contains("ram_pattern_test")) {
+    throw "Full-buffer RAM / CPU live / GPU result quality fixes were not included in the generated application."
+}
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.

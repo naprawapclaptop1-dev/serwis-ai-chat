@@ -72,3 +72,10 @@ Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. Plik System
 - [ ] Wypełnić mapowanie każdego handlera System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3 do zintegrowanego kodu, ekranu i raportu.
 
 Pełna lista pozostałych prac jest w `MASTER_WORKLIST_PL.md`. Kandydat 4.3.128 pozostaje roboczy do czasu końcowego Windows CI. Pełna zgodność funkcja-w-funkcję z dwoma archiwami nadal nie jest potwierdzona.
+
+
+## Kandydat 4.3.144 — poprawki testów podzespołów
+- [x] RAM: każdy wzorzec jest zapisywany na całym buforze i weryfikowany pełnym SHA-256; selftest kontroluje wszystkie cztery wzorce oraz STOP.
+- [x] CPU: obciążenie i taktowanie są odczytywane podczas działania obciążenia, a nie dopiero po jego zakończeniu.
+- [x] GPU: rzeczywisty raport OpenGL jest mapowany do GPU_3D i wyświetlany w panelu podzespołu.
+- [ ] Na fizycznym sprzęcie sprawdzić FPS/renderer i czujniki; niedostępne wartości pozostają N/D.

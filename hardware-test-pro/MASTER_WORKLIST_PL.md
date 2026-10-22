@@ -227,3 +227,12 @@
 - [ ] Na fizycznym Windows potwierdzić UAC, instalację/aktualizację, czujniki i długie testy stabilności.
 - [ ] Otwarty: porównanie wszystkich widoków System Repair PRO 5.6.25 z companion 5.6.16.
 - [ ] Otwarty: odzyskanie i porównanie pełnego ZIP Serwis Ultimate 1.15.3. Istniejące sondy nie dowodzą pełnego parytetu 1:1.
+
+
+## Kandydat 4.3.144 — naprawy rzeczywistych testów CPU/RAM/GPU
+- [x] RAM: pełny zapis wzorca do każdego bajtu bufora i porównanie SHA-256; stare sprawdzanie rzadkich próbek co 4 KB nie jest już używane.
+- [x] RAM: postęp, STOP, bezpieczne ograniczenie rozmiaru oraz raport z faktycznie testowanym buforem i prędkością weryfikacji.
+- [x] CPU: pomiary obciążenia systemu i taktowania w trakcie każdego etapu 10/25/50/75/100%, z operacjami SHA-256 i per-core gdy dostępne.
+- [x] GPU: wynik OpenGL mapowany do GPU_3D, raportu modułu i lokalnego JSON. Przycisk OpenGL widoczny tylko na ekranie GPU.
+- [ ] Windows CI musi zaliczyć QUALITY_TESTS_SELFTEST_OK, kompilację EXE/Setup, ZIP, SHA-256 i manifest.
+- [ ] Na fizycznym PC potwierdzić CPU, RAM, FPS/renderer OpenGL oraz osobny test VRAM.

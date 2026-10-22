@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - "hardware-test-pro/**"
+      - ".github/workflows/hardware-test-pro-build.yml"
   pull_request:
     paths:
       - "hardware-test-pro/**"
+      - ".github/workflows/hardware-test-pro-build.yml"
   workflow_dispatch:
 
 permissions:
@@ -175,6 +177,7 @@ jobs:
             "--selftest-windows-audit",
             "--selftest-integrated-apps",
             "--selftest-cpu-ram-gpu"
+            "--selftest-quality-fixes"
           )
           foreach ($check in $checks) {
             Write-Host "RUNNING SELFTEST: $check"

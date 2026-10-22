@@ -102,3 +102,10 @@ INTEGRACJA JEDNEJ SUITY — KANDYDAT 4.3.144
 - Przycisk „CENTRUM SERWISU” otwiera wyszukiwane centrum modułów; pełny WPF startuje jako własne okno. SHA-256 jest sprawdzany przed startem, a UAC obsługuje Windows.
 - Ekrany CPU/RAM/GPU pokazują progres i wykresy rzeczywistych odczytów. CPU pokazuje obciążenie systemu/procesu i przepustowość SHA-256; RAM — rzeczywisty postęp wzorców, sprawdzony bufor oraz zapis/weryfikację; GPU — FPS i renderer z raportu procesu OpenGL. Brak sensora jest N/D.
 - Moduły Serwis Ultimate pozostają zintegrowane w Hardware Test PRO. Pełna zgodność 1:1 ze starszym archiwum Serwis Ultimate 1.15.3 nie jest deklarowana bez jego źródeł.
+
+
+KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.144
+- RAM: naprawiono błędne porównywanie próbek ze starym wzorcem; test zapisuje i weryfikuje cały bufor wzorcami 00/FF/AA/55, pokazuje postęp, obsługuje STOP i zapisuje JSON.
+- CPU: etapy 10/25/50/75/100% mierzą obciążenie systemu podczas testu, operacje SHA-256, taktowanie i per-core tam, gdzie dostępne.
+- GPU: przycisk rzeczywistego OpenGL pokazuje się tylko w module GPU; wynik sceny trafia do GPU_3D i raportu modułu. Scena wypełnia większą część okna renderowania.
+- Nowy selftest jakości musi przejść przed budowaniem EXE/Setup. Test CI nie zastępuje sprawdzenia czujników na fizycznym komputerze.
