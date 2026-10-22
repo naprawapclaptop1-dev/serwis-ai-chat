@@ -1,17 +1,17 @@
 {
   "app": "NAPRAWA PC HARDWARE TEST PRO",
   "channel": "stable",
-  "version": "4.3.130",
+  "version": "4.3.131",
   "release_ready": true,
-  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.130.exe",
-  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.130/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.130.exe",
-  "sha256": "792cf6d2862cb760d9e66d8cf6a46e645304df8b426989395d90be36752b8060",
-  "size": 142765571,
-  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.130.exe",
-  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.130/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.130.exe",
-  "installer_sha256": "792cf6d2862cb760d9e66d8cf6a46e645304df8b426989395d90be36752b8060",
-  "installer_size": 142765571,
+  "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.131.exe",
+  "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.131/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.131.exe",
+  "sha256": "80fdab3a9930315cdc5689558d27c4e9abb3e5f790f653e1cd6d5f5f1b4b42c2",
+  "size": 142772326,
+  "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.131.exe",
+  "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.131/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.131.exe",
+  "installer_sha256": "80fdab3a9930315cdc5689558d27c4e9abb3e5f790f653e1cd6d5f5f1b4b42c2",
+  "installer_size": 142772326,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.130: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test STANDARD z 2 równoległymi strumieniami oraz MAX/TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, menedżer procesów, diagnostyka gier, menedżer raportów, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
-  "published_at": "2026-10-22T10:56:26.258Z"
+  "notes": "Wydanie 4.3.131: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test STANDARD z 2 równoległymi strumieniami oraz MAX/TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, menedżer procesów, diagnostyka gier, menedżer raportów, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+  "published_at": "2026-10-22T12:09:22.983Z"
 }
