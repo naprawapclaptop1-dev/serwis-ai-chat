@@ -10514,9 +10514,10 @@ def _u107_get_sensor_rows(app):
     rows=[]
     seen=set()
     def identity(row):
+        # Sensor identifiers distinguish multiple same-name fans/cores on the same controller.
         return tuple(str(row.get(k,"") if row.get(k) is not None else "N/D").strip().casefold()
-            for k in ("hardware","sensor","unit"))
-    def add(category,hardware,name,value,unit="",source="N/D"):
+            for k in ("hardware","sensor","unit","_identity_hint"))
+    def add(category,hardware,name,value,unit="",source="N/D",identity_hint=""):
         if isinstance(value,dict) or isinstance(value,(list,tuple)):
             return
         if value is None:
@@ -10533,7 +10534,7 @@ def _u107_get_sensor_rows(app):
             shown=str(value)
         row={"category":str(category or "Other"),"hardware":str(hardware or "N/D"),
              "sensor":str(name or "N/D"),"value":shown,"unit":str(unit or ""),
-             "source":str(source or "N/D")}
+             "source":str(source or "N/D"),"_identity_hint":str(identity_hint or "")}
         key=identity(row)
         if key not in seen:
             seen.add(key);rows.append(row)
@@ -10553,7 +10554,8 @@ def _u107_get_sensor_rows(app):
             +(" / "+str(sensor.get("hardwareType") or sensor.get("hardware_type")) if (sensor.get("hardwareType") or sensor.get("hardware_type")) else ""))
         add(_u107_sensor_category(stype,unit),hardware,
             sensor.get("sensor") or sensor.get("name") or "N/D",sensor.get("value"),unit,
-            sensor.get("source") or temps.get("method") or temps.get("bridge_provider") or "Sensor Bridge")
+            sensor.get("source") or temps.get("method") or temps.get("bridge_provider") or "Sensor Bridge",
+            sensor.get("identifier") or sensor.get("hardwareId") or sensor.get("hardware_id") or "")
 
     # The compact summaries supplement the raw feed when a provider exposes only a subset of sensor objects.
     temp_summaries=[
@@ -11974,6 +11976,38 @@ _u93_start_catalog_test=_u114_start_catalog_test
 # New scene renderer: IDs 1–90 keep the existing renderer; IDs 91–110 are 20 separate,
 # animated OpenGL layouts with real frame timing. The simulation is not a prediction of game FPS.
 _U114_ORIGINAL_GPU_BENCHMARK_CHILD=_u37_gpu_benchmark_child
+def _u128_furmark_profile(scene_id):
+    """Return a deterministic, scene-specific FurMark stress profile for IDs 1–110."""
+    sid=max(1,min(110,int(scene_id)))
+    return {
+        "scene_id":sid,
+        "major_radius":round(.88+((sid*7)%23)/100.0,3),
+        "tube_radius":round(.31+((sid*11)%19)/100.0,3),
+        "hair_count":6000+sid*45,
+        "palette":(sid-1)%6,
+        "u_offset":sid*.017,
+        "v_offset":sid*.013,
+        "hair_wave":.053+(sid%19)*.0017,
+        "hair_phase":sid*.11,
+        "color_stride":47+sid%41,
+        "ring_segments":96+(sid%9)*4,
+        "ring_sides":20+(sid%7)*2,
+        "inner_ring_radius":round((.88+((sid*7)%23)/100.0)*.55,3),
+        "inner_tube_radius":.018+(sid%5)*.003,
+        "inner_major_segments":56+(sid%7)*4,
+        "inner_minor_segments":6+(sid%3),
+        "rotation_speed":19+(sid%23),
+        "rotation_x":1+(sid%3)*.13,
+        "rotation_y":.37+(sid%5)*.09,
+        "rotation_z":.21+(sid%7)*.05,
+        "pulse_amplitude":5+(sid%19),
+        "pulse_speed":.41+(sid%13)*.037,
+        "scale_x":.78+(sid%9)*.055,
+        "scale_y":.78+(sid%7)*.065,
+        "scale_z":.78+(sid%11)*.045
+    }
+
+
 def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920x1080"):
     sid=max(1,min(110,int(scene_id)))
     # All IDs 1–110 now use the same synchronized renderer, but each ID selects a distinct scene layout.
@@ -12114,13 +12148,20 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
         # Dedicated FurMark-style hairy torus: a dense, lit torus with thousands of
         # deterministic hair strands compiled once as OpenGL display-list geometry.
         # Rotation remains animated, and glFinish below measures completed GPU work.
+        # Every test gets a FurMark-style stress object, but the hair field, ring dimensions,
+        # density, palette and animation are seeded by the scene ID so tests are not clones.
         _u119_furmark_display_list=[None]
         _u119_furmark_hairs=[]
-        for _u119_i in range(12000):
-            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949)%1.0)
-            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927)%1.0)
-            _u119_R=1.04
-            _u119_r=.43
+        _u119_profile=_u128_furmark_profile(sid)
+        _u119_R_base=_u119_profile["major_radius"]
+        _u119_r_base=_u119_profile["tube_radius"]
+        _u119_hair_count=_u119_profile["hair_count"]
+        _u119_palette=_u119_profile["palette"]
+        for _u119_i in range(_u119_hair_count):
+            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949+_u119_profile["u_offset"])%1.0)
+            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927+_u119_profile["v_offset"])%1.0)
+            _u119_R=_u119_R_base
+            _u119_r=_u119_r_base
             _u119_ring=_u119_R+_u119_r*_u114_math.cos(_u119_v)
             _u119_x=_u119_ring*_u114_math.cos(_u119_u)
             _u119_y=_u119_r*_u114_math.sin(_u119_v)
@@ -12128,18 +12169,18 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             _u119_nx=_u114_math.cos(_u119_v)*_u114_math.cos(_u119_u)
             _u119_ny=_u114_math.sin(_u119_v)
             _u119_nz=_u114_math.cos(_u119_v)*_u114_math.sin(_u119_u)
-            _u119_len=.045+.145*(.5+.5*_u114_math.sin(_u119_i*.071))
-            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_i//83)%len(colors)))
+            _u119_len=.025+.15*(.5+.5*_u114_math.sin(_u119_i*_u119_profile["hair_wave"]+_u119_profile["hair_phase"]))
+            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_palette+_u119_i//_u119_profile["color_stride"])%len(colors)))
         def _u119_draw_furmark(elapsed):
             if _u119_furmark_display_list[0] is None:
                 _u119_list=GL.glGenLists(1)
                 if not _u119_list:
                     raise RuntimeError("Sterownik OpenGL nie przydzielił display list dla sceny FurMark.")
                 GL.glNewList(_u119_list,GL.GL_COMPILE)
-                torus(1.04,.43,colors[0],112,28)
-                torus(.58,.024,colors[2],72,8)
+                torus(_u119_R_base,_u119_r_base,colors[_u119_palette],_u119_profile["ring_segments"],_u119_profile["ring_sides"])
+                torus(_u119_profile["inner_ring_radius"],_u119_profile["inner_tube_radius"],colors[(sid+2)%len(colors)],_u119_profile["inner_major_segments"],_u119_profile["inner_minor_segments"])
                 GL.glDisable(GL.GL_LIGHTING)
-                GL.glLineWidth(1.0)
+                GL.glLineWidth(.7+(sid%4)*.2)
                 GL.glBegin(GL.GL_LINES)
                 for _u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,_u119_col in _u119_furmark_hairs:
                     GL.glColor3f(*colors[_u119_col])
@@ -12152,8 +12193,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                 tally["objects"]+=1
                 tally["vertices"]+=len(_u119_furmark_hairs)*2
             GL.glPushMatrix()
-            GL.glRotatef(elapsed*27.0,1.0,.37,.21)
-            GL.glRotatef(8.0*_u114_math.sin(elapsed*.73),0,0,1)
+            GL.glRotatef(elapsed*_u119_profile["rotation_speed"],_u119_profile["rotation_x"],_u119_profile["rotation_y"],_u119_profile["rotation_z"])
+            GL.glRotatef(_u119_profile["pulse_amplitude"]*_u114_math.sin(elapsed*_u119_profile["pulse_speed"]),0,0,1)
+            GL.glScalef(_u119_profile["scale_x"],_u119_profile["scale_y"],_u119_profile["scale_z"])
             GL.glCallList(_u119_furmark_display_list[0])
             GL.glPopMatrix()
         def draw_scene(elapsed):
@@ -12910,6 +12952,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             draw_scene(elapsed)
             if sid!=1:
                 draw_scene_signature(elapsed)
+                # The scene-specific FurMark stress object is deliberately layered on top of
+                # each non-base layout; its seeded geometry differs for every scene ID.
+                _u119_draw_furmark(elapsed)
             # Scene-specific telemetry HUD: live FPS, run progress and recent frame-rate history.
             # It uses a separate orthographic pass and is synchronized with the actual rendered frame.
             live_fps=window_frames/max(.01,_u114_time.perf_counter()-window_start)
@@ -12929,7 +12974,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             "duration_seconds":round(elapsed,2),"average_fps":round(frames/elapsed,2),
             "peak_fps_1s":round(peak,2),"fps_samples":samples,"geometry_vertices":tally["vertices"],
             "geometry_objects":tally["objects"],"signature_objects":tally.get("signature_objects",0),
-            "signature_vertices":tally.get("signature_vertices",0),"scene_signature":signature,"resolution_requested":requested,
+            "signature_vertices":tally.get("signature_vertices",0),"scene_signature":signature,
+            "furmark_overlay":True,"furmark_profile":_u119_profile,"furmark_hair_count":len(_u119_furmark_hairs),
+            "resolution_requested":requested,
             "resolution_rendered":f"{width}x{height}","desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
             "resolution_limited_by_display":resolution_limited,"workload":("FUR_DONUT_OPENGL_STRESS" if sid==1 else "dedicated service diagnostic 3D scene"),
             "stopped_by_user":elapsed<duration-.5,
@@ -13161,9 +13208,30 @@ def _u114_selftest_catalog_routing():
     assert set(ids).issubset(_U107_TEST_SCENES)
     print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 110 test IDs routed to independent screens and real handlers")
 
+def _u128_selftest_live_sensor_summary():
+    rows=[
+        {"category":"Temperature","hardware":"CPU Package","sensor":"Tctl/Tdie","value":"72","unit":"°C","source":"Sensor Bridge"},
+        {"category":"Load","hardware":"CPU","sensor":"Core 1","value":"85","unit":"%","source":"Windows"},
+        {"category":"Fan","hardware":"GPU","sensor":"Fan 2","value":"N/D","unit":"RPM","source":"Sensor Bridge"},
+        {"category":"Power","hardware":"GPU","sensor":"Board Power","value":"180","unit":"W","source":"Sensor Bridge"}
+    ]
+    output=_u128_sensor_summary_text(rows)
+    for token in ("TEMPERATURE","LOAD","FAN","POWER","Tctl/Tdie","Core 1","Fan 2","N/D","180 W"):
+        assert token.casefold() in output.casefold(), "Live sensor summary is missing: "+token
+    assert output.count("\n")>=8, "The summary must show separate scrollable lines for all records."
+    print("FULL_SCROLLABLE_LIVE_TELEMETRY_SELFTEST_OK: all sensor categories, usage and N/D are visible")
+
+
 def _u114_selftest_unique_gpu_scenes():
     assert len(_U100_SCENE_TITLES)==110 and len(set(_U100_SCENE_TITLES))==110
     assert len(_U66_SCENES)==110 and len({row[0] for row in _U66_SCENES})==110
+    # Each of the 110 scenes now owns a seed-specific FurMark-style hair field and ring profile.
+    assert "_u119_draw_furmark" in _u114_gpu_benchmark_child.__code__.co_names
+    assert "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_consts or "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_varnames
+    profiles=[_u128_furmark_profile(i) for i in range(1,111)]
+    profile_keys=[(p["major_radius"],p["tube_radius"],p["hair_count"],p["palette"],p["rotation_speed"],p["scale_x"],p["scale_y"],p["scale_z"]) for p in profiles]
+    assert len(set(profile_keys))==110 and all(p["hair_count"]>=6000 for p in profiles), "All 110 scenes must use a different FurMark stress profile."
+    assert callable(_u128_furmark_profile)
     original=_U114_ORIGINAL_GPU_BENCHMARK_CHILD
     assert original.__code__.co_argcount>=4
     assert "glFinish" in original.__code__.co_names
@@ -13197,17 +13265,21 @@ def _u114_selftest_turbo_math():
 def _u114_selftest_sensor_inventory():
     class FakeApp:
         _u100_sensor_tree=None
-        _u66_sensor_cache={"temps":{"method":"test bridge","sensor_count":3,"sensors":[
-            {"hardware":"CPU Package","hardwareType":"CPU","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test"},
-            {"hardware":"CPU","hardwareType":"CPU","sensor":"Core #1","sensorType":"Temperature","value":None,"unit":"°C","source":"test"},
-            {"hardware":"GPU","hardwareType":"GPU","sensor":"Memory Hotspot","sensorType":"Temperature","value":None,"unit":"°C","source":"test"}]},
+        _u66_sensor_cache={"temps":{"method":"test bridge","sensor_count":4,"sensors":[
+            {"hardware":"CPU Package","hardwareType":"CPU","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test","identifier":"/cpu/temp/0"},
+            {"hardware":"CPU","hardwareType":"CPU","sensor":"Core #1","sensorType":"Temperature","value":None,"unit":"°C","source":"test","identifier":"/cpu/core/1"},
+            {"hardware":"GPU","hardwareType":"GPU","sensor":"Memory Hotspot","sensorType":"Temperature","value":None,"unit":"°C","source":"test","identifier":"/gpu/hotspot"},
+            {"hardware":"GPU","hardwareType":"GPU","sensor":"Fan","sensorType":"Fan","value":1100.0,"unit":"RPM","source":"test","identifier":"/gpu/fan/0"},
+            {"hardware":"GPU","hardwareType":"GPU","sensor":"Fan","sensorType":"Fan","value":1250.0,"unit":"RPM","source":"test","identifier":"/gpu/fan/1"}]},
             "system":{"cpu_percent":35.0,"cpu_per_core_percent":[20.0,70.0]},"gpu":{}}
     rows=_u107_get_sensor_rows(FakeApp())
     assert any(r["sensor"]=="Tctl/Tdie" and r["value"]=="72" for r in rows)
     assert any(r["sensor"]=="Core #1" and r["value"]=="N/D" for r in rows)
     assert any(r["sensor"]=="Memory Hotspot" and r["value"]=="N/D" for r in rows)
     assert any(r["sensor"]=="Rdzeń logiczny 2 — użycie" and r["value"]=="70" for r in rows)
-    print("FULL_SENSOR_INVENTORY_SELFTEST_OK: active values and N/D sensor inventory are both visible")
+    fans=[r for r in rows if r["sensor"]=="Fan" and r["unit"]=="RPM"]
+    assert len(fans)==2 and {r["value"] for r in fans}=={"1100","1250"}, "Same-name sensors with distinct hardware identifiers must not be collapsed."
+    print("FULL_SENSOR_INVENTORY_SELFTEST_OK: active values, N/D and duplicate sensor IDs remain visible")
 
 _u109_selftest_service_catalog=_u114_selftest_service_catalog
 _u93_selftest_catalog_routing=_u114_selftest_catalog_routing
@@ -13338,36 +13410,58 @@ def _u116_export_sensor_csv(app):
         except Exception:pass
         return None
 
+def _u128_sensor_summary_text(rows):
+    """Create a complete grouped live readout, not just two clipped temperature/load strings."""
+    groups={}
+    missing_tokens=("n/d","nd","n/a","na","none","null","—","-","")
+    for row in rows or []:
+        if not isinstance(row,dict):continue
+        category=str(row.get("category") or "Other").strip() or "Other"
+        hardware=str(row.get("hardware") or "N/D").strip() or "N/D"
+        name=str(row.get("sensor") or "N/D").strip() or "N/D"
+        raw=row.get("value")
+        value="N/D" if raw is None else str(raw).strip()
+        if value.casefold() in missing_tokens:value="N/D"
+        unit=str(row.get("unit") or "")
+        source=str(row.get("source") or "N/D")
+        groups.setdefault(category,[]).append((hardware,name,value,unit,source))
+    if not groups:return "Brak rekordów telemetrii. Użyj ODŚWIEŻ WSZYSTKIE CZUJNIKI.\nN/D oznacza brak wartości udostępnionej przez sterownik."
+    preferred=("Temperature","Load","Clock","Power","Voltage","Fan","Memory","Throughput","Disk I/O","Network","Battery","Other")
+    ordered=sorted(groups,key=lambda key:(preferred.index(key) if key in preferred else len(preferred),key.casefold()))
+    lines=["PEŁNA LISTA ODCZYTÓW — wartości aktualizowane z Sensor Bridge i liczników Windows.",
+           "N/D = czujnik wykryty, ale brak bieżącej wartości; nie jest to fikcyjny odczyt."]
+    for category in ordered:
+        values=groups[category]
+        lines.append("")
+        lines.append(f"━━ {category.upper()} ({len(values)}) ━━")
+        for hardware,name,value,unit,source in values:
+            lines.append(f"{hardware} | {name}: {value}{(' '+unit) if unit else ''}  ·  {source}")
+    lines.append("")
+    lines.append(f"RAZEM: {sum(len(v) for v in groups.values())} rekordów w {len(groups)} grupach.")
+    return "\n".join(lines)
+
+
 def _u126_refresh_live_sensor_summary(app):
     try:
         if getattr(app,"current_view","")!="LIVE_MONITOR":
             return
-        label=getattr(app,"_u126_sensor_summary_label",None)
-        if label is None or not label.winfo_exists():
+        widget=getattr(app,"_u126_sensor_summary_label",None)
+        if widget is None or not widget.winfo_exists():
             return
         rows=_u107_get_sensor_rows(app)
-        def usable(row):
-            value=str(row.get("value","N/D") if row.get("value") is not None else "N/D").strip()
-            return value if value and value.casefold() not in ("none","null","") else "N/D"
-        temperatures=[]
-        loads=[]
-        for row in rows:
-            category=str(row.get("category") or "").casefold()
-            unit=str(row.get("unit") or "").casefold()
-            name=str(row.get("sensor") or "N/D")
-            hardware=str(row.get("hardware") or "N/D")
-            value=usable(row)
-            suffix=str(row.get("unit") or "")
-            if "temperature" in category or unit in ("°c","c"):
-                temperatures.append(f"{hardware} / {name}: {value}{suffix}")
-            if "load" in category or unit=="%" or "użycie" in name.casefold() or "obciążenie" in name.casefold():
-                loads.append(f"{hardware} / {name}: {value}{suffix}")
-        temps_text=" • ".join(temperatures) if temperatures else "N/D — brak odczytów temperatur"
-        loads_text=" • ".join(loads) if loads else "N/D — brak odczytów obciążenia"
-        label.config(text=f"TEMPERATURY ({len(temperatures)}): {temps_text}\nUŻYCIE / OBCIĄŻENIE ({len(loads)}): {loads_text}")
+        content=_u128_sensor_summary_text(rows)
+        # The monitor now uses a scrollable Text widget; retain Label compatibility for older screens.
+        if isinstance(widget,tk.Text):
+            widget.configure(state="normal")
+            widget.delete("1.0","end")
+            widget.insert("1.0",content)
+            widget.configure(state="disabled")
+        else:
+            widget.config(text=content)
         app.after(2500,lambda:_u126_refresh_live_sensor_summary(app))
-    except Exception:
-        return
+    except Exception as exc:
+        try:app.queue_log("Pełne podsumowanie telemetrii: "+repr(exc))
+        except Exception:pass
 
 def _u116_show_live_monitor(app):
     result=_U116_ORIGINAL_SHOW_LIVE_MONITOR(app)
@@ -13379,9 +13473,15 @@ def _u116_show_live_monitor(app):
             bg=t["panel"],fg=t["accent"],font=app.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,3))
         tk.Label(pane,text="Pełny inspektor pokazuje wszystkie wykryte sensory oraz liczniki systemowe. N/D oznacza, że sterownik nie udostępnił aktualnej wartości.",
             bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,4))
-        app._u126_sensor_summary_label=tk.Label(pane,text="Pobieranie temperatur i obciążeń…",
-            bg=t["card"],fg=t["fg"],font=app.fnt(8),wraplength=1400,justify="left",anchor="w")
-        app._u126_sensor_summary_label.pack(fill="x",padx=7,pady=(0,6))
+        summary_frame=tk.Frame(pane,bg=t["panel"])
+        summary_frame.pack(fill="both",expand=False,padx=7,pady=(0,6))
+        summary_scroll=ttk.Scrollbar(summary_frame,orient="vertical")
+        summary_scroll.pack(side="right",fill="y")
+        app._u126_sensor_summary_label=tk.Text(summary_frame,height=13,wrap="word",
+            bg=t["card"],fg=t["fg"],font=app.fnt(8),relief="flat",borderwidth=0,
+            yscrollcommand=summary_scroll.set,state="disabled")
+        app._u126_sensor_summary_label.pack(side="left",fill="both",expand=True)
+        summary_scroll.configure(command=app._u126_sensor_summary_label.yview)
         app.after(300,lambda:_u126_refresh_live_sensor_summary(app))
         row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,7))
         app.make_button(row,"OTWÓRZ PEŁNY INSPEKTOR",lambda:_u107_open_sensor_inspector(app),"accent",side="left",ipady=5)
@@ -15096,6 +15196,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u126_selftest_sensor_merge()
         _u114_selftest_turbo_math()
         _u114_selftest_sensor_inventory()
+        _u128_selftest_live_sensor_summary()
         _u114_selftest_unique_gpu_scenes()
         _u114_selftest_catalog_routing()
         _u114_selftest_service_catalog()
