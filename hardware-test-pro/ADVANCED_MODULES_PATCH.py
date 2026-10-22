@@ -13003,7 +13003,7 @@ _U114_ORIGINAL_MEASURE_SPEED=_u66_measure_speed
 _U114_ORIGINAL_START_SPEED=_u66_start_speed_test
 _U114_ORIGINAL_SHOW_SPEED=AppV43.show_speed_test
 
-def _u114_parallel_transfer_sample(direction,index,size_bytes):
+def _u114_parallel_transfer_sample(direction,index,size_bytes,app=None):
     import os as _u114_os
     if direction=="download":
         url="https://speed.cloudflare.com/__down?bytes="+str(int(size_bytes))+"&r="+_u66_uuid.uuid4().hex
@@ -13011,19 +13011,39 @@ def _u114_parallel_transfer_sample(direction,index,size_bytes):
     else:
         url="https://speed.cloudflare.com/__up?r="+_u66_uuid.uuid4().hex
         body=_u114_os.urandom(int(size_bytes))
-    sample=_U100_ORIGINAL_SPEED_REQUEST(url,body,180,None,direction)
+    progress=None
+    if app is not None:
+        def progress(_phase,done,total,elapsed,instant,average):
+            _u131_parallel_progress_update(app,direction,index,done,total,elapsed,instant,average)
+    sample=_U100_ORIGINAL_SPEED_REQUEST(url,body,180,progress,direction)
     sample.update({"kind":direction,"stream_index":int(index),"requested_bytes":int(size_bytes)})
     return _u107_validate_speed_sample(sample,direction)
 
-def _u114_parallel_speed_phase(direction,stream_sizes,workers=4):
+def _u114_parallel_speed_phase(direction,stream_sizes,workers=4,app=None):
     import concurrent.futures as _u114_futures
     import time as _u114_time
     start=_u114_time.perf_counter()
+    sizes=[max(0,int(size or 0)) for size in stream_sizes]
+    if app is not None:
+        app._u131_parallel_state={"direction":direction,"sizes":sizes,"done":[0]*len(sizes),
+            "rates":[0.0]*len(sizes),"base_bytes":int(getattr(app,"_u131_speed_base_data",0) or 0),
+            "profile":str(getattr(app,"_u108_speed_profile","STANDARD") or "STANDARD")}
     samples=[]
     with _u114_futures.ThreadPoolExecutor(max_workers=max(1,min(8,int(workers)))) as pool:
-        futures=[pool.submit(_u114_parallel_transfer_sample,direction,index+1,size) for index,size in enumerate(stream_sizes)]
+        if app is None:
+            futures=[pool.submit(_u114_parallel_transfer_sample,direction,index+1,size) for index,size in enumerate(sizes)]
+        else:
+            futures=[pool.submit(_u114_parallel_transfer_sample,direction,index+1,size,app) for index,size in enumerate(sizes)]
         for future in _u114_futures.as_completed(futures):
-            try:samples.append(future.result())
+            try:
+                sample=future.result()
+                samples.append(sample)
+                if app is not None and isinstance(sample,dict):
+                    idx=max(1,int(sample.get("stream_index",1)))-1
+                    _u131_parallel_progress_update(app,direction,idx+1,
+                        int(sample.get("bytes",0) or 0),int(sample.get("requested_bytes",0) or 0),
+                        float(sample.get("seconds",0) or 0),float(sample.get("mbps",0) or 0),
+                        float(sample.get("mbps",0) or 0))
             except Exception as exc:
                 samples.append({"state":"error","direction":direction,"error":f"{type(exc).__name__}: {exc}",
                                 "bytes":0,"mbps":None,"requested_bytes":0})
@@ -13031,9 +13051,14 @@ def _u114_parallel_speed_phase(direction,stream_sizes,workers=4):
     valid=[x for x in samples if x.get("state")=="good"]
     total_bytes=sum(int(x.get("bytes",0) or 0) for x in valid)
     aggregate=round(total_bytes*8/elapsed/1_000_000,2) if valid and len(valid)==len(samples) else None
-    return {"direction":direction,"streams":samples,"stream_count":len(samples),
+    result={"direction":direction,"streams":samples,"stream_count":len(samples),
         "successful_streams":len(valid),"bytes":total_bytes,"wall_seconds":round(elapsed,3),
         "aggregate_mbps":aggregate,"state":"good" if samples and len(valid)==len(samples) else "warn"}
+    if app is not None:
+        try:
+            app.queue_action(lambda a=app,d=direction,r=result:_u131_finish_parallel_ui(a,d,r))
+        except Exception:pass
+    return result
 
 def _u126_speed_parallel_config(profile):
     profile=str(profile or "STANDARD").upper()
@@ -13072,11 +13097,12 @@ def _u114_measure_speed(app):
     try:
         app.queue_action(lambda p=profile,n=workers:_u66_set_speed_status(app,f"SPEED TEST {p}: {n} równoległe strumienie download…"))
     except Exception:pass
-    parallel_down=_u114_parallel_speed_phase("download",down_sizes,workers)
+    app._u131_speed_base_data=int(result.get("data_bytes",0) or 0)
+    parallel_down=_u114_parallel_speed_phase("download",down_sizes,workers,app=app)
     try:
         app.queue_action(lambda p=profile,n=workers:_u66_set_speed_status(app,f"SPEED TEST {p}: {n} równoległe strumienie upload…"))
     except Exception:pass
-    parallel_up=_u114_parallel_speed_phase("upload",up_sizes,workers)
+    parallel_up=_u114_parallel_speed_phase("upload",up_sizes,workers,app=app)
     result["parallel_test"]={"download":parallel_down,"upload":parallel_up,
         "profile":profile,"workers":workers,
         "method":"Rzeczywiste równoległe strumienie HTTPS do Cloudflare; suma poprawnych bajtów / czas ścienny.",
@@ -15139,6 +15165,95 @@ def _u124_measure_speed(app):
     except Exception:pass
     return result
 
+def _u131_parallel_progress_math(done,sizes,rates,base_bytes=0):
+    normalized_sizes=[max(0,int(v or 0)) for v in (sizes or [])]
+    normalized_done=[]
+    normalized_rates=[]
+    for i,size in enumerate(normalized_sizes):
+        try:value=int(done[i] or 0)
+        except Exception:value=0
+        normalized_done.append(max(0,min(size,value)))
+        try:rate=float(rates[i] or 0)
+        except Exception:rate=0.0
+        normalized_rates.append(rate if _u66_math.isfinite(rate) and rate>=0 else 0.0)
+    total_size=sum(normalized_sizes)
+    total_done=sum(normalized_done)
+    return {"bytes":total_done,"total_bytes":total_size,
+        "progress_percent":round(total_done*100/total_size) if total_size else 0,
+        "aggregate_mbps":round(sum(normalized_rates),2),
+        "active_streams":sum(1 for i,rate in enumerate(normalized_rates)
+            if rate>0 and normalized_done[i]<normalized_sizes[i]),
+        "base_bytes":max(0,int(base_bytes or 0))}
+
+def _u131_parallel_progress_update(app,direction,index,done,total,elapsed,instant,average):
+    def apply():
+        state=getattr(app,"_u131_parallel_state",None)
+        if not isinstance(state,dict) or state.get("direction")!=direction:return
+        idx=int(index)-1
+        if idx<0 or idx>=len(state.get("sizes",[])):return
+        try:state["done"][idx]=max(0,min(int(state["sizes"][idx]),int(done or 0)))
+        except Exception:pass
+        try:
+            value=float(instant or 0)
+            state["rates"][idx]=value if _u66_math.isfinite(value) and value>=0 else 0.0
+        except Exception:state["rates"][idx]=0.0
+        metrics=_u131_parallel_progress_math(state["done"],state["sizes"],state["rates"],state.get("base_bytes",0))
+        history=getattr(app,"_u90_speed_history",None)
+        if not isinstance(history,dict):
+            history={"download":[],"upload":[]};app._u90_speed_history=history
+        history.setdefault(direction,[]).append(metrics["aggregate_mbps"])
+        history[direction]=history[direction][-100:]
+        try:
+            label=(getattr(app,"_u66_speed_values",{}) or {}).get(direction)
+            if label is not None and label.winfo_exists():
+                label.config(text=f"{metrics['aggregate_mbps']:.1f} Mbps Σ")
+            data_label=(getattr(app,"_u66_speed_values",{}) or {}).get("data")
+            if data_label is not None and data_label.winfo_exists():
+                data_label.config(text=f"{(metrics['base_bytes']+metrics['bytes'])/1_000_000:.2f} MB")
+        except Exception:pass
+        try:
+            profile=str(state.get("profile","STANDARD"))
+            _u66_set_speed_status(app,
+                f"NA ŻYWO — {profile} {direction.upper()} RÓWNOLEGŁY {metrics['progress_percent']}% • "
+                f"{metrics['bytes']/1_000_000:.2f}/{metrics['total_bytes']/1_000_000:.2f} MB • "
+                f"{metrics['aggregate_mbps']:.1f} Mbps łącznie • aktywne strumienie {metrics['active_streams']}")
+            _u90_draw_live_speed_chart(app)
+        except Exception:pass
+    try:app.queue_action(apply)
+    except Exception:pass
+
+def _u131_finish_parallel_ui(app,direction,result):
+    state=getattr(app,"_u131_parallel_state",None)
+    if not isinstance(state,dict) or state.get("direction")!=direction:return
+    try:
+        streams=result.get("streams",[])
+        for sample in streams:
+            if not isinstance(sample,dict):continue
+            idx=int(sample.get("stream_index",0))-1
+            if 0<=idx<len(state.get("sizes",[])):
+                state["done"][idx]=max(0,min(int(state["sizes"][idx]),int(sample.get("bytes",0) or 0)))
+                try:state["rates"][idx]=max(0.0,float(sample.get("mbps") or 0))
+                except Exception:state["rates"][idx]=0.0
+        metrics=_u131_parallel_progress_math(state["done"],state["sizes"],state["rates"],state.get("base_bytes",0))
+        _u66_set_speed_status(app,
+            f"ZAKOŃCZONO — {state.get('profile','STANDARD')} {direction.upper()} równoległy • "
+            f"{result.get('successful_streams',0)}/{result.get('stream_count',0)} strumieni • "
+            f"{metrics['bytes']/1_000_000:.2f}/{metrics['total_bytes']/1_000_000:.2f} MB • "
+            f"{result.get('aggregate_mbps') if result.get('aggregate_mbps') is not None else 'N/D'} Mbps łącznie")
+        _u90_draw_live_speed_chart(app)
+    except Exception:pass
+
+def _u131_selftest_parallel_progress():
+    m=_u131_parallel_progress_math([2_000_000,4_000_000],[6_000_000,6_000_000],[10.0,20.0],1234)
+    assert m["bytes"]==6_000_000 and m["total_bytes"]==12_000_000
+    assert m["progress_percent"]==50 and m["aggregate_mbps"]==30.0
+    assert m["base_bytes"]==1234 and m["active_streams"]==2
+    done=_u131_parallel_progress_math([6_000_000,6_000_000],[6_000_000,6_000_000],[0.0,0.0],0)
+    assert done["progress_percent"]==100 and done["active_streams"]==0
+    missing=_u131_parallel_progress_math([0],[0],[float("nan")],0)
+    assert missing["progress_percent"]==0 and missing["aggregate_mbps"]==0.0
+    print("SPEED_TEST_PARALLEL_LIVE_PROGRESS_SELFTEST_OK")
+
 def _u125_selftest_unique_scene_families():
     import inspect as _u125_inspect, re as _u125_re
     signatures=[_u116_scene_signature(i) for i in range(1,111)]
@@ -15203,6 +15318,7 @@ AppV43.show_report_manager=_u126_show_report_manager
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u131_selftest_parallel_progress()
         _u125_selftest_unique_scene_families()
         _u124_selftest_gpu_hud()
         _u124_selftest_speed_quality()
