@@ -1915,6 +1915,17 @@ if (!$src.Contains("_U150_COMPONENT_SIMULATORS_VERSION") -or !$src.Contains("COM
     throw "Component-specific simulator patch was not included."
 }
 
+$hardwareResultConsolePath = Join-Path $PSScriptRoot "HARDWARE_RESULT_CONSOLE_PATCH.py"
+if (!(Test-Path -LiteralPath $hardwareResultConsolePath)) { throw "Missing hardware result console patch: $hardwareResultConsolePath" }
+$hardwareResultConsolePatch = [IO.File]::ReadAllText($hardwareResultConsolePath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $hardwareResultConsolePatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U151_HARDWARE_RESULT_CONSOLE_VERSION") -or !$src.Contains("HARDWARE_RESULT_CONSOLE_SELFTEST_OK") -or !$src.Contains("MONITOR SPRZĘTU + OSTATNI WYNIK")) {
+    throw "CPU/RAM/GPU actual-result console integration failed."
+}
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.

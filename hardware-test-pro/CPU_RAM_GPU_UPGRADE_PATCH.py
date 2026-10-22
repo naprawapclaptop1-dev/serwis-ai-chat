@@ -7,7 +7,7 @@ import hashlib as _u145_hashlib
 import tkinter as _u145_tk
 from tkinter import ttk as _u145_ttk
 
-_U145_CPU_RAM_GPU_PATCH_VERSION = "1.0.0"
+_U145_CPU_RAM_GPU_PATCH_VERSION = "1.0.1"
 _U145_ORIGINAL_SHOW_TEST_DETAIL = _u93_show_test_detail
 _U145_ORIGINAL_EXECUTE_CATALOG_TEST = _u93_execute_catalog_test
 _U145_ORIGINAL_RAM_PROGRESS_UPDATE = globals().get("_u102_ram_progress_update")
@@ -221,7 +221,7 @@ def _u145_cpu_benchmark(app,kind,settings):
         _u145_time.sleep(0.12)
     for thread in threads:thread.join()
     elapsed=max(0.001,_u145_time.perf_counter()-started);snap=_u145_snapshot(app);samples.append(snap)
-    operations=sum(counts);total_bytes=sum(byte_counts);stopped=bool(getattr(app,"stop_requested",False))
+    operations=sum(counts);total_bytes=sum(byte_counts);stopped=bool(halt.is_set() or _u145_stopped(app))
     system=[_u145_num(x.get("cpu_percent")) for x in samples];system=[v for v in system if v is not None]
     process=[_u145_num(x.get("process_cpu_percent")) for x in samples];process=[v for v in process if v is not None]
     core_count=max((len(x.get("per_core_percent") or []) for x in samples),default=0);core_avg=[]
@@ -334,7 +334,8 @@ def _u145_execute_catalog_test(app,module,test_id,kind,settings):
     return result
 
 def _u145_selftest_cpu_ram_gpu():
-    assert _U145_CPU_RAM_GPU_PATCH_VERSION=="1.0.0"
+    assert _U145_CPU_RAM_GPU_PATCH_VERSION=="1.0.1"
+    assert "is_set" in _u145_cpu_benchmark.__code__.co_names, "CPU stop state must reflect the actual halt event"
     assert callable(_u145_snapshot) and callable(_u145_cpu_benchmark) and callable(_u145_show_test_detail)
     assert callable(_u145_execute_catalog_test) and callable(_u145_execute_gpu_scene) and callable(_u145_ram_progress_update)
     cpu=_u145_metric_values("CPU","cpu_multi",{"cpu_percent":87.5,"process_cpu_percent":155.0,"cpu_clock_mhz":4200,"cpu_temp_c":None},{},{"cpu_load_avg_percent":87.5,"process_cpu_avg_percent":155.0,"cpu_clock_mhz_last":4200})

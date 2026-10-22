@@ -130,3 +130,13 @@ KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.146
 POPRAWKA 4.3.147 — SYNCHRONIZACJA WYNIKÓW RAM
 --------------------------------------------
 Ekran główny RAM, polskie warianty widoku i ekran szczegółów katalogu RAM korzystają ze wspólnej ścieżki aktualizacji wyniku. Po zakończeniu testu końcowy raport (PASS/WARN/FAIL, rozmiar bufora, szczegóły i ewentualny offset błędu) ma pierwszeństwo nad starym wynikiem z cache. Dla widoków katalogowych nie jest już wymagany dokładny tekst current_view == "RAM"; test regresyjny sprawdza aktualizację statusu na zlokalizowanym ekranie i w szczegółach katalogu.
+
+
+PANEL WYNIKÓW CPU / RAM / GPU — WYDANIE 4.3.150
+------------------------------------------------
+Na ekranie głównym CPU, RAM i GPU widoczny jest panel, który co sekundę odświeża dostępne odczyty Windows/czujników oraz ostatni rzeczywiście zapisany benchmark.
+- CPU: bieżące obciążenie i zegar, dostępna temperatura, wynik SHA-256/s, średnie obciążenie i liczba wątków.
+- RAM: zajętość, pamięć dostępna/całkowita, rozmiar faktycznie sprawdzonego bufora, ukończone wzorce, zapis/weryfikacja i zweryfikowane bajty.
+- GPU: bieżące obciążenie/temperatura/zegar tylko z dostępnych czujników oraz średni/peak FPS, wyrenderowane klatki i renderer ostatniej sceny OpenGL.
+Skróty prowadzą do katalogu testów i historii pomiarów/CSV. Po ponownym uruchomieniu panel może odczytać ostatni raport z lokalnej historii. Niewykonany benchmark jest opisany jako „NIE WYKONANO”; brak sensora pozostaje N/D.
+Test CPU po użyciu STOP kończy się ostrzeżeniem, jeśli pomiar został rzeczywiście przerwany; nie jest przedstawiany jako pełne zaliczenie.

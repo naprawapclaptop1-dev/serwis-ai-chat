@@ -251,3 +251,13 @@
 - [x] RAM: przekazywany jest końcowy raport zwrócony przez silnik, niezależnie od kolejności aktualizacji app.results.
 - [x] RAM: selftest potwierdza, że świeży wynik FAIL o 64 MB nadpisuje stary pozytywny wynik 128 MB, a postęp w trakcie testu pokazuje status RUNNING.
 - [ ] Na fizycznym PC potwierdzić większy kadr GPU, końcowy raport RAM i tabelę CPU na ekranach użytkownika.
+
+
+## Kandydat 4.3.150 — jawny panel wyników na ekranach CPU/RAM/GPU
+- [x] Na ekranach głównych CPU/RAM/GPU dodano panel pokazujący bieżące odczyty systemu oraz ostatni zakończony benchmark.
+- [x] CPU: SHA-256/s, obciążenie systemu, liczba workerów/etapów, zegar i dostępna temperatura.
+- [x] RAM: bufor faktycznie sprawdzony, ukończone wzorce, MiB/s zapisu/weryfikacji i zweryfikowane bajty.
+- [x] GPU: FPS/peak/klatki i renderer z raportu rzeczywistego procesu OpenGL; niedostępne sensory pozostają N/D.
+- [x] Dodano skróty do katalogu testów i historii/CSV; na świeżym uruchomieniu panel może odczytać ostatni raport lokalny.
+- [x] Przerwanie testu CPU jest rozpoznawane na podstawie rzeczywistego zdarzenia zatrzymania i nie daje fałszywego statusu sukcesu.
+- [ ] Na fizycznym PC sprawdzić panel podczas testu, po kliknięciu STOP oraz przy niedostępnych czujnikach.

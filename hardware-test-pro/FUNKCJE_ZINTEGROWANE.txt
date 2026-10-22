@@ -21,3 +21,9 @@ KANDYDAT 4.3.146 — KOREKTA RZECZYWISTYCH TESTÓW
 - Kamera sceny GPU/OpenGL ma teraz tylko jedną transformację do -7; nie sumuje się już stare -10 z dodanym -7.
 - RAM pokazuje bezpośrednio wynik zwrócony przez silnik testu, a nie tylko potencjalnie opóźniony słownik wyników.
 - Testy automatyczne sprawdzają nową odległość kamery, brak drugiego przesunięcia i pierwszeństwo końcowego wyniku RAM nad starym wynikiem.
+
+
+WYDANIE 4.3.150 — PANEL WYNIKÓW SPRZĘTOWYCH
+- Ekrany CPU/RAM/GPU pokazują osobno aktualny odczyt Windows oraz ostatni zakończony benchmark; dostępne są skróty do katalogu testów i historii/CSV.
+- RAM pokazuje faktyczny bufor, ukończone wzorce, bajty weryfikacji i MiB/s; GPU pokazuje FPS/klatki/renderer z raportu OpenGL; CPU pokazuje SHA-256/s i obciążenie testu.
+- N/D nie jest zastępowane sztucznym zerem. Anulowany test CPU jest raportowany jako ostrzeżenie, jeśli został przerwany.
