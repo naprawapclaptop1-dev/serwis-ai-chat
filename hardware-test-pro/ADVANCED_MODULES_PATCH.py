@@ -673,18 +673,21 @@ def _u66_measure_speed(self):
         start=_u66_time.perf_counter()
         _u66_net_request("https://speed.cloudflare.com/__down?bytes=0&r="+str(_u66_uuid.uuid4().hex),None,15)
         samples["latency_ms"].append(round((_u66_time.perf_counter()-start)*1000,2))
-    for idx,size in enumerate((1_000_000,5_000_000,10_000_000),1):
+    for idx,size in enumerate((5_000_000,10_000_000,25_000_000),1):
         phase(f"Speed Test: pobieranie {idx}/3 ({size//1_000_000} MB)…")
         result=_u66_net_request("https://speed.cloudflare.com/__down?bytes="+str(size)+"&r="+_u66_uuid.uuid4().hex,None,35)
         total_data+=result["bytes"]; samples["download"].append({"requested_bytes":size,**result})
-    for idx,size in enumerate((500_000,2_000_000,5_000_000),1):
+    for idx,size in enumerate((2_000_000,5_000_000,10_000_000),1):
         phase(f"Speed Test: wysyłanie {idx}/3 ({size//1_000_000} MB)…")
         body=b"\x5a"*size
         result=_u66_net_request("https://speed.cloudflare.com/__up?r="+_u66_uuid.uuid4().hex,body,35)
         total_data+=size; samples["upload"].append({"requested_bytes":size,**result})
     samples["latency_average_ms"]=round(sum(samples["latency_ms"])/max(1,len(samples["latency_ms"])),2)
-    samples["download_mbps"]=round(max([x["mbps"] for x in samples["download"]] or [0]),2)
-    samples["upload_mbps"]=round(max([x["mbps"] for x in samples["upload"]] or [0]),2)
+    # Report median throughput, not the single fastest burst, to reduce misleading peaks.
+    samples["download_mbps"]=round(_u66_statistics.median([x["mbps"] for x in samples["download"]]) if samples["download"] else 0,2)
+    samples["upload_mbps"]=round(_u66_statistics.median([x["mbps"] for x in samples["upload"]]) if samples["upload"] else 0,2)
+    samples["download_peak_mbps"]=round(max([x["mbps"] for x in samples["download"]] or [0]),2)
+    samples["upload_peak_mbps"]=round(max([x["mbps"] for x in samples["upload"]] or [0]),2)
     samples["data_bytes"]=total_data
     samples["state"]="good"
     try:
