@@ -147,8 +147,16 @@ def _u148_selftest_hardware_execution():
     assert _U148_HARDWARE_EXECUTION_PATCH_VERSION == "1.0.0"
     assert callable(_u148_refresh_main_ram) and callable(_u148_update_view)
     assert callable(AppV43._ram_test) and getattr(AppV43._ram_test, "_u102_ram_guard", False)
-    assert "_set_stage" not in _u147_cpu_test.__code__.co_names
-    assert "_u147_safe_stage_update" in _u147_cpu_test.__code__.co_names
+    import types as _u148_types
+    def _u148_code_names_recursive(code):
+        names = set(code.co_names)
+        for value in code.co_consts:
+            if isinstance(value, _u148_types.CodeType):
+                names.update(_u148_code_names_recursive(value))
+        return names
+    cpu_names = _u148_code_names_recursive(_u147_cpu_test.__code__)
+    assert "_set_stage" not in cpu_names
+    assert "_u147_safe_stage_update" in cpu_names, "safe CPU stage callback is not wired"
 
     class _U148FakeApp:
         def __init__(self):
