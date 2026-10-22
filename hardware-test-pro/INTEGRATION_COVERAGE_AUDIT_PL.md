@@ -41,3 +41,17 @@ Przywrócono właściwy test regresyjny unikalnego mapowania 110 pozycji katalog
 ## Status prawdy
 
 Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To potwierdza build i testy automatyczne z tego przebiegu, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
+
+## Kandydat 4.3.124 — aktualizacja zakresu
+
+### Zmiany kodu w tej gałęzi
+- Dodano do renderera GPU HUD z paskiem postępu, wskaźnikiem FPS i wykresem ostatnich próbek; renderowanie nadal synchronizuje się przez glFinish.
+- Zastąpiono mały inspektor czujników pełnym oknem tabeli z wyszukiwaniem, filtrem kategorii, automatycznym odświeżaniem, licznikami dostępnych wartości/N/D i eksportem CSV.
+- Dodano panel jakości Speed Testu: mediana, peak, minimum, jitter, CV i liczba poprawnych próbek download/upload.
+- Dodano testy regresyjne tych trzech zmian. Ich przejście wymaga uruchomienia workflow Windows; dopóki workflow nie zakończy się sukcesem, nie oznaczać kandydata jako wydanego.
+
+### Źródła dwóch aplikacji
+- W bieżącej rozmowie znajdują się archiwa nazwane NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_RAM_LIVE_DASHBOARD_ULTIMATE_FULL_PROJECT.zip (166 715 344 B) i NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip (5 710 073 B).
+- Archiwum System Repair PRO przekracza limit materializacji 100 MiB w tym środowisku, więc jego zawartości nie można w tej sesji w pełni rozpakować i porównać plik po pliku. Nie będę deklarować zgodności 1:1 na podstawie samej nazwy ZIP.
+- W repozytorium pozostają zintegrowane istniejące procedury diagnostyczne, centrum napraw, profile problemów, baza wiedzy, zlecenia serwisowe i laboratorium zasilania. To nadal nie dowodzi pełnej parytetu każdego ekranu/handlera obu aplikacji źródłowych.
+- Wydanie online powinno być publikowane dopiero po przejściu testów CI. Osobny test fizycznego sprzętu pozostaje konieczny dla rzeczywistych temperatur, wentylatorów, mocy i renderowania GPU.

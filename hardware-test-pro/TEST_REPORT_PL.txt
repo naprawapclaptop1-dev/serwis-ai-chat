@@ -47,3 +47,9 @@ WERYFIKACJE NIEWYKONANE NA MASZYNIE BUILDOWEJ
 
 GRANICE
 CI nie zastępuje pomiarów fizycznego sprzętu. N/D oznacza brak danych. Testy pamięci aplikacyjnej nie obejmują gwarantowanie wszystkich komórek. Speed Test zależy od sieci i endpointu. 40 sond to odczytowa integracja diagnostyczna. Pełna zgodność 1:1 wszystkich źródłowych funkcji obu ZIP-ów pozostaje niepotwierdzona.
+
+KANDYDAT 4.3.124 — NOWE TESTY REGRESYJNE (OCZEKUJĄ NA CI)
+- GPU_BENCHMARK_HUD_SELFTEST_OK: kontrola kodu HUD, synchronizacji glFinish i 110 różnych ziaren scen.
+- SPEED_TEST_QUALITY_PANEL_SELFTEST_OK: kontrola mediany, peak, minimum, jitter, CV i liczników próbek oraz obsługi N/D.
+- FULL_SENSOR_INSPECTOR_SELFTEST_OK: kontrola obecności wyszukiwalnej tabeli, odświeżania i eksportu CSV.
+- Wynik końcowy można uznać za zaliczony dopiero po przejściu tych testów w Windows CI. Nie wykonano w tym kroku pomiaru na fizycznej karcie graficznej użytkownika.
