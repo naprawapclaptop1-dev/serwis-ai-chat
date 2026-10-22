@@ -15427,8 +15427,21 @@ def _u133_selftest_service_dashboard_navigation():
     assert any("CENTRUM SERWISU" in str(value) for value in _u133_build_shell.__code__.co_consts)
     print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
 
+def _u134_selftest_unique_service_probes():
+    service_entries=list(_U93_TEST_CATALOG.get("SYSTEM_REPAIR_PRO",[]))+list(_U93_TEST_CATALOG.get("SERWIS_ULTIMATE",[]))
+    ids=[entry[0] for entry in service_entries]
+    titles=[entry[1] for entry in service_entries]
+    assert len(ids)==40 and len(set(ids))==40, "The two source-app catalogs must have 40 distinct IDs."
+    assert len(titles)==40 and len(set(titles))==40, "The two source-app catalogs must have 40 distinct titles."
+    assert all(entry[3]=="service_probe" for entry in service_entries)
+    assert all(test_id in _U109_SERVICE_PROBES for test_id in ids), "Every service diagnostic must map to its own PowerShell probe."
+    scripts=[str(_U109_SERVICE_PROBES[test_id]).strip() for test_id in ids]
+    assert len(scripts)==40 and len(set(scripts))==40, "No System Repair PRO / Serwis Ultimate diagnostics may reuse an identical script."
+    print("UNIQUE_SERVICE_PROBES_SELFTEST_OK: 40 unique IDs, 40 unique titles, 40 unique PowerShell procedures")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u134_selftest_unique_service_probes()
         _u133_selftest_service_dashboard_navigation()
         _u132_selftest_service_dashboard()
         _u131_selftest_parallel_progress()
