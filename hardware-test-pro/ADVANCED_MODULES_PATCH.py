@@ -744,7 +744,7 @@ def _u66_draw_speed_chart(self,result):
         for i,x in enumerate(result.get("upload",[])):
             values.append((f"UL {i+1}",float(x.get("mbps",0)),"#60a5fa"))
         maximum=max([v[1] for v in values] or [1])
-        c.create_text(12,8,anchor="nw",text=f"Najwyższy zmierzony DL {result.get('download_mbps','N/D')} Mbps • UL {result.get('upload_mbps','N/D')} Mbps",fill=t["fg"],font=self.fnt(10,"bold"))
+        c.create_text(12,8,anchor="nw",text=f"MEDIANA DL {result.get('download_mbps','N/D')} Mbps • PEAK DL {result.get('download_peak_mbps','N/D')} • MEDIANA UL {result.get('upload_mbps','N/D')} Mbps • PEAK UL {result.get('upload_peak_mbps','N/D')}",fill=t["fg"],font=self.fnt(9,"bold"))
         left=90; right=w-20; top=38; bottom=h-28
         c.create_line(left,bottom,right,bottom,fill=t["muted"])
         barw=max(12,(right-left)/max(1,len(values))*0.55)
@@ -12589,6 +12589,58 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             tally["signature_objects"] = tally.get("signature_objects",0) + (tally["objects"]-before_objects)
             tally["signature_vertices"] = tally.get("signature_vertices",0) + (tally["vertices"]-before_vertices)
 
+        def draw_benchmark_hud(elapsed,live_fps,peak_fps):
+            # HUD geometry is drawn in a separate orthographic pass. The benchmark
+            # still measures the complete rendered frame after GL.glFinish().
+            projection_pushed=False;model_pushed=False
+            try:
+                GL.glMatrixMode(GL.GL_PROJECTION);GL.glPushMatrix();projection_pushed=True;GL.glLoadIdentity()
+                GL.glOrtho(0,width,height,0,-1,1)
+                GL.glMatrixMode(GL.GL_MODELVIEW);GL.glPushMatrix();model_pushed=True;GL.glLoadIdentity()
+                GL.glDisable(GL.GL_DEPTH_TEST);GL.glDisable(GL.GL_LIGHTING)
+                GL.glEnable(GL.GL_BLEND);GL.glBlendFunc(GL.GL_SRC_ALPHA,GL.GL_ONE_MINUS_SRC_ALPHA)
+                def rect(x,y,w,h,col,alpha=.9):
+                    if w<=0 or h<=0:return
+                    GL.glColor4f(float(col[0]),float(col[1]),float(col[2]),float(alpha))
+                    GL.glBegin(GL.GL_QUADS)
+                    GL.glVertex2f(x,y);GL.glVertex2f(x+w,y);GL.glVertex2f(x+w,y+h);GL.glVertex2f(x,y+h)
+                    GL.glEnd()
+                accent=colors[signature["palette"]]
+                secondary=colors[(signature["palette"]+2)%len(colors)]
+                third=colors[(signature["palette"]+4)%len(colors)]
+                progress=max(0.0,min(1.0,float(elapsed)/max(1.0,float(duration))))
+                # Top telemetry strip: elapsed progress and a live throughput gauge.
+                rect(14,12,width-28,42,(.006,.018,.035),.84)
+                rect(14,12,width-28,3,accent,.98)
+                rect(20,23,width-40,6,(.045,.085,.13),.95)
+                rect(20,23,(width-40)*progress,6,accent,.98)
+                rect(20,35,width-40,4,(.045,.085,.13),.95)
+                fps_ratio=max(0.0,min(1.0,float(live_fps or 0)/240.0))
+                rect(20,35,(width-40)*fps_ratio,4,secondary,.98)
+                # Bottom frame-rate history. Each benchmark scene paints its own palette.
+                bottom_y=height-56
+                rect(14,bottom_y,width-28,42,(.006,.018,.035),.82)
+                rect(14,bottom_y,width-28,2,third,.9)
+                values=list(samples[-48:])+[max(0.0,float(live_fps or 0))]
+                if not values:values=[0.0]
+                vmax=max(60.0,max(values),float(peak_fps or 0))
+                usable_w=max(1.0,float(width-40));slot=usable_w/len(values)
+                for idx,value in enumerate(values):
+                    bh=max(1.0,32.0*max(0.0,min(vmax,float(value)))/vmax)
+                    col=accent if value>=vmax*.66 else (secondary if value>=vmax*.33 else third)
+                    rect(20+idx*slot,bottom_y+36-bh,max(1.0,slot-1.0),bh,col,.92)
+                GL.glDisable(GL.GL_BLEND)
+            except Exception:
+                pass
+            finally:
+                try:
+                    if model_pushed:GL.glMatrixMode(GL.GL_MODELVIEW);GL.glPopMatrix()
+                    if projection_pushed:GL.glMatrixMode(GL.GL_PROJECTION);GL.glPopMatrix()
+                    GL.glMatrixMode(GL.GL_MODELVIEW)
+                    GL.glEnable(GL.GL_DEPTH_TEST);GL.glEnable(GL.GL_LIGHTING)
+                    GL.glDisable(GL.GL_BLEND)
+                except Exception:pass
+
         start=_u114_time.perf_counter();window_start=start;window_frames=0;frames=0;peak=0.0;samples=[];running=True
         while running and _u114_time.perf_counter()-start<duration:
             for event in pg.event.get():
@@ -12605,7 +12657,10 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             draw_scene(elapsed)
             if sid!=1:
                 draw_scene_signature(elapsed)
-            # The dedicated FurMark-style scene remains visually clean; other tests add their unique signature overlay.
+            # Scene-specific telemetry HUD: live FPS, run progress and recent frame-rate history.
+            # It uses a separate orthographic pass and is synchronized with the actual rendered frame.
+            live_fps=window_frames/max(.01,_u114_time.perf_counter()-window_start)
+            draw_benchmark_hud(elapsed,live_fps,peak)
             # Do not count queued command submission as rendered work; synchronize before the FPS sample.
             GL.glFinish()
             pg.display.flip();frames+=1;window_frames+=1
@@ -14103,8 +14158,232 @@ def _u123_selftest_repair_profiles():
     assert callable(AppV43.show_repair_profiles)
     print("SYSTEM_REPAIR_PROFILES_SELFTEST_OK: 12 safe read-only profiles, tool shortcuts and HTML report")
 
+
+# v4.3.124 — full sensor inspector, richer speed quality panel and GPU benchmark HUD.
+def _u124_open_sensor_inspector(app):
+    existing=getattr(app,"_u124_sensor_window",None)
+    try:
+        if existing is not None and existing.winfo_exists():
+            existing.deiconify();existing.lift();existing.focus_force();return existing
+    except Exception:pass
+    win=tk.Toplevel(app)
+    app._u124_sensor_window=win
+    win.title("NAPRAWA PC — PEŁNY INSPEKTOR CZUJNIKÓW")
+    win.geometry("1450x860");win.minsize(980,600)
+    t=app.colors();win.configure(bg=t["bg"])
+    head=tk.Frame(win,bg=t["panel"],highlightbackground=t["accent"],highlightthickness=1)
+    head.pack(fill="x",padx=8,pady=(8,5))
+    tk.Label(head,text="PEŁNY INSPEKTOR SPRZĘTU • LIVE",bg=t["panel"],fg=t["accent"],font=app.fnt(14,"bold")).pack(anchor="w",padx=12,pady=(9,2))
+    tk.Label(head,text="Temperatury, obciążenia, zegary, napięcia, moc, wentylatory, RAM/swap, dyski, sieć, bateria i wszystkie pozostałe rekordy udostępnione przez sterownik. Brak odczytu pozostaje jako N/D.",bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1380,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    controls=tk.Frame(win,bg=t["bg"]);controls.pack(fill="x",padx=8,pady=(0,5))
+    tk.Label(controls,text="SZUKAJ",bg=t["bg"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    search_var=tk.StringVar(value="")
+    search=tk.Entry(controls,textvariable=search_var,bg=t["card"],fg=t["fg"],insertbackground=t["fg"],relief="flat",font=app.fnt(10))
+    search.pack(side="left",fill="x",expand=True,padx=(0,10),ipady=5)
+    tk.Label(controls,text="KATEGORIA",bg=t["bg"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    category_var=tk.StringVar(value="Wszystkie")
+    category=ttk.Combobox(controls,textvariable=category_var,values=("Wszystkie",),state="readonly",width=22)
+    category.pack(side="left",padx=(0,6),ipady=3)
+    status=tk.Label(win,text="Pobieranie listy czujników…",bg=t["bg"],fg=t["muted"],anchor="w",font=app.fnt(9,"bold"))
+    status.pack(fill="x",padx=10,pady=(0,5))
+    frame=tk.Frame(win,bg=t["panel"]);frame.pack(fill="both",expand=True,padx=8,pady=(0,6))
+    cols=("category","hardware","sensor","value","unit","source")
+    tree=ttk.Treeview(frame,columns=cols,show="headings",height=24)
+    labels={"category":"KATEGORIA","hardware":"PODZESPÓŁ / URZĄDZENIE","sensor":"CZUJNIK / METRYKA","value":"WARTOŚĆ LIVE","unit":"JEDNOSTKA","source":"ŹRÓDŁO"}
+    widths={"category":150,"hardware":260,"sensor":330,"value":120,"unit":90,"source":300}
+    for col in cols:
+        tree.heading(col,text=labels[col])
+        tree.column(col,width=widths[col],minwidth=75,stretch=col in ("hardware","sensor","source"))
+    vs=ttk.Scrollbar(frame,orient="vertical",command=tree.yview)
+    hs=ttk.Scrollbar(frame,orient="horizontal",command=tree.xview)
+    tree.configure(yscrollcommand=vs.set,xscrollcommand=hs.set)
+    tree.grid(row=0,column=0,sticky="nsew");vs.grid(row=0,column=1,sticky="ns");hs.grid(row=1,column=0,sticky="ew")
+    frame.grid_rowconfigure(0,weight=1);frame.grid_columnconfigure(0,weight=1)
+    try:
+        tree.tag_configure("missing",foreground=t.get("warn","#ffc857"))
+        tree.tag_configure("temperature",foreground=t.get("accent2","#6cdfff"))
+    except Exception:pass
+    footer=tk.Frame(win,bg=t["bg"]);footer.pack(fill="x",padx=8,pady=(0,8))
+    app.make_button(footer,"ODŚWIEŻ TERAZ",lambda:force_refresh(),"good",side="left",ipady=5)
+    app.make_button(footer,"EKSPORT PEŁNEJ TABELI CSV",lambda:_u116_export_sensor_csv(app),"accent",side="left",ipady=5)
+    app.make_button(footer,"ZAMKNIJ",lambda:close_window(),"card",side="right",ipady=5)
+    def render_rows():
+        if not win.winfo_exists():return
+        try:rows=_u107_get_sensor_rows(app)
+        except Exception as exc:
+            rows=[];app.queue_log("Inspektor czujników: "+repr(exc))
+        cats=sorted({str(r.get("category") or "Other") for r in rows})
+        choices=("Wszystkie",)+tuple(cats)
+        if tuple(category.cget("values"))!=choices:category.configure(values=choices)
+        selected=str(category_var.get() or "Wszystkie")
+        if selected not in choices:category_var.set("Wszystkie");selected="Wszystkie"
+        needle=str(search_var.get() or "").strip().casefold()
+        shown=[]
+        for row in rows:
+            values=[str(row.get(k,"N/D") if row.get(k) is not None else "N/D") for k in cols]
+            if selected!="Wszystkie" and values[0]!=selected:continue
+            if needle and needle not in " ".join(values).casefold():continue
+            shown.append((row,values))
+        existing=tree.get_children("")
+        if existing:tree.delete(*existing)
+        available=0;missing=0
+        for idx,(row,values) in enumerate(shown):
+            raw=values[3].strip().casefold()
+            is_missing=raw in ("n/d","nd","n/a","na","none","null","—","-","")
+            if is_missing:missing+=1
+            else:available+=1
+            tags=("missing",) if is_missing else (("temperature",) if "temp" in values[0].casefold() else ())
+            tree.insert("","end",iid=f"sensor124_{idx}",values=values,tags=tags)
+        cache=getattr(app,"_u66_sensor_cache",{}) or {}
+        stamp=cache.get("time")
+        age=max(0,_u66_time.monotonic()-stamp) if isinstance(stamp,(int,float)) else None
+        age_text=f"{age:.1f} s" if age is not None else "N/D"
+        status.config(text=f"Wykryte: {len(rows)} • Wyświetlane: {len(shown)} • wartości dostępne: {available} • N/D: {missing} • wiek próbki: {age_text}")
+    def force_refresh():
+        _u116_force_sensor_refresh(app)
+        try:win.after(900,render_rows)
+        except Exception:pass
+    def tick():
+        try:
+            if not win.winfo_exists():return
+            render_rows()
+            win.after(2000,tick)
+        except Exception:pass
+    def close_window():
+        try:win.destroy()
+        except Exception:pass
+        try:app._u124_sensor_window=None
+        except Exception:pass
+    search_var.trace_add("write",lambda *_:render_rows())
+    category.bind("<<ComboboxSelected>>",lambda _e:render_rows())
+    win.protocol("WM_DELETE_WINDOW",close_window)
+    render_rows();win.after(2000,tick)
+    return win
+
+_U124_ORIGINAL_MEASURE_SPEED=_u114_measure_speed
+_U124_ORIGINAL_SHOW_SPEED=AppV43.show_speed_test
+
+def _u124_speed_quality_values(result):
+    result=result if isinstance(result,dict) else {}
+    def fmt(key,unit=" Mbps"):
+        value=result.get(key)
+        return (f"{float(value):.2f}{unit}" if isinstance(value,(int,float)) and _u66_math.isfinite(float(value)) else "N/D")
+    down=int(result.get("download_samples_valid",0) or 0);down_total=int(result.get("total_download_samples",0) or 0)
+    up=int(result.get("upload_samples_valid",0) or 0);up_total=int(result.get("total_upload_samples",0) or 0)
+    cvd=result.get("download_cv_percent");cvu=result.get("upload_cv_percent")
+    stability=(f"CV DL {float(cvd):.1f}% / UL {float(cvu):.1f}%" if isinstance(cvd,(int,float)) and isinstance(cvu,(int,float)) else "N/D")
+    jitter=result.get("latency_jitter_ms")
+    return {
+      "download_median":fmt("download_mbps"),"download_peak":fmt("download_peak_mbps"),
+      "download_min":fmt("download_min_mbps"),"upload_median":fmt("upload_mbps"),
+      "upload_peak":fmt("upload_peak_mbps"),"upload_min":fmt("upload_min_mbps"),
+      "jitter":(f"{float(jitter):.2f} ms" if isinstance(jitter,(int,float)) and _u66_math.isfinite(float(jitter)) else "N/D"),
+      "stability":stability,"samples":f"DL {down}/{down_total} • UL {up}/{up_total}",
+      "state":str(result.get("state","N/D")).upper()
+    }
+
+def _u124_show_speed_test(app):
+    result=_U124_ORIGINAL_SHOW_SPEED(app)
+    try:
+        t=app.colors()
+        children=app.content.winfo_children();before=children[-1] if children else None
+        pane=app.panel(app.content)
+        pane.pack(fill="x",padx=3,pady=(0,5),before=before)
+        tk.Label(pane,text="JAKOŚĆ POMIARU • MEDIANA, PEAK, MINIMUM, JITTER I PRÓBKI",
+            bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(6,3))
+        labels=(
+          ("MEDIANA DL","download_median"),("PEAK DL","download_peak"),("MIN DL","download_min"),
+          ("MEDIANA UL","upload_median"),("PEAK UL","upload_peak"),("MIN UL","upload_min"),
+          ("JITTER","jitter"),("STABILNOŚĆ","stability"),("PRÓBKI","samples")
+        )
+        row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=4,pady=(0,5))
+        app._u124_speed_quality_labels={}
+        for title,key in labels:
+            card=tk.Frame(row,bg=t["card"],highlightbackground=t["panel"],highlightthickness=1)
+            card.pack(side="left",fill="both",expand=True,padx=2)
+            tk.Label(card,text=title,bg=t["card"],fg=t["muted"],font=app.fnt(7,"bold")).pack(pady=(4,1))
+            label=tk.Label(card,text="N/D",bg=t["card"],fg=t["accent2"],font=app.fnt(8,"bold"))
+            label.pack(padx=3,pady=(0,4));app._u124_speed_quality_labels[key]=label
+        app._u124_speed_quality_labels["state"].config(text="GOTOWY") if "state" in app._u124_speed_quality_labels else None
+        return result
+    except Exception as exc:
+        try:app.queue_log("Panel jakości Speed Test: "+repr(exc))
+        except Exception:pass
+        return result
+
+def _u124_measure_speed(app):
+    result=_U124_ORIGINAL_MEASURE_SPEED(app)
+    values=_u124_speed_quality_values(result)
+    def update():
+        controls=getattr(app,"_u124_speed_quality_labels",{}) or {}
+        for key,value in values.items():
+            label=controls.get(key)
+            try:
+                if label is not None and label.winfo_exists():label.config(text=value)
+            except Exception:pass
+        try:
+            if getattr(app,"current_view","")=="SPEED_TEST":
+                _u66_set_speed_status(app,
+                    f"Speed Test {values['state']}: mediana DL {values['download_median']} / UL {values['upload_median']} • {values['samples']} • jitter {values['jitter']}")
+        except Exception:pass
+    try:app.queue_action(update)
+    except Exception:pass
+    return result
+
+def _u124_selftest_gpu_hud():
+    code=_u114_gpu_benchmark_child.__code__
+    pending=[code];names=set();literals=set()
+    import types as _u124_types
+    while pending:
+        current=pending.pop();names.update(current.co_names);names.update(current.co_varnames)
+        for value in current.co_consts:
+            if isinstance(value,_u124_types.CodeType):pending.append(value)
+            elif isinstance(value,str):literals.add(value)
+    assert "draw_benchmark_hud" in names
+    assert "glOrtho" in names and "glFinish" in names
+    assert "geometry_vertices" in literals and "scene_signature" in literals
+    assert len({_u116_scene_signature(i)["seed"] for i in range(1,111)})==110
+    print("GPU_BENCHMARK_HUD_SELFTEST_OK: live FPS gauge, progress bar, frame history and 110 scene seeds")
+
+def _u124_selftest_speed_quality():
+    result={"state":"good","download_mbps":123.45,"download_peak_mbps":150.0,"download_min_mbps":100.0,
+            "upload_mbps":25.5,"upload_peak_mbps":31.0,"upload_min_mbps":20.0,
+            "latency_jitter_ms":2.25,"download_cv_percent":4.5,"upload_cv_percent":8.2,
+            "download_samples_valid":3,"total_download_samples":3,"upload_samples_valid":2,"total_upload_samples":3}
+    values=_u124_speed_quality_values(result)
+    assert values["download_median"]=="123.45 Mbps" and values["download_peak"]=="150.00 Mbps"
+    assert values["upload_min"]=="20.00 Mbps" and values["jitter"]=="2.25 ms"
+    assert values["samples"]=="DL 3/3 • UL 2/3" and values["state"]=="GOOD"
+    missing=_u124_speed_quality_values({"state":"warn"})
+    assert missing["download_median"]=="N/D" and missing["jitter"]=="N/D"
+    print("SPEED_TEST_QUALITY_PANEL_SELFTEST_OK: median, peak, minimum, jitter, CV and sample counts")
+
+def _u124_selftest_sensor_inspector():
+    import types as _u124_types
+    pending=[_u124_open_sensor_inspector.__code__];names=set();literals=set()
+    while pending:
+        current=pending.pop();names.update(current.co_names)
+        for value in current.co_consts:
+            if isinstance(value,_u124_types.CodeType):pending.append(value)
+            elif isinstance(value,str):literals.add(value)
+    assert "_u107_get_sensor_rows" in names and "Treeview" in names
+    assert "N/D" in literals and "after" in names
+    assert "_u116_export_sensor_csv" in names
+    print("FULL_SENSOR_INSPECTOR_SELFTEST_OK: searchable all-sensor table, N/D retention, auto-refresh and CSV export")
+
+_u107_open_sensor_inspector=_u124_open_sensor_inspector
+AppV43.show_speed_test=_u124_show_speed_test
+_u66_measure_speed=_u124_measure_speed
+_u90_measure_speed=_u124_measure_speed
+_u100_measure_speed=_u124_measure_speed
+_u107_measure_speed=_u124_measure_speed
+_u108_measure_speed=_u124_measure_speed
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u124_selftest_gpu_hud()
+        _u124_selftest_speed_quality()
+        _u124_selftest_sensor_inspector()
         _u117_selftest_per_test_scene_routing()
         _u119_selftest_furmark_scene()
         _u121_selftest_service_jobs()
