@@ -680,6 +680,15 @@ def _u141_show_windows_audit(self):
 
 AppV43.show_windows_audit = _u141_show_windows_audit
 
+# Route the new test-center action through the app's real menu dispatcher.
+# Do not rely on editing a large source string at build-time for functional routing.
+_U141_ORIGINAL_OPEN_TESTS_ITEM = _u66_open_tests_item
+def _u141_open_tests_item(self, key):
+    if key == "AUDYT_WINDOWS":
+        return self.show_windows_audit()
+    return _U141_ORIGINAL_OPEN_TESTS_ITEM(self, key)
+_u66_open_tests_item = _u141_open_tests_item
+
 def _u141_nested_constant_exists(code, target):
     for constant in getattr(code, "co_consts", ()):
         if constant == target:
