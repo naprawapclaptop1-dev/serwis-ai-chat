@@ -1,7 +1,7 @@
 # Quality wiring: measured CPU stages, clear in-app progress, and GPU result/report mapping.
 import sys as _u147_sys
 import tkinter as _u147_tk
-from tkinter import ttk as _u147_ttk
+from tkinter import ttk as _u147_ttk, messagebox as _u147_messagebox
 
 _U147_ORIGINAL_MODULE_CPU = AppV43.module_cpu
 _U147_ORIGINAL_MODULE_RAM = AppV43.module_ram
