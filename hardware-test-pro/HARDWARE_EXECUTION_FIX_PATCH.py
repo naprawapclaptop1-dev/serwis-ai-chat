@@ -262,11 +262,12 @@ def _u148_selftest_hardware_execution():
     assert not _u148_refresh_main_ram(fake, force=True), "RAM page updater must not run on another view"
 
     renderer_source = _u148_inspect.getsource(_u114_gpu_benchmark_child)
-    camera = "GL.glTranslatef(0,-.10,-7.0)"
-    assert camera in renderer_source, "OpenGL camera must use one distance transform at -7"
-    assert "GL.glLoadIdentity();GL.glTranslatef(0,-.10,-7.0)" in renderer_source, "camera transform must follow modelview reset"
-    assert "GL.glTranslatef(0.0,0.0,-7.0)" not in renderer_source, "camera must not apply a second translation"
+    camera = "GL.glTranslatef(0,-.10,-5.25)"
+    assert camera in renderer_source, "OpenGL camera must use one closer transform at -5.25"
+    assert "GL.glLoadIdentity();GL.glTranslatef(0,-.10,-5.25)" in renderer_source, "camera transform must follow modelview reset"
+    assert "GL.glTranslatef(0.0,0.0,-5.25)" not in renderer_source, "camera must not apply a second translation"
     assert "GL.glTranslatef(0,-.10,-10.0)" not in renderer_source, "old -10 translation would compound to -17"
+    assert "_u114_perspective(45.0,width/height,.1,240.0)" in renderer_source, "GPU preview must frame scene more tightly"
     assert callable(_u147_execute_gpu_scene)
     print("HARDWARE_EXECUTION_FIX_SELFTEST_OK: final RAM result on main/localized/catalog views, live progress, safe CPU callback and single GPU camera transform")
 

@@ -1883,6 +1883,27 @@ if (!$src.Contains("_U148_HARDWARE_EXECUTION_PATCH_VERSION") -or !$src.Contains(
     throw "Hardware execution/UI report synchronization patch did not get integrated."
 }
 
+$benchmarkHistoryPath = Join-Path $PSScriptRoot "HARDWARE_BENCHMARK_HISTORY_PATCH.py"
+if (!(Test-Path -LiteralPath $benchmarkHistoryPath)) { throw "Missing hardware benchmark history patch: $benchmarkHistoryPath" }
+$benchmarkHistoryPatch = [IO.File]::ReadAllText($benchmarkHistoryPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $benchmarkHistoryPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U149_BENCHMARK_HISTORY_VERSION") -or !$src.Contains("HARDWARE_BENCHMARK_HISTORY_SELFTEST_OK")) { throw "Benchmark history integration missing." }
+$gpuStart = $src.IndexOf("def _u114_gpu_benchmark_child(")
+$gpuEnd = if ($gpuStart -ge 0) { $src.IndexOf("_u37_gpu_benchmark_child=_u114_gpu_benchmark_child",$gpuStart) } else { -1 }
+if ($gpuStart -lt 0 -or $gpuEnd -le $gpuStart) { throw "Final OpenGL renderer not found." }
+$gpuFunction = $src.Substring($gpuStart,$gpuEnd-$gpuStart)
+$oldCamera = "GL.glTranslatef(0,-.10,-7.0)"
+$cameraCount = [regex]::Matches($gpuFunction,[regex]::Escape($oldCamera)).Count
+if ($cameraCount -ne 1) { throw "Expected one original GPU camera transform, found $cameraCount." }
+$gpuFunction = $gpuFunction.Replace($oldCamera,"GL.glTranslatef(0,-.10,-5.25)")
+$oldFov = "_u114_perspective(52.0,width/height,.1,240.0)"
+if (!$gpuFunction.Contains($oldFov)) { throw "GPU perspective/FOV not found." }
+$gpuFunction = $gpuFunction.Replace($oldFov,"_u114_perspective(45.0,width/height,.1,240.0)")
+$src = $src.Substring(0,$gpuStart) + $gpuFunction + $src.Substring($gpuEnd)
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
