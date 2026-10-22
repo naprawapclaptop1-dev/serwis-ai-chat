@@ -1034,30 +1034,31 @@ def _u141_selftest_windows_audit():
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html_doc, "HTML did not escape potentially unsafe device text"
         assert "<script>alert(1)</script>" not in html_doc, "unescaped script leaked into report"
         assert loaded["feature"] == "Windows Read-only Health and Driver Audit", "report feature identifier mismatch"
-    history_dir = _U141_Path(temp) / "history"
-    history_dir.mkdir()
-    _u141_write_report([
-        _u141_result("pnp","Urządzenia PnP","PASS","Brak kodów problemów."),
-        _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna.")
-    ], {"test":"old"}, history_dir, run_at="2026-01-01T03:04:05+00:00")
-    _u141_write_report([
-        _u141_result("pnp","Urządzenia PnP","WARN","Jedno urządzenie zgłasza kod 43."),
-        _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna."),
-        _u141_result("disk_space","Wolne miejsce","WARN","Wolne miejsce poniżej progu.")
-    ], {"test":"new"}, history_dir, run_at="2026-01-02T03:04:05+00:00")
-    history = _u142_read_history(history_dir)
-    assert len(history) == 2, "history reader should include both valid audit reports"
-    assert history[0]["created_at"] > history[1]["created_at"], "history should be newest first"
-    changes = _u142_compare_history(history[0], history[1])
-    assert any(item["id"] == "pnp" and item["change"] == "POGORSZENIE" for item in changes), "status worsening was not detected"
-    assert any(item["id"] == "disk_space" and item["change"] == "NOWA KONTROLA" for item in changes), "new check was not detected"
-    csv_path = _u142_export_history(history_dir, _U141_Path(temp) / "audit-history.csv")
-    assert _U141_Path(csv_path).is_file(), "CSV export file was not created"
-    with open(csv_path, "r", encoding="utf-8-sig", newline="") as csv_file:
-        csv_rows = list(_u142_csv.reader(csv_file))
-    assert len(csv_rows) == 3 and "Data audytu" in csv_rows[0], "CSV should include a header and both history rows"
-    assert _u142_csv_cell("=cmd|' /C calc'!A0").startswith("'="), "CSV formula-injection guard failed"
-    assert callable(_u142_show_history) and callable(_u142_compare_last_two) and callable(_u142_export_history_ui), "history UI entry points missing"
+    with _u141_tempfile.TemporaryDirectory(prefix="npchwaudit-history-test-") as history_temp:
+        history_dir = _U141_Path(history_temp) / "history"
+        history_dir.mkdir()
+        _u141_write_report([
+            _u141_result("pnp","Urządzenia PnP","PASS","Brak kodów problemów."),
+            _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna.")
+        ], {"test":"old"}, history_dir, run_at="2026-01-01T03:04:05+00:00")
+        _u141_write_report([
+            _u141_result("pnp","Urządzenia PnP","WARN","Jedno urządzenie zgłasza kod 43."),
+            _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna."),
+            _u141_result("disk_space","Wolne miejsce","WARN","Wolne miejsce poniżej progu.")
+        ], {"test":"new"}, history_dir, run_at="2026-01-02T03:04:05+00:00")
+        history = _u142_read_history(history_dir)
+        assert len(history) == 2, "history reader should include both valid audit reports"
+        assert history[0]["created_at"] > history[1]["created_at"], "history should be newest first"
+        changes = _u142_compare_history(history[0], history[1])
+        assert any(item["id"] == "pnp" and item["change"] == "POGORSZENIE" for item in changes), "status worsening was not detected"
+        assert any(item["id"] == "disk_space" and item["change"] == "NOWA KONTROLA" for item in changes), "new check was not detected"
+        csv_path = _u142_export_history(history_dir, _U141_Path(history_temp) / "audit-history.csv")
+        assert _U141_Path(csv_path).is_file(), "CSV export file was not created"
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as csv_file:
+            csv_rows = list(_u142_csv.reader(csv_file))
+        assert len(csv_rows) == 3 and "Data audytu" in csv_rows[0], "CSV should include a header and both history rows"
+        assert _u142_csv_cell("=cmd|' /C calc'!A0").startswith("'="), "CSV formula-injection guard failed"
+        assert callable(_u142_show_history) and callable(_u142_compare_last_two) and callable(_u142_export_history_ui), "history UI entry points missing"
     assert callable(_u66_open_tests_item), "test-center route table helper missing"
     assert _u141_nested_constant_exists(_u66_open_tests_item.__code__, "AUDYT_WINDOWS"), "test-center item route AUDYT_WINDOWS missing"
     assert _u141_nested_constant_exists(_u66_show_tests_hub.__code__, "AUDYT WINDOWS / STEROWNIKI"), "Windows Audit card missing from Test Center"
