@@ -14389,11 +14389,9 @@ def _u124_selftest_sensor_inspector():
 
 _u107_open_sensor_inspector=_u124_open_sensor_inspector
 AppV43.show_speed_test=_u124_show_speed_test
+# Wrap only the public speed-test entry point. Keep the lower-level functions
+# intact because their self-tests inspect the real request/byte-validation path.
 _u66_measure_speed=_u124_measure_speed
-_u90_measure_speed=_u124_measure_speed
-_u100_measure_speed=_u124_measure_speed
-_u107_measure_speed=_u124_measure_speed
-_u108_measure_speed=_u124_measure_speed
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
