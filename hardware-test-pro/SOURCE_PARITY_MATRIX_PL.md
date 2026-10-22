@@ -34,7 +34,7 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 | ShowGameTroubleshooting | Niepotwierdzona parzystość | Zidentyfikować wszystkie akcje i bezpieczne testy |
 | ShowSecurity | Częściowo: audyt Windows/Defender/autostart | Porównać skany, wyniki i raporty |
 | ShowNetwork | Częściowo: interfejsy i Speed Test | Porównać wszystkie testy sieciowe i raporty |
-| ShowProcesses | Niepotwierdzona parzystość | Dodać widok procesów, filtrowanie i bezpieczne akcje, jeśli są w źródle |
+| ShowProcesses | Kandydat 4.3.126: nowy monitor procesów z CPU% z próbek, RAM/pamięcią prywatną, uchwytami, ścieżką, wyszukiwaniem, sortowaniem, CSV i potwierdzanym zakończeniem | Porównać pola i zachowanie z oryginalnym ShowProcesses; parytet 1:1 nadal niepotwierdzony |
 | ShowJobs | Częściowo: lokalna historia zleceń i eksport HTML | Porównać pola, statusy, edycję, usuwanie, eksport i historię |
 | ShowReports | Częściowo: raporty JSON/HTML/CSV | Porównać wszystkie raporty i ich zawartość |
 | USB / audio / obraz / sieć | Częściowo: niezależne testy i enumeracja | Zweryfikować każdą funkcję na fizycznym urządzeniu |
@@ -54,10 +54,16 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 
 ## D. Ograniczenia dowodowe
 
-Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. Plik System Repair PRO o rozmiarze 166 715 344 B został zidentyfikowany, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik po pliku, więc zgodność 1:1 każdej klasy i metody pozostaje niepotwierdzona. Kod istniejących integracji i katalogów nie jest dowodem pełnej parytetu z oryginałami. Nie oznaczać całej integracji jako zakończonej, dopóki macierz nie zostanie wypełniona na podstawie zawartości obu źródeł i testów.
+Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. Plik System Repair PRO o rozmiarze 166 715 344 B został zidentyfikowany, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik po pliku, więc zgodność 1:1 każdej klasy i metody pozostaje niepotwierdzona. Kod istniejących integracji i katalogów nie jest dowodem pełnej zgodności z oryginałami. Nie oznaczać całej integracji jako zakończonej, dopóki macierz nie zostanie wypełniona na podstawie zawartości obu źródeł i testów.
 
 ## Kandydat 4.3.125 — testy grafiki
 
 - [ ] Windows CI potwierdza wszystkie 31 jawnych gałęzi geometrii.
 - [ ] Obejrzeć 110 scen na fizycznym GPU i potwierdzić, że sceny są wizualnie rozróżnialne, a nie tylko mają różne ID.
 - [ ] Zweryfikować rzeczywiste FPS i stabilność na kilku klasach GPU.
+
+## Kandydat 4.3.126 — monitor procesów
+
+- [ ] Windows CI przechodzi testy enumeracji procesów i nowych widoków.
+- [ ] Porównać listę pól i operacji z oryginalnym ShowProcesses w Serwis Ultimate 1.15.3.
+- [ ] Testować odświeżanie CPU%, eksport CSV i blokadę procesów systemowych na fizycznym komputerze.
