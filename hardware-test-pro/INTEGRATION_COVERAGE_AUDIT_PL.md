@@ -67,3 +67,17 @@ Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To 
 - Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
 - Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
 - Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
+
+
+## Kandydat roboczy 4.3.128 — zmiany oczekujące na końcowy Windows CI
+
+- Każda ze 110 scen GPU otrzymała osobny profil FurMark (promień, tuba, liczba włókien, paleta, animacja i skala); pozostałe sceny nakładają ten obiekt na własną geometrię. To zmiana kodu, nie dowód jakości obrazu na fizycznym GPU.
+- Inspektor sensorów zachowuje identyfikator sprzętowy w kluczu deduplikacji, aby identycznie nazwane wentylatory/sondy nie znikały w jednym wierszu.
+- Podsumowanie telemetrii live zostało zmienione na przewijalną listę wszystkich kategorii, z wartością i źródłem, zamiast dwóch długich linii temperatur/obciążenia.
+- Dodano regresje do istniejącego zestawu selftestów zaawansowanych. Kandydat nie jest wydaniem, dopóki pełny workflow Windows nie potwierdzi składni, selftestów, Sensor Bridge, EXE, Setup, ALL-IN-ONE ZIP i manifestu.
+
+## Główna lista wszystkich prac
+
+Pełny zakres, rozdzielony na gotowe w kodzie / wymagające CI / wymagające fizycznego sprzętu / wymagające źródeł obu aplikacji, znajduje się w `MASTER_WORKLIST_PL.md`.
+
+**Nadal otwarte:** dokładne porównanie plik-po-pliku archiwum System Repair PRO 5.6.25 (166 715 344 B) i Serwis Ultimate 1.15.3 z kodem zintegrowanym. Kafelki, 40 sond diagnostycznych ani 110 unikalnych scen nie stanowią dowodu pełnego przeniesienia wszystkich metod źródłowych.
