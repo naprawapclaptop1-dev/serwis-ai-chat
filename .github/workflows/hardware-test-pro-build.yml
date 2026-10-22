@@ -186,7 +186,8 @@ jobs:
             "--selftest-cpu-ram-gpu",
             "--selftest-quality-fixes",
             "--selftest-hardware-execution",
-            "--selftest-benchmark-history"
+            "--selftest-benchmark-history",
+            "--selftest-component-specific-simulators"
           )
           foreach ($check in $checks) {
             Write-Host "RUNNING SELFTEST: $check"

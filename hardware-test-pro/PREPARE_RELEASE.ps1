@@ -1904,6 +1904,17 @@ if (!$gpuFunction.Contains($oldFov)) { throw "GPU perspective/FOV not found." }
 $gpuFunction = $gpuFunction.Replace($oldFov,"_u114_perspective(45.0,width/height,.1,240.0)")
 $src = $src.Substring(0,$gpuStart) + $gpuFunction + $src.Substring($gpuEnd)
 
+$componentSimPatchPath = Join-Path $PSScriptRoot "COMPONENT_SPECIFIC_SIMULATORS_PATCH.py"
+if (!(Test-Path -LiteralPath $componentSimPatchPath)) { throw "Missing component-specific simulator patch: $componentSimPatchPath" }
+$componentSimPatch = [IO.File]::ReadAllText($componentSimPatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $componentSimPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U150_COMPONENT_SIMULATORS_VERSION") -or !$src.Contains("COMPONENT_SPECIFIC_SIMULATORS_SELFTEST_OK")) {
+    throw "Component-specific simulator patch was not included."
+}
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
