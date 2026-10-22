@@ -15428,6 +15428,9 @@ def _u133_selftest_service_dashboard_navigation():
     print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
 
 def _u134_selftest_unique_service_probes():
+    all_entries=[entry for entries in _U93_TEST_CATALOG.values() for entry in entries]
+    all_titles=[entry[1] for entry in all_entries]
+    assert len(all_entries)==110 and len(set(all_titles))==110, "All 110 catalog tests must have unique titles, not only unique IDs."
     service_entries=list(_U93_TEST_CATALOG.get("SYSTEM_REPAIR_PRO",[]))+list(_U93_TEST_CATALOG.get("SERWIS_ULTIMATE",[]))
     ids=[entry[0] for entry in service_entries]
     titles=[entry[1] for entry in service_entries]
@@ -15437,7 +15440,7 @@ def _u134_selftest_unique_service_probes():
     assert all(test_id in _U109_SERVICE_PROBES for test_id in ids), "Every service diagnostic must map to its own PowerShell probe."
     scripts=[str(_U109_SERVICE_PROBES[test_id]).strip() for test_id in ids]
     assert len(scripts)==40 and len(set(scripts))==40, "No System Repair PRO / Serwis Ultimate diagnostics may reuse an identical script."
-    print("UNIQUE_SERVICE_PROBES_SELFTEST_OK: 40 unique IDs, 40 unique titles, 40 unique PowerShell procedures")
+    print("UNIQUE_TESTS_AND_SERVICE_PROBES_SELFTEST_OK: 110 unique catalog titles; 40 unique service IDs/titles/scripts")
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
