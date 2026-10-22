@@ -615,7 +615,9 @@ def _u142_show_history(app):
     tk.Label(win, text="HISTORIA RAPORTÓW AUDYTU WINDOWS", bg=t["bg"], fg=t["accent"], font=app.fnt(13, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
     tk.Label(win, text=f"Raporty są czytane lokalnie z: {_u141_report_dir()} • dane nie są wysyłane do sieci.", bg=t["bg"], fg=t["muted"], font=app.fnt(9), wraplength=1100, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
     columns = ("date", "computer", "pass", "warn", "fail", "unknown")
-    tree = ttk.Treeview(win, columns=columns, show="headings", height=min(14, max(5, len(history))))
+    table_frame = tk.Frame(win, bg=t["bg"])
+    table_frame.pack(fill="both", expand=True, padx=12, pady=5)
+    tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=min(14, max(5, len(history))))
     for col, label, width in (
         ("date", "DATA AUDYTU", 200), ("computer", "KOMPUTER", 190),
         ("pass", "PASS", 75), ("warn", "WARN", 75), ("fail", "FAIL", 75), ("unknown", "N/D", 75)
@@ -635,10 +637,10 @@ def _u142_show_history(app):
             entry.get("created_at", "N/D"), entry.get("computer", "N/D"),
             summary.get("PASS", 0), summary.get("WARN", 0), summary.get("FAIL", 0), summary.get("N/D", 0)
         ), tags=(state_tag,))
-    scrollbar = ttk.Scrollbar(win, orient="vertical", command=tree.yview)
+    scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)
-    tree.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=5)
-    scrollbar.pack(side="left", fill="y", padx=(0, 8), pady=5)
+    tree.pack(side="left", fill="both", expand=True, pady=1)
+    scrollbar.pack(side="right", fill="y", pady=1)
     detail = tk.Text(win, height=6, wrap="word", bg=t["card"], fg=t["fg"], relief="flat", font=app.fnt(9))
     detail.pack(fill="x", padx=12, pady=(4, 8))
     detail.insert("1.0", "Zaznacz raport, aby zobaczyć podsumowanie i lokalne ścieżki plików.")
@@ -729,7 +731,9 @@ def _u142_compare_last_two(app):
         bg=t["bg"], fg=t["fg"], font=app.fnt(9, "bold"), wraplength=1100, justify="left"
     ).pack(anchor="w", padx=12, pady=(0, 8))
     columns = ("change", "area", "old_status", "new_status", "detail")
-    tree = ttk.Treeview(win, columns=columns, show="headings", height=14)
+    table_frame = tk.Frame(win, bg=t["bg"])
+    table_frame.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+    tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=14)
     for col, label, width in (
         ("change", "ZMIANA", 190), ("area", "KONTROLA", 200),
         ("old_status", "STARSZY", 95), ("new_status", "NOWSZY", 95), ("detail", "OPIS", 530)
@@ -748,10 +752,10 @@ def _u142_compare_last_two(app):
         ), tags=(tag,))
     if not changes:
         tree.insert("", "end", values=("BEZ ZMIAN", "—", "—", "—", "Statusy i krótkie wyniki kontroli są identyczne."))
-    scrollbar = ttk.Scrollbar(win, orient="vertical", command=tree.yview)
+    scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)
-    tree.pack(fill="both", expand=True, padx=12, pady=(0, 10))
-    scrollbar.place(relx=0.985, rely=0.23, relheight=0.68, anchor="ne")
+    tree.pack(side="left", fill="both", expand=True)
+    scrollbar.pack(side="right", fill="y")
     return win
 
 
