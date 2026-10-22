@@ -13208,6 +13208,20 @@ def _u114_selftest_catalog_routing():
     assert set(ids).issubset(_U107_TEST_SCENES)
     print("EXECUTABLE_COMPONENT_CATALOG_SELFTEST_OK: 110 test IDs routed to independent screens and real handlers")
 
+def _u128_selftest_live_sensor_summary():
+    rows=[
+        {"category":"Temperature","hardware":"CPU Package","sensor":"Tctl/Tdie","value":"72","unit":"°C","source":"Sensor Bridge"},
+        {"category":"Load","hardware":"CPU","sensor":"Core 1","value":"85","unit":"%","source":"Windows"},
+        {"category":"Fan","hardware":"GPU","sensor":"Fan 2","value":"N/D","unit":"RPM","source":"Sensor Bridge"},
+        {"category":"Power","hardware":"GPU","sensor":"Board Power","value":"180","unit":"W","source":"Sensor Bridge"}
+    ]
+    output=_u128_sensor_summary_text(rows)
+    for token in ("TEMPERATURE","LOAD","FAN","POWER","Tctl/Tdie","Core 1","Fan 2","N/D","180 W"):
+        assert token.casefold() in output.casefold(), "Live sensor summary is missing: "+token
+    assert output.count("\n")>=8, "The summary must show separate scrollable lines for all records."
+    print("FULL_SCROLLABLE_LIVE_TELEMETRY_SELFTEST_OK: all sensor categories, usage and N/D are visible")
+
+
 def _u114_selftest_unique_gpu_scenes():
     assert len(_U100_SCENE_TITLES)==110 and len(set(_U100_SCENE_TITLES))==110
     assert len(_U66_SCENES)==110 and len({row[0] for row in _U66_SCENES})==110
@@ -13396,36 +13410,58 @@ def _u116_export_sensor_csv(app):
         except Exception:pass
         return None
 
+def _u128_sensor_summary_text(rows):
+    """Create a complete grouped live readout, not just two clipped temperature/load strings."""
+    groups={}
+    missing_tokens=("n/d","nd","n/a","na","none","null","—","-","")
+    for row in rows or []:
+        if not isinstance(row,dict):continue
+        category=str(row.get("category") or "Other").strip() or "Other"
+        hardware=str(row.get("hardware") or "N/D").strip() or "N/D"
+        name=str(row.get("sensor") or "N/D").strip() or "N/D"
+        raw=row.get("value")
+        value="N/D" if raw is None else str(raw).strip()
+        if value.casefold() in missing_tokens:value="N/D"
+        unit=str(row.get("unit") or "")
+        source=str(row.get("source") or "N/D")
+        groups.setdefault(category,[]).append((hardware,name,value,unit,source))
+    if not groups:return "Brak rekordów telemetrii. Użyj ODŚWIEŻ WSZYSTKIE CZUJNIKI.\nN/D oznacza brak wartości udostępnionej przez sterownik."
+    preferred=("Temperature","Load","Clock","Power","Voltage","Fan","Memory","Throughput","Disk I/O","Network","Battery","Other")
+    ordered=sorted(groups,key=lambda key:(preferred.index(key) if key in preferred else len(preferred),key.casefold()))
+    lines=["PEŁNA LISTA ODCZYTÓW — wartości aktualizowane z Sensor Bridge i liczników Windows.",
+           "N/D = czujnik wykryty, ale brak bieżącej wartości; nie jest to fikcyjny odczyt."]
+    for category in ordered:
+        values=groups[category]
+        lines.append("")
+        lines.append(f"━━ {category.upper()} ({len(values)}) ━━")
+        for hardware,name,value,unit,source in values:
+            lines.append(f"{hardware} | {name}: {value}{(' '+unit) if unit else ''}  ·  {source}")
+    lines.append("")
+    lines.append(f"RAZEM: {sum(len(v) for v in groups.values())} rekordów w {len(groups)} grupach.")
+    return "\n".join(lines)
+
+
 def _u126_refresh_live_sensor_summary(app):
     try:
         if getattr(app,"current_view","")!="LIVE_MONITOR":
             return
-        label=getattr(app,"_u126_sensor_summary_label",None)
-        if label is None or not label.winfo_exists():
+        widget=getattr(app,"_u126_sensor_summary_label",None)
+        if widget is None or not widget.winfo_exists():
             return
         rows=_u107_get_sensor_rows(app)
-        def usable(row):
-            value=str(row.get("value","N/D") if row.get("value") is not None else "N/D").strip()
-            return value if value and value.casefold() not in ("none","null","") else "N/D"
-        temperatures=[]
-        loads=[]
-        for row in rows:
-            category=str(row.get("category") or "").casefold()
-            unit=str(row.get("unit") or "").casefold()
-            name=str(row.get("sensor") or "N/D")
-            hardware=str(row.get("hardware") or "N/D")
-            value=usable(row)
-            suffix=str(row.get("unit") or "")
-            if "temperature" in category or unit in ("°c","c"):
-                temperatures.append(f"{hardware} / {name}: {value}{suffix}")
-            if "load" in category or unit=="%" or "użycie" in name.casefold() or "obciążenie" in name.casefold():
-                loads.append(f"{hardware} / {name}: {value}{suffix}")
-        temps_text=" • ".join(temperatures) if temperatures else "N/D — brak odczytów temperatur"
-        loads_text=" • ".join(loads) if loads else "N/D — brak odczytów obciążenia"
-        label.config(text=f"TEMPERATURY ({len(temperatures)}): {temps_text}\nUŻYCIE / OBCIĄŻENIE ({len(loads)}): {loads_text}")
+        content=_u128_sensor_summary_text(rows)
+        # The monitor now uses a scrollable Text widget; retain Label compatibility for older screens.
+        if isinstance(widget,tk.Text):
+            widget.configure(state="normal")
+            widget.delete("1.0","end")
+            widget.insert("1.0",content)
+            widget.configure(state="disabled")
+        else:
+            widget.config(text=content)
         app.after(2500,lambda:_u126_refresh_live_sensor_summary(app))
-    except Exception:
-        return
+    except Exception as exc:
+        try:app.queue_log("Pełne podsumowanie telemetrii: "+repr(exc))
+        except Exception:pass
 
 def _u116_show_live_monitor(app):
     result=_U116_ORIGINAL_SHOW_LIVE_MONITOR(app)
@@ -13437,9 +13473,15 @@ def _u116_show_live_monitor(app):
             bg=t["panel"],fg=t["accent"],font=app.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,3))
         tk.Label(pane,text="Pełny inspektor pokazuje wszystkie wykryte sensory oraz liczniki systemowe. N/D oznacza, że sterownik nie udostępnił aktualnej wartości.",
             bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,4))
-        app._u126_sensor_summary_label=tk.Label(pane,text="Pobieranie temperatur i obciążeń…",
-            bg=t["card"],fg=t["fg"],font=app.fnt(8),wraplength=1400,justify="left",anchor="w")
-        app._u126_sensor_summary_label.pack(fill="x",padx=7,pady=(0,6))
+        summary_frame=tk.Frame(pane,bg=t["panel"])
+        summary_frame.pack(fill="both",expand=False,padx=7,pady=(0,6))
+        summary_scroll=ttk.Scrollbar(summary_frame,orient="vertical")
+        summary_scroll.pack(side="right",fill="y")
+        app._u126_sensor_summary_label=tk.Text(summary_frame,height=13,wrap="word",
+            bg=t["card"],fg=t["fg"],font=app.fnt(8),relief="flat",borderwidth=0,
+            yscrollcommand=summary_scroll.set,state="disabled")
+        app._u126_sensor_summary_label.pack(side="left",fill="both",expand=True)
+        summary_scroll.configure(command=app._u126_sensor_summary_label.yview)
         app.after(300,lambda:_u126_refresh_live_sensor_summary(app))
         row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,7))
         app.make_button(row,"OTWÓRZ PEŁNY INSPEKTOR",lambda:_u107_open_sensor_inspector(app),"accent",side="left",ipady=5)
@@ -15154,6 +15196,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u126_selftest_sensor_merge()
         _u114_selftest_turbo_math()
         _u114_selftest_sensor_inventory()
+        _u128_selftest_live_sensor_summary()
         _u114_selftest_unique_gpu_scenes()
         _u114_selftest_catalog_routing()
         _u114_selftest_service_catalog()
