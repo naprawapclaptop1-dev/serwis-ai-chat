@@ -15337,7 +15337,7 @@ def _u132_service_dashboard_routes(app):
         ("SPEED TEST", "Rzeczywiste HTTPS download/upload, mediana oraz profile równoległe.", lambda:app.show_speed_test()),
         ("DYSKI / SSD / HDD", "Otwórz indywidualne testy dysków i raporty.", lambda:app.show_module("DYSK")),
         ("BEZPIECZEŃSTWO WINDOWS", "Otwórz testy bezpieczeństwa i stan ochrony.", lambda:app.show_module("SECURITY")),
-        ("SIEĆ / WI-FI / LAN", "Otwórz diagnostykę interfejsów sieciowych.", lambda:app.show_simple_module("SIEĆ")),
+        ("SIEĆ / WI-FI / LAN", "Otwórz diagnostykę interfejsów sieciowych.", lambda:app.show_simple_module("SIEĆ / WI-FI / LAN")),
         ("PULPIT", "Powrót do głównego pulpitu aplikacji.", lambda:app.show_dashboard()),
     ]
 
