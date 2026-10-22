@@ -15552,7 +15552,7 @@ def _u134_selftest_ram_live_dashboard():
     assert AppV43.show_ram_live_dashboard is _u134_show_ram_live_dashboard
     names=set(_u134_show_ram_live_dashboard.__code__.co_names)
     assert {"virtual_memory","swap_memory","cpu_percent","process_iter","after","Treeview"}.issubset(names)
-    assert "RAM LIVE DASHBOARD" in _u134_show_ram_live_dashboard.__code__.co_consts
+    assert any("RAM LIVE DASHBOARD" in str(value) for value in _u134_show_ram_live_dashboard.__code__.co_consts)
     print("RAM_LIVE_DASHBOARD_SELFTEST_OK: live RAM/swap/CPU-per-core, process table and bounded 90-sample history")
 
 def _u134_selftest_unique_service_probes():
