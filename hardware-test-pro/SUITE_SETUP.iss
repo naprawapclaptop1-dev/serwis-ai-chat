@@ -37,14 +37,17 @@ Name: "desktopicon"; Description: "Utworz ikone programu na pulpicie"; GroupDesc
 [InstallDelete]
 ; After terminating the old app, remove previous versioned executables before copying the current one.
 Type: files; Name: "{app}\NAPRAWA-PC-HARDWARE-TEST-PRO-*.exe"
+Type: filesandordirs; Name: "{app}\Companions\SystemRepairPRO"
 
 [Files]
 Source: "{#SourceDir}\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README_PL.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceDir}\Companions\*"; DestDir: "{app}\Companions"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\NAPRAWA PC HARDWARE TEST PRO"; Filename: "{app}\{#ExeName}"
 Name: "{autodesktop}\NAPRAWA PC HARDWARE TEST PRO"; Filename: "{app}\{#ExeName}"; Tasks: desktopicon
+Name: "{group}\NAPRAWA PC SYSTEM REPAIR PRO 5.6.16"; Filename: "{app}\Companions\SystemRepairPRO\NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"; WorkingDir: "{app}\Companions\SystemRepairPRO"; IconFilename: "{app}\Companions\SystemRepairPRO\naprawa-pc.ico"
 
 [Run]
 Filename: "{app}\{#ExeName}"; Description: "Uruchom NAPRAWA PC HARDWARE TEST PRO"; Flags: postinstall nowait skipifsilent

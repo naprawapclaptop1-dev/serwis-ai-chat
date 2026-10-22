@@ -1,7 +1,8 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online: 4.3.142** — instalator Windows x64 i ALL-IN-ONE opublikowane; `latest.json` zawiera SHA-256 instalatora.
-**Kandydat 4.3.143:** dowolne porównanie dwóch wybranych audytów oraz eksport szczegółów każdej kontroli do CSV. Windows CI musi zaliczyć test porządku raportów, eksportu per-kontrola i ochrony przed formułami; odczyty sprzętowe nadal wymagają sprawdzenia na fizycznym komputerze.
+**Stable online przed tym kandydatem:** 4.3.143 — Setup x64 i All-in-One ZIP są opublikowane, latest.json zawiera SHA-256 instalatora.
+**Kandydat 4.3.144:** jeden instalator ma budować/dołączać pełny System Repair PRO 5.6.16, a Centrum Serwisu ma wyszukiwać wszystkie moduły. Panele CPU/RAM/GPU muszą pokazywać postęp, pomiary i raporty z rzeczywistych odczytów. Windows CI weryfikuje selftesty, WPF smoke test, EXE/Setup/ZIP, SHA-256 i manifest.
+**Parytet źródeł:** dołączenie 5.6.16 nie oznacza zgodności 1:1 z archiwum 5.6.25; pełne źródła Serwis Ultimate 1.15.3 również wymagają osobnego porównania.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -215,3 +216,14 @@
 - [x] Pierwszy workflow 39778215930 zatrzymał się na asercji selftestu, który sprawdzał nazwy wyłącznie w kodzie zewnętrznej funkcji, a pomijał zagnieżdżony timer odświeżania.
 - [x] Asercja została poprawiona, aby analizowała także zagnieżdżone funkcje; dodano osobny odczyt Windows commit charge.
 - [ ] Ponowić pełny Windows CI przed publikacją; stable pozostaje 4.3.133 do czasu sukcesu.
+
+
+## Kandydat 4.3.144 — testy CPU/RAM/GPU i jedna paczka
+- [x] Centrum Serwisu ma wyszukiwane trasy modułów i pełny System Repair PRO 5.6.16, uruchamiany po SHA-256/ShellExecuteW.
+- [x] Jeden Setup instaluje companion WPF i Hardware Test PRO; All-in-One zawiera pliki aplikacji oraz manifest.
+- [x] Testy CPU mają obciążenie jednowątkowe/wielowątkowe i tryby stabilności 60/300 s z próbkami CPU/rdzeni.
+- [x] Testy RAM pokazują progres faktycznych wzorców, pamięć dostępną, bufor i końcową przepustowość zapisu/weryfikacji.
+- [x] GPU pokazuje postęp sceny, FPS i renderer z rzeczywistego raportu OpenGL; brak sensora pozostaje N/D.
+- [ ] Na fizycznym Windows potwierdzić UAC, instalację/aktualizację, czujniki i długie testy stabilności.
+- [ ] Otwarty: porównanie wszystkich widoków System Repair PRO 5.6.25 z companion 5.6.16.
+- [ ] Otwarty: odzyskanie i porównanie pełnego ZIP Serwis Ultimate 1.15.3. Istniejące sondy nie dowodzą pełnego parytetu 1:1.

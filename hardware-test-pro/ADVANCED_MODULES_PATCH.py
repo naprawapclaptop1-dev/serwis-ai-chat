@@ -6483,7 +6483,8 @@ def _u98_selftest_catalog_safety():
     assert callable(_u93_execute_catalog_test)
     assert ("_U98_ORIGINAL_EXECUTE_CATALOG_TEST" in _u98_execute_catalog_test.__code__.co_names
             or "_U102_ORIGINAL_RAM_EXECUTE" in _u93_execute_catalog_test.__code__.co_names
-            or "_U109_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names)
+            or "_U109_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names
+            or "_U145_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names)
     active_start_name = getattr(_u93_start_catalog_test, "__name__", "")
     assert (_u93_start_catalog_test is _u98_start_catalog_test
             or active_start_name in ("_u109_start_catalog_test", "_u114_start_catalog_test"))
@@ -8229,10 +8230,14 @@ def _u102_selftest_ram_visible_progress():
     assert "ram_pattern_test" in _u102_ram_pattern_suite.__code__.co_names
     assert "pygame" not in _u102_ram_pattern_suite.__code__.co_names
     assert (_u93_execute_catalog_test is _u102_execute_catalog_test
-            or getattr(_u93_execute_catalog_test, "__name__", "") == "_u109_execute_catalog_test")
+            or getattr(_u93_execute_catalog_test, "__name__", "") in ("_u109_execute_catalog_test", "_u145_execute_catalog_test"))
     if getattr(_u93_execute_catalog_test, "__name__", "") == "_u109_execute_catalog_test":
         assert "_U109_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names
-    assert _u93_show_test_detail is _u102_show_test_detail
+    if getattr(_u93_execute_catalog_test, "__name__", "") == "_u145_execute_catalog_test":
+        assert "_U145_ORIGINAL_EXECUTE_CATALOG_TEST" in _u93_execute_catalog_test.__code__.co_names
+    assert getattr(_u93_show_test_detail, "__name__", "") in ("_u102_show_test_detail", "_u145_show_test_detail")
+    if getattr(_u93_show_test_detail, "__name__", "") == "_u145_show_test_detail":
+        assert "_U145_ORIGINAL_SHOW_TEST_DETAIL" in _u93_show_test_detail.__code__.co_names
     assert getattr(AppV43._ram_test, "_u102_ram_guard", False)
     print("RAM_VISIBLE_PROGRESS_SELFTEST_OK: isolated in-app progress, safe allocation cap, no OpenGL/pygame path")
 
@@ -15411,7 +15416,7 @@ def _u133_build_shell(self):
     try:
         t=self.colors()
         button=tk.Button(self.sidebar,text="🛠  CENTRUM SERWISU",
-            command=self.show_service_ultimate_dashboard,anchor="w",relief="flat",bd=0,
+            command=self.show_integrated_apps_hub,anchor="w",relief="flat",bd=0,
             bg=t["accent"],fg="#ffffff",activebackground=t["accent2"],
             activeforeground="#ffffff",font=self.fnt(9,"bold"),cursor="hand2")
         button.pack(fill="x",padx=12,pady=3,ipady=9)
@@ -15431,7 +15436,7 @@ def _u133_selftest_service_dashboard_navigation():
     assert callable(AppV43.show_service_ultimate_dashboard)
     assert AppV43._build_shell is _u133_build_shell
     names=set(_u133_build_shell.__code__.co_names)
-    assert "show_service_ultimate_dashboard" in names and "nav" in names
+    assert "show_integrated_apps_hub" in names and "nav" in names
     assert any("CENTRUM SERWISU" in str(value) for value in _u133_build_shell.__code__.co_consts)
     print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
 

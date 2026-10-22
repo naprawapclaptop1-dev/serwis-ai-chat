@@ -1832,6 +1832,27 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
 },1)
 if (!$src.Contains("_U141_WINDOWS_AUDIT_VERSION") -or !$src.Contains("WINDOWS_AUDIT_SELFTEST_OK") -or !$src.Contains("AUDYT_WINDOWS")) { throw "Windows Audit integration markers are missing." }
 
+$suitePatchPath = Join-Path $PSScriptRoot "INTEGRATED_APPS_PATCH.py"
+if (!(Test-Path -LiteralPath $suitePatchPath)) { throw "Missing integrated apps patch: $suitePatchPath" }
+$suitePatch = [IO.File]::ReadAllText($suitePatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $suitePatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U144_INTEGRATED_APPS_VERSION") -or !$src.Contains("INTEGRATED_APPS_SELFTEST_OK") -or !$src.Contains("show_integrated_apps_hub") -or !$src.Contains("ShellExecuteW")) {
+    throw "Integrated apps hub / System Repair PRO companion wiring is incomplete."
+}
+$testUpgradePath = Join-Path $PSScriptRoot "CPU_RAM_GPU_UPGRADE_PATCH.py"
+if (!(Test-Path -LiteralPath $testUpgradePath)) { throw "Missing CPU/RAM/GPU upgrade patch: $testUpgradePath" }
+$testUpgrade = [IO.File]::ReadAllText($testUpgradePath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $testUpgrade + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U145_CPU_RAM_GPU_PATCH_VERSION") -or !$src.Contains("CPU_RAM_GPU_LIVE_SELFTEST_OK") -or !$src.Contains("DIAGNOSTYKA NA ŻYWO")) {
+    throw "CPU/RAM/GPU live-test patch verification failed."
+}
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
