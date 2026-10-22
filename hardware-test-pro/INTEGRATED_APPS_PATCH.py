@@ -33,7 +33,16 @@ def _u144_companion_manifest(path=None):
         if not _u144_re.fullmatch(r"[0-9a-fA-F]{64}", str(data.get("sha256", ""))):
             return None
         size = int(data.get("size_bytes", 0))
-        if size <= 1_000_000 or size != exe.stat().st_size:
+        if size <= 32_768 or size != exe.stat().st_size:
+            return None
+        # A WPF self-contained publish can use a small native apphost plus a managed DLL and runtime files.
+        prefix = "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX"
+        required = (
+            exe.parent / (prefix + ".dll"),
+            exe.parent / (prefix + ".runtimeconfig.json"),
+            exe.parent / (prefix + ".deps.json"),
+        )
+        if not all(item.is_file() for item in required):
             return None
         return data
     except Exception:

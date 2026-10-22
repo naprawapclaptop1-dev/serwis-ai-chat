@@ -87,7 +87,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "System Repair PRO companion build failed." }
           $exe = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
           $icon = Join-Path $source "naprawa-pc.ico"
-          if (!(Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) { throw "Companion EXE missing or suspiciously small." }
+          if (!(Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 32768) { throw "Companion apphost EXE missing or invalid." }
+          $mainDll = Join-Path $publish "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.dll"
+          $runtimeConfig = Join-Path $publish "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.runtimeconfig.json"
+          $depsFile = Join-Path $publish "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.deps.json"
+          foreach ($requiredFile in @($mainDll,$runtimeConfig,$depsFile)) {
+            if (!(Test-Path -LiteralPath $requiredFile)) { throw "System Repair PRO companion dependency missing: $([IO.Path]::GetFileName($requiredFile))" }
+          }
+          Write-Host ("SYSTEM_REPAIR_APPHOST_OK: apphost={0} bytes; managed DLL and runtime metadata present." -f (Get-Item -LiteralPath $exe).Length)
           if (!(Test-Path -LiteralPath $icon)) { throw "Companion icon missing." }
           Copy-Item -LiteralPath $icon -Destination $publish -Force
           $smoke = Start-Process -FilePath $exe -ArgumentList "--xaml-smoke" -PassThru -WindowStyle Hidden
