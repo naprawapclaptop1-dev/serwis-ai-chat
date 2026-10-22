@@ -15317,8 +15317,89 @@ AppV43.show_process_manager=_u126_show_process_manager
 AppV43.show_game_diagnostics=_u126_show_game_diagnostics
 AppV43.show_report_manager=_u126_show_report_manager
 
+def _u132_service_dashboard_routes(app):
+    # These routes expose implemented screens in one place; the catalog still labels
+    # the 40 source-app probes as diagnostics, not a claim of complete 1:1 source parity.
+    return [
+        ("TESTY SPRZĘTOWE", "110 niezależnych testów, osobne ekrany i raporty.", lambda:_u93_show_lab(app)),
+        ("SYSTEM REPAIR PRO — TESTY", "Katalog 20 odczytowych diagnostyk System Repair PRO.", lambda:_u93_show_catalog(app,"SYSTEM_REPAIR_PRO")),
+        ("SERWIS ULTIMATE — TESTY", "Katalog 20 odczytowych diagnostyk Serwis Ultimate.", lambda:_u93_show_catalog(app,"SERWIS_ULTIMATE")),
+        ("CENTRUM NAPRAW WINDOWS", "SFC, DISM, CHKDSK, punkt przywracania i status WinRE; operacje wymagają potwierdzenia.", lambda:app.show_system_repair_center()),
+        ("PROFILE NAPRAW", "14 profili objawów, odczytowa diagnostyka i raport HTML.", lambda:_u123_show_repair_profiles(app)),
+        ("BAZA WIEDZY / PDF", "Lokalny import TXT/MD/PDF, wyszukiwanie i lekcje serwisowe.", lambda:_u122_show_repair_knowledge(app)),
+        ("ZLECENIA SERWISOWE", "Lokalna historia zleceń i eksport karty HTML.", lambda:_u121_show_service_jobs(app)),
+        ("ZASILANIE / BATERIA", "Niezależne raporty baterii, energii, uśpienia i planu zasilania.", lambda:_u121_show_power_lab(app)),
+        ("MENEDŻER PROCESÓW", "Rzeczywiste procesy Windows, filtr, CSV i potwierdzane zakończenie.", lambda:_u126_show_process_manager(app)),
+        ("DIAGNOSTYKA GIER", "GPU, DirectX, usługi gier i plan zasilania — bez automatycznych zmian.", lambda:_u126_show_game_diagnostics(app)),
+        ("RAPORTY / HISTORIA", "Lokalny indeks raportów, filtr, otwieranie i eksport CSV.", lambda:_u126_show_report_manager(app)),
+        ("PEŁNY INSPEKTOR CZUJNIKÓW", "Wszystkie dostępne sensory, N/D, odświeżanie i eksport CSV.", lambda:_u107_open_sensor_inspector(app)),
+        ("TELEMETRIA LIVE", "Użycie, temperatury i pozostałe odczyty udostępnione przez sterowniki.", lambda:app.show_live_monitor()),
+        ("SPEED TEST", "Rzeczywiste HTTPS download/upload, mediana oraz profile równoległe.", lambda:app.show_speed_test()),
+        ("DYSKI / SSD / HDD", "Otwórz indywidualne testy dysków i raporty.", lambda:app.show_module("DYSK")),
+        ("BEZPIECZEŃSTWO WINDOWS", "Otwórz testy bezpieczeństwa i stan ochrony.", lambda:app.show_module("SECURITY")),
+        ("SIEĆ / WI-FI / LAN", "Otwórz diagnostykę interfejsów sieciowych.", lambda:app.show_simple_module("SIEĆ")),
+        ("PULPIT", "Powrót do głównego pulpitu aplikacji.", lambda:app.show_dashboard()),
+    ]
+
+def _u132_show_service_ultimate_dashboard(app):
+    app.current_view="SERVICE_ULTIMATE_DASHBOARD"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="CENTRUM SERWISU — ZINTEGROWANE MODUŁY")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,6))
+    tk.Label(head,text="CENTRUM SERWISU • SYSTEM REPAIR PRO • SERWIS ULTIMATE",
+        bg=t["panel"],fg=t["accent"],font=app.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(9,3))
+    tk.Label(head,text="Wszystkie obecnie zintegrowane moduły dostępne z jednego ekranu. Katalog testów ma oddzielne procedury i raporty; pełna zgodność 1:1 z archiwami źródłowymi nadal wymaga porównania każdego oryginalnego handlera.",
+        bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    foot=tk.Frame(app.content,bg=t["bg"]);foot.pack(side="bottom",fill="x",padx=5,pady=(4,2))
+    app.make_button(foot,"← PULPIT",app.show_dashboard,"good",side="left",ipady=5)
+    outer=tk.Frame(app.content,bg=t["bg"]);outer.pack(fill="both",expand=True)
+    for col in range(3):outer.grid_columnconfigure(col,weight=1)
+    routes=_u132_service_dashboard_routes(app)
+    for i,(title,description,action) in enumerate(routes):
+        row,col=divmod(i,3)
+        card=tk.Frame(outer,bg=t["card"],highlightbackground=t["panel"],highlightthickness=1)
+        card.grid(row=row,column=col,sticky="nsew",padx=4,pady=4)
+        tk.Label(card,text=title,bg=t["card"],fg=t["accent2"],font=app.fnt(9,"bold"),anchor="w",justify="left",wraplength=390).pack(fill="x",padx=9,pady=(7,3))
+        tk.Label(card,text=description,bg=t["card"],fg=t["muted"],font=app.fnt(8),anchor="nw",justify="left",wraplength=390).pack(fill="both",expand=True,padx=9,pady=(0,5))
+        app.make_button(card,"OTWÓRZ MODUŁ",action,"accent" if i<4 else "card",fill="x",ipady=4)
+    return None
+
+_U132_ORIGINAL_SHOW_SYSTEM_REPAIR_CENTER=AppV43.show_system_repair_center
+def _u132_show_system_repair_center(app):
+    result=_U132_ORIGINAL_SHOW_SYSTEM_REPAIR_CENTER(app)
+    try:
+        body=getattr(app,"_u120_repair_log_text",None)
+        log_panel=body.master if body is not None else None
+        panel=app.panel(app.content)
+        panel.pack(fill="x",padx=3,pady=3,before=log_panel if log_panel is not None else None)
+        app.make_button(panel,"CENTRUM SERWISU — WSZYSTKIE MODUŁY",
+            lambda:_u132_show_service_ultimate_dashboard(app),"accent",side="left",ipady=4)
+    except Exception as exc:
+        try:app.queue_log("Centrum serwisu: "+repr(exc))
+        except Exception:pass
+    return result
+
+AppV43.show_service_ultimate_dashboard=_u132_show_service_ultimate_dashboard
+AppV43.show_integrated_service_dashboard=_u132_show_service_ultimate_dashboard
+AppV43.show_system_repair_center=_u132_show_system_repair_center
+
+def _u132_selftest_service_dashboard():
+    routes=_u132_service_dashboard_routes(object())
+    names=[row[0] for row in routes]
+    assert len(routes)==18 and len(set(names))==18
+    assert all(callable(row[2]) for row in routes)
+    assert {"SYSTEM_REPAIR_PRO","SERWIS_ULTIMATE"}.issubset(_U93_TEST_CATALOG)
+    assert len(_U93_TEST_CATALOG["SYSTEM_REPAIR_PRO"])==20
+    assert len(_U93_TEST_CATALOG["SERWIS_ULTIMATE"])==20
+    assert AppV43.show_service_ultimate_dashboard is _u132_show_service_ultimate_dashboard
+    assert AppV43.show_integrated_service_dashboard is _u132_show_service_ultimate_dashboard
+    assert AppV43.show_system_repair_center is _u132_show_system_repair_center
+    print("INTEGRATED_SERVICE_DASHBOARD_SELFTEST_OK: 18 routed screens; 20 System Repair PRO + 20 Serwis Ultimate probes")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u132_selftest_service_dashboard()
         _u131_selftest_parallel_progress()
         _u125_selftest_unique_scene_families()
         _u124_selftest_gpu_hud()
