@@ -60,3 +60,10 @@ KANDYDAT 4.3.125 — 31 RODZIN GEOMETRII GPU
 - Wszystkie 110 ID scen korzystają z 31 trybów, ale mają unikalną kombinację parametrów, palety, liczby elementów i prędkości obrotu.
 - Nowy test regresyjny sprawdza, że każdy tryb 0–30 ma własną gałąź renderera, wszystkie 31 stylów są wybierane i 110 sygnatur jest unikalnych.
 - Ten opis dotyczy kandydata 4.3.125; dostępność wydania potwierdza dopiero zakończony Windows CI i opublikowany manifest.
+
+KANDYDAT 4.3.125 — 31 RODZIN GEOMETRII GPU
+-------------------------------------------
+- Renderer 3D ma 31 jawnie rozdzielonych trybów geometrii: orbity, turbiny, kryształy, kratownice, fale, cząstki, wieże voxel, atomy, klatki, schody spiralne, sieci, przekładnie, światłowody, tunele, fraktale, strumienie danych i osobny wariant PCB.
+- Wszystkie 110 ID scen korzystają z 31 trybów, ale mają unikalną kombinację parametrów, palety, liczby elementów i prędkości obrotu.
+- Nowy test regresyjny sprawdza, że każdy tryb 0–30 ma własną gałąź renderera, wszystkie 31 stylów są wybierane i 110 sygnatur jest unikalnych.
+- Ten opis dotyczy kandydata 4.3.125; dostępność wydania potwierdza dopiero zakończony Windows CI i opublikowany manifest.
