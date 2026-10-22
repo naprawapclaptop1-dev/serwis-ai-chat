@@ -1,95 +1,173 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-Stan bazowy sprawdzony: online stable 4.3.127 (22.10.2026).  
-Kandydat roboczy: 4.3.128 — **nie jest wydaniem, dopóki Windows CI nie zakończy się sukcesem i nie sprawdzimy manifestu, EXE oraz ALL-IN-ONE ZIP**.
+**Stan online sprawdzony:** stable **4.3.129**. Manifest stable wskazuje opublikowany instalator Windows x64, a workflow 39747774411 zakończył się sukcesem.  
+**Kandydat roboczy:** 4.3.130 — to nie jest wydanie, dopóki nowy Windows CI nie zakończy się sukcesem i nie zostaną sprawdzone artefakty oraz manifest.
 
-## 1. Zmiany wykonane w kandydacie 4.3.128 — oczekują na test końcowy
+## Statusy — jak czytać listę
+- **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
+- **CI / wydanie** — wymaga ukończonego builda Windows, testów, instalatora, ZIP-a i sprawdzenia manifestu.
+- **PC fizyczny** — wymaga testu na rzeczywistym komputerze, czujnikach, sterownikach lub peryferiach.
+- **Parzystość źródłowa** — wymaga porównania z oryginalnymi archiwami aplikacji i sprawdzenia każdego ekranu/handlera.
+- **Otwarte** — nie wolno uznać za gotowe na podstawie samej nazwy, przycisku, opisu lub testu statycznego.
 
-- [x] Każda ze 110 scen GPU dostaje osobny, deterministyczny profil FurMark: promień/tuba torusa, gęstość włókien, paleta, animacja i skala.
-- [x] Wszystkie sceny poza sceną bazową nakładają na własną geometrię osobny torus FurMark; nie są tylko zmianą tytułu ani ID.
-- [x] Raport sceny zapisuje profil FurMark i liczbę włókien, a test regresyjny sprawdza 110 różnych profili.
-- [x] Inspektor sensorów zachowuje identyfikatory czujników; dwa wentylatory/rdzenie o tej samej nazwie nie powinny być scalane w jeden rekord.
-- [x] Podsumowanie live ma pokazywać przewijalną listę wszystkich kategorii telemetrii, nie tylko dwie długie linie temperatur i użycia.
-- [ ] Końcowy Windows CI, kompilacja Sensor Bridge, EXE, instalator, ALL-IN-ONE ZIP, sumy SHA-256 i manifest.
-- [ ] Jeśli CI zgłosi błąd: poprawka kodu i ponowne uruchomienie CI przed uznaniem wydania za gotowe.
+---
 
-## 2. Hardware Test PRO — pełna macierz testów sprzętowych
+## 1. Hardware Test PRO — katalog i niezależne testy
 
-- [ ] CPU: identyfikacja, obciążenie wielowątkowe/jednowątkowe, temperatury, zegary, limity i osobny raport.
-- [ ] RAM: wykrycie modułów, wzorce, obciążenie, przepustowość i raport; jasno oznaczyć, że test procesu nie sprawdza każdej fizycznej komórki.
-- [ ] GPU: identyfikacja, sterownik, API/renderer, obciążenie, temperatury i zegary tam, gdzie są udostępnione.
-- [ ] VRAM: osobny test wzorców/zapisu/odczytu; bez deklarowania pełnego testu całej fizycznej pamięci, jeśli zakres nie został pokryty.
-- [ ] SSD/HDD/NVMe: SMART/reliability, woluminy, odczyt/zapis, I/O/IOPS, wolne miejsce i osobny raport.
-- [ ] Matryca: EDID, rozdzielczość i tryby odświeżania, testy wzorców/kolorów; osobno test trybów i osobno EDID.
-- [ ] Bateria i zasilanie: informacje baterii, kondycja jeśli dostępna, raporty Windows, ACPI i plan zasilania.
-- [ ] Klawiatura/touchpad, audio/mikrofon, kamera, USB, sieć: niezależne ekrany i jawna zgoda przed odtwarzaniem dźwięku lub próbkowaniem mikrofonu.
-- [ ] Bezpieczeństwo Windows: Defender, autostart, zdarzenia, usługi, firewall i inne odczytowe audyty.
-- [ ] Każdy test uruchamiany osobno, z osobnym postępem, STOP, wynikiem, statusem PASS/WARN/ERROR/N/D oraz raportem; sprawdzić brak timerów/okien pozostawionych przez poprzedni test.
-- [ ] Symulatory przy każdym odpowiednim teście muszą wykonywać rzeczywiste renderowanie/operację, a nie zastępować test fikcyjnym PASS.
+### Aktualnie w kodzie
+- [x] Katalog ma **110 odrębnych pozycji w 15 grupach**, z indywidualnymi ekranami, handlerami i raportami JSON.
+- [x] Każdy test z katalogu jest mapowany do osobnego ID sceny; regresje sprawdzają unikalność identyfikatorów i routing.
+- [x] Grupy: CPU (7), RAM (7), GPU (8), VRAM (6), dyski (7), ekran/EDID (5), bezpieczeństwo Windows (4), bateria (5), sieć (5), USB (4), audio (5), klawiatura/touchpad (4), kamera (3), System Repair PRO (20), Serwis Ultimate (20).
+- [x] Testy można uruchamiać pojedynczo; wynik rozróżnia PASS, WARN, ERROR i N/D.
+- [x] Raportowanie rozróżnia wynik testu od ograniczeń pomiaru. Brak czujnika nie może być fikcyjnym PASS.
 
-## 3. GPU / FurMark / sceny 3D
+### Do sprawdzenia
+- [ ] Przejść przez wszystkie 110 pozycji i potwierdzić działanie każdego przycisku, handlera, ekranu, STOP, wyniku oraz zapisu raportu.
+- [ ] Potwierdzić, że po zamknięciu testu nie zostają timery, okna, procesy ani wykresy poprzedniego testu.
+- [ ] Dodać testy regresyjne dla każdego znalezionego błędu i ponawiać pełny zestaw selftestów po poprawce.
 
-- [ ] Zachować 110 osobnych testów i 110 mapowań scen; każde mapowanie ma działać od przycisku do właściwego handlera.
-- [ ] 110 unikalnych profili FurMark w kodzie kandydata: geometra, gęstość, skala, paleta i ruch różnią się per ID.
-- [ ] Prawdziwy OpenGL, glFinish przed pomiarem, FPS średni/szczytowy/próbki, renderer/API, rozdzielczość i bezpieczny ESC/STOP.
-- [ ] Jeśli OpenGL nie wystartuje, raport WARN z błędem — nigdy udawany wynik FPS.
-- [ ] Obejrzeć zrzuty wszystkich scen i sprawdzić rzeczywisty FPS na fizycznym GPU NVIDIA i AMD; CI nie potwierdza wyglądu na sprzęcie.
-- [ ] Upewnić się, że testy CPU/RAM/dysku nie przedstawiają FPS GPU jako wyniku zdrowia danego podzespołu.
+## 2. CPU
+- [x] Osobny moduł i raport; obciążenie procesora i podstawowe metryki systemowe.
+- [x] Użycie CPU per rdzeń/wątek, liczba rdzeni/wątków i dostępne zegary w telemetrii Windows.
+- [ ] Na PC potwierdzić temperatury package/rdzeni/CCD, taktowanie pod obciążeniem, moc i limity dla różnych platform.
+- [ ] Zweryfikować odrębne testy jednowątkowe i wielowątkowe, czas trwania, STOP oraz powtarzalny wynik.
+- [ ] Sprawdzić, czy test nie raportuje wyniku, jeśli obciążenie nie wystartowało lub zostało przerwane.
 
-## 4. Pełna telemetria
+## 3. RAM
+- [x] Osobny moduł, raport i wzorce pamięci w przydzielonym buforze z weryfikacją.
+- [x] Wykorzystanie, pamięć całkowita/dostępna/użyta oraz swap/pagefile w telemetrii.
+- [ ] Sprawdzić wszystkie tryby wzorców, progres, przerwanie, błędy i historię.
+- [ ] Dodać/weryfikować testy przepustowości z opisanym rozmiarem bufora i powtarzalnymi przebiegami.
+- [ ] Nie deklarować sprawdzenia całej fizycznej pamięci, gdy test obejmuje tylko bufor procesu.
 
-- [ ] Wszystkie rekordy Sensor Bridge / LibreHardwareMonitor i fallbacki Windows: temperatury CPU package/rdzeni/CCD, GPU/hotspot/VRAM, płyty, dysków, kontrolerów i dostępnych pozostałych czujników.
-- [ ] Użycie CPU per rdzeń, RAM/swap, GPU, VRAM, zegary, napięcia, moc, wentylatory, bateria, woluminy, sieć i per-dysk I/O/IOPS.
-- [ ] Brak wartości zawsze jako N/D; nie zamieniać ACPI thermal zone na rzekomą temperaturę CPU ani nie wymyślać RPM/mocy.
-- [ ] Pełna tabela z wyszukiwaniem, filtrem, przewijaniem, odświeżaniem, licznikiem dostępnych/N/D oraz eksportem CSV.
-- [ ] Nie scalać dwóch sensorów o identycznej nazwie, gdy ich identyfikatory sprzętowe są różne.
-- [ ] Sprawdzić, czy aktualizacje wartości nie powodują migotania ani utraty zaznaczenia/filtra.
-- [ ] Testy na rzeczywistym komputerze: CPU/GPU AMD i NVIDIA, płyta główna, wentylatory, AIO/pompy, dyski i czujniki udostępniane przez sterowniki.
+## 4. GPU, VRAM i 3D/FurMark
+- [x] Katalog zawiera 110 ID scen OpenGL z odrębnymi profilami parametrów FurMark; selftest sprawdza różne profile.
+- [x] Renderer mierzy FPS z synchronizacją renderowania; wynik obejmuje ograniczenia środowiska i rozdzielczości.
+- [x] GPU ma osobny ekran, telemetrię i akcje skanowania/benchmarku/symulatora.
+- [x] VRAM ma odrębny profil diagnostyczny i raport; zakres nie jest przedstawiany jako test każdej fizycznej komórki pamięci.
+- [ ] Na fizycznym GPU obejrzeć sceny, potwierdzić różnorodność geometrii, oświetlenia, materiałów, cieni, animacji, HUD, płynność oraz bezpieczny STOP.
+- [ ] Sprawdzić renderer/API, rozdzielczość, FPS, czas klatki i błędy inicjalizacji na kartach NVIDIA oraz AMD.
+- [ ] Jeśli OpenGL nie wystartuje, pokazać WARN z przyczyną — nigdy symulowany FPS.
+- [ ] Oddzielić wynik syntetycznego renderowania od rzeczywistego FPS w grach i od testów CPU/RAM/dysku.
+- [ ] Sprawdzić tekstury/wzorce VRAM, rozmiar przydziału, read-back, wykrywanie błędów i ograniczenia sterownika.
 
-## 5. Speed Test
+## 5. Dyski SSD/HDD/NVMe
+- [x] Osobny moduł i raport; wykrywanie woluminów oraz podstawowy benchmark pliku tymczasowego.
+- [x] Telemetria ma globalne i per-dysk odczyty/zapisy, I/O i IOPS tam, gdzie Windows udostępnia liczniki.
+- [ ] Sprawdzić SMART/reliability/temperatury dla NVMe, SATA i USB, opisując niedostępne atrybuty jako N/D.
+- [ ] Sprawdzić odczyt/zapis, czas dostępu, IOPS, wielkość próbek, miejsce docelowe i usuwanie pliku tymczasowego.
+- [ ] Upewnić się, że benchmark nie zapisuje na błędnie wybrany dysk i nie wykonuje destrukcyjnego testu sektorów.
+- [ ] Zweryfikować raporty partycji, wolnego miejsca, kondycji i błędów nośnika.
 
-- [ ] Prawdziwe bajty HTTPS, status HTTP, czas, pełność transferu i odrzucanie błędnych próbek.
-- [ ] QUICK, STANDARD, MAX i TURBO; większy transfer ma jasne potwierdzenie, a wynik bazowy pozostaje oddzielny od wyniku równoległego.
-- [ ] Mediana, średnia, minimum, peak, jitter/rozpiętość RTT, CV/stabilność, liczba próbek i transferów oraz historia.
-- [ ] Pokazać postęp i kierunek transferu, a nie tylko końcowy numer.
-- [ ] Porównać pomiary na wolnym i szybkim łączu; wyniki zależą od serwera, tras i warunków sieci.
+## 6. Matryca / ekran / EDID
+- [x] Osobny moduł, identyfikacja EDID i wzorce obrazu.
+- [ ] Oddzielnie sprawdzić rozdzielczość, częstotliwości odświeżania, profile kolorów, gradienty, gamma, kontrast i wzorce jednolite.
+- [ ] Wykrywanie martwych/zablokowanych pikseli musi wymagać wzrokowego potwierdzenia — nie da się go wiarygodnie zaliczyć automatycznie.
+- [ ] Przetestować przełączanie scen, skalowanie Windows, wiele monitorów i przywracanie poprzedniego trybu.
 
-## 6. System Repair PRO 5.6.25 — wymagane przeniesienie funkcji
+## 7. Bateria, zasilanie, płyta główna i chłodzenie
+- [x] Moduły baterii/zasilania oraz raporty Windows; telemetria pokazuje dostępne dane ACPI.
+- [ ] Kandydat 4.3.130 rozszerza Sensor Bridge o grupy baterii, PSU i monitorów zasilania — nowy CI ma potwierdzić kompilację i obecność wymaganych właściwości.
+- [ ] Zweryfikować napięcia, moc, temperatury płyty, VRM, chipsetu i kontrolerów tylko tam, gdzie źródło je udostępnia.
+- [ ] Zweryfikować wszystkie wykryte wentylatory i pompy AIO; zachować odrębne identyfikatory przy takich samych nazwach.
+- [ ] Sprawdzić, czy obroty i temperatura pochodzą z rzeczywistego sensora, a nie z założenia lub wartości zastępczej.
+- [ ] Testy baterii na laptopie: kondycja jeśli dostępna, stan ładowania, raport baterii, Energy Report, SleepStudy, Power Requests, Last Wake i aktywny plan zasilania.
+- [ ] PC stacjonarny bez baterii ma otrzymać N/D / „nie dotyczy”, a nie fałszywy błąd.
 
-- [ ] Porównanie plik po pliku i ekran po ekranie z oryginalnym projektem, a nie tylko 20 sond diagnostycznych.
-- [ ] Główny panel, nawigacja, wszystkie ekrany, przyciski, handlery, profile problemów i pełny Repair Center.
-- [ ] SFC/DISM/CHKDSK, sieć/DNS/Winsock, sterowniki/aktualizacje, BIOS/UEFI/TPM/Secure Boot, licencja Windows, WinRE/BCD, logi, raporty i historia.
-- [ ] Aktualizator aplikacji, baza wiedzy, PDF, import/eksport, logowanie i raporty zgodne z oryginałem.
-- [ ] Każda naprawa systemowa: potwierdzenie, UAC, kod wyjścia, log, anulowanie i brak destrukcyjnych działań bez zgody.
-- [ ] Aktualnie w repozytorium są starszy projekt bazowy i patche do 5.6.24; pełne źródło ZIP 5.6.25 ma 166 715 344 B i nie zostało rozpakowane przez builder. Pełna zgodność 1:1 pozostaje niepotwierdzona.
+## 8. Pełna telemetria — użycie, temperatury, wentylatory i pompy
+- [x] Sensor Bridge korzysta z LibreHardwareMonitor i rekurencyjnie czyta podzespoły oraz ich subhardware.
+- [x] Tabela łączy sensory z licznikami Windows: CPU per-core, RAM/swap, I/O/IOPS dysków, interfejsy sieciowe, woluminy, baterię i dostępne temperatury.
+- [x] Rekordy z niedostępną bieżącą wartością mogą pozostać na liście jako N/D; deduplikacja ma zachowywać identyfikator sprzętowy.
+- [x] Inspektor ma wyszukiwanie/filtry, odświeżanie, liczniki i eksport CSV.
+- [ ] Po nowym buildzie sprawdzić, czy bateria, PSU i power monitor pojawiają się w wykrytych grupach.
+- [ ] Na rzeczywistym PC potwierdzić CPU package/rdzenie, GPU core/hotspot/VRAM, płytę, dyski, napięcia, moc, zegary, wentylatory i pompy.
+- [ ] Sprawdzić, czy lista nie traci sensorów o tej samej nazwie i czy aktualizacje nie migoczą ani nie kasują filtrów.
+- [ ] Sprawdzić różne źródła/sterowniki i uprawnienia; brak danych musi wskazywać źródło i powód, jeśli jest znany.
+- [ ] Nie przedstawiać ACPI Thermal Zone jako temperatury rdzenia CPU. Nie wymyślać RPM, napięcia ani poboru mocy.
+- [ ] Potwierdzić odświeżanie na żywo na ekranie głównym, w ekranie testu i w tabeli sensorów; wykresy mają dostawać próbki podczas działania.
 
-## 7. Serwis Ultimate 1.15.3 — wymagane przeniesienie funkcji
+## 9. Sieć i Speed Test
+- [x] Rzeczywisty transport HTTPS do Cloudflare z walidacją statusu, czasu, bajtów i odrzucaniem niepełnych próbek.
+- [x] Profile QUICK, STANDARD, MAX, TURBO i ULTRA; wyniki bazowe i równoległe są osobnymi polami.
+- [x] STANDARD korzysta z 2 równoległych strumieni; MAX/TURBO z 4; ULTRA z 8 i wymaga potwierdzenia większego transferu.
+- [x] Wynik główny korzysta z mediany udanych próbek; są osobne wartości peak/minimum, jitter i historia.
+- [ ] Zmierzyć na wolnym i szybkim łączu, Wi-Fi i Ethernet; porównać z niezależnym testem internetowym.
+- [ ] Pokazać próbki, progres, rzeczywiste bajty, czas, liczbę poprawnych/nieudanych transferów i powód błędu.
+- [ ] Rozdzielić HTTPS RTT od ICMP ping i wyraźnie to opisać; nie raportować strat pakietów bez faktycznego pomiaru.
+- [ ] Potwierdzić, że wybrany profil jest faktycznie przekazywany do silnika testu i że historia zapisuje cały wynik.
+- [ ] Sprawdzić endpointy blokowane przez firewall/proxy, przerwanie połączenia, timeout, HTTP error i brak internetu.
+- [ ] W profilach MAX/TURBO/ULTRA pokazywać szacowany dodatkowy transfer i wymagać zgody przed jego rozpoczęciem.
 
-- [ ] Porównanie źródła 1.15.3 z każdym ekranem i handlerem; istniejące sondy nie są dowodem zgodności 1:1.
-- [ ] Dashboard, sprzęt, dyski/SMART, laptop/bateria, Windows, bezpieczeństwo, sieć, diagnostyka gier, procesy, zlecenia i raporty.
-- [ ] Wszystkie formularze, pola, filtry, akcje, eksporty, raporty, statusy, historię i nawigację.
-- [ ] Menedżer procesów: realne dane, filtrowanie, eksport i potwierdzenie zakończenia; ochrona procesów krytycznych.
-- [ ] Zlecenia serwisowe/karta klienta: formularz, walidacja, lokalny zapis, HTML/CSV i historia.
-- [ ] W repozytorium są obecnie częściowe ekrany i 20 odczytowych sond; zgodność 1:1 z ZIP-em 1.15.3 nadal wymaga audytu źródła.
+## 10. Pozostałe urządzenia i peryferia
+- [ ] USB: osobne wykrywanie kontrolerów i urządzeń, statusy, raport oraz ograniczenie — enumeracja nie mierzy prądu portu.
+- [ ] Audio: wykrywanie urządzeń wejścia/wyjścia, test głośnika, mikrofonu i poziomów; jawna zgoda przed odtworzeniem dźwięku lub próbkowaniem mikrofonu.
+- [ ] Klawiatura/touchpad: test każdej funkcji i wizualne potwierdzenie wejść.
+- [ ] Kamera: wykrywanie, podgląd, uprawnienia i jawna zgoda przed włączeniem.
+- [ ] Sieć/Wi-Fi/LAN: adaptery, adresy, stan, prędkość łącza i oddzielny Speed Test.
+- [ ] Sprawdzić te moduły na urządzeniach fizycznych — selftest nie potwierdza działania peryferiów.
 
-## 8. Raporty, bezpieczeństwo i aktualizacje
+## 11. System Repair PRO 5.6.25 — pełna parzystość funkcji
+- [x] W zintegrowanym katalogu jest 20 odczytowych diagnostyk System Repair PRO i 14 profili problemów z analizą oraz raportem HTML.
+- [x] Istnieje centrum napraw Windows i dostępne narzędzia systemowe, w tym ścieżki SFC/DISM, CHKDSK, sieci, WinRE/BCD oraz raporty.
+- [ ] **Otwarty zakres krytyczny:** porównać pełny ZIP NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_RAM_LIVE_DASHBOARD_ULTIMATE_FULL_PROJECT.zip plik po pliku i ekran po ekranie z integracją.
+- [ ] Odtworzyć i sprawdzić wszystkie widoki, nawigację, przyciski, handlery, ustawienia, dashboard, RAM Live Dashboard, Repair Center, logi i raporty.
+- [ ] Sprawdzić funkcje sterowników/aktualizacji, BIOS/UEFI/TPM/Secure Boot, licencji, usług, aktualizacji Windows, logów, napraw rozruchu, PDF/bazy wiedzy i aktualizatora.
+- [ ] Każdą naprawę wymagającą zmian systemowych opatrzyć potwierdzeniem, UAC, kodem wyjścia, logiem, obsługą anulowania i zabezpieczeniem danych.
+- [ ] Nie uznawać 20 sond diagnostycznych za pełną kopię aplikacji. Zgodność 1:1 pozostaje niepotwierdzona.
 
-- [ ] Każdy test zapisuje własny raport z unikalnym ID, datą, czasem, surowymi metrykami, błędami, ścieżką i stanem.
-- [ ] Menedżer raportów otwiera/filtruje/eksportuje realne pliki, a nie tylko statyczną listę.
-- [ ] Aktualizator HTTPS sprawdza SHA-256, wersję i UAC; awaria aktualizacji nie uszkadza istniejącej instalacji.
-- [ ] Setup.exe i ALL-IN-ONE ZIP zawierają zgodne wersje, źródła/zasoby wymagane do pracy, Sensor Bridge i dokumentację.
-- [ ] Manifest stable aktualizuje się wyłącznie po udanym Windows buildzie; weryfikacja rozmiaru i SHA-256 po publikacji.
+## 12. Serwis Ultimate 1.15.3 — pełna parzystość funkcji
+- [x] W katalogu jest 20 odczytowych diagnostyk Serwis Ultimate.
+- [x] Są zintegrowane: lokalne zlecenia serwisowe z eksportem HTML, menedżer procesów, diagnostyka gier i menedżer raportów.
+- [ ] **Otwarty zakres krytyczny:** porównać ZIP NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip z każdym widokiem i handlerem zintegrowanym.
+- [ ] Dashboard, sprzęt, dyski/SMART, laptop/bateria, Windows, bezpieczeństwo, sieć, gry, procesy, zlecenia, raporty i wszystkie ustawienia.
+- [ ] Zachować formularze, pola, filtry, walidację, akcje, eksporty, statusy, historię i zachowanie po błędzie.
+- [ ] Menedżer procesów musi korzystać z rzeczywistych procesów, potwierdzać zakończenie i chronić procesy krytyczne.
+- [ ] Formularz zlecenia musi mieć walidację, zapis, historię i raporty; nie może być statycznym formularzem demonstracyjnym.
+- [ ] Nie uznawać 20 sond diagnostycznych za pełną kopię aplikacji. Zgodność 1:1 pozostaje niepotwierdzona.
 
-## 9. Końcowa kolejność weryfikacji
+## 13. Integracja trzech aplikacji
+- [ ] Przygotować macierz: nazwa funkcji źródłowej → plik/handler źródła → ekran w aplikacji głównej → test automatyczny → dowód działania.
+- [ ] Nie gubić funkcji obecnych wcześniej w Hardware Test PRO.
+- [ ] Unikać pustych przycisków, duplikatów, fałszywych PASS, martwych ekranów i zadań działających po zmianie widoku.
+- [ ] Wspólna nawigacja, wyszukiwarka narzędzi, grupy, statusy, historia i raporty.
+- [ ] Sprawdzić błędy, anulowanie, brak uprawnień, brak urządzenia, niepełne dane i nieobsługiwane wersje Windows.
+- [ ] Udokumentować funkcje, których nie da się przenieść 1:1 i wyjaśnić dlaczego, zamiast oznaczać je jako wykonane.
 
-1. Dokończyć wszystkie zmiany kodu i dokumentacji.
-2. Uruchomić składnię, wszystkie selftesty core/deep/update/launcher/antivirus/themes/service-center/update-flow/advanced-modules.
-3. Naprawić każdy błąd automatyczny i ponowić testy.
-4. Zbudować Sensor Bridge, EXE, Setup.exe i ALL-IN-ONE ZIP na Windows x64.
-5. Sprawdzić rozmiary, SHA-256, zawartość ZIP-a, wersje i manifest.
-6. Dopiero wtedy uznać wydanie online za poprawne.
-7. Osobno wykonać testy fizycznego sprzętu, bo CI nie może potwierdzić wszystkich czujników, peryferiów ani wyglądu 3D na komputerze użytkownika.
+## 14. Raporty, historia i bezpieczeństwo
+- [x] Indywidualne raporty JSON testów oraz lokalna historia Speed Testu.
+- [x] Lokalne zlecenia serwisowe, raporty HTML i CSV oraz baza wiedzy.
+- [ ] Każdy raport powinien mieć unikalne ID, czas, wersję aplikacji, test, surowe metryki, status, błędy i ograniczenia.
+- [ ] Menedżer raportów musi otwierać, filtrować i eksportować rzeczywiste pliki, nie tylko wpisy listy.
+- [ ] Naprawy systemowe nie mogą uruchamiać się bez potwierdzenia; operacje destrukcyjne muszą być osobno chronione.
+- [ ] Sprawdzić prywatność raportów i zgłoszeń, lokalne ścieżki, uprawnienia i zachowanie po usunięciu danych.
 
-## Zasada statusu
+## 15. Build, instalator i publikacja online
+- [x] Workflow Windows buduje Sensor Bridge, EXE, Setup.exe i ALL-IN-ONE ZIP oraz uruchamia testy automatyczne.
+- [x] Manifest stable jest publikowany dopiero po udanym buildzie i publikacji.
+- [ ] Kandydat 4.3.130: przejść kompilację Sensor Bridge po rozszerzeniu grup czujników, składnię i wszystkie selftesty.
+- [ ] Potwierdzić zgodność wersji EXE/Setup/ZIP, kompletność zasobów i sum SHA-256.
+- [ ] Potwierdzić, że linki Release i manifest wskazują ten sam instalator i sumę.
+- [ ] Sprawdzić instalację na czysto, aktualizację istniejącej wersji, uruchamianie bez okna CMD i odinstalowanie.
+- [ ] Nie nadpisywać stabilnego manifestu po nieudanym buildzie.
+- [ ] Nie publikować jako „pełna integracja 1:1”, dopóki nie zostanie wykonane porównanie źródeł obu aplikacji.
 
-„W kodzie” nie znaczy „przetestowane”; „CI zaliczone” nie znaczy „sprawdzone na fizycznym PC”; „kafelek istnieje” nie znaczy „funkcja źródłowa została przeniesiona”. Pełna integracja pozostaje otwarta do czasu wypełnienia powyższej macierzy dowodami.
+## 16. Test końcowy na rzeczywistym PC
+- [ ] Sprawdzić numer wersji w pasku tytułu po instalacji.
+- [ ] Uruchomić osobno każdy test i sprawdzić wynik, raport, STOP oraz przejście do kolejnego testu.
+- [ ] Potwierdzić wszystkie czujniki, temperatury, użycie, wentylatory i pompę AIO dostępne na komputerze.
+- [ ] Obejrzeć benchmarki 3D i sprawdzić FPS, płynność, temperatury oraz bezpieczne przerwanie.
+- [ ] Wykonać Speed Test QUICK/STANDARD i opcjonalnie MAX/TURBO/ULTRA na łączu bez limitu transferu.
+- [ ] Przejść wszystkie ekrany i funkcje System Repair PRO oraz Serwis Ultimate po porównaniu źródeł.
+- [ ] Zebrać logi i raporty z testów oraz poprawić każde wykryte odstępstwo.
+
+## Kolejność wykonania
+1. Rozszerzyć Sensor Bridge i zabezpieczyć to testem CI.
+2. Zbudować i zweryfikować kandydata online.
+3. Sprawdzić telemetrię, Speed Test i 110 scen w pełnym Windows CI.
+4. Wykonać porównanie źródeł obu aplikacji i utworzyć macierz parzystości funkcji.
+5. Przenosić brakujące funkcje partiami, każdą z testem i dowodem działania.
+6. Ponowić wszystkie selftesty po każdej większej integracji.
+7. Opublikować nową stabilną wersję dopiero po udanym buildzie.
+8. Wykonać test fizycznego komputera — CI nie potwierdzi wszystkich czujników ani jakości wizualnej GPU.
+
+**Zasada prawdy:** obecność kodu nie oznacza testu na sprzęcie; udany CI nie oznacza pełnej zgodności 1:1; kafelek nie oznacza działającej funkcji. Otwarte punkty pozostają otwarte do czasu uzyskania dowodu.
