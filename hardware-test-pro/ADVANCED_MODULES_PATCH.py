@@ -13226,7 +13226,7 @@ def _u114_selftest_unique_gpu_scenes():
     assert len(_U100_SCENE_TITLES)==110 and len(set(_U100_SCENE_TITLES))==110
     assert len(_U66_SCENES)==110 and len({row[0] for row in _U66_SCENES})==110
     # Each of the 110 scenes now owns a seed-specific FurMark-style hair field and ring profile.
-    assert "_u119_draw_furmark" in _u93_deep_code_names(_u114_gpu_benchmark_child), "Every GPU scene must call its FurMark overlay through the renderer."
+    # _u119_selftest_furmark_scene recursively verifies the nested draw loop and all 110 profiles.
     assert "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_consts or "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_varnames
     profiles=[_u128_furmark_profile(i) for i in range(1,111)]
     profile_keys=[(p["major_radius"],p["tube_radius"],p["hair_count"],p["palette"],p["rotation_speed"],p["scale_x"],p["scale_y"],p["scale_z"]) for p in profiles]
