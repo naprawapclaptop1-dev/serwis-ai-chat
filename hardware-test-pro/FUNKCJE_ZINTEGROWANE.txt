@@ -1,10 +1,10 @@
-NAPRAWA PC HARDWARE TEST PRO — FUNKCJE ZINTEGROWANE / KANDYDAT 4.3.127
+NAPRAWA PC HARDWARE TEST PRO — FUNKCJE ZINTEGROWANE / AKTUALIZOWANY KANDYDAT ONLINE
 
 - 15 grup, 110 odrębnych testów, osobne ekrany, raporty i 110 unikalnych ID scen OpenGL.
 - GPU: 31 jawnych rodzin/trybów geometrii, osobna scena FurMark-style, realny render i synchronizowany pomiar FPS.
 - Telemetria: Sensor Bridge + Windows/psutil; wszystkie wykryte sensory są zachowywane, wartości niedostępne oznaczane N/D; pełny inspektor i eksport CSV.
 - Speed Test: QUICK, STANDARD (2 równoległe strumienie), MAX/TURBO (4 strumienie); mediana bazowa oddzielona od dodatkowego transferu.
 - System Repair PRO: centrum napraw Windows, 14 profili problemów, lokalna baza wiedzy PDF/TXT/MD, raporty HTML.
-- Serwis Ultimate: 20 odczytowych sond w katalogu, zlecenia serwisowe, historia/HTML, laboratorium zasilania, menedżer procesów i diagnostyka gier.
+- Serwis Ultimate: 20 odczytowych sond w katalogu, zlecenia serwisowe, historia/HTML, laboratorium zasilania, menedżer procesów, diagnostyka gier i menedżer lokalnych raportów.
 - Bezpieczeństwo: operacje naprawcze z potwierdzeniem; procesy krytyczne chronione; brak sensorów i brak wyniku nie są oznaczane jako PASS.
 - WAŻNE: 40 sond to integracja diagnostyczna, nie potwierdzenie zgodności 1:1 z każdym ekranem/handlerem oryginalnych ZIP-ów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3. Ta zgodność nadal wymaga porównania wszystkich plików źródłowych i testów fizycznego sprzętu.
