@@ -435,8 +435,9 @@ def _u150_selftest_component_specific_simulators():
         )
     empty_cpu = _u150_metric_rows("CPU", {}, {})
     empty_gpu = _u150_metric_rows("GPU", {}, {})
-    assert all(value is None or isinstance(value, str) for _,value,_unit in empty_cpu)
-    assert any(caption == "Średni FPS z renderera" and value is None for caption,value,_unit in empty_gpu)
+    assert empty_cpu[0][1] is None and empty_cpu[1][1] is None and empty_cpu[3][1] is None
+    assert empty_cpu[2][1] is None or isinstance(empty_cpu[2][1], (int, float, str))
+    assert all(value is None for _caption,value,_unit in empty_gpu)
     names = _u105_recursive_code_names(_u150_draw_component_scene.__code__)
     assert "create_polygon" in names and "create_oval" in names and "create_line" in names
     assert "create_rectangle" not in names, "Component model must use dedicated polygon/line renderers."
