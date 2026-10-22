@@ -12579,7 +12579,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                     a=2*_u114_math.pi*idx/bars+phase*.01
                     r=scale*(.5+(idx%3)*.13)
                     box(r*_u114_math.cos(a),r*_u114_math.sin(a),.08,.06,scale*.5,.06,second,phase+idx*19)
-            else:  # motherboard traces, capacitors and cooling blocks
+            elif mode==11:  # motherboard traces, capacitors and cooling blocks
                 board_w=scale*(1.1+(count%7)*.12)
                 board_d=scale*(.75+(variant%5)*.11)
                 box(0,-.42,0,board_w,.09,board_d,(.025,.19,.12),phase*.025)
@@ -12592,6 +12592,199 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                 for item in range(3+(count%9)):
                     x=(item%4-1.5)*board_w*.22;z=(item//4-1)*board_d*.32
                     box(x,-.27,z,.12,.18,.12,third,phase+item*13)
+            elif mode==12:  # volumetric voxel towers with per-column height animation
+                cols=4+(count%5);rows=3+(variant%4)
+                for gx in range(cols):
+                    for gz in range(rows):
+                        h=.18+scale*(.18+.82*(.5+.5*_u114_math.sin(phase*.045+gx*.71+gz*.53)))
+                        x=(gx-(cols-1)/2)*scale*.28;z=(gz-(rows-1)/2)*scale*.28
+                        box(x,h/2-.68,z,scale*.22,h,scale*.22,colors[(gx*rows+gz+sig["palette"])%6],phase+gx*9+gz*5)
+            elif mode==13:  # atom / orbital laboratory
+                sphere(0,0,0,.22+scale*.12,palette,12,18)
+                orbits=2+(count%5)
+                for orbit in range(orbits):
+                    GL.glPushMatrix();GL.glRotatef(orbit*47+phase*.35,1.0+(orbit%3)*.3,.4+(orbit%4)*.2,.8)
+                    torus(scale*(.34+orbit*.19),.018+scale*.004,colors[(orbit+sig["palette"])%6],36+(variant%5)*4,6)
+                    GL.glPopMatrix()
+                    a=phase*.025+orbit*2.399963
+                    rr=scale*(.43+orbit*.18)
+                    sphere(rr*_u114_math.cos(a),rr*.35*_u114_math.sin(a*1.7),rr*_u114_math.sin(a),.06+scale*.025,colors[(orbit+2)%6],7,10)
+            elif mode==14:  # orthogonal cage frame with moving corner nodes
+                n=3+(count%5);extent=scale*1.35
+                for k in range(n+1):
+                    q=-extent+2*extent*k/n
+                    line((q,-extent,-extent),(q,extent,-extent),palette,.8)
+                    line((q,-extent,extent),(q,extent,extent),second,.8)
+                    line((-extent,q,-extent),(extent,q,-extent),third,.8)
+                    line((-extent,q,extent),(extent,q,extent),palette,.8)
+                    line((q,-extent,-extent),(q,-extent,extent),second,.8)
+                    line((q,extent,-extent),(q,extent,extent),third,.8)
+                    for y in (-extent,extent):
+                        for z in (-extent,extent):sphere(q,y,z,.025+scale*.008,colors[(k+sig["palette"])%6],5,7)
+            elif mode==15:  # high-density point cloud / particle stress
+                particles=700+count*55
+                GL.glDisable(GL.GL_LIGHTING);GL.glPointSize(1.0+(variant%4)*.35);GL.glBegin(GL.GL_POINTS)
+                for item in range(particles):
+                    a=item*.071+phase*.018;layer=(item%97)/97.0
+                    radius=scale*(.18+2.0*layer)
+                    x=radius*_u114_math.cos(a);y=scale*(2*layer-1)+.18*_u114_math.sin(a*2+phase*.02)
+                    z=radius*_u114_math.sin(a)
+                    GL.glColor3f(*colors[(item+sig["palette"])%6]);GL.glVertex3f(x,y,z);tally["vertices"]+=1
+                GL.glEnd();GL.glEnable(GL.GL_LIGHTING)
+            elif mode==16:  # spiral staircase / rotating stepped tower
+                steps=18+count*2
+                for step in range(steps):
+                    a=step*.49+phase*.02;r=scale*(.20+step*.022)
+                    x=r*_u114_math.cos(a);z=r*_u114_math.sin(a);y=-1.0+step*1.9/steps
+                    box(x,y,z,.25*scale,.075+scale*.015,.22*scale,colors[(step+sig["palette"])%6],step*18+phase)
+                torus(scale*.34,.025,third,32,6)
+            elif mode==17:  # stacked wave surfaces and independent ring planes
+                mesh_grid(elapsed,variant%3,18+(count%17))
+                for layer in range(2+(count%4)):
+                    GL.glPushMatrix();GL.glTranslatef(0,-.65+layer*.43,0)
+                    GL.glRotatef(phase*.22+layer*27,1,.4,.7)
+                    torus(scale*(.48+layer*.24),.014+scale*.004,colors[(layer+sig["palette"])%6],32+(variant%5)*4,5)
+                    GL.glPopMatrix()
+            elif mode==18:  # rotating prism array
+                prisms=6+(count%13)
+                for item in range(prisms):
+                    a=2*_u114_math.pi*item/prisms+phase*.012
+                    rr=scale*(.45+(item%4)*.24)
+                    x=rr*_u114_math.cos(a);z=rr*_u114_math.sin(a)
+                    GL.glPushMatrix();GL.glTranslatef(x,.5*_u114_math.sin(a*2+phase*.03),z)
+                    GL.glRotatef(phase*.28+item*29,1,.4,.7)
+                    crystal(0,0,0,.08+scale*.045,colors[(item+sig["palette"])%6]);GL.glPopMatrix()
+            elif mode==19:  # radiator bank and multi-fan wall
+                fans=2+(count%5);box(0,-.42,0,scale*3.4,.14,scale*1.35,(.035,.07,.10))
+                for item in range(fans):
+                    x=(item-(fans-1)/2)*scale*.62
+                    fan(x,.05,0,.20+scale*.12,phase*(1 if item%2==0 else -1)+item*21,7+(variant%7))
+                fins=12+count*2
+                for fin in range(fins):
+                    x=-scale*1.4+fin*(scale*2.8/max(1,fins-1))
+                    box(x,-.08,-.45,.018,.56,.05,second)
+            elif mode==20:  # network graph with changing paths and packet nodes
+                nodes=7+(count%12);points=[]
+                for item in range(nodes):
+                    a=2*_u114_math.pi*item/nodes+phase*.006
+                    rr=scale*(.72+.24*_u114_math.sin(item*2.3+variant))
+                    points.append((rr*_u114_math.cos(a),.7*_u114_math.sin(item*.7+phase*.015),rr*_u114_math.sin(a)))
+                hops=1+(variant%4)
+                for idx,p0 in enumerate(points):
+                    for hop in range(1,hops+1):
+                        p1=points[(idx+hop)%nodes]
+                        if idx%2==0 or hop==1:path([p0,((p0[0]+p1[0])*.5,.24*_u114_math.sin(phase*.03+idx),(p0[2]+p1[2])*.5),p1],colors[(idx+hop+sig["palette"])%6],.7+(variant%3)*.25)
+                    sphere(*p0,.045+scale*.018,colors[(idx+sig["palette"])%6],6,9)
+            elif mode==21:  # gear cluster with varied tooth counts
+                gears=3+(count%6)
+                for item in range(gears):
+                    x=(item%3-1)*scale*.92;y=(item//3-1)*scale*.70
+                    teeth=8+(variant%7)+(item%3)
+                    GL.glPushMatrix();GL.glTranslatef(x,y,0);GL.glRotatef(phase*(1 if item%2==0 else -.85)+item*19,0,0,1)
+                    torus(scale*(.20+item%2*.08),.035,colors[(item+sig["palette"])%6],teeth*3,6)
+                    for tooth in range(teeth):
+                        a=2*_u114_math.pi*tooth/teeth
+                        box(scale*.30*_u114_math.cos(a),scale*.30*_u114_math.sin(a),0,.055,.075,.09,colors[(item+2)%6])
+                    GL.glPopMatrix()
+            elif mode==22:  # fiber optic ribbons with animated luminous endpoints
+                strands=4+(count%8)
+                for strand in range(strands):
+                    pts=[]
+                    for step in range(160):
+                        u=step/159.0;x=scale*(-1.7+3.4*u)
+                        y=scale*(.65*_u114_math.sin(u*8+phase*.012+strand*.53))
+                        z=scale*((strand-(strands-1)/2)*.12+.32*_u114_math.cos(u*12-phase*.01+strand))
+                        pts.append((x,y,z))
+                    path(pts,colors[(strand+sig["palette"])%6],1.1+(variant%3)*.3)
+                    for q in (0,1,2):
+                        idx=(q*47+int(phase*.04+strand*13))%len(pts)
+                        sphere(*pts[idx],.035+scale*.012,colors[(strand+q)%6],5,7)
+            elif mode==23:  # twisted helical knot
+                for strand in range(2+(count%4)):
+                    pts=[]
+                    for step in range(220):
+                        a=step/219.0*2*_u114_math.pi*(2+(variant%5))+phase*.01+strand*2*_u114_math.pi/(2+(count%4))
+                        rr=scale*(.68+.25*_u114_math.cos(a*(1.0+strand*.08)))
+                        pts.append((rr*_u114_math.cos(a),scale*.72*_u114_math.sin(a*1.5+strand),rr*_u114_math.sin(a)))
+                    path(pts,colors[(strand+sig["palette"])%6],1.2)
+            elif mode==24:  # deep ring tunnel with parallax depth
+                rings=5+(count%12)
+                for ring in range(rings):
+                    GL.glPushMatrix();GL.glTranslatef(0,.10*_u114_math.sin(phase*.02+ring),-1.9+ring*.33)
+                    GL.glRotatef(phase*.28+ring*17,1,.35,.8)
+                    torus(scale*(.52+ring*.045),.014+scale*.003,colors[(ring+sig["palette"])%6],28+(variant%6)*4,5)
+                    GL.glPopMatrix()
+            elif mode==25:  # branching fractal tree stress
+                segments=[((0,-1.35,0),(0,-.45,0),0)]
+                for depth in range(4):
+                    next_segments=[]
+                    for a,b,level in segments:
+                        line(a,b,colors[(level+sig["palette"])%6],1.0+(3-level)*.25)
+                        if level<3:
+                            length=max(.12,(b[1]-a[1])*.72)
+                            for sign in (-1,1):
+                                endp=(b[0]+sign*length*.72,b[1]+length,b[2]+sign*length*.22)
+                                next_segments.append((b,endp,level+1))
+                        sphere(*b,.028+scale*.01,colors[(level+sig["palette"])%6],5,7)
+                    segments=next_segments
+            elif mode==26:  # vertical data streams and pulse blocks
+                cols=5+(count%8);rows=4+(variant%6)
+                for col in range(cols):
+                    x=(col-(cols-1)/2)*scale*.31
+                    for row in range(rows):
+                        phase_y=(row/rows+phase*.002*(1+(col%3)))%1.0
+                        y=-1.25+phase_y*2.5
+                        z=(col%3-1)*scale*.24
+                        box(x,y,z,.09*scale,.12*scale,.08*scale,colors[(row+col+sig["palette"])%6],phase+row*11)
+                        if row%2==0:sphere(x,y+.10,z,.025+scale*.01,third,5,7)
+            elif mode==27:  # triangulated pyramid cage
+                levels=4+(count%4);rings=[]
+                for level in range(levels):
+                    points=[];n=3+level*2;y=1.35-level*.38;rr=scale*(.14+level*.24)
+                    for item in range(n):
+                        a=2*_u114_math.pi*item/n+phase*.004
+                        points.append((rr*_u114_math.cos(a),y,rr*_u114_math.sin(a)))
+                    rings.append(points)
+                    for idx,p0 in enumerate(points):line(p0,points[(idx+1)%len(points)],colors[(level+idx+sig["palette"])%6],.9)
+                for level in range(len(rings)-1):
+                    for idx,p0 in enumerate(rings[level]):
+                        p1=rings[level+1][int(idx*len(rings[level+1])/len(rings[level]))%len(rings[level+1])]
+                        line(p0,p1,second,.7)
+                sphere(0,1.5,0,.07,palette,7,10)
+            elif mode==28:  # radial vortex bars
+                bars=28+count*2
+                for item in range(bars):
+                    a=2*_u114_math.pi*item/bars+phase*.01
+                    rr=scale*(.42+.018*(item%9))
+                    h=scale*(.16+.55*(.5+.5*_u114_math.sin(phase*.025+item*.47)))
+                    box(rr*_u114_math.cos(a),h/2-.55,rr*_u114_math.sin(a),.045*scale,h,.045*scale,colors[(item+sig["palette"])%6],-a*57.2958+phase*.12)
+            elif mode==29:  # cube swarm in independent 3D orbits
+                cubes=18+count
+                for item in range(cubes):
+                    a=item*2.399963+phase*.009
+                    rr=scale*(.45+(item%7)*.16)
+                    x=rr*_u114_math.cos(a);y=scale*.65*_u114_math.sin(a*1.7+phase*.015);z=rr*_u114_math.sin(a)
+                    side=.07+scale*.025+(item%3)*.012
+                    box(x,y,z,side,side*(1+(item%4)*.18),side,colors[(item+sig["palette"])%6],phase+item*29)
+                    if item%4==0:sphere(x,y,z,side*.65,third,5,7)
+            else:  # mode 30 — dense PCB trace stress, distinct from the standard board layout
+                board_w=scale*(1.2+(count%8)*.13);board_d=scale*(.85+(variant%6)*.10)
+                box(0,-.48,0,board_w,.11,board_d,(.018,.13,.09),phase*.03)
+                for layer in range(3+(count%5)):
+                    z=-board_d*.42+layer*board_d/max(1,(2+count%5))
+                    points=[]
+                    for step in range(17):
+                        x=-board_w*.46+step*board_w*.92/16
+                        zz=z+.10*_u114_math.sin(step*.7+layer+phase*.02)
+                        points.append((x,-.40,zz))
+                    path(points,colors[(layer+sig["palette"])%6],.9+(layer%3)*.35)
+                chips=4+(variant%8)
+                for item in range(chips):
+                    x=(item%4-1.5)*board_w*.22;z=(item//4-.5)*board_d*.43
+                    box(x,-.30,z,.16+scale*.02,.18,.14+scale*.015,colors[(item+2)%6],phase*.08+item*13)
+                for fin in range(18+count):
+                    x=-board_w*.45+fin*board_w*.90/max(1,(17+count))
+                    box(x,-.35,board_d*.46,.018,.07,.04,third)
             tally["signature_objects"] = tally.get("signature_objects",0) + (tally["objects"]-before_objects)
             tally["signature_vertices"] = tally.get("signature_vertices",0) + (tally["vertices"]-before_vertices)
 
@@ -12955,7 +13148,12 @@ _u100_selftest_unique_gpu_scenes=_u114_selftest_unique_gpu_scenes
 _U116_SCENE_STYLE_NAMES = (
     "ORBITAL RINGS","TURBINE ARRAY","CRYSTAL SPIRAL","BOX LATTICE",
     "WAVE RIBBONS","PARTICLE HELIX","WIRE CAGES","THERMAL COLUMNS",
-    "TRIANGLE BURST","SPHERE CLUSTER","MESH TUNNEL","PCB COOLING GRID"
+    "TRIANGLE BURST","SPHERE CLUSTER","MESH TUNNEL","PCB COOLING GRID",
+    "VOXEL TOWER MATRIX","ATOM ORBIT LAB","CAGE FRAME STRESS","PARTICLE CLOUD",
+    "SPIRAL STAIRCASE","LAYERED WAVE SURFACE","PRISM ROTOR ARRAY","RADIATOR FAN WALL",
+    "NETWORK GRAPH","GEAR CLUSTER","FIBER OPTIC RIBBONS","HELICAL KNOT",
+    "RING TUNNEL","FRACTAL BRANCH TREE","MATRIX DATA STREAM","TRIANGLE PYRAMID CAGE",
+    "RADIAL VORTEX BARS","CUBE SWARM","PCB TRACE STRESS"
 )
 
 def _u116_scene_signature(scene_id):
@@ -14352,6 +14550,13 @@ def _u124_measure_speed(app):
     except Exception:pass
     return result
 
+def _u125_selftest_unique_scene_families():
+    signatures=[_u116_scene_signature(i) for i in range(1,111)]
+    assert len(_U116_SCENE_STYLE_NAMES)==31 and len(set(_U116_SCENE_STYLE_NAMES))==31
+    assert {sig["style_index"] for sig in signatures}==set(range(31))
+    assert len({(sig["style_index"],sig["variant"],sig["element_count"],sig["scale"],sig["rotation_speed"],sig["palette"]) for sig in signatures})==110
+    print("GPU_SCENE_FAMILY_SELFTEST_OK: 31 geometry families, 110 unique scene signatures")
+
 def _u124_selftest_gpu_hud():
     code=_u114_gpu_benchmark_child.__code__
     pending=[code];names=set();literals=set()
@@ -14402,6 +14607,7 @@ _u66_measure_speed=_u124_measure_speed
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u125_selftest_unique_scene_families()
         _u124_selftest_gpu_hud()
         _u124_selftest_speed_quality()
         _u124_selftest_sensor_inspector()
