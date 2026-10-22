@@ -14460,6 +14460,7 @@ def _u121_show_system_repair_center(app):
         app.make_button(panel,"ZASILANIE / BATERIA — TESTY",lambda:_u121_show_power_lab(app),"card",side="left",ipady=4)
         app.make_button(panel,"PROFILE NAPRAW / DIAGNOZA",lambda:_u123_show_repair_profiles(app),"card",side="left",ipady=4)
         app.make_button(panel,"BAZA WIEDZY / LEKCJE NAPRAWY",lambda:_u122_show_repair_knowledge(app),"card",side="left",ipady=4)
+        app.make_button(panel,"DODATKOWE TESTY SERWIS ULTIMATE",lambda:_u135_show_serwis_diagnostics(app),"card",side="left",ipady=4)
     except Exception as exc:
         try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
         except Exception:pass
@@ -15616,9 +15617,171 @@ def _u134_selftest_unique_service_probes():
     assert len(scripts)==40 and len(set(scripts))==40, "No System Repair PRO / Serwis Ultimate diagnostics may reuse an identical script."
     print("UNIQUE_TESTS_AND_SERVICE_PROBES_SELFTEST_OK: 110 unique catalog titles; 40 unique service IDs/titles/scripts")
 
+
+
+# v4.3.135 — ten more individually runnable, read-only service diagnostics.
+# Each probe has its own stable key, window, JSON report and honest WARN handling.
+_U135_SERWIS_TESTS = {
+ "pnp_errors": {
+  "title":"Błędy urządzeń PnP",
+  "description":"Urządzenia z błędem lub statusem innym niż OK.",
+  "command":"$d=@(Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'OK'} | Select-Object -First 200 Status,Class,FriendlyName,InstanceId); [pscustomobject]@{count=$d.Count;devices=$d} | ConvertTo-Json -Depth 5"
+ },
+ "signed_drivers": {
+  "title":"Podpisy i wersje sterowników",
+  "description":"Inwentaryzacja podpisanych sterowników PnP, wersji, dat i producentów.",
+  "command":"$d=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object -First 300 DeviceName,DriverVersion,DriverDate,Manufacturer,IsSigned,DeviceID); [pscustomobject]@{count=$d.Count;drivers=$d} | ConvertTo-Json -Depth 5"
+ },
+ "startup_inventory": {
+  "title":"Programy uruchamiane ze startem",
+  "description":"Odczyt rejestru Run/RunOnce i folderów autostartu; bez wyłączania pozycji.",
+  "command":"$rows=@();$keys=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce');foreach($k in $keys){if(Test-Path $k){$o=Get-ItemProperty $k -ErrorAction SilentlyContinue;foreach($p in $o.PSObject.Properties){if($p.Name -notmatch '^PS'){ $rows+=@{source=$k;name=$p.Name;command=[string]$p.Value}}}}};[pscustomobject]@{count=$rows.Count;entries=$rows} | ConvertTo-Json -Depth 5"
+ },
+ "scheduled_tasks": {
+  "title":"Zadania harmonogramu",
+  "description":"Zadania włączone i ostatni kod wyniku; niczego nie uruchamia ani nie zmienia.",
+  "command":"$t=@(Get-ScheduledTask -ErrorAction SilentlyContinue | Select-Object -First 300 TaskPath,TaskName,State,@{n='LastRunTime';e={(Get-ScheduledTaskInfo -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction SilentlyContinue).LastRunTime}},@{n='LastTaskResult';e={(Get-ScheduledTaskInfo -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction SilentlyContinue).LastTaskResult}});[pscustomobject]@{count=$t.Count;tasks=$t} | ConvertTo-Json -Depth 5"
+ },
+ "windows_update_history": {
+  "title":"Historia Windows Update",
+  "description":"Ostatnie aktualizacje z historii WUA; bez instalowania aktualizacji.",
+  "command":"try{$s=New-Object -ComObject Microsoft.Update.Session;$q=$s.CreateUpdateSearcher();$n=[Math]::Min(40,$q.GetTotalHistoryCount());$h=@();if($n -gt 0){$h=@($q.QueryHistory(0,$n) | Select-Object Date,Title,ResultCode,HResult,SupportUrl)};[pscustomobject]@{count=$h.Count;history=$h} | ConvertTo-Json -Depth 5}catch{[pscustomobject]@{state='WARN';error=$_.Exception.Message} | ConvertTo-Json -Depth 4}"
+ },
+ "application_crashes": {
+  "title":"Awaria aplikacji — dziennik zdarzeń",
+  "description":"Błędy aplikacji i Windows Error Reporting z ostatnich 7 dni.",
+  "command":"$start=(Get-Date).AddDays(-7);$e=@(Get-WinEvent -FilterHashtable @{LogName='Application';Level=1,2;StartTime=$start} -MaxEvents 100 -ErrorAction SilentlyContinue | Select-Object TimeCreated,Id,ProviderName,LevelDisplayName,Message);[pscustomobject]@{period_days=7;count=$e.Count;events=$e} | ConvertTo-Json -Depth 5"
+ },
+ "storage_health": {
+  "title":"Stan nośników i woluminów",
+  "description":"Odczyt Get-PhysicalDisk, woluminów i podstawowych danych dysków.",
+  "command":"$d=@(Get-PhysicalDisk -ErrorAction SilentlyContinue | Select-Object FriendlyName,SerialNumber,MediaType,BusType,HealthStatus,OperationalStatus,Size);$v=@(Get-Volume -ErrorAction SilentlyContinue | Select-Object DriveLetter,FileSystemLabel,FileSystem,HealthStatus,OperationalStatus,Size,SizeRemaining);$w=@(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue | Select-Object Model,InterfaceType,Status,Size,Partitions);[pscustomobject]@{physical_disks=$d;volumes=$v;wmi_disks=$w} | ConvertTo-Json -Depth 5"
+ },
+ "network_adapters": {
+  "title":"Karty sieciowe, IP i DNS",
+  "description":"Odczyt stanu kart, adresów, tras i serwerów DNS; bez resetowania sieci.",
+  "command":"$a=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,InterfaceDescription,Status,LinkSpeed,MacAddress);$ip=@(Get-NetIPConfiguration -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,IPv4Address,IPv6Address,IPv4DefaultGateway,DNSServer);$r=@(Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object -First 30 InterfaceAlias,NextHop,RouteMetric);[pscustomobject]@{adapters=$a;ip=$ip;default_routes=$r} | ConvertTo-Json -Depth 5"
+ },
+ "defender_status": {
+  "title":"Status ochrony Defender",
+  "description":"Dostępny status ochrony i ostatnie wykrycia; nie zmienia ustawień ochrony.",
+  "command":"$s=$null;$th=@();try{$s=Get-MpComputerStatus -ErrorAction Stop | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled,IoavProtectionEnabled,AntivirusSignatureLastUpdated}catch{$s=@{state='N/D';error=$_.Exception.Message}};try{$th=@(Get-MpThreatDetection -ErrorAction Stop | Select-Object -First 50 InitialDetectionTime,ThreatID,ActionSuccess,ThreatStatusID,Resources)}catch{$th=@(@{state='N/D';error=$_.Exception.Message})};[pscustomobject]@{defender=$s;threats=$th;threat_count=$th.Count} | ConvertTo-Json -Depth 5"
+ },
+ "quick_inventory": {
+  "title":"Szybka inwentaryzacja systemu",
+  "description":"Windows, CPU, RAM, BIOS, urządzenia, dyski i sieć w jednym raporcie.",
+  "command":"$os=Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue | Select-Object Caption,Version,BuildNumber,LastBootUpTime,TotalVisibleMemorySize,FreePhysicalMemory;$cpu=@(Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,LoadPercentage,CurrentClockSpeed);$pc=Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue | Select-Object Manufacturer,Model,TotalPhysicalMemory;$bios=Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate;$pnp=@(Get-PnpDevice -ErrorAction SilentlyContinue | Select-Object -First 250 Status,Class,FriendlyName);$net=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,Status,LinkSpeed);[pscustomobject]@{os=$os;computer=$pc;cpu=$cpu;bios=$bios;devices=$pnp;network=$net} | ConvertTo-Json -Depth 5"
+ }
+}
+
+def _u135_run_serwis_test(app,key):
+    import os as _u135_os
+    import subprocess as _u135_subprocess
+    import threading as _u135_threading
+    import json as _u135_json
+    from datetime import datetime as _u135_datetime
+    from pathlib import Path as _u135_Path
+    item=_U135_SERWIS_TESTS.get(key)
+    if not item:
+        messagebox.showerror("Serwis Ultimate","Nieznany test.")
+        return
+    if _u135_os.name!="nt":
+        messagebox.showinfo(item["title"],"Ten odczyt wymaga Windows.")
+        return
+    folder=_u135_Path(_u135_os.environ.get("LOCALAPPDATA") or _u135_Path.home())/"NaprawaPC"/"Raporty"/"SerwisUltimate"
+    folder.mkdir(parents=True,exist_ok=True)
+    stamp=_u135_datetime.now().strftime("%Y%m%d-%H%M%S")
+    path=folder/(stamp+"-"+key+".json")
+    win=tk.Toplevel(app)
+    win.title("SERWIS ULTIMATE — "+item["title"])
+    win.geometry("1000x650")
+    win.minsize(700,450)
+    t=app.colors()
+    tk.Label(win,text=item["title"],bg=t["bg"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(12,3))
+    tk.Label(win,text=item["description"],bg=t["bg"],fg=t["muted"],font=app.fnt(9),wraplength=950,justify="left").pack(anchor="w",padx=12,pady=(0,6))
+    status=tk.StringVar(value="TEST W TOKU…")
+    tk.Label(win,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w").pack(fill="x",padx=12,pady=(0,5))
+    output=tk.Text(win,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    output.pack(fill="both",expand=True,padx=12,pady=(0,8))
+    output.insert("end","Raport zostanie zapisany do:\n"+str(path))
+    output.configure(state="disabled")
+    footer=tk.Frame(win,bg=t["bg"]);footer.pack(fill="x",padx=12,pady=(0,12))
+    def open_report():
+        try:
+            if path.exists() and hasattr(_u135_os,"startfile"):_u135_os.startfile(str(path))
+            else:messagebox.showinfo("Raport",str(path) if path.exists() else "Raport nie jest jeszcze dostępny.")
+        except Exception as exc:messagebox.showerror("Raport",str(exc))
+    app.make_button(footer,"OTWÓRZ RAPORT",open_report,"accent",side="left",ipady=4)
+    app.make_button(footer,"ZAMKNIJ",win.destroy,"card",side="right",ipady=4)
+    def worker():
+        started=_u135_datetime.now().astimezone().isoformat(timespec="seconds")
+        record={"id":key,"title":item["title"],"started_at":started,"status":"WARN","source":"Windows PowerShell/CIM","report_path":str(path)}
+        try:
+            result=_u135_subprocess.run(["powershell.exe","-NoProfile","-Command",item["command"]],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=120,creationflags=getattr(_u135_subprocess,"CREATE_NO_WINDOW",0))
+            raw=(result.stdout or "").strip()
+            record["exit_code"]=result.returncode
+            record["stderr"]=(result.stderr or "").strip()
+            record["data"]=None
+            if raw:
+                try:record["data"]=_u135_json.loads(raw)
+                except Exception:record["data"]={"raw_output":raw}
+            record["status"]="PASS" if result.returncode==0 and bool(raw) else "WARN"
+            if not raw:record["message"]="System nie zwrócił danych; nie oznaczono PASS."
+        except Exception as exc:
+            record["error"]=type(exc).__name__+": "+str(exc)
+            record["message"]="Odczyt nie powiódł się; wynik pozostaje WARN."
+        try:
+            path.write_text(_u135_json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8")
+        except Exception as exc:
+            record["report_error"]=str(exc)
+        body=_u135_json.dumps(record,ensure_ascii=False,indent=2)
+        def finish():
+            try:
+                if not win.winfo_exists():return
+                status.set(record["status"]+" — "+str(path))
+                output.configure(state="normal");output.delete("1.0","end");output.insert("end",body);output.see("end");output.configure(state="disabled")
+                try:app.append_log("SERWIS ULTIMATE "+key+": "+record["status"]+"; "+str(path))
+                except Exception:pass
+            except Exception:pass
+        try:app.after(0,finish)
+        except Exception:pass
+    _u135_threading.Thread(target=worker,daemon=True,name="NaprawaPC-Serwis-"+key).start()
+
+def _u135_show_serwis_diagnostics(app):
+    app.current_view="SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — DODATKOWE TESTY")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="10 ODRĘBNYCH TESTÓW • KAŻDY MA WŁASNE OKNO I RAPORT JSON",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(8,3))
+    tk.Label(head,text="Testy są odczytowe. Nie wyłączają ochrony, nie zatrzymują usług, nie resetują sieci i nie naprawiają dysków. Brak danych lub błąd jest oznaczany WARN/N/D.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=10,pady=(0,8))
+    for key,item in _U135_SERWIS_TESTS.items():
+        card=app.panel(app.content);card.pack(fill="x",padx=3,pady=3)
+        row=tk.Frame(card,bg=t["panel"]);row.pack(fill="x",padx=8,pady=5)
+        left=tk.Frame(row,bg=t["panel"]);left.pack(side="left",fill="x",expand=True)
+        tk.Label(left,text=item["title"],bg=t["panel"],fg=t["text"],font=app.fnt(9,"bold"),anchor="w").pack(fill="x")
+        tk.Label(left,text=item["description"],bg=t["panel"],fg=t["muted"],font=app.fnt(8),anchor="w",wraplength=1050,justify="left").pack(fill="x",pady=(2,0))
+        app.make_button(row,"URUCHOM",lambda k=key:_u135_run_serwis_test(app,k),"accent",side="right",ipady=4)
+    tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=5)
+    app.make_button(tools,"← CENTRUM NAPRAW",app.show_system_repair_center,"card",side="left",ipady=4)
+    return None
+
+def _u135_selftest_serwis_diagnostics():
+    assert len(_U135_SERWIS_TESTS)==10
+    assert len(set(_U135_SERWIS_TESTS))==10
+    assert len({v["title"] for v in _U135_SERWIS_TESTS.values()})==10
+    assert len({v["command"] for v in _U135_SERWIS_TESTS.values()})==10
+    forbidden=("Remove-Item","Format-Volume","Clear-Disk","Restart-Computer","Stop-Computer","Set-NetIPInterface","netsh winsock reset","Disable-Mp")
+    for key,item in _U135_SERWIS_TESTS.items():
+        assert item.get("title") and item.get("description") and item.get("command")
+        assert not any(word.lower() in item["command"].lower() for word in forbidden),key
+    assert callable(_u135_show_serwis_diagnostics)
+    print("SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS_SELFTEST_OK: 10 unique read-only tests, separate JSON reports")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u134_selftest_ram_live_dashboard()
+        _u135_selftest_serwis_diagnostics()
         _u134_selftest_unique_service_probes()
         _u133_selftest_service_dashboard_navigation()
         _u132_selftest_service_dashboard()
