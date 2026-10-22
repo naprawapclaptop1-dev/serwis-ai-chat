@@ -67,3 +67,10 @@ KANDYDAT 4.3.125 — 31 RODZIN GEOMETRII GPU
 - Wszystkie 110 ID scen korzystają z 31 trybów, ale mają unikalną kombinację parametrów, palety, liczby elementów i prędkości obrotu.
 - Nowy test regresyjny sprawdza, że każdy tryb 0–30 ma własną gałąź renderera, wszystkie 31 stylów są wybierane i 110 sygnatur jest unikalnych.
 - Ten opis dotyczy kandydata 4.3.125; dostępność wydania potwierdza dopiero zakończony Windows CI i opublikowany manifest.
+
+KANDYDAT 4.3.126 — MONITOR PROCESÓW SERWIS ULTIMATE
+-----------------------------------------------------
+- Dodano osobny ekran monitorowania procesów Windows z PID, CPU% liczonym z różnicy próbek czasu CPU, RAM, pamięcią prywatną, uchwytami i ścieżką procesu.
+- Lista ma wyszukiwanie, sortowanie kolumn, automatyczne odświeżanie i eksport CSV.
+- Zakończenie procesu jest osobną operacją z potwierdzeniem; PID systemowe, proces aplikacji i kluczowe procesy Windows są blokowane.
+- Funkcja jest dostępna z Laboratorium komponentów. Kandydat wymaga przejścia Windows CI i testu na prawdziwym komputerze.
