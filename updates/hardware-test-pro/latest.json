@@ -5,13 +5,13 @@
   "release_ready": true,
   "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.125.exe",
   "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.125/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.125.exe",
-  "sha256": "11ee1531fe35c21be6c8095031c5aa7791546ac2e7998f8b258852a80c736268",
-  "size": 142749526,
+  "sha256": "611cacb9a06d21e229795e86d05c2139ab4c0e12fafff1835ab64aca24e5f41e",
+  "size": 142753855,
   "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.125.exe",
   "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.125/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.125.exe",
-  "installer_sha256": "11ee1531fe35c21be6c8095031c5aa7791546ac2e7998f8b258852a80c736268",
-  "installer_size": 142749526,
+  "installer_sha256": "611cacb9a06d21e229795e86d05c2139ab4c0e12fafff1835ab64aca24e5f41e",
+  "installer_size": 142753855,
   "minimum_supported_version": "4.3.39",
   "notes": "Wydanie 4.3.125: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
-  "published_at": "2026-10-22T06:22:27.370Z"
+  "published_at": "2026-10-22T06:27:18.990Z"
 }
