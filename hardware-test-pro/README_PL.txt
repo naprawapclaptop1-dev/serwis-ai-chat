@@ -31,7 +31,7 @@ SPEED TEST
 
 SYSTEM REPAIR PRO / SERWIS ULTIMATE
 40 testów odczytowych — 20 poprzednich oraz 20 dodatkowych kontroli w tym wydaniu: wersja i status licencji Windows (bez kluczy), BIOS/UEFI/Secure Boot/TPM, PnP i sterowniki, stan Windows Update, błędy dziennika, usługi krytyczne, woluminy/nośniki, BCD/WinRE, usługi sieciowe, DISM CheckHealth, inwentarz sprzętu i oprogramowania, autostart/zadania, historia awarii, konfiguracja IP/DNS, WMI, lista hotfixów, usługi automatyczne, lokalne raporty i wykrywanie instalacji Windows na widocznych woluminach. Każdy ma swój raport. Test DISM CheckHealth wymaga potwierdzenia i nie naprawia automatycznie.
-Centrum serwisu zawiera narzędzia SFC/DISM RestoreHealth, CHKDSK, DNS/Winsock, raport baterii, offline DISM/SFC, BCD/WinRE, lokalne szyfrowane zgłoszenia, menedżer procesów z filtrem/CSV i ochroną procesów krytycznych oraz odczytową diagnostykę gier (GPU, sterownik, DirectX, usługi gier i plan zasilania).
+Centrum serwisu zawiera narzędzia SFC/DISM RestoreHealth, CHKDSK, DNS/Winsock, raport baterii, offline DISM/SFC, BCD/WinRE, lokalne szyfrowane zgłoszenia, menedżer procesów z filtrem/CSV i ochroną procesów krytycznych, odczytową diagnostykę gier (GPU, sterownik, DirectX, usługi gier i plan zasilania) oraz menedżer lokalnych raportów z filtrem, otwieraniem plików i eksportem indeksu CSV.
 
 BUDOWANIE LOKALNE
 1. Użyj pełnego checkoutu repozytorium z NaprawaPC_Hardware_Test_PRO.pyw, zasobami graficznymi, SUITE_SETUP.iss i folderem SensorBridge.
