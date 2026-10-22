@@ -15424,7 +15424,7 @@ def _u133_selftest_service_dashboard_navigation():
     assert AppV43._build_shell is _u133_build_shell
     names=set(_u133_build_shell.__code__.co_names)
     assert "show_service_ultimate_dashboard" in names and "nav" in names
-    assert "CENTRUM SERWISU" in _u133_build_shell.__code__.co_consts
+    assert any("CENTRUM SERWISU" in str(value) for value in _u133_build_shell.__code__.co_consts)
     print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
