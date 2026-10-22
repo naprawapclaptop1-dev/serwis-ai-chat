@@ -5,13 +5,13 @@
   "release_ready": true,
   "filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.126.exe",
   "download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.126/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.126.exe",
-  "sha256": "6638dde672f4df5edd63c92703e7cd43e6b2d81578be6d5ab976bbabe5adb412",
-  "size": 142762109,
+  "sha256": "6a8b61ac5885f942bbb54e6a55a80c1cd60b33f6c9cf3b1fb4f8da8a1053e59a",
+  "size": 142764662,
   "installer_filename": "NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.126.exe",
   "installer_download_url": "https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.126/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.126.exe",
-  "installer_sha256": "6638dde672f4df5edd63c92703e7cd43e6b2d81578be6d5ab976bbabe5adb412",
-  "installer_size": 142762109,
+  "installer_sha256": "6a8b61ac5885f942bbb54e6a55a80c1cd60b33f6c9cf3b1fb4f8da8a1053e59a",
+  "installer_size": 142764662,
   "minimum_supported_version": "4.3.39",
-  "notes": "Wydanie 4.3.126: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
-  "published_at": "2026-10-22T06:32:22.434Z"
+  "notes": "Wydanie 4.3.126: 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk System Repair PRO / Serwis Ultimate, pełniejsza tabela sensorów z N/D, Speed Test STANDARD z 2 równoległymi strumieniami oraz MAX/TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, menedżer procesów, diagnostyka gier, menedżer raportów, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+  "published_at": "2026-10-22T06:37:10.574Z"
 }
