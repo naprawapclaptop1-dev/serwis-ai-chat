@@ -9,7 +9,7 @@ _U148_ORIGINAL_RAM_TEST = AppV43._ram_test
 
 
 def _u148_is_ram_view(app):
-    value = str(getattr(app, "current_view", "") or "").strip().upper().replace("Ę", "E")
+    value = str(getattr(app, "current_view", "") or "").strip().upper().replace("Ę", "E").replace("Ć", "C")
     return (
         value in {"RAM", "MEMORY", "PAMIEC RAM", "MEMORY RAM"}
         or value.startswith(("RAM_", "MEMORY_", "PAMIEC RAM"))
