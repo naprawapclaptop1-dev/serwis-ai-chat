@@ -55,3 +55,9 @@ Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To 
 - Archiwum System Repair PRO przekracza limit materializacji 100 MiB w tym środowisku, więc jego zawartości nie można w tej sesji w pełni rozpakować i porównać plik po pliku. Nie będę deklarować zgodności 1:1 na podstawie samej nazwy ZIP.
 - W repozytorium pozostają zintegrowane istniejące procedury diagnostyczne, centrum napraw, profile problemów, baza wiedzy, zlecenia serwisowe i laboratorium zasilania. To nadal nie dowodzi pełnej parytetu każdego ekranu/handlera obu aplikacji źródłowych.
 - Wydanie online powinno być publikowane dopiero po przejściu testów CI. Osobny test fizycznego sprzętu pozostaje konieczny dla rzeczywistych temperatur, wentylatorów, mocy i renderowania GPU.
+
+## Kandydat 4.3.125 — geometria scen GPU
+
+- Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
+- Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
+- Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
