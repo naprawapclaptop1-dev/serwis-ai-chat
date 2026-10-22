@@ -187,6 +187,7 @@ def _u145_cpu_benchmark(app,kind,settings):
     if kind=="cpu_load60":requested=60
     elif kind=="cpu_load300":requested=300
     seconds=max(5,min(300,requested))
+    algorithm_name = "SHA-256"
     logical=max(1,int(_u145_os.cpu_count() or 1))
     workers=1 if kind=="cpu_single" else min(64,logical)
     payload=(b"NAPRAWA-PC-HARDWARE-TEST-PRO-CPU-STRESS-SHA256-"*65536)[:2*1024*1024]
@@ -229,7 +230,8 @@ def _u145_cpu_benchmark(app,kind,settings):
         core_avg.append(round(sum(vals)/len(vals),1) if vals else None)
     result={
         "state":"good" if operations>0 and not stopped else "warn","test_id":str(kind),
-        "benchmark":"Rzeczywisty test obciążenia CPU przez SHA-256 na buforze 2 MiB; CPU/rdzenie i RAM odczytywane na żywo. Temperatura tylko z dostępnego sensora.",
+        "algorithm":algorithm_name,
+        "benchmark":f"Rzeczywisty test obciążenia CPU przez {algorithm_name} na buforze 2 MiB; CPU/rdzenie i RAM odczytywane na żywo. Temperatura tylko z dostępnego sensora.",
         "mode":"single-thread" if workers==1 else ("sustained-all-workers" if kind in ("cpu_load60","cpu_load300") else "multi-thread"),
         "workers":workers,"logical_processors":logical,"duration_seconds":round(elapsed,2),
         "operations":operations,"operations_per_second":round(operations/elapsed,2),
