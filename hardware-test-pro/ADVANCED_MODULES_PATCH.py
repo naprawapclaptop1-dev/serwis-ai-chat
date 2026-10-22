@@ -15322,6 +15322,7 @@ def _u132_service_dashboard_routes(app):
     # the 40 source-app probes as diagnostics, not a claim of complete 1:1 source parity.
     return [
         ("TESTY SPRZĘTOWE", "110 niezależnych testów, osobne ekrany i raporty.", lambda:_u93_show_lab(app)),
+        ("RAM LIVE DASHBOARD", "Na żywo: RAM, commit, swap, CPU na rdzeń i procesy o największym użyciu pamięci.", lambda:_u134_show_ram_live_dashboard(app)),
         ("SYSTEM REPAIR PRO — TESTY", "Katalog 20 odczytowych diagnostyk System Repair PRO.", lambda:_u93_show_catalog(app,"SYSTEM_REPAIR_PRO")),
         ("SERWIS ULTIMATE — TESTY", "Katalog 20 odczytowych diagnostyk Serwis Ultimate.", lambda:_u93_show_catalog(app,"SERWIS_ULTIMATE")),
         ("CENTRUM NAPRAW WINDOWS", "SFC, DISM, CHKDSK, punkt przywracania i status WinRE; operacje wymagają potwierdzenia.", lambda:app.show_system_repair_center()),
@@ -15387,7 +15388,7 @@ AppV43.show_system_repair_center=_u132_show_system_repair_center
 def _u132_selftest_service_dashboard():
     routes=_u132_service_dashboard_routes(object())
     names=[row[0] for row in routes]
-    assert len(routes)==18 and len(set(names))==18
+    assert len(routes)==19 and len(set(names))==19
     assert all(callable(row[2]) for row in routes)
     assert {"SYSTEM_REPAIR_PRO","SERWIS_ULTIMATE"}.issubset(_U93_TEST_CATALOG)
     assert len(_U93_TEST_CATALOG["SYSTEM_REPAIR_PRO"])==20
@@ -15427,6 +15428,133 @@ def _u133_selftest_service_dashboard_navigation():
     assert any("CENTRUM SERWISU" in str(value) for value in _u133_build_shell.__code__.co_consts)
     print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
 
+def _u134_show_ram_live_dashboard(app):
+    import time as _u134_time
+    from datetime import datetime as _u134_datetime
+    from tkinter import ttk as _u134_ttk
+    try:
+        import psutil as _u134_psutil
+    except Exception as exc:
+        app.current_view="RAM_LIVE_DASHBOARD";app.clear();t=app.colors()
+        app.header_title.config(text="SYSTEM REPAIR PRO — RAM LIVE DASHBOARD")
+        panel=app.panel(app.content);panel.pack(fill="x",padx=8,pady=8)
+        tk.Label(panel,text="Odczyt pamięci niedostępny — N/D",bg=t["panel"],fg=t["warn"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(10,4))
+        tk.Label(panel,text=f"Nie udało się załadować psutil: {type(exc).__name__}: {exc}",bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1000,justify="left").pack(anchor="w",padx=12,pady=(0,10))
+        app.make_button(panel,"← PULPIT",app.show_dashboard,"card",side="left")
+        return None
+
+    app.current_view="RAM_LIVE_DASHBOARD";app.clear();t=app.colors()
+    app.header_title.config(text="SYSTEM REPAIR PRO — RAM LIVE DASHBOARD")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="RAM LIVE • COMMIT • SWAP • CPU NA RDZEŃ • PROCESY",bg=t["panel"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(8,2))
+    tk.Label(head,text="Tylko odczyt. Wykres pokazuje próbki od momentu otwarcia ekranu; procesy są sortowane według bieżącego użycia RAM. Dane nie są wysyłane ani zapisywane do pliku.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=12,pady=(0,8))
+    status_var=tk.StringVar(value="Pobieranie pierwszej próbki…")
+    tk.Label(app.content,textvariable=status_var,bg=t["bg"],fg=t["accent"],anchor="w",justify="left",wraplength=1400).pack(fill="x",padx=8,pady=(0,5))
+    summary=tk.Frame(app.content,bg=t["bg"]);summary.pack(fill="x",padx=2,pady=2)
+    fields=[
+        ("RAM UŻYCIE","ram_used"),("RAM DOSTĘPNA","ram_available"),
+        ("COMMIT / SWAP","swap"),("CPU ŁĄCZNIE","cpu")
+    ]
+    values={}
+    for title,key in fields:
+        card=tk.Frame(summary,bg=t["card"],highlightbackground=t["panel"],highlightthickness=1)
+        card.pack(side="left",fill="both",expand=True,padx=3,pady=3)
+        tk.Label(card,text=title,bg=t["card"],fg=t["muted"],font=app.fnt(8,"bold")).pack(anchor="w",padx=9,pady=(6,2))
+        values[key]=tk.Label(card,text="N/D",bg=t["card"],fg=t["accent2"],font=app.fnt(14,"bold"))
+        values[key].pack(anchor="w",padx=9,pady=(0,7))
+    chart_panel=app.panel(app.content);chart_panel.pack(fill="x",padx=3,pady=3)
+    chart=tk.Canvas(chart_panel,height=165,bg=t["panel"],highlightthickness=0)
+    chart.pack(fill="x",expand=True,padx=5,pady=5)
+    process_panel=app.panel(app.content);process_panel.pack(fill="both",expand=True,padx=3,pady=3)
+    tk.Label(process_panel,text="PROCESY O NAJWIĘKSZYM UŻYCIU PAMIĘCI",bg=t["panel"],fg=t["accent"],font=app.fnt(9,"bold")).pack(anchor="w",padx=9,pady=(6,3))
+    columns=("pid","name","rss","private","cpu")
+    tree=_u134_ttk.Treeview(process_panel,columns=columns,show="headings",height=8)
+    for key,label,width,anchor in (
+        ("pid","PID",75,"e"),("name","PROCES",340,"w"),("rss","RAM MB",110,"e"),
+        ("private","PRIVATE MB",120,"e"),("cpu","CPU %",90,"e")):
+        tree.heading(key,text=label);tree.column(key,width=width,anchor=anchor)
+    tree.pack(fill="both",expand=True,padx=7,pady=(0,7))
+    actions=tk.Frame(app.content,bg=t["bg"]);actions.pack(fill="x",padx=4,pady=(2,0))
+    app.make_button(actions,"TESTY RAM",lambda:app.show_module("RAM"),"accent",side="left",ipady=4)
+    app.make_button(actions,"INSPEKTOR CZUJNIKÓW",lambda:_u107_open_sensor_inspector(app),"card",side="left",ipady=4)
+    app.make_button(actions,"← PULPIT",app.show_dashboard,"card",side="right",ipady=4)
+    history=getattr(app,"_u134_ram_live_history",[])
+    app._u134_ram_live_history=history
+
+    def draw_chart():
+        chart.delete("all")
+        width=max(400,chart.winfo_width());height=max(140,chart.winfo_height())
+        left,right,top,bottom=42,width-16,18,height-28
+        chart.create_text(left,5,text="RAM I SWAP — HISTORIA LIVE (%)",anchor="nw",fill=t["muted"],font=app.fnt(8,"bold"))
+        chart.create_line(left,top,left,bottom,fill=t["muted"])
+        chart.create_line(left,bottom,right,bottom,fill=t["muted"])
+        for pct in (0,25,50,75,100):
+            y=bottom-(bottom-top)*pct/100
+            chart.create_line(left,y,right,y,fill=t["panel"],dash=(2,4))
+            chart.create_text(left-6,y,text=str(pct),anchor="e",fill=t["muted"],font=app.fnt(7))
+        rows=history[-90:]
+        if len(rows)>=2:
+            for key,color in (("ram",t["accent"]),("swap",t["warn"])):
+                points=[]
+                for idx,row in enumerate(rows):
+                    x=left+(right-left)*idx/max(1,len(rows)-1)
+                    y=bottom-(bottom-top)*max(0,min(100,float(row.get(key,0))))/100
+                    points.extend((x,y))
+                if len(points)>=4:chart.create_line(*points,fill=color,width=2,smooth=False)
+        chart.create_text(right-145,5,text="RAM",anchor="nw",fill=t["accent"],font=app.fnt(8,"bold"))
+        chart.create_text(right-95,5,text="SWAP",anchor="nw",fill=t["warn"],font=app.fnt(8,"bold"))
+
+    def refresh():
+        if getattr(app,"current_view","")!="RAM_LIVE_DASHBOARD":
+            return
+        try:
+            mem=_u134_psutil.virtual_memory()
+            swap=_u134_psutil.swap_memory()
+            cpu_per=_u134_psutil.cpu_percent(interval=None,percpu=True)
+            cpu_total=sum(cpu_per)/len(cpu_per) if cpu_per else float(_u134_psutil.cpu_percent(interval=None))
+            history.append({"time":_u134_time.time(),"ram":float(mem.percent),"swap":float(swap.percent),"cpu":float(cpu_total),"per_core":list(cpu_per)})
+            del history[:-90]
+            values["ram_used"].config(text=f"{mem.percent:.1f}% • {mem.used/1_073_741_824:.2f}/{mem.total/1_073_741_824:.2f} GB")
+            values["ram_available"].config(text=f"{mem.available/1_073_741_824:.2f} GB")
+            values["swap"].config(text=f"{swap.percent:.1f}% • {swap.used/1_073_741_824:.2f}/{swap.total/1_073_741_824:.2f} GB")
+            values["cpu"].config(text=f"{cpu_total:.1f}% • {len(cpu_per)} rdzeni/logicznych")
+            for item in tree.get_children():tree.delete(item)
+            processes=[]
+            for proc in _u134_psutil.process_iter(["pid","name","memory_info"]):
+                try:
+                    info=proc.info;memory=info.get("memory_info")
+                    if memory is None:continue
+                    try:cpu=float(proc.cpu_percent(interval=None))
+                    except Exception:cpu=None
+                    processes.append((int(info.get("pid") or 0),str(info.get("name") or "N/D"),int(memory.rss),int(getattr(memory,"private",memory.rss)),cpu))
+                except (_u134_psutil.NoSuchProcess,_u134_psutil.AccessDenied,_u134_psutil.ZombieProcess):
+                    continue
+                except Exception:
+                    continue
+            processes.sort(key=lambda row:row[2],reverse=True)
+            for pid,name,rss,private,cpu in processes[:15]:
+                tree.insert("","end",values=(pid,name,f"{rss/1_048_576:.1f}",f"{private/1_048_576:.1f}","N/D" if cpu is None else f"{cpu:.1f}"))
+            per_core=" • ".join(f"Rdzeń {i+1}: {v:.0f}%" for i,v in enumerate(cpu_per[:32]))
+            status_var.set(f"LIVE • {_u134_datetime.now().strftime('%H:%M:%S')} • RAM {mem.percent:.1f}% • swap {swap.percent:.1f}% • CPU na rdzeń: {per_core or 'N/D'}")
+            draw_chart()
+        except Exception as exc:
+            status_var.set(f"N/D — nie udało się odczytać telemetrii: {type(exc).__name__}: {exc}")
+        try:app._u134_ram_live_after=app.after(1000,refresh)
+        except Exception:pass
+    chart.bind("<Configure>",lambda _event:draw_chart())
+    refresh()
+    return None
+
+AppV43.show_ram_live_dashboard=_u134_show_ram_live_dashboard
+
+def _u134_selftest_ram_live_dashboard():
+    assert callable(_u134_show_ram_live_dashboard)
+    assert AppV43.show_ram_live_dashboard is _u134_show_ram_live_dashboard
+    names=set(_u134_show_ram_live_dashboard.__code__.co_names)
+    assert {"virtual_memory","swap_memory","cpu_percent","process_iter","after","Treeview"}.issubset(names)
+    assert "RAM LIVE DASHBOARD" in _u134_show_ram_live_dashboard.__code__.co_consts
+    print("RAM_LIVE_DASHBOARD_SELFTEST_OK: live RAM/swap/CPU-per-core, process table and bounded 90-sample history")
+
 def _u134_selftest_unique_service_probes():
     all_entries=[entry for entries in _U93_TEST_CATALOG.values() for entry in entries]
     all_titles=[entry[1] for entry in all_entries]
@@ -15444,6 +15572,7 @@ def _u134_selftest_unique_service_probes():
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u134_selftest_ram_live_dashboard()
         _u134_selftest_unique_service_probes()
         _u133_selftest_service_dashboard_navigation()
         _u132_selftest_service_dashboard()
