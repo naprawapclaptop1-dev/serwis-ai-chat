@@ -5594,6 +5594,7 @@ def _u93_show_catalog(app,module):
     if module=="GPU":
         app.make_button(row,"TESTY VRAM",lambda:_u93_show_catalog(app,"VRAM"),"card",side="left",ipady=4)
         app.make_button(row,"DORADCA GIER",lambda:_u68_show_games_advisor(app),"card",side="left",ipady=4)
+        app.make_button(row,"DIAGNOSTYKA GIER",lambda:_u126_show_game_diagnostics(app),"card",side="left",ipady=4)
     app.make_button(row,"CENTRUM SERWISU / SYSTEM REPAIR PRO",lambda: (getattr(app,"show_service_center",None) or app.show_repairs)(),"card",side="left",ipady=4)
     app.make_button(row,"← LABORATORIUM",lambda:_u93_show_lab(app),"card",side="left",ipady=4)
 
@@ -13744,6 +13745,7 @@ def _u126_selftest_report_manager():
     assert _U126_REPORT_EXTENSIONS.issuperset({".json",".csv",".html",".txt",".log",".pdf"})
     assert callable(_u126_report_root) and callable(_u126_scan_report_files) and callable(_u126_show_report_manager)
     assert "remove" not in _u126_show_report_manager.__code__.co_names
+    assert AppV43.show_report_manager is _u126_show_report_manager
     print("SERWIS_ULTIMATE_REPORT_MANAGER_SELFTEST_OK: local report index, filtering, open and CSV export without delete actions")
 
 _U126_GAME_DIAGNOSTIC_PS = r"""
@@ -13832,6 +13834,7 @@ def _u126_selftest_process_manager():
     assert _u126_is_protected_process("NAPRAWA-PC-HARDWARE-TEST-PRO.exe")
     assert not _u126_is_protected_process("notepad.exe")
     assert callable(_u126_collect_process_rows) and callable(_u126_show_process_manager)
+    assert AppV43.show_process_manager is _u126_show_process_manager
     assert "table_frame" in _u126_show_process_manager.__code__.co_varnames
     print("SERWIS_ULTIMATE_PROCESS_MANAGER_SELFTEST_OK: process inventory, protected-process guard, contained table and CSV export UI")
 
@@ -13841,6 +13844,7 @@ def _u126_selftest_game_diagnostics():
     assert "Get-Service" in _U126_GAME_DIAGNOSTIC_PS and "powercfg /getactivescheme" in _U126_GAME_DIAGNOSTIC_PS
     assert all(token not in _U126_GAME_DIAGNOSTIC_PS for token in ("Remove-Item","Set-ItemProperty","Format-Volume","Clear-Disk"))
     assert callable(_u126_collect_game_diagnostics) and callable(_u126_show_game_diagnostics)
+    assert AppV43.show_game_diagnostics is _u126_show_game_diagnostics
     print("SERWIS_ULTIMATE_GAME_DIAGNOSTICS_SELFTEST_OK: read-only GPU/DirectX/services/power checks")
 
 # v4.4.0 — real Windows repair/recovery actions, with explicit consent and logs.
@@ -15066,6 +15070,10 @@ AppV43.show_speed_test=_u124_show_speed_test
 # intact because their self-tests inspect the real request/byte-validation path.
 # Preserve the compatibility name expected by the existing adaptive-engine dispatcher.
 _u66_measure_speed=_u124_measure_speed
+
+AppV43.show_process_manager=_u126_show_process_manager
+AppV43.show_game_diagnostics=_u126_show_game_diagnostics
+AppV43.show_report_manager=_u126_show_report_manager
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
