@@ -1,19 +1,10 @@
-NAPRAWA PC HARDWARE TEST PRO 4.3.42 — JEDNA APLIKACJA
+NAPRAWA PC HARDWARE TEST PRO — FUNKCJE ZINTEGROWANE / KANDYDAT 4.3.127
 
-CPU: etapowe obciążenie i wykres próbek zegara.
-RAM: 26 pełnych wzorców w przydzielonym buforze, zapis/weryfikacja każdego bajtu, błąd z offsetem.
-GPU: benchmark OpenGL/FPS, wykrywanie kart, telemetria zegarów/VRAM gdy dostępna.
-VRAM: osobny test tekstur OpenGL 32/64/128/256 MB, 6 wzorców, odczyt zwrotny i porównanie każdego bajtu.
-DYSKI: odczyt/zapis pliku testowego, SMART kiedy udostępniony.
-MATRYCA: 20 wzorców/kolorów/gradientów/siatki/ruch i dane EDID.
-KLAWIATURA, MYSZ, KAMERA, MIKROFON, GŁOŚNIKI: testy wejść, podglądu i próbki, z wymaganym potwierdzeniem użytkownika tam, gdzie nie da się automatyzować oceny.
-BEZPIECZEŃSTWO, USB, SIEĆ, raporty i naprawa Windows w tym samym oknie.
-Aktualizacja: stały publiczny kanał HTTPS; klient nie podaje linku. Publikacja wydania wymaga
-zbudowania Setup.exe na Windows i uruchomienia PUBLISH_GLOBAL_UPDATE.ps1 przez właściciela.
-
-NOWE LABORATORIUM PODZESPOŁÓW:
-- 13 niezależnych modułów; każdy ma osobny SKAN + LIVE 3D, TEST/BENCHMARK lub TEST FUNKCJONALNY oraz SAMO SYMULATOR 3D.
-- GPU: 46 scen OpenGL z rzeczywistym pomiarem FPS.
-- Profile: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s.
-- Laboratorium dostępne z Centrum Testów i ekranów komponentów.
-- Checklista: CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md
+- 15 grup, 110 odrębnych testów, osobne ekrany, raporty i 110 unikalnych ID scen OpenGL.
+- GPU: 31 jawnych rodzin/trybów geometrii, osobna scena FurMark-style, realny render i synchronizowany pomiar FPS.
+- Telemetria: Sensor Bridge + Windows/psutil; wszystkie wykryte sensory są zachowywane, wartości niedostępne oznaczane N/D; pełny inspektor i eksport CSV.
+- Speed Test: QUICK, STANDARD (2 równoległe strumienie), MAX/TURBO (4 strumienie); mediana bazowa oddzielona od dodatkowego transferu.
+- System Repair PRO: centrum napraw Windows, 14 profili problemów, lokalna baza wiedzy PDF/TXT/MD, raporty HTML.
+- Serwis Ultimate: 20 odczytowych sond w katalogu, zlecenia serwisowe, historia/HTML, laboratorium zasilania, menedżer procesów i diagnostyka gier.
+- Bezpieczeństwo: operacje naprawcze z potwierdzeniem; procesy krytyczne chronione; brak sensorów i brak wyniku nie są oznaczane jako PASS.
+- WAŻNE: 40 sond to integracja diagnostyczna, nie potwierdzenie zgodności 1:1 z każdym ekranem/handlerem oryginalnych ZIP-ów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3. Ta zgodność nadal wymaga porównania wszystkich plików źródłowych i testów fizycznego sprzętu.
