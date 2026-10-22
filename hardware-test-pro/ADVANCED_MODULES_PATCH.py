@@ -14557,7 +14557,7 @@ def _u125_selftest_unique_scene_families():
     assert {sig["style_index"] for sig in signatures}==set(range(31))
     assert len({(sig["style_index"],sig["variant"],sig["element_count"],sig["scale"],sig["rotation_speed"],sig["palette"]) for sig in signatures})==110
     source=_u125_inspect.getsource(_u114_gpu_benchmark_child)
-    assert all(_u125_re.search(r"(?:if|elif)\\s+mode\\s*==\\s*"+str(mode)+r"\\b",source) for mode in range(31)), "Every one of the 31 geometry modes must have its own renderer branch"
+    assert all(_u125_re.search(r"(?:if|elif)\s+mode\s*==\s*"+str(mode)+r"\b",source) for mode in range(31)), "Every one of the 31 geometry modes must have its own renderer branch"
     print("GPU_SCENE_FAMILY_SELFTEST_OK: 31 explicit geometry modes, all 31 styles selected, 110 unique scene signatures")
 
 def _u124_selftest_gpu_hud():
