@@ -1,7 +1,7 @@
 # Audyt integracji — NAPRAWA PC HARDWARE TEST PRO
 
 Data audytu: 2026-10-22  
-Baza online sprawdzona: release 4.3.120 i źródło `hardware-test-pro/ADVANCED_MODULES_PATCH.py`.
+Baza online sprawdzona: aktualny manifest stable i źródło `hardware-test-pro/ADVANCED_MODULES_PATCH.py`; numer wydania jest pobierany dynamicznie z manifestu.
 
 ## Co już znajduje się w źródle Hardware Test PRO
 
