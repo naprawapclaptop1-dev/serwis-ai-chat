@@ -12767,7 +12767,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                     side=.07+scale*.025+(item%3)*.012
                     box(x,y,z,side,side*(1+(item%4)*.18),side,colors[(item+sig["palette"])%6],phase+item*29)
                     if item%4==0:sphere(x,y,z,side*.65,third,5,7)
-            else:  # mode 30 — dense PCB trace stress, distinct from the standard board layout
+            elif mode==30:  # dense PCB trace stress, distinct from the standard board layout
                 board_w=scale*(1.2+(count%8)*.13);board_d=scale*(.85+(variant%6)*.10)
                 box(0,-.48,0,board_w,.11,board_d,(.018,.13,.09),phase*.03)
                 for layer in range(3+(count%5)):
@@ -14551,11 +14551,14 @@ def _u124_measure_speed(app):
     return result
 
 def _u125_selftest_unique_scene_families():
+    import inspect as _u125_inspect, re as _u125_re
     signatures=[_u116_scene_signature(i) for i in range(1,111)]
     assert len(_U116_SCENE_STYLE_NAMES)==31 and len(set(_U116_SCENE_STYLE_NAMES))==31
     assert {sig["style_index"] for sig in signatures}==set(range(31))
     assert len({(sig["style_index"],sig["variant"],sig["element_count"],sig["scale"],sig["rotation_speed"],sig["palette"]) for sig in signatures})==110
-    print("GPU_SCENE_FAMILY_SELFTEST_OK: 31 geometry families, 110 unique scene signatures")
+    source=_u125_inspect.getsource(_u114_gpu_benchmark_child)
+    assert all(_u125_re.search(r"(?:if|elif)\\s+mode\\s*==\\s*"+str(mode)+r"\\b",source) for mode in range(31)), "Every one of the 31 geometry modes must have its own renderer branch"
+    print("GPU_SCENE_FAMILY_SELFTEST_OK: 31 explicit geometry modes, all 31 styles selected, 110 unique scene signatures")
 
 def _u124_selftest_gpu_hud():
     code=_u114_gpu_benchmark_child.__code__
