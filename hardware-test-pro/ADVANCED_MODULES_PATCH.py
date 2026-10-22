@@ -13040,7 +13040,9 @@ def _u126_speed_parallel_config(profile):
     configs={
         "STANDARD":{"workers":2,"download_sizes":(6_000_000,6_000_000),"upload_sizes":(2_000_000,2_000_000)},
         "MAX":{"workers":4,"download_sizes":(12_000_000,12_000_000,12_000_000,12_000_000),"upload_sizes":(4_000_000,4_000_000,4_000_000,4_000_000)},
-        "TURBO":{"workers":4,"download_sizes":(24_000_000,24_000_000,24_000_000,24_000_000),"upload_sizes":(8_000_000,8_000_000,8_000_000,8_000_000)}
+        "TURBO":{"workers":4,"download_sizes":(24_000_000,24_000_000,24_000_000,24_000_000),"upload_sizes":(8_000_000,8_000_000,8_000_000,8_000_000)},
+        # Opt-in high-bandwidth stress: up to 192 MB download + 48 MB upload, plus the baseline samples.
+        "ULTRA":{"workers":8,"download_sizes":(24_000_000,24_000_000,24_000_000,24_000_000,24_000_000,24_000_000,24_000_000,24_000_000),"upload_sizes":(6_000_000,6_000_000,6_000_000,6_000_000,6_000_000,6_000_000,6_000_000,6_000_000)}
     }
     return configs.get(profile)
 
@@ -13119,11 +13121,18 @@ def _u114_measure_speed(app):
 
 def _u114_start_speed_test(app):
     profile=str(getattr(app,"_u108_speed_profile","STANDARD") or "STANDARD").upper()
-    if profile=="TURBO":
-        if not messagebox.askyesno("Speed Test TURBO — 4 strumienie",
-            "Do standardowego pomiaru zostanie dodane do 128 MB równoległego transferu HTTPS (96 MB download + 32 MB upload). "
-            "Wynik główny pozostanie medianą bazowych próbek, a transfer równoległy będzie raportowany osobno. Kontynuować?"):
-            _u66_set_speed_status(app,"SPEED TEST TURBO anulowany — transfer nie został rozpoczęty.")
+    if profile in ("TURBO","ULTRA"):
+        if profile=="ULTRA":
+            title="Speed Test ULTRA — 8 strumieni"
+            warning=("Pomiar wykona do 240 MB dodatkowego transferu HTTPS: 192 MB download + 48 MB upload, "
+                "oprócz próbek bazowych. Może zużyć zauważalną ilość danych w taryfie limitowanej. "
+                "Wynik główny pozostaje medianą próbek bazowych. Kontynuować?")
+        else:
+            title="Speed Test TURBO — 4 strumienie"
+            warning=("Do standardowego pomiaru zostanie dodane do 128 MB równoległego transferu HTTPS (96 MB download + 32 MB upload). "
+                "Wynik główny pozostanie medianą bazowych próbek, a transfer równoległy będzie raportowany osobno. Kontynuować?")
+        if not messagebox.askyesno(title,warning):
+            _u66_set_speed_status(app,f"SPEED TEST {profile} anulowany — transfer nie został rozpoczęty.")
             return
     return _U114_ORIGINAL_START_SPEED(app)
 
@@ -13135,7 +13144,8 @@ def _u114_show_speed_test(app):
           "SZYBKI — mały transfer":"QUICK",
           "STANDARD — adaptacyjny":"STANDARD",
           "MAX — długi pomiar":"MAX",
-          "TURBO — 4 strumienie równoległe":"TURBO"
+          "TURBO — 4 strumienie równoległe":"TURBO",
+          "ULTRA — 8 strumieni / 240 MB":"ULTRA"
         }
         def visit(widget):
             yield widget
@@ -13146,7 +13156,7 @@ def _u114_show_speed_test(app):
             if not isinstance(widget,ttk.Combobox):continue
             try:
                 if var is None or widget.cget("textvariable")!=str(var):continue
-                widget.configure(values=tuple(options.keys()),width=35)
+                widget.configure(values=tuple(options.keys()),width=42)
                 widget.bind("<<ComboboxSelected>>",
                     lambda event,w=widget,v=var:_u114_set_speed_profile(app,w,v,options))
                 break
@@ -13260,7 +13270,11 @@ def _u114_selftest_turbo_math():
     assert callable(_u114_parallel_speed_phase) and callable(_u114_measure_speed)
     assert _u126_speed_parallel_config("STANDARD")=={"workers":2,"download_sizes":(6_000_000,6_000_000),"upload_sizes":(2_000_000,2_000_000)}
     assert _u126_speed_parallel_config("MAX")["workers"]==4 and _u126_speed_parallel_config("TURBO")["workers"]==4
-    print("SPEED_TEST_PARALLEL_PROFILES_SELFTEST_OK: standard 2 streams, max/turbo 4 streams, real byte validation")
+    ultra=_u126_speed_parallel_config("ULTRA")
+    assert ultra["workers"]==8 and len(ultra["download_sizes"])==8 and len(ultra["upload_sizes"])==8
+    assert sum(ultra["download_sizes"])==192_000_000 and sum(ultra["upload_sizes"])==48_000_000
+    assert any(isinstance(c,tuple) and "ULTRA — 8 strumieni / 240 MB" in c for c in _u114_show_speed_test.__code__.co_consts)
+    print("SPEED_TEST_PARALLEL_PROFILES_SELFTEST_OK: standard 2 streams, max/turbo 4 streams, ULTRA 8 streams/240 MB, real byte validation")
 
 def _u114_selftest_sensor_inventory():
     class FakeApp:
