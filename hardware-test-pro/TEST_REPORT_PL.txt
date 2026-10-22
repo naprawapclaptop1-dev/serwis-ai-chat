@@ -62,3 +62,12 @@ KANDYDAT 4.3.124 — NOWE TESTY REGRESYJNE (OCZEKUJĄ NA CI)
 KANDYDAT 4.3.125 — NOWY TEST REGRESYJNY
 - GPU_SCENE_FAMILY_SELFTEST_OK: 31 jawnych trybów geometrii, wybór wszystkich stylów i 110 unikalnych sygnatur.
 - Wynik pozostaje oczekujący na Windows CI; nie uznawać go za zaliczony przed zakończeniem workflow.
+
+4.3.124 CI — SUCCESS
+- Workflow: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39730436192
+- Wynik: sukces. Testy składni i wbudowane testy, build EXE, kompilacja/weryfikacja Setup.exe, publikacja assetów i manifestu zakończone sukcesem.
+- Opublikowane wydanie: hardware-test-pro-v4.3.124. To potwierdza build/CI, nie test fizycznego GPU ani pełną parytetowość dwóch aplikacji źródłowych.
+
+KANDYDAT 4.3.125 — NOWY TEST REGRESYJNY
+- GPU_SCENE_FAMILY_SELFTEST_OK: 31 jawnych trybów geometrii, wybór wszystkich stylów i 110 unikalnych sygnatur.
+- Wynik pozostaje oczekujący na Windows CI; nie uznawać go za zaliczony przed zakończeniem workflow.
