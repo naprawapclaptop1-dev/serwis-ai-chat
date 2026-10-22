@@ -1,7 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online przed tym kandydatem:** 4.3.145 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256.
-**Kandydat 4.3.146:** kamera GPU ma jeden transform z=-7 (zamiast sumy -17), a ekran RAM otrzymuje wynik bezpośrednio z zakończonego testu. CI weryfikuje źródło kamery, finalny raport RAM i callback CPU.
+**Stable online przed tym kandydatem:** 4.3.146 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256.
+**Kandydat 4.3.147:** poprawiono synchronizację końcowych wyników RAM na głównym widoku, polskim wariancie widoku i ekranie szczegółów katalogu. Windows CI musi potwierdzić, że status i raport końcowy trafiają do tych widoków i że inne ekrany nie są przypadkowo modyfikowane.
 **Parytet źródeł:** dołączenie System Repair PRO 5.6.16 nie oznacza zgodności 1:1 ze starszym archiwum 5.6.25; pełny Serwis Ultimate 1.15.3 wymaga osobnego porównania.
 
 ## Statusy — jak czytać listę

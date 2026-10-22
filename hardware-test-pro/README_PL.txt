@@ -125,3 +125,8 @@ KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.146
 - RAM: końcowy obiekt raportu trafia bezpośrednio do funkcji aktualizacji widoku. UI nie musi czekać na asynchroniczne zapisanie app.results, więc komunikat „test nie został jeszcze uruchomiony” nie powinien przykrywać nowszego raportu.
 - RAM: rozpoznawane są etykiety widoku RAM, PAMIĘĆ RAM i MEMORY; postęp wyświetla „TEST W TOKU”, a wynik końcowy używa świeżego statusu i rozmiaru faktycznie sprawdzonego bufora.
 - Windows CI sprawdza dokładną transformację kamery, brak starej transformacji -10, priorytet świeżego raportu RAM i przejście statusu z postępu do wyniku.
+
+
+POPRAWKA 4.3.147 — SYNCHRONIZACJA WYNIKÓW RAM
+--------------------------------------------
+Ekran główny RAM, polskie warianty widoku i ekran szczegółów katalogu RAM korzystają ze wspólnej ścieżki aktualizacji wyniku. Po zakończeniu testu końcowy raport (PASS/WARN/FAIL, rozmiar bufora, szczegóły i ewentualny offset błędu) ma pierwszeństwo nad starym wynikiem z cache. Dla widoków katalogowych nie jest już wymagany dokładny tekst current_view == "RAM"; test regresyjny sprawdza aktualizację statusu na zlokalizowanym ekranie i w szczegółach katalogu.

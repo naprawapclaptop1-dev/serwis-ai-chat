@@ -3,7 +3,7 @@ import time as _u148_time
 import inspect as _u148_inspect
 import tkinter as _u148_tk
 
-_U148_HARDWARE_EXECUTION_PATCH_VERSION = "1.1.0"
+_U148_HARDWARE_EXECUTION_PATCH_VERSION = "1.2.0"
 _U148_ORIGINAL_UPDATE_VIEW = _u146_update_view
 _U148_ORIGINAL_RAM_TEST = AppV43._ram_test
 
@@ -12,9 +12,11 @@ def _u148_is_ram_view(app):
     value = str(getattr(app, "current_view", "") or "").strip().upper().replace("Ę", "E").replace("Ć", "C")
     return (
         value in {"RAM", "MEMORY", "PAMIEC RAM", "MEMORY RAM"}
-        or value.startswith(("RAM_", "MEMORY_", "PAMIEC RAM"))
+        or value.startswith((
+            "RAM_", "MEMORY_", "PAMIEC RAM",
+            "COMPONENT_TEST_DETAIL_RAM", "COMPONENT_TEST_CATALOG_RAM"
+        ))
         or value.endswith("_RAM")
-        or value == "COMPONENT_TEST_CATALOG_RAM"
     )
 
 
@@ -55,17 +57,22 @@ def _u148_refresh_main_ram(app, force=False, message=None, report=None):
         pass
 
     def apply():
-        if str(getattr(app, "current_view", "")) != "RAM":
+        if not _u148_is_ram_view(app):
             return
-        refresh = getattr(app, "_update_ram_module_live", None)
-        if callable(refresh):
-            try:
-                refresh()
-            except Exception as exc:
+        current_view = str(getattr(app, "current_view", "") or "").strip().upper()
+        # The legacy live-dashboard refresh is valid only on the main RAM view.
+        # Localized and catalog-detail views are refreshed below through their own
+        # status widgets; they must not be rejected by an exact-string "RAM" check.
+        if current_view == "RAM":
+            refresh = getattr(app, "_update_ram_module_live", None)
+            if callable(refresh):
                 try:
-                    app.append_log("RAM: odświeżenie głównego raportu: " + repr(exc))
-                except Exception:
-                    pass
+                    refresh()
+                except Exception as exc:
+                    try:
+                        app.append_log("RAM: odświeżenie głównego raportu: " + repr(exc))
+                    except Exception:
+                        pass
 
         payload = _u148_ram_status_payload(app, message=message, report=report)
         record = payload["record"]
@@ -183,7 +190,7 @@ AppV43._ram_test = _u148_ram_test_with_final_refresh
 
 
 def _u148_selftest_hardware_execution():
-    assert _U148_HARDWARE_EXECUTION_PATCH_VERSION == "1.1.0"
+    assert _U148_HARDWARE_EXECUTION_PATCH_VERSION == "1.2.0"
     assert callable(_u148_refresh_main_ram) and callable(_u148_update_view)
     assert callable(AppV43._ram_test) and getattr(AppV43._ram_test, "_u102_ram_guard", False)
     import types as _u148_types
@@ -197,6 +204,16 @@ def _u148_selftest_hardware_execution():
     assert "_set_stage" not in cpu_names
     assert "_u147_safe_stage_update" in cpu_names, "safe CPU stage callback is not wired"
 
+    class _U148FakeLabel:
+        def __init__(self):
+            self.values = {}
+        def winfo_exists(self):
+            return True
+        def configure(self, **kwargs):
+            self.values.update(kwargs)
+        def cget(self, key):
+            return self.values.get(key, "")
+
     class _U148FakeApp:
         def __init__(self):
             self.current_view = "RAM"
@@ -204,6 +221,7 @@ def _u148_selftest_hardware_execution():
             self.results = {"RAM_BENCHMARK": {"state": "good", "size_mb": 128, "message": "stary wynik"}}
             self.refresh_calls = 0
             self.queue_log_messages = []
+            self._module_status_label = _U148FakeLabel()
         def queue_action(self, callback):
             callback()
         def _update_ram_module_live(self):
@@ -224,6 +242,17 @@ def _u148_selftest_hardware_execution():
     assert final_payload["state"] == "BAD" and "64 MB" in final_payload["status_text"] and "Niezgodność wzorca" in final_payload["status_text"], "final report must override stale app.results"
     fake.current_view = "PAMIĘĆ RAM"
     assert _u148_is_ram_view(fake), "Polish RAM view label should be recognized"
+    assert _u148_refresh_main_ram(fake, force=True, message="Lokalny ekran RAM • 50%")
+    assert "Lokalny ekran RAM" in str(fake._module_status_label.values.get("text", "")), (
+        "localized Polish RAM screen must receive status text, not be rejected by a strict current_view == 'RAM' check"
+    )
+    assert fake.refresh_calls == 1, "main-view updater must not run against an alternate RAM screen"
+    fake.current_view = "COMPONENT_TEST_DETAIL_RAM_512"
+    assert _u148_is_ram_view(fake), "RAM catalog detail must be recognized as RAM view"
+    assert _u148_refresh_main_ram(fake, force=True, message="Katalog RAM • wynik końcowy", report=final_report)
+    assert "Niezgodność wzorca" in str(fake._module_status_label.values.get("text", "")), (
+        "RAM catalog detail must show the final test report"
+    )
     fake.current_view = "GPU"
     assert not _u148_refresh_main_ram(fake, force=True), "RAM page updater must not run on another view"
 
@@ -234,7 +263,7 @@ def _u148_selftest_hardware_execution():
     assert "GL.glTranslatef(0.0,0.0,-7.0)" not in renderer_source, "camera must not apply a second translation"
     assert "GL.glTranslatef(0,-.10,-10.0)" not in renderer_source, "old -10 translation would compound to -17"
     assert callable(_u147_execute_gpu_scene)
-    print("HARDWARE_EXECUTION_FIX_SELFTEST_OK: final RAM report precedence, live progress, safe CPU stage callback and single GPU camera transform")
+    print("HARDWARE_EXECUTION_FIX_SELFTEST_OK: final RAM result on main/localized/catalog views, live progress, safe CPU callback and single GPU camera transform")
 
 
 if __name__ == "__main__" and "--selftest-hardware-execution" in _u145_sys.argv:
