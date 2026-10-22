@@ -109,3 +109,11 @@ KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.144
 - CPU: etapy 10/25/50/75/100% mierzą obciążenie systemu podczas testu, operacje SHA-256, taktowanie i per-core tam, gdzie dostępne.
 - GPU: przycisk rzeczywistego OpenGL pokazuje się tylko w module GPU; wynik sceny trafia do GPU_3D i raportu modułu. Scena wypełnia większą część okna renderowania.
 - Nowy selftest jakości musi przejść przed budowaniem EXE/Setup. Test CI nie zastępuje sprawdzenia czujników na fizycznym komputerze.
+
+
+KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.145
+-------------------------------------------------
+- RAM: po każdej próbce oraz po zakończeniu aktualizowany jest główny raport ekranu RAM, nie tylko osobny panel postępu.
+- CPU: wskaźnik etapów nie wywołuje nieistniejącej metody UI; ewentualna niedostępność paska nie przerywa testu ani raportowania.
+- GPU: renderer OpenGL przesuwa kamerę w głąb sceny. Poprzedni kod resetował macierz model-view bez przesunięcia kamery, więc geometria była przycinana i wyglądała jak mały fragment na czarnym tle.
+- Windows CI uruchamia osobny test synchronizacji RAM, bezpiecznego callbacku CPU i kamery OpenGL. Ostateczna kontrola wizualna oraz odczyty sensorów wymagają uruchomienia na realnym sprzęcie.

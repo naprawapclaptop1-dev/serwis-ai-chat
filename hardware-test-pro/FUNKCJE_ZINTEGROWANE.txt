@@ -8,3 +8,10 @@ NAPRAWA PC HARDWARE TEST PRO — FUNKCJE ZINTEGROWANE / AKTUALIZOWANY KANDYDAT O
 - Serwis Ultimate: 20 odczytowych sond w katalogu, zlecenia serwisowe, historia/HTML, laboratorium zasilania, menedżer procesów, diagnostyka gier i menedżer lokalnych raportów.
 - Bezpieczeństwo: operacje naprawcze z potwierdzeniem; procesy krytyczne chronione; brak sensorów i brak wyniku nie są oznaczane jako PASS.
 - WAŻNE: 40 sond to integracja diagnostyczna, nie potwierdzenie zgodności 1:1 z każdym ekranem/handlerem oryginalnych ZIP-ów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3. Ta zgodność nadal wymaga porównania wszystkich plików źródłowych i testów fizycznego sprzętu.
+
+
+KANDYDAT 4.3.145 — NAPRAWA TESTÓW
+- RAM: główny ekran synchronizuje raport w czasie postępu i po zakończeniu właściwego testu.
+- CPU: callback etapu nie odwołuje się już do niezdefiniowanej metody UI.
+- GPU: model-view OpenGL ustawia kamerę z odległością -7; wynik FPS pozostaje odczytywany z rzeczywistego procesu renderera.
+- Dodano selftest tego zakresu do Windows CI.

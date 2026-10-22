@@ -12959,7 +12959,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                     GL.glViewport(0,0,width,height);GL.glMatrixMode(GL.GL_PROJECTION);GL.glLoadIdentity()
                     _u114_perspective(52.0,width/height,.1,240.0);GL.glMatrixMode(GL.GL_MODELVIEW)
             elapsed=_u114_time.perf_counter()-start
-            GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT);GL.glLoadIdentity()
+            GL.glClear(GL.GL_COLOR_BUFFER_BIT|GL.GL_DEPTH_BUFFER_BIT);GL.glLoadIdentity();GL.glTranslatef(0.0,0.0,-7.0)
             GL.glTranslatef(0,-.10,-10.0)
             GL.glRotatef(elapsed*14.0+(sid-90)*1.7,0,1,0)
             GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)

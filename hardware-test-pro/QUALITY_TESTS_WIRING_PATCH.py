@@ -9,6 +9,25 @@ _U147_ORIGINAL_GPU_SCENE = _u66_execute_gpu_scene
 _U147_ORIGINAL_START_REAL_3D = _u135_start_real_3d
 _U147_ORIGINAL_GPU_SUITE = globals().get("_u88_run_3d_suite")
 
+def _u147_safe_stage_update(app, stage_index):
+    # draw_stage_progress is the available UI method; _set_stage is not defined by this application.
+    try:
+        canvas = getattr(app, "progress_canvas", None)
+        draw = getattr(app, "draw_stage_progress", None)
+        if canvas is None or not canvas.winfo_exists() or not callable(draw):
+            return False
+        get_index = getattr(app, "stage_index", None)
+        current_index = get_index() if callable(get_index) else max(0, int(stage_index))
+        draw(current_index)
+        return True
+    except Exception as exc:
+        try:
+            app.queue_log("CPU: pominięto niedostępny wskaźnik etapów UI: " + repr(exc))
+        except Exception:
+            pass
+        return False
+
+
 def _u147_cpu_test(app, seconds):
     requested = max(5, min(900, int(seconds or 5)))
     targets = (10, 25, 50, 75, 100)
@@ -46,7 +65,7 @@ def _u147_cpu_test(app, seconds):
                     halt.wait(max(0.0, quantum - active))
         threads = [_u147_threading.Thread(target=worker, args=(index,), daemon=True, name=f"NPC-CPU-{index+1}") for index in range(workers)]
         app.queue_log(f"CPU: etap {target}% — {workers} workerów; obciążenie i taktowanie mierzone w trakcie testu.")
-        try: app.queue_action(lambda i=stage_index:app._set_stage(i))
+        try: app.queue_action(lambda i=stage_index:_u147_safe_stage_update(app,i))
         except Exception: pass
         for thread in threads: thread.start()
         measured = []
@@ -242,6 +261,8 @@ def _u147_selftest_quality_fixes():
     ok,msg=_u146_verify_ram_buffer(bytearray(4096),0,None,lambda:True,stopped)
     assert not ok and stopped.get("stopped")
     assert callable(AppV43._cpu_test) and callable(AppV43._ram_test)
+    assert "_set_stage" not in _u147_cpu_test.__code__.co_names, "CPU worker must not schedule an undefined UI method"
+    assert "_u147_safe_stage_update" in _u147_cpu_test.__code__.co_names and callable(_u147_safe_stage_update)
     assert getattr(AppV43._ram_test,"_u102_ram_guard",False)
     keys=globals().get("_U86_COMPONENT_KEYS",{})
     assert keys.get("GPU",("",))[0]=="GPU_3D"

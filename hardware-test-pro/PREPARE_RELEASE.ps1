@@ -1872,6 +1872,17 @@ if (!$src.Contains("_U146_QUALITY_PATCH_VERSION") -or !$src.Contains("QUALITY_TE
     throw "Full-buffer RAM / CPU live / GPU result quality fixes were not included in the generated application."
 }
 
+$executionFixPath = Join-Path $PSScriptRoot "HARDWARE_EXECUTION_FIX_PATCH.py"
+if (!(Test-Path -LiteralPath $executionFixPath)) { throw "Missing hardware execution fix patch: $executionFixPath" }
+$executionFix = [IO.File]::ReadAllText($executionFixPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $executionFix + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U148_HARDWARE_EXECUTION_PATCH_VERSION") -or !$src.Contains("HARDWARE_EXECUTION_FIX_SELFTEST_OK") -or !$src.Contains("_u148_refresh_main_ram")) {
+    throw "Hardware execution/UI report synchronization patch did not get integrated."
+}
+
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.

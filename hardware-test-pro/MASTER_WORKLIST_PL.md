@@ -1,7 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online przed tym kandydatem:** 4.3.143 — Setup x64 i All-in-One ZIP są opublikowane, latest.json zawiera SHA-256 instalatora.
-**Kandydat 4.3.144:** jeden instalator ma budować/dołączać pełny System Repair PRO 5.6.16, a Centrum Serwisu ma wyszukiwać wszystkie moduły. Panele CPU/RAM/GPU muszą pokazywać postęp, pomiary i raporty z rzeczywistych odczytów. Windows CI weryfikuje selftesty, WPF smoke test, EXE/Setup/ZIP, SHA-256 i manifest.
+**Stable online przed tym kandydatem:** 4.3.144 — Setup x64 i All-in-One ZIP są opublikowane, latest.json zawiera SHA-256 instalatora.
+**Kandydat 4.3.145:** synchronizacja głównego raportu RAM, usunięcie błędnego callbacku etapów CPU i korekta kamery OpenGL tak, aby scena była widoczna. CI weryfikuje nowe poprawki, pełny zestaw selftestów, EXE/Setup/ZIP, SHA-256 i manifest.
 **Parytet źródeł:** dołączenie 5.6.16 nie oznacza zgodności 1:1 z archiwum 5.6.25; pełne źródła Serwis Ultimate 1.15.3 również wymagają osobnego porównania.
 
 ## Statusy — jak czytać listę
@@ -236,3 +236,11 @@
 - [x] GPU: wynik OpenGL mapowany do GPU_3D, raportu modułu i lokalnego JSON. Przycisk OpenGL widoczny tylko na ekranie GPU.
 - [ ] Windows CI musi zaliczyć QUALITY_TESTS_SELFTEST_OK, kompilację EXE/Setup, ZIP, SHA-256 i manifest.
 - [ ] Na fizycznym PC potwierdzić CPU, RAM, FPS/renderer OpenGL oraz osobny test VRAM.
+
+
+## Kandydat 4.3.145 — korekta cyklu wykonania CPU/RAM/GPU
+- [x] CPU nie próbuje wywołać niezdefiniowanego _set_stage; wskaźnik etapów korzysta z istniejącego draw_stage_progress tylko wtedy, gdy płótno jest dostępne.
+- [x] RAM synchronizuje główny raport w czasie postępu i po zakończeniu testu, zamiast zostawiać komunikat „test nie został jeszcze uruchomiony”.
+- [x] GPU przesuwa kamerę po każdym resecie macierzy model-view na odległość -7, aby pełna scena mieściła się w kadrze.
+- [x] Osobny test CI weryfikuje synchronizację RAM, callback CPU i ustawienie kamery OpenGL.
+- [ ] Test wizualny, telemetryczny i wydajnościowy na komputerze użytkownika pozostaje do wykonania; CI nie ma dostępu do jego fizycznego GPU/sensorów.
