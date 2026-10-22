@@ -67,3 +67,10 @@ Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To 
 - Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
 - Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
 - Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
+
+## Kandydat 4.3.126 — ekran procesów Serwis Ultimate
+
+- Dodano odczyt listy procesów przez PowerShell, CPU% z różnicy czasu CPU między próbkami, pamięć RAM/prywatną, liczbę uchwytów i ścieżkę.
+- Dodano filtrowanie, sortowanie, automatyczne odświeżanie i CSV. Zakończenie procesu wymaga potwierdzenia i blokuje PID systemowe, proces aplikacji oraz podstawowe procesy krytyczne.
+- To jest funkcjonalny odpowiednik modułu procesów, ale pełna parytetowość z oryginalnym ShowProcesses pozostaje do porównania po uzyskaniu dostępu do jego źródła.
+- Kandydat wymaga Windows CI i testów na fizycznym komputerze.
