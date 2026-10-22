@@ -25,7 +25,10 @@ internal static class Program
                 IsMotherboardEnabled = true,
                 IsControllerEnabled = true,
                 IsStorageEnabled = true,
-                IsNetworkEnabled = true
+                IsNetworkEnabled = true,
+                IsBatteryEnabled = true,
+                IsPsuEnabled = true,
+                IsPowerMonitorEnabled = true
             };
             computer.Open();
             foreach (var hardware in computer.Hardware)
@@ -37,6 +40,11 @@ internal static class Program
                 startedAtUtc = started,
                 sensorCount = sensors.Count,
                 valueCount = sensors.Count(x => x["value"] is not null),
+                hardwareCount = sensors.Select(x => x.TryGetValue("hardwareId", out var id) ? id as string : null)
+                    .Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                hardwareNames = sensors.Select(x => x.TryGetValue("hardware", out var name) ? name as string : null)
+                    .Where(x => !string.IsNullOrWhiteSpace(x)).Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase).Take(100).ToArray(),
                 sensors,
                 errors = errors.Take(30).ToArray(),
                 provider = "LibreHardwareMonitorLib 0.9.6"
