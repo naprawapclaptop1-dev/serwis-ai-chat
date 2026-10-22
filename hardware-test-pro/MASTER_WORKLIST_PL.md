@@ -1,7 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stan online sprawdzony:** stable **4.3.129**. Manifest stable wskazuje opublikowany instalator Windows x64, a workflow 39747774411 zakończył się sukcesem.  
-**Kandydat roboczy:** 4.3.130 — to nie jest wydanie, dopóki nowy Windows CI nie zakończy się sukcesem i nie zostaną sprawdzone artefakty oraz manifest.
+**Stan online sprawdzony:** stable **4.3.130**. Windows workflow 39766232986 zakończył się sukcesem; opublikowano Setup x64 i ALL-IN-ONE ZIP. To potwierdza build i selftesty CI, nie test na fizycznym komputerze.  
+**Kandydat roboczy:** 4.3.131 — dodano bieżący postęp łącznego transferu dla równoległych profili Speed Test; wymaga pełnego Windows CI i sprawdzenia artefaktów/manifestu.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -171,3 +171,13 @@
 8. Wykonać test fizycznego komputera — CI nie potwierdzi wszystkich czujników ani jakości wizualnej GPU.
 
 **Zasada prawdy:** obecność kodu nie oznacza testu na sprzęcie; udany CI nie oznacza pełnej zgodności 1:1; kafelek nie oznacza działającej funkcji. Otwarte punkty pozostają otwarte do czasu uzyskania dowodu.
+
+
+## Kandydat 4.3.131 — widoczny postęp równoległego Speed Testu
+- [x] Transport równoległy przekazuje postęp każdego strumienia do wspólnego panelu live.
+- [x] Panel pokazuje łączny transfer odebranych/wysłanych bajtów, procent, sumę chwilowych Mbps i liczbę aktywnych strumieni podczas faz MAX/TURBO/ULTRA.
+- [x] Po zakończeniu fazy wynik jest podsumowany liczbą poprawnych strumieni i rzeczywistymi bajtami; nieudany strumień nie jest zaliczany jako poprawny.
+- [x] Dodano test matematyki progresu, ograniczeń bajtów, sumowania strumieni i obsługi wartości nieprawidłowych.
+- [ ] Uruchomić pełny Windows CI i sprawdzić, że zmiana nie psuje testów profili ani instalatora.
+- [ ] Na prawdziwym łączu porównać STANDARD/MAX/TURBO/ULTRA z niezależnym testem i zapisać logi.
+- [ ] Nadal otwarta: parzystość 1:1 obu oryginalnych aplikacji; ta zmiana jej nie zamyka.
