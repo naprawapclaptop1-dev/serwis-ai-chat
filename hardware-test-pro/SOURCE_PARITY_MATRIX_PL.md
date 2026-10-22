@@ -1,6 +1,6 @@
 # Macierz parytetu źródeł — Hardware Test PRO + System Repair PRO + Serwis Ultimate
 
-Wersja robocza dla kandydata 4.3.124. Ta macierz jest listą kontroli, a nie deklaracją ukończenia. Moduł można oznaczyć jako zakończony dopiero po wskazaniu handlera źródłowego, wejścia z UI, wyniku/raportu oraz przejściu testu.
+Wersja robocza dla bieżącego kandydata online. Numer wydania należy odczytać z manifestu stable. Ta macierz jest listą kontroli, a nie deklaracją ukończenia. Moduł można oznaczyć jako zakończony dopiero po wskazaniu handlera źródłowego, wejścia z UI, wyniku/raportu oraz przejściu testu.
 
 ## A. System Repair PRO 5.6.25 — archiwum źródłowe użytkownika
 
