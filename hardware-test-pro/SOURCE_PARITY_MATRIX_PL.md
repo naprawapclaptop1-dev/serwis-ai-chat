@@ -61,3 +61,14 @@ Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. Plik System
 - [x] Windows CI potwierdził wszystkie 31 trybów renderera w samoteście podpisów scen.
 - [ ] Obejrzeć 110 scen na fizycznym GPU i potwierdzić, że sceny są wizualnie rozróżnialne, a nie tylko mają różne ID.
 - [ ] Zweryfikować rzeczywiste FPS i stabilność na kilku klasach GPU.
+
+
+## Kandydat roboczy 4.3.128 — aktualizacja kontroli
+
+- [ ] Windows CI: potwierdzić nowy renderer FurMark per scena, zachowanie identyfikatorów sensorów i przewijalny pełny podgląd telemetrii.
+- [ ] Fizyczne porównanie obrazu/FPS wszystkich 110 scen na GPU NVIDIA i AMD.
+- [ ] Na fizycznym PC sprawdzić pełną listę temperatur/obciążeń/zegarów/napięć/mocy/wentylatorów, w tym pompę AIO, jeśli kontroler udostępnia ją w Sensor Bridge.
+- [ ] Zmierzyć Speed Test na rzeczywistym łączu w profilach STANDARD/MAX/TURBO; sam test syntetycznych rekordów nie potwierdza przepustowości serwera ani łącza.
+- [ ] Wypełnić mapowanie każdego handlera System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3 do zintegrowanego kodu, ekranu i raportu.
+
+Pełna lista pozostałych prac jest w `MASTER_WORKLIST_PL.md`. Kandydat 4.3.128 pozostaje roboczy do czasu końcowego Windows CI. Pełna zgodność funkcja-w-funkcję z dwoma archiwami nadal nie jest potwierdzona.
