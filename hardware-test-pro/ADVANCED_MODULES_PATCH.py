@@ -15622,55 +15622,55 @@ def _u134_selftest_unique_service_probes():
 # v4.3.135 — ten more individually runnable, read-only service diagnostics.
 # Each probe has its own stable key, window, JSON report and honest WARN handling.
 _U135_SERWIS_TESTS = {
- "pnp_errors": {
-  "title":"Błędy urządzeń PnP",
-  "description":"Urządzenia z błędem lub statusem innym niż OK.",
-  "command":"$d=@(Get-PnpDevice -ErrorAction SilentlyContinue | Where-Object {$_.Status -ne 'OK'} | Select-Object -First 200 Status,Class,FriendlyName,InstanceId); [pscustomobject]@{count=$d.Count;devices=$d} | ConvertTo-Json -Depth 5"
+ "dxdiag_report": {
+  "title":"Raport DirectX / DxDiag",
+  "description":"Tworzy osobny raport diagnostyczny DirectX i sterowników ekranu; nie zmienia ustawień.",
+  "command":"$p=Join-Path $env:TEMP ('NaprawaPC-DxDiag-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.txt');$err=$null;try{$proc=Start-Process -FilePath 'dxdiag.exe' -ArgumentList @('/whql:off','/t',$p) -PassThru -Wait -ErrorAction Stop;for($i=0;$i -lt 30 -and !(Test-Path -LiteralPath $p);$i++){Start-Sleep -Milliseconds 500};if(Test-Path -LiteralPath $p){$txt=Get-Content -LiteralPath $p -Raw -ErrorAction Stop;[pscustomobject]@{state='PASS';report_path=$p;process_exit=$proc.ExitCode;characters=$txt.Length;report_preview=$txt.Substring(0,[Math]::Min(18000,$txt.Length))} | ConvertTo-Json -Depth 4}else{throw 'DxDiag nie utworzył raportu'}}catch{[pscustomobject]@{state='WARN';error=$_.Exception.Message;report_path=$p} | ConvertTo-Json -Depth 3}"
  },
- "signed_drivers": {
-  "title":"Podpisy i wersje sterowników",
-  "description":"Inwentaryzacja podpisanych sterowników PnP, wersji, dat i producentów.",
-  "command":"$d=@(Get-CimInstance Win32_PnPSignedDriver -ErrorAction SilentlyContinue | Select-Object -First 300 DeviceName,DriverVersion,DriverDate,Manufacturer,IsSigned,DeviceID); [pscustomobject]@{count=$d.Count;drivers=$d} | ConvertTo-Json -Depth 5"
+ "printer_subsystem": {
+  "title":"Drukarki i kolejka wydruku",
+  "description":"Oddzielna diagnostyka drukarek, portów i usługi bufora wydruku.",
+  "command":"$svc=Get-CimInstance Win32_Service -Filter \"Name='Spooler'\" -ErrorAction SilentlyContinue | Select-Object Name,State,StartMode,ExitCode;$printers=@(Get-Printer -ErrorAction SilentlyContinue | Select-Object Name,DriverName,PortName,PrinterStatus,Shared,WorkOffline);$ports=@(Get-PrinterPort -ErrorAction SilentlyContinue | Select-Object Name,Description,PrinterHostAddress,PortNumber);[pscustomobject]@{spooler=$svc;printer_count=$printers.Count;printers=$printers;port_count=$ports.Count;ports=$ports} | ConvertTo-Json -Depth 5"
  },
- "startup_inventory": {
-  "title":"Programy uruchamiane ze startem",
-  "description":"Odczyt rejestru Run/RunOnce i folderów autostartu; bez wyłączania pozycji.",
-  "command":"$rows=@();$keys=@('HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run','HKLM:\\Software\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Run','HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce','HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce');foreach($k in $keys){if(Test-Path $k){$o=Get-ItemProperty $k -ErrorAction SilentlyContinue;foreach($p in $o.PSObject.Properties){if($p.Name -notmatch '^PS'){ $rows+=@{source=$k;name=$p.Name;command=[string]$p.Value}}}}};[pscustomobject]@{count=$rows.Count;entries=$rows} | ConvertTo-Json -Depth 5"
+ "bluetooth_devices": {
+  "title":"Bluetooth — adaptery i urządzenia",
+  "description":"Inwentaryzacja urządzeń Bluetooth i adapterów radiowych; niczego nie paruje ani nie rozłącza.",
+  "command":"$d=@(Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Select-Object Status,Class,FriendlyName,Manufacturer,InstanceId);$a=@(Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue | Where-Object {$_.InterfaceDescription -match 'Bluetooth'} | Select-Object Name,InterfaceDescription,Status,MacAddress);[pscustomobject]@{device_count=$d.Count;devices=$d;adapter_count=$a.Count;adapters=$a} | ConvertTo-Json -Depth 5"
  },
- "scheduled_tasks": {
-  "title":"Zadania harmonogramu",
-  "description":"Zadania włączone i ostatni kod wyniku; niczego nie uruchamia ani nie zmienia.",
-  "command":"$t=@(Get-ScheduledTask -ErrorAction SilentlyContinue | Select-Object -First 300 TaskPath,TaskName,State,@{n='LastRunTime';e={(Get-ScheduledTaskInfo -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction SilentlyContinue).LastRunTime}},@{n='LastTaskResult';e={(Get-ScheduledTaskInfo -TaskName $_.TaskName -TaskPath $_.TaskPath -ErrorAction SilentlyContinue).LastTaskResult}});[pscustomobject]@{count=$t.Count;tasks=$t} | ConvertTo-Json -Depth 5"
+ "reliability_history": {
+  "title":"Historia niezawodności Windows",
+  "description":"Odczyt wpisów monitora niezawodności z ostatnich 30 dni.",
+  "command":"$since=(Get-Date).AddDays(-30);$items=@();try{$items=@(Get-CimInstance -ClassName Win32_ReliabilityRecords -ErrorAction Stop | Where-Object {$_.TimeGenerated -and ([Management.ManagementDateTimeConverter]::ToDateTime($_.TimeGenerated) -ge $since)} | Sort-Object TimeGenerated -Descending | Select-Object -First 100 @{n='Time';e={[Management.ManagementDateTimeConverter]::ToDateTime($_.TimeGenerated)}},SourceName,EventIdentifier,ProductName,Message)}catch{$items=@(@{state='N/D';error=$_.Exception.Message})};[pscustomobject]@{period_days=30;record_count=$items.Count;records=$items} | ConvertTo-Json -Depth 5"
  },
- "windows_update_history": {
-  "title":"Historia Windows Update",
-  "description":"Ostatnie aktualizacje z historii WUA; bez instalowania aktualizacji.",
-  "command":"try{$s=New-Object -ComObject Microsoft.Update.Session;$q=$s.CreateUpdateSearcher();$n=[Math]::Min(40,$q.GetTotalHistoryCount());$h=@();if($n -gt 0){$h=@($q.QueryHistory(0,$n) | Select-Object Date,Title,ResultCode,HResult,SupportUrl)};[pscustomobject]@{count=$h.Count;history=$h} | ConvertTo-Json -Depth 5}catch{[pscustomobject]@{state='WARN';error=$_.Exception.Message} | ConvertTo-Json -Depth 4}"
+ "restore_point_inventory": {
+  "title":"Punkty przywracania i kopie woluminów",
+  "description":"Tylko lista dostępnych punktów przywracania i migawek; nie tworzy ani nie usuwa kopii.",
+  "command":"$rp=@();$err=$null;try{$rp=@(Get-ComputerRestorePoint -ErrorAction Stop | Select-Object -First 80 SequenceNumber,Description,CreationTime,RestorePointType,EventType)}catch{$err=$_.Exception.Message};$sh=@(Get-CimInstance Win32_ShadowCopy -ErrorAction SilentlyContinue | Select-Object ID,InstallDate,VolumeName,State);$enabled=@();try{$enabled=@(Get-CimInstance -Namespace root/default -ClassName SystemRestore -ErrorAction Stop | Select-Object SystemRestoreConfig,NumberOfRestorePoints)}catch{};[pscustomobject]@{restore_point_count=$rp.Count;restore_points=$rp;restore_point_query_error=$err;shadow_copy_count=$sh.Count;shadow_copies=$sh;restore_provider=$enabled} | ConvertTo-Json -Depth 5"
  },
- "application_crashes": {
-  "title":"Awaria aplikacji — dziennik zdarzeń",
-  "description":"Błędy aplikacji i Windows Error Reporting z ostatnich 7 dni.",
-  "command":"$start=(Get-Date).AddDays(-7);$e=@(Get-WinEvent -FilterHashtable @{LogName='Application';Level=1,2;StartTime=$start} -MaxEvents 100 -ErrorAction SilentlyContinue | Select-Object TimeCreated,Id,ProviderName,LevelDisplayName,Message);[pscustomobject]@{period_days=7;count=$e.Count;events=$e} | ConvertTo-Json -Depth 5"
+ "bitlocker_status": {
+  "title":"Status szyfrowania BitLocker",
+  "description":"Odczyt stanu szyfrowania i ochrony woluminów; raport nie pobiera ani nie wyświetla kluczy odzyskiwania.",
+  "command":"try{$v=@(Get-BitLockerVolume -ErrorAction Stop | Select-Object MountPoint,VolumeType,VolumeStatus,ProtectionStatus,EncryptionPercentage,EncryptionMethod,LockStatus,AutoUnlockEnabled);[pscustomobject]@{state='PASS';volume_count=$v.Count;volumes=$v;note='Klucze odzyskiwania nie są odczytywane'} | ConvertTo-Json -Depth 5}catch{[pscustomobject]@{state='N/D';error=$_.Exception.Message;note='Dostępność zależy od edycji Windows i uprawnień'} | ConvertTo-Json -Depth 3}"
  },
- "storage_health": {
-  "title":"Stan nośników i woluminów",
-  "description":"Odczyt Get-PhysicalDisk, woluminów i podstawowych danych dysków.",
-  "command":"$d=@(Get-PhysicalDisk -ErrorAction SilentlyContinue | Select-Object FriendlyName,SerialNumber,MediaType,BusType,HealthStatus,OperationalStatus,Size);$v=@(Get-Volume -ErrorAction SilentlyContinue | Select-Object DriveLetter,FileSystemLabel,FileSystem,HealthStatus,OperationalStatus,Size,SizeRemaining);$w=@(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue | Select-Object Model,InterfaceType,Status,Size,Partitions);[pscustomobject]@{physical_disks=$d;volumes=$v;wmi_disks=$w} | ConvertTo-Json -Depth 5"
+ "optional_features": {
+  "title":"Funkcje opcjonalne Windows",
+  "description":"Lista stanów składników opcjonalnych Windows bez włączania ani wyłączania funkcji.",
+  "command":"try{$f=@(Get-WindowsOptionalFeature -Online -ErrorAction Stop | Select-Object FeatureName,State,RestartRequired);[pscustomobject]@{state='PASS';feature_count=$f.Count;enabled_count=@($f | Where-Object {$_.State -eq 'Enabled'}).Count;features=$f} | ConvertTo-Json -Depth 5}catch{[pscustomobject]@{state='N/D';error=$_.Exception.Message;note='Odczyt DISM może wymagać uprawnień administratora'} | ConvertTo-Json -Depth 3}"
  },
- "network_adapters": {
-  "title":"Karty sieciowe, IP i DNS",
-  "description":"Odczyt stanu kart, adresów, tras i serwerów DNS; bez resetowania sieci.",
-  "command":"$a=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,InterfaceDescription,Status,LinkSpeed,MacAddress);$ip=@(Get-NetIPConfiguration -ErrorAction SilentlyContinue | Select-Object InterfaceAlias,IPv4Address,IPv6Address,IPv4DefaultGateway,DNSServer);$r=@(Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object -First 30 InterfaceAlias,NextHop,RouteMetric);[pscustomobject]@{adapters=$a;ip=$ip;default_routes=$r} | ConvertTo-Json -Depth 5"
+ "runtime_inventory": {
+  "title":"Runtime .NET i Visual C++",
+  "description":"Inwentaryzacja zainstalowanych runtime'ów .NET i pakietów Visual C++; bez używania Win32_Product.",
+  "command":"$dotnet='';$dotnetCode=-1;try{$dotnet=& dotnet.exe --list-runtimes 2>&1 | Out-String;$dotnetCode=$LASTEXITCODE}catch{$dotnet=$_.Exception.Message};$paths=@('HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86','HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86');$vc=@();foreach($p in $paths){if(Test-Path $p){$x=Get-ItemProperty $p -ErrorAction SilentlyContinue;$vc+=@{path=$p;Installed=$x.Installed;Version=$x.Version;Major=$x.Major;Minor=$x.Minor;Bld=$x.Bld}}};[pscustomobject]@{dotnet_exit_code=$dotnetCode;dotnet_runtimes=$dotnet;visual_cpp=$vc} | ConvertTo-Json -Depth 4"
  },
- "defender_status": {
-  "title":"Status ochrony Defender",
-  "description":"Dostępny status ochrony i ostatnie wykrycia; nie zmienia ustawień ochrony.",
-  "command":"$s=$null;$th=@();try{$s=Get-MpComputerStatus -ErrorAction Stop | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled,IoavProtectionEnabled,AntivirusSignatureLastUpdated}catch{$s=@{state='N/D';error=$_.Exception.Message}};try{$th=@(Get-MpThreatDetection -ErrorAction Stop | Select-Object -First 50 InitialDetectionTime,ThreatID,ActionSuccess,ThreatStatusID,Resources)}catch{$th=@(@{state='N/D';error=$_.Exception.Message})};[pscustomobject]@{defender=$s;threats=$th;threat_count=$th.Count} | ConvertTo-Json -Depth 5"
+ "wifi_profiles": {
+  "title":"Wi-Fi — interfejsy i profile",
+  "description":"Stan interfejsów Wi-Fi i nazwy zapisanych profili; nie odczytuje haseł ani kluczy.",
+  "command":"$ifaces=@(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object {$_.NdisPhysicalMedium -eq 9 -or $_.InterfaceDescription -match 'Wi-Fi|Wireless|WLAN'} | Select-Object Name,InterfaceDescription,Status,LinkSpeed,MacAddress);$state='';$profiles='';try{$state=(& netsh.exe wlan show interfaces 2>&1 | Out-String)}catch{$state=$_.Exception.Message};try{$profiles=(& netsh.exe wlan show profiles 2>&1 | Out-String)}catch{$profiles=$_.Exception.Message};[pscustomobject]@{wireless_adapter_count=$ifaces.Count;adapters=$ifaces;interface_status=$state;profile_names_only=$profiles;credentials_read=$false} | ConvertTo-Json -Depth 4"
  },
- "quick_inventory": {
-  "title":"Szybka inwentaryzacja systemu",
-  "description":"Windows, CPU, RAM, BIOS, urządzenia, dyski i sieć w jednym raporcie.",
-  "command":"$os=Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue | Select-Object Caption,Version,BuildNumber,LastBootUpTime,TotalVisibleMemorySize,FreePhysicalMemory;$cpu=@(Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | Select-Object Name,NumberOfCores,NumberOfLogicalProcessors,LoadPercentage,CurrentClockSpeed);$pc=Get-CimInstance Win32_ComputerSystem -ErrorAction SilentlyContinue | Select-Object Manufacturer,Model,TotalPhysicalMemory;$bios=Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue | Select-Object Manufacturer,SMBIOSBIOSVersion,ReleaseDate;$pnp=@(Get-PnpDevice -ErrorAction SilentlyContinue | Select-Object -First 250 Status,Class,FriendlyName);$net=@(Get-NetAdapter -ErrorAction SilentlyContinue | Select-Object Name,Status,LinkSpeed);[pscustomobject]@{os=$os;computer=$pc;cpu=$cpu;bios=$bios;devices=$pnp;network=$net} | ConvertTo-Json -Depth 5"
+ "wer_dump_inventory": {
+  "title":"Zrzuty awarii aplikacji (WER)",
+  "description":"Lista nazw, rozmiarów i dat zrzutów awarii; pliki zrzutów nie są otwierane ani wysyłane.",
+  "command":"$roots=@((Join-Path $env:LOCALAPPDATA 'CrashDumps'),(Join-Path $env:ProgramData 'Microsoft\\Windows\\WER\\ReportArchive'),(Join-Path $env:ProgramData 'Microsoft\\Windows\\WER\\ReportQueue'));$items=@();foreach($root in $roots){if(Test-Path -LiteralPath $root){$items+=@(Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 100 @{n='Root';e={$root}},Name,Extension,Length,LastWriteTime,DirectoryName)}};$items=@($items | Sort-Object LastWriteTime -Descending | Select-Object -First 250);[pscustomobject]@{searched_roots=$roots;dump_or_report_count=$items.Count;files=$items;content_opened=$false} | ConvertTo-Json -Depth 5"
  }
 }
 
