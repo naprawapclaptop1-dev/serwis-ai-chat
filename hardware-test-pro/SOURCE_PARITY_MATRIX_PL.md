@@ -36,7 +36,7 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 | ShowNetwork | Częściowo: interfejsy i Speed Test | Porównać wszystkie testy sieciowe i raporty |
 | ShowProcesses | Menedżer procesów: odczyt CPU/RAM/statusu, filtr, CSV, potwierdzone zakończenie z ochroną procesów krytycznych | Porównać pola, filtrowanie i akcje z oryginałem; parytet 1:1 nadal niepotwierdzony |
 | ShowJobs | Częściowo: lokalna historia zleceń i eksport HTML | Porównać pola, statusy, edycję, usuwanie, eksport i historię |
-| ShowReports | Częściowo: raporty JSON/HTML/CSV | Porównać wszystkie raporty i ich zawartość |
+| ShowReports | Menedżer lokalnych raportów: indeks JSON/CSV/HTML/TXT/LOG/XML/PDF, filtr, otwieranie i eksport indeksu CSV | Porównać raporty, filtry i akcje z oryginałem; parytet 1:1 nadal niepotwierdzony |
 | USB / audio / obraz / sieć | Częściowo: niezależne testy i enumeracja | Zweryfikować każdą funkcję na fizycznym urządzeniu |
 | Laboratorium zasilania | Częściowo: 7 akcji raportowych Windows | Porównać wszystkie polecenia i wyniki z oryginałem |
 | Formularz zlecenia / karta klienta | Częściowo: lokalny zapis i HTML | Porównać wszystkie pola, zgody i eksport |
