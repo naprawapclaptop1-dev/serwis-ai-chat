@@ -10514,9 +10514,10 @@ def _u107_get_sensor_rows(app):
     rows=[]
     seen=set()
     def identity(row):
+        # Sensor identifiers distinguish multiple same-name fans/cores on the same controller.
         return tuple(str(row.get(k,"") if row.get(k) is not None else "N/D").strip().casefold()
-            for k in ("hardware","sensor","unit"))
-    def add(category,hardware,name,value,unit="",source="N/D"):
+            for k in ("hardware","sensor","unit","_identity_hint"))
+    def add(category,hardware,name,value,unit="",source="N/D",identity_hint=""):
         if isinstance(value,dict) or isinstance(value,(list,tuple)):
             return
         if value is None:
@@ -10533,7 +10534,7 @@ def _u107_get_sensor_rows(app):
             shown=str(value)
         row={"category":str(category or "Other"),"hardware":str(hardware or "N/D"),
              "sensor":str(name or "N/D"),"value":shown,"unit":str(unit or ""),
-             "source":str(source or "N/D")}
+             "source":str(source or "N/D"),"_identity_hint":str(identity_hint or "")}
         key=identity(row)
         if key not in seen:
             seen.add(key);rows.append(row)
@@ -10553,7 +10554,8 @@ def _u107_get_sensor_rows(app):
             +(" / "+str(sensor.get("hardwareType") or sensor.get("hardware_type")) if (sensor.get("hardwareType") or sensor.get("hardware_type")) else ""))
         add(_u107_sensor_category(stype,unit),hardware,
             sensor.get("sensor") or sensor.get("name") or "N/D",sensor.get("value"),unit,
-            sensor.get("source") or temps.get("method") or temps.get("bridge_provider") or "Sensor Bridge")
+            sensor.get("source") or temps.get("method") or temps.get("bridge_provider") or "Sensor Bridge",
+            sensor.get("identifier") or sensor.get("hardwareId") or sensor.get("hardware_id") or "")
 
     # The compact summaries supplement the raw feed when a provider exposes only a subset of sensor objects.
     temp_summaries=[
@@ -12114,13 +12116,19 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
         # Dedicated FurMark-style hairy torus: a dense, lit torus with thousands of
         # deterministic hair strands compiled once as OpenGL display-list geometry.
         # Rotation remains animated, and glFinish below measures completed GPU work.
+        # Every test gets a FurMark-style stress object, but the hair field, ring dimensions,
+        # density, palette and animation are seeded by the scene ID so tests are not clones.
         _u119_furmark_display_list=[None]
         _u119_furmark_hairs=[]
-        for _u119_i in range(12000):
-            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949)%1.0)
-            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927)%1.0)
-            _u119_R=1.04
-            _u119_r=.43
+        _u119_R_base=.88+((sid*7)%23)/100.0
+        _u119_r_base=.31+((sid*11)%19)/100.0
+        _u119_hair_count=6000+sid*45
+        _u119_palette=(sid-1)%len(colors)
+        for _u119_i in range(_u119_hair_count):
+            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949+sid*.017)%1.0)
+            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927+sid*.013)%1.0)
+            _u119_R=_u119_R_base
+            _u119_r=_u119_r_base
             _u119_ring=_u119_R+_u119_r*_u114_math.cos(_u119_v)
             _u119_x=_u119_ring*_u114_math.cos(_u119_u)
             _u119_y=_u119_r*_u114_math.sin(_u119_v)
@@ -12128,18 +12136,18 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             _u119_nx=_u114_math.cos(_u119_v)*_u114_math.cos(_u119_u)
             _u119_ny=_u114_math.sin(_u119_v)
             _u119_nz=_u114_math.cos(_u119_v)*_u114_math.sin(_u119_u)
-            _u119_len=.045+.145*(.5+.5*_u114_math.sin(_u119_i*.071))
-            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_i//83)%len(colors)))
+            _u119_len=.025+.15*(.5+.5*_u114_math.sin(_u119_i*(.053+(sid%19)*.0017)+sid*.11))
+            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_palette+_u119_i//(47+sid%41))%len(colors)))
         def _u119_draw_furmark(elapsed):
             if _u119_furmark_display_list[0] is None:
                 _u119_list=GL.glGenLists(1)
                 if not _u119_list:
                     raise RuntimeError("Sterownik OpenGL nie przydzielił display list dla sceny FurMark.")
                 GL.glNewList(_u119_list,GL.GL_COMPILE)
-                torus(1.04,.43,colors[0],112,28)
-                torus(.58,.024,colors[2],72,8)
+                torus(_u119_R_base,_u119_r_base,colors[_u119_palette],96+(sid%9)*4,20+(sid%7)*2)
+                torus(_u119_R_base*.55,.018+(sid%5)*.003,colors[(sid+2)%len(colors)],56+(sid%7)*4,6+(sid%3))
                 GL.glDisable(GL.GL_LIGHTING)
-                GL.glLineWidth(1.0)
+                GL.glLineWidth(.7+(sid%4)*.2)
                 GL.glBegin(GL.GL_LINES)
                 for _u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,_u119_col in _u119_furmark_hairs:
                     GL.glColor3f(*colors[_u119_col])
@@ -12152,8 +12160,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                 tally["objects"]+=1
                 tally["vertices"]+=len(_u119_furmark_hairs)*2
             GL.glPushMatrix()
-            GL.glRotatef(elapsed*27.0,1.0,.37,.21)
-            GL.glRotatef(8.0*_u114_math.sin(elapsed*.73),0,0,1)
+            GL.glRotatef(elapsed*(19+(sid%23)),1.0+(sid%3)*.13,.37+(sid%5)*.09,.21+(sid%7)*.05)
+            GL.glRotatef((5+(sid%19))*_u114_math.sin(elapsed*(.41+(sid%13)*.037)),0,0,1)
+            GL.glScalef(.78+(sid%9)*.055,.78+(sid%7)*.065,.78+(sid%11)*.045)
             GL.glCallList(_u119_furmark_display_list[0])
             GL.glPopMatrix()
         def draw_scene(elapsed):
@@ -12910,6 +12919,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             draw_scene(elapsed)
             if sid!=1:
                 draw_scene_signature(elapsed)
+                # The scene-specific FurMark stress object is deliberately layered on top of
+                # each non-base layout; its seeded geometry differs for every scene ID.
+                _u119_draw_furmark(elapsed)
             # Scene-specific telemetry HUD: live FPS, run progress and recent frame-rate history.
             # It uses a separate orthographic pass and is synchronized with the actual rendered frame.
             live_fps=window_frames/max(.01,_u114_time.perf_counter()-window_start)
@@ -13164,6 +13176,9 @@ def _u114_selftest_catalog_routing():
 def _u114_selftest_unique_gpu_scenes():
     assert len(_U100_SCENE_TITLES)==110 and len(set(_U100_SCENE_TITLES))==110
     assert len(_U66_SCENES)==110 and len({row[0] for row in _U66_SCENES})==110
+    # Each of the 110 scenes now owns a seed-specific FurMark-style hair field and ring profile.
+    assert "_u119_draw_furmark" in _u114_gpu_benchmark_child.__code__.co_names
+    assert "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_consts or "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_varnames
     original=_U114_ORIGINAL_GPU_BENCHMARK_CHILD
     assert original.__code__.co_argcount>=4
     assert "glFinish" in original.__code__.co_names
@@ -13197,17 +13212,21 @@ def _u114_selftest_turbo_math():
 def _u114_selftest_sensor_inventory():
     class FakeApp:
         _u100_sensor_tree=None
-        _u66_sensor_cache={"temps":{"method":"test bridge","sensor_count":3,"sensors":[
-            {"hardware":"CPU Package","hardwareType":"CPU","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test"},
-            {"hardware":"CPU","hardwareType":"CPU","sensor":"Core #1","sensorType":"Temperature","value":None,"unit":"°C","source":"test"},
-            {"hardware":"GPU","hardwareType":"GPU","sensor":"Memory Hotspot","sensorType":"Temperature","value":None,"unit":"°C","source":"test"}]},
+        _u66_sensor_cache={"temps":{"method":"test bridge","sensor_count":4,"sensors":[
+            {"hardware":"CPU Package","hardwareType":"CPU","sensor":"Tctl/Tdie","sensorType":"Temperature","value":72.0,"unit":"°C","source":"test","identifier":"/cpu/temp/0"},
+            {"hardware":"CPU","hardwareType":"CPU","sensor":"Core #1","sensorType":"Temperature","value":None,"unit":"°C","source":"test","identifier":"/cpu/core/1"},
+            {"hardware":"GPU","hardwareType":"GPU","sensor":"Memory Hotspot","sensorType":"Temperature","value":None,"unit":"°C","source":"test","identifier":"/gpu/hotspot"},
+            {"hardware":"GPU","hardwareType":"GPU","sensor":"Fan","sensorType":"Fan","value":1100.0,"unit":"RPM","source":"test","identifier":"/gpu/fan/0"},
+            {"hardware":"GPU","hardwareType":"GPU","sensor":"Fan","sensorType":"Fan","value":1250.0,"unit":"RPM","source":"test","identifier":"/gpu/fan/1"}]},
             "system":{"cpu_percent":35.0,"cpu_per_core_percent":[20.0,70.0]},"gpu":{}}
     rows=_u107_get_sensor_rows(FakeApp())
     assert any(r["sensor"]=="Tctl/Tdie" and r["value"]=="72" for r in rows)
     assert any(r["sensor"]=="Core #1" and r["value"]=="N/D" for r in rows)
     assert any(r["sensor"]=="Memory Hotspot" and r["value"]=="N/D" for r in rows)
     assert any(r["sensor"]=="Rdzeń logiczny 2 — użycie" and r["value"]=="70" for r in rows)
-    print("FULL_SENSOR_INVENTORY_SELFTEST_OK: active values and N/D sensor inventory are both visible")
+    fans=[r for r in rows if r["sensor"]=="Fan" and r["unit"]=="RPM"]
+    assert len(fans)==2 and {r["value"] for r in fans}=={"1100","1250"}, "Same-name sensors with distinct hardware identifiers must not be collapsed."
+    print("FULL_SENSOR_INVENTORY_SELFTEST_OK: active values, N/D and duplicate sensor IDs remain visible")
 
 _u109_selftest_service_catalog=_u114_selftest_service_catalog
 _u93_selftest_catalog_routing=_u114_selftest_catalog_routing
