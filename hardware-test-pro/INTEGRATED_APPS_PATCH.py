@@ -36,7 +36,7 @@ def _u144_companion_manifest(path=None):
         if size <= 32_768 or size != exe.stat().st_size:
             return None
         # A WPF self-contained publish can use a small native apphost plus a managed DLL and runtime files.
-        prefix = "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX"
+        prefix = "NAPRAWA-PC-SYSTEM-REPAIR-PRO"
         required = (
             exe.parent / (prefix + ".dll"),
             exe.parent / (prefix + ".runtimeconfig.json"),

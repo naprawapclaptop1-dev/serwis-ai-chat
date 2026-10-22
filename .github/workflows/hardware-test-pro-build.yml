@@ -88,9 +88,9 @@ jobs:
           $exe = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe"
           $icon = Join-Path $source "naprawa-pc.ico"
           if (!(Test-Path -LiteralPath $exe) -or (Get-Item -LiteralPath $exe).Length -lt 32768) { throw "Companion apphost EXE missing or invalid." }
-          $mainDll = Join-Path $publish "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.dll"
-          $runtimeConfig = Join-Path $publish "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.runtimeconfig.json"
-          $depsFile = Join-Path $publish "NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.16_SETUP_ELEVATION_FIX.deps.json"
+          $mainDll = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.dll"
+          $runtimeConfig = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.runtimeconfig.json"
+          $depsFile = Join-Path $publish "NAPRAWA-PC-SYSTEM-REPAIR-PRO.deps.json"
           foreach ($requiredFile in @($mainDll,$runtimeConfig,$depsFile)) {
             if (!(Test-Path -LiteralPath $requiredFile)) { throw "System Repair PRO companion dependency missing: $([IO.Path]::GetFileName($requiredFile))" }
           }
