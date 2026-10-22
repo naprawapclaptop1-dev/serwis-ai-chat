@@ -9,11 +9,13 @@ import time as _u141_time
 import tempfile as _u141_tempfile
 import uuid as _u141_uuid
 import html as _u141_html
+import csv as _u142_csv
+from tkinter import filedialog as _u142_filedialog
 import webbrowser as _u141_webbrowser
 from pathlib import Path as _U141_Path
 from datetime import datetime as _U141_datetime
 
-_U141_WINDOWS_AUDIT_VERSION = "1.0.0"
+_U141_WINDOWS_AUDIT_VERSION = "1.1.0"
 _U141_VALID_STATES = {"PASS", "WARN", "FAIL", "INFO", "N/D"}
 _U141_CHECK_IDS = (
     "system", "powershell", "pnp", "unsigned_drivers", "defender", "firewall",
@@ -471,6 +473,309 @@ th,td{padding:13px;text-align:left;border-bottom:1px solid #203650;vertical-alig
     html_path.write_text(doc, encoding="utf-8")
     return {"json": str(json_path), "html": str(html_path), "payload": payload}
 
+
+
+# v4.3.142 — history, comparison and export of real Windows audit reports.
+def _u142_read_history(report_dir=None, limit=250):
+    root = _U141_Path(report_dir) if report_dir else _u141_report_dir()
+    if not root.is_dir():
+        return []
+    entries = []
+    for json_path in root.glob("WindowsAudit_*.json"):
+        try:
+            payload = _u141_json.loads(json_path.read_text(encoding="utf-8-sig"))
+            if not isinstance(payload, dict):
+                continue
+            if payload.get("app") != "NAPRAWA PC HARDWARE TEST PRO":
+                continue
+            if payload.get("feature") != "Windows Read-only Health and Driver Audit":
+                continue
+            results = payload.get("results") if isinstance(payload.get("results"), list) else []
+            raw_summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+            summary = {}
+            for state in ("PASS", "WARN", "FAIL", "INFO", "N/D"):
+                try:
+                    summary[state] = int(raw_summary.get(state, sum(1 for item in results if isinstance(item, dict) and item.get("status") == state)))
+                except Exception:
+                    summary[state] = sum(1 for item in results if isinstance(item, dict) and item.get("status") == state)
+            entries.append({
+                "json": str(json_path.resolve()),
+                "html": str(json_path.with_suffix(".html").resolve()),
+                "created_at": str(payload.get("created_at") or ""),
+                "computer": str(payload.get("computer") or "N/D"),
+                "system": str(payload.get("system") or "N/D"),
+                "summary": summary,
+                "results": results,
+                "payload": payload,
+            })
+        except Exception:
+            # A truncated/corrupt old report must not break access to other reports.
+            continue
+    entries.sort(key=lambda item: (item.get("created_at", ""), item.get("json", "")), reverse=True)
+    try:
+        cap = max(1, min(int(limit), 1000))
+    except Exception:
+        cap = 250
+    return entries[:cap]
+
+
+def _u142_compare_history(newer, older):
+    new_results = newer.get("results") if isinstance(newer.get("results"), list) else []
+    old_results = older.get("results") if isinstance(older.get("results"), list) else []
+    new_by_id = {str(item.get("id")): item for item in new_results if isinstance(item, dict) and item.get("id")}
+    old_by_id = {str(item.get("id")): item for item in old_results if isinstance(item, dict) and item.get("id")}
+    severity = {"PASS": 0, "INFO": 1, "WARN": 2, "FAIL": 3}
+    changes = []
+    for check_id in sorted(set(old_by_id) | set(new_by_id)):
+        old_item = old_by_id.get(check_id)
+        new_item = new_by_id.get(check_id)
+        if old_item is None:
+            changes.append({
+                "id": check_id, "area": str(new_item.get("area", check_id)),
+                "old_status": "—", "new_status": str(new_item.get("status", "N/D")),
+                "change": "NOWA KONTROLA", "old_summary": "—",
+                "new_summary": str(new_item.get("summary", ""))
+            })
+            continue
+        if new_item is None:
+            changes.append({
+                "id": check_id, "area": str(old_item.get("area", check_id)),
+                "old_status": str(old_item.get("status", "N/D")), "new_status": "—",
+                "change": "BRAK W NOWSZYM RAPORCIE",
+                "old_summary": str(old_item.get("summary", "")), "new_summary": "—"
+            })
+            continue
+        old_status = str(old_item.get("status", "N/D"))
+        new_status = str(new_item.get("status", "N/D"))
+        old_summary = str(old_item.get("summary", ""))
+        new_summary = str(new_item.get("summary", ""))
+        if old_status == new_status and old_summary == new_summary:
+            continue
+        if old_status != new_status:
+            if old_status in severity and new_status in severity and severity[new_status] > severity[old_status]:
+                change_kind = "POGORSZENIE"
+            elif old_status in severity and new_status in severity and severity[new_status] < severity[old_status]:
+                change_kind = "POPRAWA"
+            else:
+                change_kind = "ZMIANA STATUSU / DOSTĘPNOŚCI"
+        else:
+            change_kind = "ZMIANA WYNIKU"
+        changes.append({
+            "id": check_id,
+            "area": str(new_item.get("area") or old_item.get("area") or check_id),
+            "old_status": old_status, "new_status": new_status, "change": change_kind,
+            "old_summary": old_summary, "new_summary": new_summary
+        })
+    return changes
+
+
+def _u142_csv_cell(value):
+    text = "" if value is None else str(value)
+    text = text.replace("\x00", " ")
+    # Prevent device/system strings from being interpreted as formulas by spreadsheet software.
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        text = "'" + text
+    return text
+
+
+def _u142_export_history(report_dir=None, output_path=None):
+    entries = _u142_read_history(report_dir)
+    if not entries:
+        raise ValueError("Brak zapisanych raportów audytu Windows do eksportu.")
+    if not output_path:
+        raise ValueError("Nie podano ścieżki do pliku CSV.")
+    target = _U141_Path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("w", newline="", encoding="utf-8-sig") as csv_file:
+        writer = _u142_csv.writer(csv_file)
+        writer.writerow([
+            "Data audytu", "Komputer", "System", "PASS", "WARN", "FAIL",
+            "INFO", "N/D", "Liczba kontroli", "Plik JSON", "Plik HTML"
+        ])
+        for entry in entries:
+            summary = entry.get("summary") or {}
+            row = [
+                entry.get("created_at", ""), entry.get("computer", ""), entry.get("system", ""),
+                summary.get("PASS", 0), summary.get("WARN", 0), summary.get("FAIL", 0),
+                summary.get("INFO", 0), summary.get("N/D", 0), len(entry.get("results") or []),
+                entry.get("json", ""), entry.get("html", "")
+            ]
+            writer.writerow([_u142_csv_cell(value) for value in row])
+    return str(target.resolve())
+
+
+def _u142_show_history(app):
+    history = _u142_read_history()
+    t = app.colors()
+    win = tk.Toplevel(app)
+    win.title("Historia audytów Windows — NAPRAWA PC HARDWARE TEST PRO")
+    win.geometry("1160x640")
+    win.minsize(900, 480)
+    win.configure(bg=t["bg"])
+    tk.Label(win, text="HISTORIA RAPORTÓW AUDYTU WINDOWS", bg=t["bg"], fg=t["accent"], font=app.fnt(13, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
+    tk.Label(win, text=f"Raporty są czytane lokalnie z: {_u141_report_dir()} • dane nie są wysyłane do sieci.", bg=t["bg"], fg=t["muted"], font=app.fnt(9), wraplength=1100, justify="left").pack(anchor="w", padx=12, pady=(0, 8))
+    columns = ("date", "computer", "pass", "warn", "fail", "unknown")
+    tree = ttk.Treeview(win, columns=columns, show="headings", height=min(14, max(5, len(history))))
+    for col, label, width in (
+        ("date", "DATA AUDYTU", 200), ("computer", "KOMPUTER", 190),
+        ("pass", "PASS", 75), ("warn", "WARN", 75), ("fail", "FAIL", 75), ("unknown", "N/D", 75)
+    ):
+        tree.heading(col, text=label)
+        tree.column(col, width=width, minwidth=60, stretch=(col == "computer"))
+    tree.tag_configure("fail", foreground=t["bad"])
+    tree.tag_configure("warn", foreground=t["warn"])
+    tree.tag_configure("ok", foreground=t["good"])
+    by_iid = {}
+    for index, entry in enumerate(history):
+        iid = str(index)
+        by_iid[iid] = entry
+        summary = entry.get("summary") or {}
+        state_tag = "fail" if summary.get("FAIL", 0) else ("warn" if summary.get("WARN", 0) else "ok")
+        tree.insert("", "end", iid=iid, values=(
+            entry.get("created_at", "N/D"), entry.get("computer", "N/D"),
+            summary.get("PASS", 0), summary.get("WARN", 0), summary.get("FAIL", 0), summary.get("N/D", 0)
+        ), tags=(state_tag,))
+    scrollbar = ttk.Scrollbar(win, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scrollbar.set)
+    tree.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=5)
+    scrollbar.pack(side="left", fill="y", padx=(0, 8), pady=5)
+    detail = tk.Text(win, height=6, wrap="word", bg=t["card"], fg=t["fg"], relief="flat", font=app.fnt(9))
+    detail.pack(fill="x", padx=12, pady=(4, 8))
+    detail.insert("1.0", "Zaznacz raport, aby zobaczyć podsumowanie i lokalne ścieżki plików.")
+    detail.configure(state="disabled")
+
+    def selected_entry():
+        selection = tree.selection()
+        return by_iid.get(selection[0]) if selection else None
+
+    def show_selected(event=None):
+        entry = selected_entry()
+        if not entry:
+            return
+        counts = entry.get("summary") or {}
+        text = (
+            f"Data: {entry.get('created_at', 'N/D')}\nKomputer: {entry.get('computer', 'N/D')}\n"
+            f"System: {entry.get('system', 'N/D')}\n"
+            f"Kontrole: {len(entry.get('results') or [])} | PASS {counts.get('PASS', 0)} | "
+            f"WARN {counts.get('WARN', 0)} | FAIL {counts.get('FAIL', 0)} | N/D {counts.get('N/D', 0)}\n\n"
+            f"JSON: {entry.get('json', '')}\nHTML: {entry.get('html', '')}"
+        )
+        detail.configure(state="normal")
+        detail.delete("1.0", "end")
+        detail.insert("1.0", text)
+        detail.configure(state="disabled")
+
+    def open_selected():
+        entry = selected_entry()
+        if not entry:
+            messagebox.showinfo("Historia audytów", "Najpierw zaznacz raport.")
+            return
+        html_path = _U141_Path(entry.get("html", ""))
+        json_path = _U141_Path(entry.get("json", ""))
+        try:
+            if html_path.is_file():
+                _u141_webbrowser.open(html_path.resolve().as_uri())
+            elif json_path.is_file():
+                _u141_webbrowser.open(json_path.resolve().as_uri())
+            else:
+                raise FileNotFoundError("Plik raportu został przeniesiony lub usunięty.")
+        except Exception as exc:
+            messagebox.showerror("Historia audytów", f"Nie udało się otworzyć raportu: {exc}")
+
+    def open_containing_folder():
+        entry = selected_entry()
+        if not entry:
+            messagebox.showinfo("Historia audytów", "Najpierw zaznacz raport.")
+            return
+        try:
+            app.open_shell(str(_U141_Path(entry["json"]).parent))
+        except Exception as exc:
+            messagebox.showerror("Historia audytów", f"Nie udało się otworzyć folderu raportu: {exc}")
+
+    tree.bind("<<TreeviewSelect>>", show_selected)
+    buttons = tk.Frame(win, bg=t["bg"])
+    buttons.pack(fill="x", padx=12, pady=(0, 10))
+    ttk.Button(buttons, text="OTWÓRZ ZAZNACZONY RAPORT", command=open_selected).pack(side="left", padx=(0, 8))
+    ttk.Button(buttons, text="FOLDER RAPORTÓW", command=open_containing_folder).pack(side="left")
+    if history:
+        tree.selection_set("0")
+        show_selected()
+    else:
+        tk.Label(win, text="Brak poprzednich raportów. Uruchom audyt, a później wróć tutaj, aby sprawdzać historię.", bg=t["bg"], fg=t["muted"], wraplength=1000).pack(anchor="w", padx=12, pady=8)
+    return win
+
+
+def _u142_compare_last_two(app):
+    history = _u142_read_history()
+    if len(history) < 2:
+        messagebox.showinfo("Porównanie audytów", "Potrzebne są co najmniej dwa zapisane audyty. Uruchom audyt ponownie po pierwszym pomiarze.")
+        return
+    newer, older = history[0], history[1]
+    changes = _u142_compare_history(newer, older)
+    worsened = sum(1 for item in changes if item["change"] == "POGORSZENIE")
+    improved = sum(1 for item in changes if item["change"] == "POPRAWA")
+    added = sum(1 for item in changes if item["change"] == "NOWA KONTROLA")
+    t = app.colors()
+    win = tk.Toplevel(app)
+    win.title("Porównanie audytów Windows")
+    win.geometry("1180x570")
+    win.minsize(900, 420)
+    win.configure(bg=t["bg"])
+    tk.Label(win, text="PORÓWNANIE DWÓCH OSTATNICH AUDYTÓW", bg=t["bg"], fg=t["accent"], font=app.fnt(13, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
+    tk.Label(
+        win,
+        text=f"Nowszy: {newer.get('created_at', 'N/D')} • Starszy: {older.get('created_at', 'N/D')}\n"
+             f"Pogorszenia: {worsened} • Poprawy: {improved} • Nowe kontrole: {added} • Pozostałe zmiany: {len(changes) - worsened - improved - added}",
+        bg=t["bg"], fg=t["fg"], font=app.fnt(9, "bold"), wraplength=1100, justify="left"
+    ).pack(anchor="w", padx=12, pady=(0, 8))
+    columns = ("change", "area", "old_status", "new_status", "detail")
+    tree = ttk.Treeview(win, columns=columns, show="headings", height=14)
+    for col, label, width in (
+        ("change", "ZMIANA", 190), ("area", "KONTROLA", 200),
+        ("old_status", "STARSZY", 95), ("new_status", "NOWSZY", 95), ("detail", "OPIS", 530)
+    ):
+        tree.heading(col, text=label)
+        tree.column(col, width=width, minwidth=70, stretch=(col == "detail"))
+    tree.tag_configure("bad", foreground=t["bad"])
+    tree.tag_configure("good", foreground=t["good"])
+    tree.tag_configure("warn", foreground=t["warn"])
+    for index, change in enumerate(changes):
+        tag = "bad" if change["change"] == "POGORSZENIE" else ("good" if change["change"] == "POPRAWA" else "warn")
+        detail_text = f"Przed: {change.get('old_summary', '—')} | Teraz: {change.get('new_summary', '—')}"
+        tree.insert("", "end", iid=str(index), values=(
+            change.get("change", ""), change.get("area", ""), change.get("old_status", ""),
+            change.get("new_status", ""), detail_text
+        ), tags=(tag,))
+    if not changes:
+        tree.insert("", "end", values=("BEZ ZMIAN", "—", "—", "—", "Statusy i krótkie wyniki kontroli są identyczne."))
+    scrollbar = ttk.Scrollbar(win, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scrollbar.set)
+    tree.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+    scrollbar.place(relx=0.985, rely=0.23, relheight=0.68, anchor="ne")
+    return win
+
+
+def _u142_export_history_ui(app):
+    entries = _u142_read_history()
+    if not entries:
+        messagebox.showinfo("Eksport historii", "Brak zapisanych raportów do eksportu.")
+        return
+    suggested = "WindowsAudit_History_" + _U141_datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
+    target = _u142_filedialog.asksaveasfilename(
+        parent=app, title="Eksport historii audytów do CSV", defaultextension=".csv",
+        initialdir=str(_u141_report_dir()), initialfile=suggested,
+        filetypes=[("Plik CSV", "*.csv"), ("Wszystkie pliki", "*.*")]
+    )
+    if not target:
+        return
+    try:
+        path = _u142_export_history(output_path=target)
+        messagebox.showinfo("Eksport historii", f"Zapisano {len(entries)} raportów do pliku CSV:\n{path}")
+    except Exception as exc:
+        messagebox.showerror("Eksport historii", f"Nie udało się wyeksportować historii: {exc}")
+
+
+
 def _u141_set_status(app, message):
     try:
         if hasattr(app, "_u141_status_var"):
@@ -643,6 +948,11 @@ def _u141_show_windows_audit(self):
     self.make_button(toolbar,"FOLDER RAPORTÓW",lambda:_u141_open_report_folder(self),"card",side="left",ipady=7)
     self.make_button(toolbar,"MENEDŻER URZĄDZEŃ",lambda:_u141_open_windows_tool(self,"devmgmt.msc"),"card",side="left",ipady=7)
     self.make_button(toolbar,"WINDOWS UPDATE",lambda:_u141_open_windows_tool(self,"ms-settings:windowsupdate"),"card",side="left",ipady=7)
+    history_toolbar = tk.Frame(self.content,bg=t["bg"])
+    history_toolbar.pack(fill="x",padx=8,pady=(0,6))
+    self.make_button(history_toolbar,"HISTORIA RAPORTÓW",lambda:_u142_show_history(self),"card",side="left",ipady=6)
+    self.make_button(history_toolbar,"PORÓWNAJ 2 OSTATNIE",lambda:_u142_compare_last_two(self),"accent",side="left",ipady=6)
+    self.make_button(history_toolbar,"EKSPORT HISTORII CSV",lambda:_u142_export_history_ui(self),"card",side="left",ipady=6)
     pane = self.panel(self.content)
     pane.pack(fill="both",expand=True,padx=8,pady=(0,6))
     columns=("status","area","summary")
@@ -698,7 +1008,7 @@ def _u141_nested_constant_exists(code, target):
     return False
 
 def _u141_selftest_windows_audit():
-    assert _U141_WINDOWS_AUDIT_VERSION == "1.0.0", "audit module version"
+    assert _U141_WINDOWS_AUDIT_VERSION == "1.1.0", "audit module version"
     assert len(_U141_CHECK_IDS) == 16 and len(set(_U141_CHECK_IDS)) == 16, "expected 16 unique audit controls"
     assert _U141_VALID_STATES == {"PASS","WARN","FAIL","INFO","N/D"}, "status vocabulary mismatch"
     assert callable(AppV43.show_windows_audit), "audit view was not wired to AppV43"
@@ -720,10 +1030,34 @@ def _u141_selftest_windows_audit():
         assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html_doc, "HTML did not escape potentially unsafe device text"
         assert "<script>alert(1)</script>" not in html_doc, "unescaped script leaked into report"
         assert loaded["feature"] == "Windows Read-only Health and Driver Audit", "report feature identifier mismatch"
+    history_dir = _U141_Path(temp) / "history"
+    history_dir.mkdir()
+    _u141_write_report([
+        _u141_result("pnp","Urządzenia PnP","PASS","Brak kodów problemów."),
+        _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna.")
+    ], {"test":"old"}, history_dir, run_at="2026-01-01T03:04:05+00:00")
+    _u141_write_report([
+        _u141_result("pnp","Urządzenia PnP","WARN","Jedno urządzenie zgłasza kod 43."),
+        _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna."),
+        _u141_result("disk_space","Wolne miejsce","WARN","Wolne miejsce poniżej progu.")
+    ], {"test":"new"}, history_dir, run_at="2026-01-02T03:04:05+00:00")
+    history = _u142_read_history(history_dir)
+    assert len(history) == 2, "history reader should include both valid audit reports"
+    assert history[0]["created_at"] > history[1]["created_at"], "history should be newest first"
+    changes = _u142_compare_history(history[0], history[1])
+    assert any(item["id"] == "pnp" and item["change"] == "POGORSZENIE" for item in changes), "status worsening was not detected"
+    assert any(item["id"] == "disk_space" and item["change"] == "NOWA KONTROLA" for item in changes), "new check was not detected"
+    csv_path = _u142_export_history(history_dir, _U141_Path(temp) / "audit-history.csv")
+    assert _U141_Path(csv_path).is_file(), "CSV export file was not created"
+    with open(csv_path, "r", encoding="utf-8-sig", newline="") as csv_file:
+        csv_rows = list(_u142_csv.reader(csv_file))
+    assert len(csv_rows) == 3 and "Data audytu" in csv_rows[0], "CSV should include a header and both history rows"
+    assert _u142_csv_cell("=cmd|' /C calc'!A0").startswith("'="), "CSV formula-injection guard failed"
+    assert callable(_u142_show_history) and callable(_u142_compare_last_two) and callable(_u142_export_history_ui), "history UI entry points missing"
     assert callable(_u66_open_tests_item), "test-center route table helper missing"
     assert _u141_nested_constant_exists(_u66_open_tests_item.__code__, "AUDYT_WINDOWS"), "test-center item route AUDYT_WINDOWS missing"
     assert _u141_nested_constant_exists(_u66_show_tests_hub.__code__, "AUDYT WINDOWS / STEROWNIKI"), "Windows Audit card missing from Test Center"
-    print("WINDOWS_AUDIT_SELFTEST_OK: 16 checks, safe collector, test-center route, HTML+JSON reports and escaping")
+    print("WINDOWS_AUDIT_SELFTEST_OK: 16 checks, safe collector, HTML+JSON, report history, compare, CSV export and escaping")
 
 if __name__ == "__main__" and "--selftest-windows-audit" in sys.argv:
     try:

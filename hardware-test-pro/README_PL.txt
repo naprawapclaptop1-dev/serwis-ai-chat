@@ -83,3 +83,12 @@ AUDYT WINDOWS / STEROWNIKÓW — NOWY MODUŁ
 -----------------------------------------
 Centrum Testów zawiera audyt odczytowy Windows, który sprawdza bieżący stan urządzeń PnP i kody problemów, sterowniki bez raportowanego podpisu, stan Microsoft Defender, profile zapory, Secure Boot/UEFI, TPM, dostępny stan dysków fizycznych, wolne miejsce, znaczniki oczekującego restartu, zdarzenia System z ostatnich 24 godzin, podstawowe usługi/Windows Update, presję RAM, adaptery sieciowe i stan baterii.
 Po zakończeniu tworzone są raporty HTML oraz JSON w %LOCALAPPDATA%\\NaprawaPC\\WindowsAudits. Raport zawiera stan PASS/WARN/INFO/N/D, szczegóły oraz zalecenia. Niepodpisany sterownik nie jest automatycznie uznawany za malware, N/D nie jest zaliczeniem, a odczyt SMART/WMI nie zastępuje testu fizycznego.
+
+
+HISTORIA AUDYTÓW WINDOWS — NOWE FUNKCJE
+--------------------------------------
+W module AUDYT WINDOWS / STEROWNIKI dostępne są trzy dodatkowe akcje:
+- HISTORIA RAPORTÓW: lista lokalnych audytów z datą, komputerem, liczbą PASS/WARN/FAIL/N/D i ścieżkami HTML/JSON; można otworzyć wybrany raport.
+- PORÓWNAJ 2 OSTATNIE: porównuje poszczególne kontrole ze starszego i nowszego audytu; wykrywa pogorszenia, poprawy, nowe/brakujące kontrole oraz zmienione wyniki.
+- EKSPORT HISTORII CSV: zapisuje lokalny indeks raportów do CSV w kodowaniu UTF-8 z BOM; pola tekstowe są zabezpieczane przed interpretacją jako formuły arkusza.
+Raporty i historia pozostają lokalne w %LOCALAPPDATA%\\NaprawaPC\\WindowsAudits. Dopiero po wykonaniu co najmniej dwóch audytów porównanie może pokazać zmiany. N/D oznacza brak odczytu, a nie pozytywny wynik.

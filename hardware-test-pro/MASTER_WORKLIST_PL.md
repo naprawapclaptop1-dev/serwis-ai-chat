@@ -1,7 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stan online sprawdzony przed następną zmianą:** stable **4.3.140** — Setup x64 i ALL-IN-ONE ZIP opublikowane, `latest.json` wskazuje SHA-256 instalatora.  
-**Kandydat 4.3.141:** nowy, rzeczywisty audyt Windows/sterowników z 16 kontrolami odczytowymi i raportami HTML+JSON. To wymaga Windows CI; odczyty Secure Boot, TPM, dysków i sensorów trzeba potem zweryfikować na fizycznym komputerze.
+**Stan online przed tym wydaniem:** stable **4.3.141** — audyt Windows/sterowników z 16 kontrolami odczytowymi, raportami HTML+JSON i globalnym aktualizatorem HTTPS.  
+**Kandydat 4.3.142:** historia lokalnych raportów, porównanie dwóch ostatnich audytów per-check i eksport CSV. Weryfikacja w Windows CI obejmuje testy zapisu/odczytu, różnic statusów i zabezpieczenia CSV; odczyty czujników, Secure Boot, TPM i dysków wymagają dodatkowego sprawdzenia na fizycznym Windows.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
