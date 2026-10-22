@@ -31,10 +31,10 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 | ShowDisks / SMART | Częściowo: testy dysków i dostępne SMART/reliability | Sprawdzić wszystkie widoki, woluminy, ostrzeżenia i eksport |
 | ShowLaptop | Częściowo: bateria, zasilanie i peryferia | Sprawdzić modele laptopów, baterię, ACPI i brak baterii w PC |
 | ShowWindows | Częściowo: centrum napraw i narzędzia Windows | Porównać wszystkie źródłowe procedury |
-| ShowGameTroubleshooting | Niepotwierdzona parzystość | Zidentyfikować wszystkie akcje i bezpieczne testy |
+| ShowGameTroubleshooting | Osobny ekran odczytowej diagnostyki GPU/DirectX/GameBar/usług gier/planu zasilania | Porównać wszystkie akcje i raporty z oryginałem; parytet 1:1 nadal niepotwierdzony |
 | ShowSecurity | Częściowo: audyt Windows/Defender/autostart | Porównać skany, wyniki i raporty |
 | ShowNetwork | Częściowo: interfejsy i Speed Test | Porównać wszystkie testy sieciowe i raporty |
-| ShowProcesses | Niepotwierdzona parzystość | Dodać widok procesów, filtrowanie i bezpieczne akcje, jeśli są w źródle |
+| ShowProcesses | Menedżer procesów: odczyt CPU/RAM/statusu, filtr, CSV, potwierdzone zakończenie z ochroną procesów krytycznych | Porównać pola, filtrowanie i akcje z oryginałem; parytet 1:1 nadal niepotwierdzony |
 | ShowJobs | Częściowo: lokalna historia zleceń i eksport HTML | Porównać pola, statusy, edycję, usuwanie, eksport i historię |
 | ShowReports | Częściowo: raporty JSON/HTML/CSV | Porównać wszystkie raporty i ich zawartość |
 | USB / audio / obraz / sieć | Częściowo: niezależne testy i enumeracja | Zweryfikować każdą funkcję na fizycznym urządzeniu |
