@@ -25,13 +25,13 @@ TELEMETRIA LIVE
 Pełna tabela łączy czujniki z Sensor Bridge z odczytami systemowymi: temperatury, napięcia, zegary, wentylatory, moc, CPU na rdzeń, RAM/swap, I/O/IOPS dysków, transfer kart sieciowych i woluminy/partycje. Wykryty sensor bez aktualnej wartości nadal pozostaje na liście z N/D; licznik odrębnie pokazuje liczbę wszystkich pozycji, dostępnych wartości i N/D. Na pulpicie monitora są przyciski pełnego inspektora, wymuszenia świeżego odczytu oraz lokalnego eksportu całej tabeli do CSV (wraz z N/D). Eksport pozostaje na komputerze i nie jest wysyłany do sieci. Dane N/D nigdy nie są zamieniane na zero.
 
 SPEED TEST
-- Profile QUICK (mniejszy transfer), STANDARD (adaptacyjny), MAX (dłuższe próbki; prosi o zgodę przed większym transferem) i TURBO (cztery równoległe strumienie HTTPS; wymaga osobnego potwierdzenia i raportuje transfer równoległy poza medianą bazową).
+- QUICK: mały transfer; STANDARD: mediana bazowych próbek plus 2 równoległe strumienie HTTPS (6 MB download + 2 MB upload na strumień); MAX: dłuższe próbki i 4 strumienie równoległe (do 64 MB dodatkowego transferu, po potwierdzeniu); TURBO: profil bazowy STANDARD plus 4 strumienie (do 128 MB dodatkowego transferu, po osobnym potwierdzeniu). Wynik równoległy jest raportowany osobno, nie zastępuje mediany.
 - Pomiar używa rzeczywistych odpowiedzi HTTP, wielu próbek download/upload oraz czasu odpowiedzi. Nie jest to test sieci LAN bez transferu; wynik zależy od łącza i endpointu.
 - Wyniki zawierają profil, próbki i podsumowanie; historia jest zapisywana lokalnie.
 
 SYSTEM REPAIR PRO / SERWIS ULTIMATE
 40 testów odczytowych — 20 poprzednich oraz 20 dodatkowych kontroli w tym wydaniu: wersja i status licencji Windows (bez kluczy), BIOS/UEFI/Secure Boot/TPM, PnP i sterowniki, stan Windows Update, błędy dziennika, usługi krytyczne, woluminy/nośniki, BCD/WinRE, usługi sieciowe, DISM CheckHealth, inwentarz sprzętu i oprogramowania, autostart/zadania, historia awarii, konfiguracja IP/DNS, WMI, lista hotfixów, usługi automatyczne, lokalne raporty i wykrywanie instalacji Windows na widocznych woluminach. Każdy ma swój raport. Test DISM CheckHealth wymaga potwierdzenia i nie naprawia automatycznie.
-Centrum serwisu zawiera także istniejące narzędzia SFC/DISM RestoreHealth, CHKDSK, DNS/Winsock, raport baterii, narzędzia Windows, offline DISM/SFC, BCD/WinRE oraz lokalne szyfrowane zgłoszenia.
+Centrum serwisu zawiera narzędzia SFC/DISM RestoreHealth, CHKDSK, DNS/Winsock, raport baterii, offline DISM/SFC, BCD/WinRE, lokalne szyfrowane zgłoszenia, menedżer procesów z filtrem/CSV i ochroną procesów krytycznych oraz odczytową diagnostykę gier (GPU, sterownik, DirectX, usługi gier i plan zasilania).
 
 BUDOWANIE LOKALNE
 1. Użyj pełnego checkoutu repozytorium z NaprawaPC_Hardware_Test_PRO.pyw, zasobami graficznymi, SUITE_SETUP.iss i folderem SensorBridge.
