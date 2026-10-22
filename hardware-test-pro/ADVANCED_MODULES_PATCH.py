@@ -11976,6 +11976,38 @@ _u93_start_catalog_test=_u114_start_catalog_test
 # New scene renderer: IDs 1–90 keep the existing renderer; IDs 91–110 are 20 separate,
 # animated OpenGL layouts with real frame timing. The simulation is not a prediction of game FPS.
 _U114_ORIGINAL_GPU_BENCHMARK_CHILD=_u37_gpu_benchmark_child
+def _u128_furmark_profile(scene_id):
+    """Return a deterministic, scene-specific FurMark stress profile for IDs 1–110."""
+    sid=max(1,min(110,int(scene_id)))
+    return {
+        "scene_id":sid,
+        "major_radius":round(.88+((sid*7)%23)/100.0,3),
+        "tube_radius":round(.31+((sid*11)%19)/100.0,3),
+        "hair_count":6000+sid*45,
+        "palette":(sid-1)%6,
+        "u_offset":sid*.017,
+        "v_offset":sid*.013,
+        "hair_wave":.053+(sid%19)*.0017,
+        "hair_phase":sid*.11,
+        "color_stride":47+sid%41,
+        "ring_segments":96+(sid%9)*4,
+        "ring_sides":20+(sid%7)*2,
+        "inner_ring_radius":round((.88+((sid*7)%23)/100.0)*.55,3),
+        "inner_tube_radius":.018+(sid%5)*.003,
+        "inner_major_segments":56+(sid%7)*4,
+        "inner_minor_segments":6+(sid%3),
+        "rotation_speed":19+(sid%23),
+        "rotation_x":1+(sid%3)*.13,
+        "rotation_y":.37+(sid%5)*.09,
+        "rotation_z":.21+(sid%7)*.05,
+        "pulse_amplitude":5+(sid%19),
+        "pulse_speed":.41+(sid%13)*.037,
+        "scale_x":.78+(sid%9)*.055,
+        "scale_y":.78+(sid%7)*.065,
+        "scale_z":.78+(sid%11)*.045
+    }
+
+
 def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920x1080"):
     sid=max(1,min(110,int(scene_id)))
     # All IDs 1–110 now use the same synchronized renderer, but each ID selects a distinct scene layout.
@@ -12120,13 +12152,14 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
         # density, palette and animation are seeded by the scene ID so tests are not clones.
         _u119_furmark_display_list=[None]
         _u119_furmark_hairs=[]
-        _u119_R_base=.88+((sid*7)%23)/100.0
-        _u119_r_base=.31+((sid*11)%19)/100.0
-        _u119_hair_count=6000+sid*45
-        _u119_palette=(sid-1)%len(colors)
+        _u119_profile=_u128_furmark_profile(sid)
+        _u119_R_base=_u119_profile["major_radius"]
+        _u119_r_base=_u119_profile["tube_radius"]
+        _u119_hair_count=_u119_profile["hair_count"]
+        _u119_palette=_u119_profile["palette"]
         for _u119_i in range(_u119_hair_count):
-            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949+sid*.017)%1.0)
-            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927+sid*.013)%1.0)
+            _u119_u=2*_u114_math.pi*((_u119_i*0.6180339887498949+_u119_profile["u_offset"])%1.0)
+            _u119_v=2*_u114_math.pi*((_u119_i*0.7548776662466927+_u119_profile["v_offset"])%1.0)
             _u119_R=_u119_R_base
             _u119_r=_u119_r_base
             _u119_ring=_u119_R+_u119_r*_u114_math.cos(_u119_v)
@@ -12136,16 +12169,16 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             _u119_nx=_u114_math.cos(_u119_v)*_u114_math.cos(_u119_u)
             _u119_ny=_u114_math.sin(_u119_v)
             _u119_nz=_u114_math.cos(_u119_v)*_u114_math.sin(_u119_u)
-            _u119_len=.025+.15*(.5+.5*_u114_math.sin(_u119_i*(.053+(sid%19)*.0017)+sid*.11))
-            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_palette+_u119_i//(47+sid%41))%len(colors)))
+            _u119_len=.025+.15*(.5+.5*_u114_math.sin(_u119_i*_u119_profile["hair_wave"]+_u119_profile["hair_phase"]))
+            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_palette+_u119_i//_u119_profile["color_stride"])%len(colors)))
         def _u119_draw_furmark(elapsed):
             if _u119_furmark_display_list[0] is None:
                 _u119_list=GL.glGenLists(1)
                 if not _u119_list:
                     raise RuntimeError("Sterownik OpenGL nie przydzielił display list dla sceny FurMark.")
                 GL.glNewList(_u119_list,GL.GL_COMPILE)
-                torus(_u119_R_base,_u119_r_base,colors[_u119_palette],96+(sid%9)*4,20+(sid%7)*2)
-                torus(_u119_R_base*.55,.018+(sid%5)*.003,colors[(sid+2)%len(colors)],56+(sid%7)*4,6+(sid%3))
+                torus(_u119_R_base,_u119_r_base,colors[_u119_palette],_u119_profile["ring_segments"],_u119_profile["ring_sides"])
+                torus(_u119_profile["inner_ring_radius"],_u119_profile["inner_tube_radius"],colors[(sid+2)%len(colors)],_u119_profile["inner_major_segments"],_u119_profile["inner_minor_segments"])
                 GL.glDisable(GL.GL_LIGHTING)
                 GL.glLineWidth(.7+(sid%4)*.2)
                 GL.glBegin(GL.GL_LINES)
@@ -12160,9 +12193,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
                 tally["objects"]+=1
                 tally["vertices"]+=len(_u119_furmark_hairs)*2
             GL.glPushMatrix()
-            GL.glRotatef(elapsed*(19+(sid%23)),1.0+(sid%3)*.13,.37+(sid%5)*.09,.21+(sid%7)*.05)
-            GL.glRotatef((5+(sid%19))*_u114_math.sin(elapsed*(.41+(sid%13)*.037)),0,0,1)
-            GL.glScalef(.78+(sid%9)*.055,.78+(sid%7)*.065,.78+(sid%11)*.045)
+            GL.glRotatef(elapsed*_u119_profile["rotation_speed"],_u119_profile["rotation_x"],_u119_profile["rotation_y"],_u119_profile["rotation_z"])
+            GL.glRotatef(_u119_profile["pulse_amplitude"]*_u114_math.sin(elapsed*_u119_profile["pulse_speed"]),0,0,1)
+            GL.glScalef(_u119_profile["scale_x"],_u119_profile["scale_y"],_u119_profile["scale_z"])
             GL.glCallList(_u119_furmark_display_list[0])
             GL.glPopMatrix()
         def draw_scene(elapsed):
@@ -12941,7 +12974,9 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             "duration_seconds":round(elapsed,2),"average_fps":round(frames/elapsed,2),
             "peak_fps_1s":round(peak,2),"fps_samples":samples,"geometry_vertices":tally["vertices"],
             "geometry_objects":tally["objects"],"signature_objects":tally.get("signature_objects",0),
-            "signature_vertices":tally.get("signature_vertices",0),"scene_signature":signature,"resolution_requested":requested,
+            "signature_vertices":tally.get("signature_vertices",0),"scene_signature":signature,
+            "furmark_overlay":True,"furmark_profile":_u119_profile,"furmark_hair_count":len(_u119_furmark_hairs),
+            "resolution_requested":requested,
             "resolution_rendered":f"{width}x{height}","desktop_resolution":f"{desktop_w}x{desktop_h}" if desktop_w and desktop_h else "N/D",
             "resolution_limited_by_display":resolution_limited,"workload":("FUR_DONUT_OPENGL_STRESS" if sid==1 else "dedicated service diagnostic 3D scene"),
             "stopped_by_user":elapsed<duration-.5,
@@ -13179,6 +13214,10 @@ def _u114_selftest_unique_gpu_scenes():
     # Each of the 110 scenes now owns a seed-specific FurMark-style hair field and ring profile.
     assert "_u119_draw_furmark" in _u114_gpu_benchmark_child.__code__.co_names
     assert "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_consts or "_u119_hair_count" in _u114_gpu_benchmark_child.__code__.co_varnames
+    profiles=[_u128_furmark_profile(i) for i in range(1,111)]
+    profile_keys=[(p["major_radius"],p["tube_radius"],p["hair_count"],p["palette"],p["rotation_speed"],p["scale_x"],p["scale_y"],p["scale_z"]) for p in profiles]
+    assert len(set(profile_keys))==110 and all(p["hair_count"]>=6000 for p in profiles), "All 110 scenes must use a different FurMark stress profile."
+    assert callable(_u128_furmark_profile)
     original=_U114_ORIGINAL_GPU_BENCHMARK_CHILD
     assert original.__code__.co_argcount>=4
     assert "glFinish" in original.__code__.co_names
