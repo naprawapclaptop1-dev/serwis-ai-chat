@@ -14188,6 +14188,13 @@ def _u119_selftest_furmark_scene():
                 literals.add(value)
             elif isinstance(value,(int,float)):
                 numbers.add(value)
+            elif isinstance(value,tuple):
+                # Python compiles dict keys into tuple constants (BUILD_CONST_KEY_MAP).
+                for item in value:
+                    if isinstance(item,str):
+                        literals.add(item)
+                    elif isinstance(item,(int,float)):
+                        numbers.add(item)
     assert "_u119_draw_furmark" in names
     assert "glCallList" in names
     assert "FUR_DONUT_OPENGL_STRESS" in literals
