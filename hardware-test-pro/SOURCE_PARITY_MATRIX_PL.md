@@ -54,4 +54,10 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 
 ## D. Ograniczenia dowodowe
 
-Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. W tej sesji plik System Repair PRO o rozmiarze 166,7 MB nie został udostępniony do rozpakowania przez lokalny builder, więc nie można uczciwie potwierdzić zgodności 1:1 każdej klasy i metody. Kod istniejących integracji i katalogów nie jest dowodem pełnej parytetu z oryginałami. Nie oznaczać całej integracji jako zakończonej, dopóki macierz nie zostanie wypełniona na podstawie zawartości obu źródeł i testów.
+Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. Plik System Repair PRO o rozmiarze 166 715 344 B został zidentyfikowany, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik po pliku, więc zgodność 1:1 każdej klasy i metody pozostaje niepotwierdzona. Kod istniejących integracji i katalogów nie jest dowodem pełnej parytetu z oryginałami. Nie oznaczać całej integracji jako zakończonej, dopóki macierz nie zostanie wypełniona na podstawie zawartości obu źródeł i testów.
+
+## Kandydat 4.3.125 — testy grafiki
+
+- [ ] Windows CI potwierdza wszystkie 31 jawnych gałęzi geometrii.
+- [ ] Obejrzeć 110 scen na fizycznym GPU i potwierdzić, że sceny są wizualnie rozróżnialne, a nie tylko mają różne ID.
+- [ ] Zweryfikować rzeczywiste FPS i stabilność na kilku klasach GPU.

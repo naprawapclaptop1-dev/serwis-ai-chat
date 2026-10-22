@@ -52,6 +52,18 @@ Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To 
 
 ### Źródła dwóch aplikacji
 - W bieżącej rozmowie znajdują się archiwa nazwane NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_RAM_LIVE_DASHBOARD_ULTIMATE_FULL_PROJECT.zip (166 715 344 B) i NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip (5 710 073 B).
-- Archiwum System Repair PRO przekracza limit materializacji 100 MiB w tym środowisku, więc jego zawartości nie można w tej sesji w pełni rozpakować i porównać plik po pliku. Nie będę deklarować zgodności 1:1 na podstawie samej nazwy ZIP.
+- Archiwum System Repair PRO o rozmiarze 166 715 344 B zostało zidentyfikowane, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik po pliku, więc zgodność 1:1 pozostaje niepotwierdzona.
 - W repozytorium pozostają zintegrowane istniejące procedury diagnostyczne, centrum napraw, profile problemów, baza wiedzy, zlecenia serwisowe i laboratorium zasilania. To nadal nie dowodzi pełnej parytetu każdego ekranu/handlera obu aplikacji źródłowych.
 - Wydanie online powinno być publikowane dopiero po przejściu testów CI. Osobny test fizycznego sprzętu pozostaje konieczny dla rzeczywistych temperatur, wentylatorów, mocy i renderowania GPU.
+
+## Kandydat 4.3.125 — geometria scen GPU
+
+- Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
+- Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
+- Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
+
+## Kandydat 4.3.125 — geometria scen GPU
+
+- Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
+- Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
+- Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
