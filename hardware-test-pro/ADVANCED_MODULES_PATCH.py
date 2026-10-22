@@ -10298,7 +10298,9 @@ def _u106_selftest_adaptive_speed_payloads():
     assert "download_peak_mbps" in code and "upload_peak_mbps" in code
     assert "latency_jitter_ms" in code
     assert callable(_u101_start_speed_test)
-    assert _u66_measure_speed is _u100_measure_speed or getattr(_u66_measure_speed, "__name__", "") == "_u108_measure_speed", "Speed Test must use the validated adaptive engine, optionally wrapped by the profile selector"
+    _speed_name=getattr(_u66_measure_speed, "__name__", "")
+    _speed_wrapper_ok=(_speed_name=="_u124_measure_speed" and "_U124_ORIGINAL_MEASURE_SPEED" in _u66_measure_speed.__code__.co_names)
+    assert _u66_measure_speed is _u100_measure_speed or _speed_name=="_u108_measure_speed" or _speed_wrapper_ok, "Speed Test must use the validated adaptive engine, optionally wrapped by the profile selector"
     print("ADAPTIVE_SPEED_PAYLOAD_ACCOUNTING_SELFTEST_OK")
 
 
@@ -14392,7 +14394,6 @@ AppV43.show_speed_test=_u124_show_speed_test
 # Wrap only the public speed-test entry point. Keep the lower-level functions
 # intact because their self-tests inspect the real request/byte-validation path.
 # Preserve the compatibility name expected by the existing adaptive-engine dispatcher.
-_u124_measure_speed.__name__="_u108_measure_speed"
 _u66_measure_speed=_u124_measure_speed
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
