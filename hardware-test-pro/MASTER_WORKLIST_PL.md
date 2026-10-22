@@ -1,7 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stan online sprawdzony:** stable **4.3.130**. Windows workflow 39766232986 zakończył się sukcesem; opublikowano Setup x64 i ALL-IN-ONE ZIP. To potwierdza build i selftesty CI, nie test na fizycznym komputerze.  
-**Kandydat roboczy:** 4.3.131 — dodano bieżący postęp łącznego transferu dla równoległych profili Speed Test; wymaga pełnego Windows CI i sprawdzenia artefaktów/manifestu.
+**Stan online sprawdzony:** stable **4.3.131**. Windows workflow 39775574086 zakończył się sukcesem; opublikowano Setup x64 i ALL-IN-ONE ZIP. Testy automatyczne potwierdziły też agregowanie postępu równoległych strumieni Speed Test. To nie zastępuje testu na fizycznym komputerze.  
+**Kandydat roboczy:** 4.3.132 — dodano wspólny pulpit z bezpośrednim dostępem do 18 istniejących ekranów diagnostyki/naprawy; wymaga pełnego Windows CI i sprawdzenia artefaktów/manifestu.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -181,3 +181,12 @@
 - [ ] Uruchomić pełny Windows CI i sprawdzić, że zmiana nie psuje testów profili ani instalatora.
 - [ ] Na prawdziwym łączu porównać STANDARD/MAX/TURBO/ULTRA z niezależnym testem i zapisać logi.
 - [ ] Nadal otwarta: parzystość 1:1 obu oryginalnych aplikacji; ta zmiana jej nie zamyka.
+
+
+## Kandydat 4.3.132 — wspólny pulpit zintegrowanego centrum serwisu
+- [x] Dodano jeden ekran z 18 bezpośrednimi trasami do obecnie zintegrowanych modułów: katalog testów, oba katalogi diagnostyczne, centrum napraw Windows, profile napraw, baza wiedzy, zlecenia, zasilanie/bateria, procesy, diagnostyka gier, raporty, pełny inspektor czujników, telemetria live, Speed Test, dyski, bezpieczeństwo i sieć.
+- [x] Dodano bezpośredni przycisk do pulpitu zintegrowanego centrum z ekranu napraw Windows.
+- [x] Dodano test, który sprawdza liczbę i unikalność tras, dostępność handlerów oraz 20+20 pozycji w katalogach System Repair PRO / Serwis Ultimate.
+- [ ] Uruchomić pełny Windows CI, zweryfikować instalator/ZIP/manifest.
+- [ ] Sprawdzić wizualnie na Windows, czy wszystkie kafle są widoczne przy różnych skalach i rozdzielczościach.
+- [ ] Ten pulpit poprawia nawigację, ale nie zamyka otwartego porównania 1:1 źródeł obu archiwów.
