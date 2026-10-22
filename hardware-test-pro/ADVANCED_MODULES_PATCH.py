@@ -13508,6 +13508,219 @@ def _u117_selftest_per_test_scene_routing():
 
 
 
+# v4.3.126 — add the missing process-management and game-troubleshooting service screens.
+_U126_PROTECTED_PROCESS_NAMES={
+    "system","system idle process","registry","memory compression","secure system",
+    "csrss.exe","wininit.exe","services.exe","lsass.exe","winlogon.exe","smss.exe",
+    "dwm.exe","fontdrvhost.exe","lsaiso.exe","svchost.exe","ntoskrnl.exe"
+}
+
+def _u126_is_protected_process(name):
+    value=str(name or "").strip().casefold()
+    return value in _U126_PROTECTED_PROCESS_NAMES or "naprawa pc hardware test pro" in value or "naprawa-pc-hardware-test-pro" in value
+
+def _u126_collect_process_rows():
+    import psutil as _u126_psutil
+    rows=[]
+    for proc in _u126_psutil.process_iter(["pid","name","username","status","cpu_percent","create_time"]):
+        try:
+            info=proc.info or {}
+            pid=int(info.get("pid") or proc.pid)
+            name=str(info.get("name") or "N/D")
+            try:memory=int(proc.memory_info().rss)
+            except Exception:memory=None
+            cpu=info.get("cpu_percent")
+            try:cpu=float(cpu) if cpu is not None and _u66_math.isfinite(float(cpu)) else None
+            except Exception:cpu=None
+            rows.append({"pid":pid,"name":name,"username":str(info.get("username") or "N/D"),
+                "status":str(info.get("status") or "N/D"),"cpu_percent":cpu,
+                "memory_bytes":memory,"memory_mb":round(memory/1048576,1) if memory is not None else None,
+                "protected":_u126_is_protected_process(name)})
+        except Exception:
+            continue
+    return sorted(rows,key=lambda row:(row.get("memory_bytes") or 0),reverse=True)
+
+def _u126_show_process_manager(app):
+    import csv as _u126_csv
+    import os as _u126_os
+    import subprocess as _u126_subprocess
+    from pathlib import Path as _u126_Path
+    from tkinter import filedialog as _u126_filedialog
+    app.current_view="PROCESS_MANAGER";app.clear();t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — MENEDŻER PROCESÓW")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="PROCESY WINDOWS • CPU • PAMIĘĆ • STATUS",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,2))
+    tk.Label(head,text="Odczyt procesów jest tylko diagnostyczny. Zakończenie procesu wymaga osobnego potwierdzenia; procesy krytyczne i sama aplikacja są chronione.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    controls=tk.Frame(app.content,bg=t["bg"]);controls.pack(fill="x",padx=6,pady=4)
+    query=tk.StringVar()
+    tk.Label(controls,text="Filtr:",bg=t["bg"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    search=tk.Entry(controls,textvariable=query,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat")
+    search.pack(side="left",fill="x",expand=True,padx=(0,8),ipady=4)
+    status=tk.StringVar(value="Odczyt procesów nie został jeszcze wykonany.")
+    tk.Label(app.content,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=1350).pack(fill="x",padx=8,pady=3)
+    cols=("pid","name","cpu","memory","user","state")
+    table=ttk.Treeview(app.content,columns=cols,show="headings",height=18)
+    for key,title,width in (("pid","PID",80),("name","Proces",300),("cpu","CPU %",90),("memory","RAM MB",100),("user","Użytkownik",240),("state","Status",140)):
+        table.heading(key,text=title);table.column(key,width=width,anchor="w" if key in ("name","user","state") else "e")
+    scroll=ttk.Scrollbar(app.content,orient="vertical",command=table.yview);table.configure(yscrollcommand=scroll.set)
+    table.pack(side="left",fill="both",expand=True,padx=(6,0),pady=4);scroll.pack(side="right",fill="y",padx=(0,6),pady=4)
+    rows_cache=[]
+    def refresh():
+        nonlocal rows_cache
+        try:rows_cache=_u126_collect_process_rows()
+        except Exception as exc:
+            status.set("BŁĄD odczytu procesów: "+type(exc).__name__+": "+str(exc));return
+        needle=query.get().strip().casefold()
+        for iid in table.get_children():table.delete(iid)
+        visible=0
+        for row in rows_cache:
+            if needle and needle not in (str(row["name"])+" "+str(row["pid"])+" "+str(row["username"])).casefold():continue
+            cpu=f"{row['cpu_percent']:.1f}" if isinstance(row.get("cpu_percent"),(int,float)) else "N/D"
+            memory=f"{row['memory_mb']:.1f}" if isinstance(row.get("memory_mb"),(int,float)) else "N/D"
+            table.insert("","end",iid=str(row["pid"]),values=(row["pid"],row["name"],cpu,memory,row["username"],row["status"]))
+            visible+=1
+        status.set(f"Procesy: {len(rows_cache)} • widoczne: {visible} • chronione: {sum(1 for row in rows_cache if row['protected'])} • sortowanie: największe użycie RAM")
+    def terminate_selected():
+        selection=table.selection()
+        if not selection:
+            messagebox.showinfo("Menedżer procesów","Najpierw zaznacz proces.");return
+        try:pid=int(selection[0])
+        except Exception:return
+        row=next((x for x in rows_cache if x["pid"]==pid),None)
+        if not row:
+            status.set("Proces zniknął z listy. Odśwież widok.");return
+        if row.get("protected") or pid==_u66_os.getpid():
+            messagebox.showwarning("Proces chroniony","Nie wolno zakończyć tego procesu z poziomu narzędzia serwisowego.");return
+        if not messagebox.askyesno("Zakończyć proces?",f"Zakończyć proces {row['name']} (PID {pid})? Niezapisane dane tej aplikacji mogą zostać utracone."):
+            return
+        try:
+            import psutil as _u126_psutil
+            process=_u126_psutil.Process(pid)
+            if _u126_is_protected_process(process.name()) or pid==_u66_os.getpid():
+                raise PermissionError("Proces został rozpoznany jako chroniony.")
+            process.terminate()
+            try:process.wait(timeout=3)
+            except _u126_psutil.TimeoutExpired:
+                status.set(f"Proces {pid} nie zakończył się w 3 s. Nie wymuszono kill; sprawdź uprawnienia i odśwież.")
+                return
+            status.set(f"Zakończono proces {row['name']} (PID {pid}).")
+            refresh()
+        except Exception as exc:
+            status.set(f"Nie zakończono procesu {pid}: {type(exc).__name__}: {exc}")
+    def export_csv():
+        if not rows_cache:
+            messagebox.showinfo("Eksport procesów","Najpierw odśwież listę procesów.");return
+        path=_u126_filedialog.asksaveasfilename(title="Zapisz raport procesów",defaultextension=".csv",filetypes=[("CSV","*.csv")],initialfile="naprawapc-procesy.csv")
+        if not path:return
+        try:
+            with open(path,"w",encoding="utf-8-sig",newline="") as stream:
+                writer=_u126_csv.DictWriter(stream,fieldnames=("pid","name","username","status","cpu_percent","memory_mb","protected"))
+                writer.writeheader()
+                for row in rows_cache:writer.writerow({key:row.get(key) for key in writer.fieldnames})
+            status.set(f"Zapisano {len(rows_cache)} procesów: {path}")
+        except Exception as exc:messagebox.showerror("Eksport CSV",str(exc))
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",padx=6,pady=5)
+    app.make_button(row,"ODŚWIEŻ LISTĘ",refresh,"accent",side="left",ipady=5)
+    app.make_button(row,"ZAKOŃCZ WYBRANY",terminate_selected,"bad",side="left",ipady=5)
+    app.make_button(row,"EKSPORT CSV",export_csv,"card",side="left",ipady=5)
+    app.make_button(row,"← CENTRUM NAPRAW",lambda:_u120_show_system_repair_center(app),"card",side="left",ipady=5)
+    search.bind("<Return>",lambda event:refresh())
+    refresh()
+
+_U126_GAME_DIAGNOSTIC_PS = r"""
+$ErrorActionPreference='SilentlyContinue'
+$os=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture
+$gpus=@(Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion,DriverDate,CurrentHorizontalResolution,CurrentVerticalResolution,AdapterRAM)
+$dx=(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\DirectX' -Name Version -ErrorAction SilentlyContinue).Version
+$gamebar=Get-ItemProperty 'HKCU:\Software\Microsoft\GameBar' -ErrorAction SilentlyContinue | Select-Object GameModeEnabled,AllowAutoGameMode,GameDVR_Enabled
+$services=@(Get-Service -Name 'GamingServices','GamingServicesNet','XblAuthManager','XblGameSave','XboxNetApiSvc' -ErrorAction SilentlyContinue | Select-Object Name,Status,StartType)
+$power=powercfg /getactivescheme 2>&1
+[pscustomobject]@{CollectedAt=(Get-Date).ToString('o');OS=$os;DirectXRegistryVersion=$dx;GPUs=$gpus;GameBar=$gamebar;GamingServices=$services;ActivePowerPlan=($power -join ' ')} | ConvertTo-Json -Depth 6
+"""
+
+def _u126_collect_game_diagnostics():
+    import os as _u126_os
+    import subprocess as _u126_subprocess
+    if _u126_os.name!="nt":
+        return {"state":"warn","body":"Ta diagnostyka wymaga Windows 10/11.","returncode":None}
+    exe=_u126_os.path.join(_u126_os.environ.get("WINDIR",r"C:\Windows"),"System32","WindowsPowerShell","v1.0","powershell.exe")
+    try:
+        proc=_u126_subprocess.run([exe,"-NoProfile","-NonInteractive","-Command",_U126_GAME_DIAGNOSTIC_PS],
+            capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=45,
+            creationflags=getattr(_u126_subprocess,"CREATE_NO_WINDOW",0))
+        body=((proc.stdout or "")+"\n"+(proc.stderr or "")).strip() or "Windows nie zwrócił danych diagnostycznych."
+        return {"state":"good" if proc.returncode==0 and proc.stdout.strip() else "warn","body":body,"returncode":proc.returncode}
+    except Exception as exc:
+        return {"state":"warn","body":f"{type(exc).__name__}: {exc}","returncode":None}
+
+def _u126_show_game_diagnostics(app):
+    import os as _u126_os
+    import subprocess as _u126_subprocess
+    import threading as _u126_threading
+    from datetime import datetime as _u126_datetime
+    from pathlib import Path as _u126_Path
+    app.current_view="GAME_DIAGNOSTICS";app.clear();t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — DIAGNOSTYKA GIER")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="GPU • STEROWNIK • DIRECTX • USŁUGI GIER • PLAN ZASILANIA",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,2))
+    tk.Label(head,text="Odczyt diagnostyczny bez zmian w systemie. Brak wpisu lub usługi oznacza N/D; ten ekran nie obiecuje wzrostu FPS ani nie instaluje sterowników automatycznie.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    status=tk.StringVar(value="Gotowe — uruchom diagnostykę.")
+    tk.Label(app.content,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=1350).pack(fill="x",padx=8,pady=3)
+    pane=app.panel(app.content);pane.pack(fill="both",expand=True,padx=3,pady=3)
+    output=tk.Text(pane,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    output.pack(fill="both",expand=True,padx=8,pady=8);output.insert("end","Raport nie został jeszcze pobrany.\n");output.configure(state="disabled")
+    def show_report(result,path):
+        if not output.winfo_exists():return
+        output.configure(state="normal");output.delete("1.0","end");output.insert("end",result.get("body","N/D")+"\n\nRaport: "+str(path));output.configure(state="disabled")
+        status.set(("PASS" if result.get("state")=="good" else "WARN")+" — kod wyjścia: "+str(result.get("returncode","N/D"))+" — "+str(path))
+        try:
+            app.results["GAME_DIAGNOSTICS"]={"state":result.get("state"),"path":str(path),"returncode":result.get("returncode")}
+            app.queue_log("Diagnostyka gier: "+str(path)+"; state="+str(result.get("state")))
+        except Exception:pass
+    def run():
+        status.set("Trwa odczyt Windows, GPU, DirectX, usług i planu zasilania…")
+        def job():
+            result=_u126_collect_game_diagnostics()
+            folder=_u126_Path(_u126_os.environ.get("LOCALAPPDATA") or _u126_Path.home())/"NaprawaPC"/"Raporty"/"GameDiagnostics"
+            path=folder/(_u126_datetime.now().strftime("%Y%m%d-%H%M%S")+"-game-diagnostics.json")
+            try:
+                folder.mkdir(parents=True,exist_ok=True)
+                import json as _u126_json
+                path.write_text(_u126_json.dumps(result,ensure_ascii=False,indent=2),encoding="utf-8")
+            except Exception as exc:
+                result["body"]+="\n\nNie udało się zapisać raportu: "+str(exc)
+            try:app.queue_action(lambda r=result,p=path:show_report(r,p))
+            except Exception:pass
+        _u126_threading.Thread(target=job,name="NaprawaPCGameDiagnostics",daemon=True).start()
+    def open_graphics():
+        try:
+            if hasattr(_u126_os,"startfile"):_u126_os.startfile("ms-settings:display-advancedgraphics")
+            else:_u126_subprocess.Popen(["cmd.exe","/c","start","","ms-settings:display-advancedgraphics"])
+        except Exception as exc:messagebox.showerror("Ustawienia grafiki",str(exc))
+    def open_dxdiag():
+        try:_u126_subprocess.Popen(["dxdiag.exe"])
+        except Exception as exc:messagebox.showerror("DirectX Diagnostic Tool",str(exc))
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",padx=6,pady=5)
+    app.make_button(row,"URUCHOM DIAGNOSTYKĘ",run,"accent",side="left",ipady=5)
+    app.make_button(row,"USTAWIENIA GRAFIKI",open_graphics,"card",side="left",ipady=5)
+    app.make_button(row,"OTWÓRZ DXDIAG",open_dxdiag,"card",side="left",ipady=5)
+    app.make_button(row,"← CENTRUM NAPRAW",lambda:_u120_show_system_repair_center(app),"card",side="left",ipady=5)
+
+def _u126_selftest_process_manager():
+    assert _u126_is_protected_process("lsass.exe")
+    assert _u126_is_protected_process("NAPRAWA-PC-HARDWARE-TEST-PRO.exe")
+    assert not _u126_is_protected_process("notepad.exe")
+    assert callable(_u126_collect_process_rows) and callable(_u126_show_process_manager)
+    print("SERWIS_ULTIMATE_PROCESS_MANAGER_SELFTEST_OK: process inventory, protected-process guard and CSV export UI")
+
+def _u126_selftest_game_diagnostics():
+    assert "Win32_VideoController" in _U126_GAME_DIAGNOSTIC_PS
+    assert "DirectXRegistryVersion" in _U126_GAME_DIAGNOSTIC_PS
+    assert "Get-Service" in _U126_GAME_DIAGNOSTIC_PS and "powercfg /getactivescheme" in _U126_GAME_DIAGNOSTIC_PS
+    assert all(token not in _U126_GAME_DIAGNOSTIC_PS for token in ("Remove-Item","Set-ItemProperty","Format-Volume","Clear-Disk"))
+    assert callable(_u126_collect_game_diagnostics) and callable(_u126_show_game_diagnostics)
+    print("SERWIS_ULTIMATE_GAME_DIAGNOSTICS_SELFTEST_OK: read-only GPU/DirectX/services/power checks")
+
 # v4.4.0 — real Windows repair/recovery actions, with explicit consent and logs.
 _U120_REPAIR_PS = r"""
 param(
@@ -13703,6 +13916,8 @@ def _u120_show_system_repair_center(app):
     app.make_button(row, "USTAWIENIA ODZYSKIWANIA", open_recovery, "card", side="left", ipady=4)
     app.make_button(row, "OTWÓRZ OSTATNI LOG", open_log, "card", side="left", ipady=4)
     app.make_button(row, "FOLDER RAPORTÓW", open_folder, "card", side="left", ipady=4)
+    app.make_button(row, "MENEDŻER PROCESÓW", lambda:_u126_show_process_manager(app), "card", side="left", ipady=4)
+    app.make_button(row, "DIAGNOSTYKA GIER", lambda:_u126_show_game_diagnostics(app), "card", side="left", ipady=4)
     app.make_button(row, "← LABORATORIUM", app.show_component_lab, "card", side="left", ipady=4)
     logbox = app.panel(app.content); logbox.pack(fill="both", expand=True, padx=3, pady=3)
     tk.Label(logbox, text="LOG NA ŻYWO — NIE ZAMYKAJ OKNA PODCZAS NAPRAWY", bg=t["panel"], fg=t["accent"], font=app.fnt(9,"bold")).pack(anchor="w", padx=8, pady=(6,3))
@@ -14741,6 +14956,8 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u123_selftest_repair_profiles()
         _u122_selftest_repair_knowledge()
         _u120_selftest_system_repair_center()
+        _u126_selftest_process_manager()
+        _u126_selftest_game_diagnostics()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
         _u126_selftest_sensor_merge()
