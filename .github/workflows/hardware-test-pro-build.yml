@@ -41,6 +41,18 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           Set-Location "${{ github.workspace }}\hardware-test-pro"
+          $bridgeSource = Get-Content -LiteralPath ".\SensorBridge\Program.cs" -Raw
+          foreach ($required in @(
+            'IsBatteryEnabled\s*=\s*true',
+            'IsPsuEnabled\s*=\s*true',
+            'IsPowerMonitorEnabled\s*=\s*true',
+            'hardwareId',
+            'identifier',
+            'valueAvailable'
+          )) {
+            if ($bridgeSource -notmatch $required) { throw "Sensor Bridge missing required sensor coverage marker: $required" }
+          }
+          Write-Host "SENSOR_BRIDGE_SENSOR_COVERAGE_OK: battery, PSU, power monitor and stable sensor identifiers"
           dotnet publish ".\SensorBridge\HardwareSensorBridge.csproj" -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true -o ".\SensorBridge\publish"
           if ($LASTEXITCODE -ne 0) { throw "Hardware sensor bridge publish failed." }
           $bridge = ".\SensorBridge\publish\NAPRAWA-PC-HARDWARE-SENSOR-BRIDGE.exe"
