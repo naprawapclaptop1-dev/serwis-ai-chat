@@ -75,3 +75,5 @@ Dodano 10 odrębnych diagnostyk odczytowych z własnym ekranem i raportem JSON: 
 Testy są dostępne z Centrum napraw i nie zastępują oryginalnych modułów aplikacji źródłowych. Nie wyłączają ochrony, nie zmieniają konfiguracji sieci i nie naprawiają dysków. Wyniki niedostępne są oznaczane WARN/N/D, a nieprawidłowy JSON lub kod wyjścia nie może otrzymać PASS. Przycisk RZECZYWISTE OPENGL / FPS w 13 symulatorach uruchamia 13 odrębnych scen renderowania w osobnym oknie; jest to pomiar renderowania GPU, nie wynik testu CPU/RAM/dysku. Raport DxDiag zapisuje plik tymczasowy z poprawnym cytowaniem ścieżki z odstępami. Pełna zgodność 1:1 z oryginalnymi archiwami nie jest deklarowana bez porównania dokładnych źródeł.
 
 Windows CI dla pull requestów wykonuje testy i budowanie bez publikowania stable. Po scaleniu do main publikacja Setup.exe, ALL-IN-ONE ZIP i manifestu następuje dopiero po pomyślnym buildzie i weryfikacji SHA-256.
+
+Wersjonowanie wydań: pipeline pobiera najnowszy manifest z main przed wyliczeniem kolejnego numeru, aby nie odtworzyć starego tagu, gdy poprzednie wydanie zostało opublikowane po utworzeniu commita wyzwalającego build.
