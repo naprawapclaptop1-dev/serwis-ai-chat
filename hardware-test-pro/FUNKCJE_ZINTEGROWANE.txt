@@ -15,3 +15,9 @@ KANDYDAT 4.3.145 — NAPRAWA TESTÓW
 - CPU: callback etapu nie odwołuje się już do niezdefiniowanej metody UI.
 - GPU: model-view OpenGL ustawia kamerę z odległością -7; wynik FPS pozostaje odczytywany z rzeczywistego procesu renderera.
 - Dodano selftest tego zakresu do Windows CI.
+
+
+KANDYDAT 4.3.146 — KOREKTA RZECZYWISTYCH TESTÓW
+- Kamera sceny GPU/OpenGL ma teraz tylko jedną transformację do -7; nie sumuje się już stare -10 z dodanym -7.
+- RAM pokazuje bezpośrednio wynik zwrócony przez silnik testu, a nie tylko potencjalnie opóźniony słownik wyników.
+- Testy automatyczne sprawdzają nową odległość kamery, brak drugiego przesunięcia i pierwszeństwo końcowego wyniku RAM nad starym wynikiem.

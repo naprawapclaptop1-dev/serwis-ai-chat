@@ -3,13 +3,47 @@ import time as _u148_time
 import inspect as _u148_inspect
 import tkinter as _u148_tk
 
-_U148_HARDWARE_EXECUTION_PATCH_VERSION = "1.0.0"
+_U148_HARDWARE_EXECUTION_PATCH_VERSION = "1.1.0"
 _U148_ORIGINAL_UPDATE_VIEW = _u146_update_view
 _U148_ORIGINAL_RAM_TEST = AppV43._ram_test
 
 
-def _u148_refresh_main_ram(app, force=False, message=None):
-    if str(getattr(app, "current_view", "")) != "RAM":
+def _u148_is_ram_view(app):
+    value = str(getattr(app, "current_view", "") or "").strip().upper().replace("Ę", "E")
+    return (
+        value in {"RAM", "MEMORY", "PAMIEC RAM", "MEMORY RAM"}
+        or value.startswith(("RAM_", "MEMORY_", "PAMIEC RAM"))
+        or value.endswith("_RAM")
+        or value == "COMPONENT_TEST_CATALOG_RAM"
+    )
+
+
+def _u148_ram_status_payload(app, message=None, report=None):
+    results = getattr(app, "results", {}) or {}
+    ram = results.get("RAM") if isinstance(results, dict) else None
+    if isinstance(report, dict) and report:
+        record = report
+    else:
+        saved = getattr(app, "_u148_last_ram_report", None)
+        bench = results.get("RAM_BENCHMARK") if isinstance(results, dict) else None
+        record = saved if isinstance(saved, dict) and saved else (bench if isinstance(bench, dict) else {})
+        if not record and isinstance(ram, dict):
+            record = ram.get("benchmark") if isinstance(ram.get("benchmark"), dict) else ram
+    state = str(record.get("state") or (ram or {}).get("state") or "N/D").upper()
+    detail = str(message or record.get("message") or (ram or {}).get("message") or "Test RAM nie zwrócił wyniku.")
+    tested = record.get("size_mb", record.get("tested_mb", (ram or {}).get("size_mb", "N/D")))
+    if bool(getattr(app, "running", False)) and message and not (isinstance(report, dict) and report):
+        return {"record": record, "state": "RUNNING", "status_text": "RAM — TEST W TOKU • " + str(message)}
+    return {"record": record, "state": state, "status_text": f"RAM — {state} • {tested} MB • {detail}"}
+
+
+def _u148_refresh_main_ram(app, force=False, message=None, report=None):
+    if isinstance(report, dict) and report:
+        try:
+            app._u148_last_ram_report = dict(report)
+        except Exception:
+            pass
+    if not _u148_is_ram_view(app):
         return False
     try:
         now = _u148_time.monotonic()
@@ -33,19 +67,10 @@ def _u148_refresh_main_ram(app, force=False, message=None):
                 except Exception:
                     pass
 
-        results = getattr(app, "results", {}) or {}
-        bench = results.get("RAM_BENCHMARK") if isinstance(results, dict) else None
-        ram = results.get("RAM") if isinstance(results, dict) else None
-        record = bench if isinstance(bench, dict) else {}
-        if not record and isinstance(ram, dict):
-            record = ram.get("benchmark") if isinstance(ram.get("benchmark"), dict) else ram
-        state = str(record.get("state") or (ram or {}).get("state") or "N/D").upper()
-        detail = str(message or record.get("message") or (ram or {}).get("message") or "Test RAM nie zwrócił wyniku.")
-        if bool(getattr(app, "running", False)) and message:
-            status_text = "RAM — TEST W TOKU • " + str(message)
-        else:
-            tested = record.get("size_mb", record.get("tested_mb", (ram or {}).get("size_mb", "N/D")))
-            status_text = f"RAM — {state} • {tested} MB • {detail}"
+        payload = _u148_ram_status_payload(app, message=message, report=report)
+        record = payload["record"]
+        state = payload["state"]
+        status_text = payload["status_text"]
 
         theme = {}
         try:
@@ -123,7 +148,17 @@ def _u148_refresh_main_ram(app, force=False, message=None):
 def _u148_update_view(app, module, percent, message, report=None):
     result = _U148_ORIGINAL_UPDATE_VIEW(app, module, percent, message, report)
     if str(module).upper() == "RAM":
-        _u148_refresh_main_ram(app, force=(int(percent) >= 100 or report is not None), message=message)
+        if isinstance(report, dict) and report:
+            try:
+                app._u148_last_ram_report = dict(report)
+            except Exception:
+                pass
+        _u148_refresh_main_ram(
+            app,
+            force=(int(percent) >= 100 or report is not None),
+            message=message,
+            report=report if isinstance(report, dict) else None,
+        )
     return result
 
 
@@ -131,11 +166,15 @@ _u146_update_view = _u148_update_view
 
 
 def _u148_ram_test_with_final_refresh(app, mb=512):
+    result = None
     try:
-        return _U148_ORIGINAL_RAM_TEST(app, mb)
+        result = _U148_ORIGINAL_RAM_TEST(app, mb)
+        return result
     finally:
-        # Ensure the main RAM screen reads the same result as the live benchmark panel.
-        _u148_refresh_main_ram(app, force=True)
+        # The worker's return value may be newer than app.results while queue_results is pending.
+        report = result if isinstance(result, dict) else None
+        report_message = str(report.get("message") or "") if isinstance(report, dict) else None
+        _u148_refresh_main_ram(app, force=True, message=report_message, report=report)
 
 
 _u148_ram_test_with_final_refresh._u102_ram_guard = True
@@ -144,7 +183,7 @@ AppV43._ram_test = _u148_ram_test_with_final_refresh
 
 
 def _u148_selftest_hardware_execution():
-    assert _U148_HARDWARE_EXECUTION_PATCH_VERSION == "1.0.0"
+    assert _U148_HARDWARE_EXECUTION_PATCH_VERSION == "1.1.0"
     assert callable(_u148_refresh_main_ram) and callable(_u148_update_view)
     assert callable(AppV43._ram_test) and getattr(AppV43._ram_test, "_u102_ram_guard", False)
     import types as _u148_types
@@ -161,7 +200,8 @@ def _u148_selftest_hardware_execution():
     class _U148FakeApp:
         def __init__(self):
             self.current_view = "RAM"
-            self.results = {"RAM_BENCHMARK": {"state": "good", "size_mb": 128, "message": "test zaliczony"}}
+            self.running = False
+            self.results = {"RAM_BENCHMARK": {"state": "good", "size_mb": 128, "message": "stary wynik"}}
             self.refresh_calls = 0
             self.queue_log_messages = []
         def queue_action(self, callback):
@@ -176,15 +216,25 @@ def _u148_selftest_hardware_execution():
     fake = _U148FakeApp()
     assert _u148_refresh_main_ram(fake, force=True, message="Próbka RAM • 50%")
     assert fake.refresh_calls == 1, "main RAM page updater was not called"
+    fake.running = True
+    progress = _u148_ram_status_payload(fake, message="weryfikacja wzorca 4/26")
+    assert progress["state"] == "RUNNING" and "TEST W TOKU" in progress["status_text"], "RAM progress should override stale results"
+    final_report = {"state": "bad", "size_mb": 64, "message": "Niezgodność wzorca"}
+    final_payload = _u148_ram_status_payload(fake, report=final_report)
+    assert final_payload["state"] == "BAD" and "64 MB" in final_payload["status_text"] and "Niezgodność wzorca" in final_payload["status_text"], "final report must override stale app.results"
+    fake.current_view = "PAMIĘĆ RAM"
+    assert _u148_is_ram_view(fake), "Polish RAM view label should be recognized"
     fake.current_view = "GPU"
     assert not _u148_refresh_main_ram(fake, force=True), "RAM page updater must not run on another view"
 
     renderer_source = _u148_inspect.getsource(_u114_gpu_benchmark_child)
-    camera = "GL.glTranslatef(0.0,0.0,-7.0)"
-    assert camera in renderer_source, "OpenGL renderer still has no camera distance; scene will remain clipped/small"
-    assert "GL.glLoadIdentity();GL.glTranslatef(0.0,0.0,-7.0)" in renderer_source, "camera distance must follow modelview reset"
+    camera = "GL.glTranslatef(0,-.10,-7.0)"
+    assert camera in renderer_source, "OpenGL camera must use one distance transform at -7"
+    assert "GL.glLoadIdentity();GL.glTranslatef(0,-.10,-7.0)" in renderer_source, "camera transform must follow modelview reset"
+    assert "GL.glTranslatef(0.0,0.0,-7.0)" not in renderer_source, "camera must not apply a second translation"
+    assert "GL.glTranslatef(0,-.10,-10.0)" not in renderer_source, "old -10 translation would compound to -17"
     assert callable(_u147_execute_gpu_scene)
-    print("HARDWARE_EXECUTION_FIX_SELFTEST_OK: main RAM report sync, safe CPU stage callback and visible GPU camera framing")
+    print("HARDWARE_EXECUTION_FIX_SELFTEST_OK: final RAM report precedence, live progress, safe CPU stage callback and single GPU camera transform")
 
 
 if __name__ == "__main__" and "--selftest-hardware-execution" in _u145_sys.argv:

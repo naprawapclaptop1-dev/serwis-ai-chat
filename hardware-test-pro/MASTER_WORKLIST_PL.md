@@ -1,8 +1,8 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online przed tym kandydatem:** 4.3.144 — Setup x64 i All-in-One ZIP są opublikowane, latest.json zawiera SHA-256 instalatora.
-**Kandydat 4.3.145:** synchronizacja głównego raportu RAM, usunięcie błędnego callbacku etapów CPU i korekta kamery OpenGL tak, aby scena była widoczna. CI weryfikuje nowe poprawki, pełny zestaw selftestów, EXE/Setup/ZIP, SHA-256 i manifest.
-**Parytet źródeł:** dołączenie 5.6.16 nie oznacza zgodności 1:1 z archiwum 5.6.25; pełne źródła Serwis Ultimate 1.15.3 również wymagają osobnego porównania.
+**Stable online przed tym kandydatem:** 4.3.145 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256.
+**Kandydat 4.3.146:** kamera GPU ma jeden transform z=-7 (zamiast sumy -17), a ekran RAM otrzymuje wynik bezpośrednio z zakończonego testu. CI weryfikuje źródło kamery, finalny raport RAM i callback CPU.
+**Parytet źródeł:** dołączenie System Repair PRO 5.6.16 nie oznacza zgodności 1:1 ze starszym archiwum 5.6.25; pełny Serwis Ultimate 1.15.3 wymaga osobnego porównania.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -244,3 +244,10 @@
 - [x] GPU przesuwa kamerę po każdym resecie macierzy model-view na odległość -7, aby pełna scena mieściła się w kadrze.
 - [x] Osobny test CI weryfikuje synchronizację RAM, callback CPU i ustawienie kamery OpenGL.
 - [ ] Test wizualny, telemetryczny i wydajnościowy na komputerze użytkownika pozostaje do wykonania; CI nie ma dostępu do jego fizycznego GPU/sensorów.
+
+
+## Kandydat 4.3.146 — dopięcie wyników RAM i kadru GPU
+- [x] GPU: usunięto podwójną transformację; odległość kamery jest dokładnie -7, nie -17.
+- [x] RAM: przekazywany jest końcowy raport zwrócony przez silnik, niezależnie od kolejności aktualizacji app.results.
+- [x] RAM: selftest potwierdza, że świeży wynik FAIL o 64 MB nadpisuje stary pozytywny wynik 128 MB, a postęp w trakcie testu pokazuje status RUNNING.
+- [ ] Na fizycznym PC potwierdzić większy kadr GPU, końcowy raport RAM i tabelę CPU na ekranach użytkownika.

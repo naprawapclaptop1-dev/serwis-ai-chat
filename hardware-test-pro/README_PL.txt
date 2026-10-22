@@ -117,3 +117,11 @@ KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.145
 - CPU: wskaźnik etapów nie wywołuje nieistniejącej metody UI; ewentualna niedostępność paska nie przerywa testu ani raportowania.
 - GPU: renderer OpenGL przesuwa kamerę w głąb sceny. Poprzedni kod resetował macierz model-view bez przesunięcia kamery, więc geometria była przycinana i wyglądała jak mały fragment na czarnym tle.
 - Windows CI uruchamia osobny test synchronizacji RAM, bezpiecznego callbacku CPU i kamery OpenGL. Ostateczna kontrola wizualna oraz odczyty sensorów wymagają uruchomienia na realnym sprzęcie.
+
+
+KOREKTA TESTÓW CPU / RAM / GPU — KANDYDAT 4.3.146
+-------------------------------------------------
+- GPU/OpenGL: usunięto nałożone przesunięcie kamery. Poprzednia wersja dodawała -7 do istniejącego -10, więc finalna odległość wynosiła -17. Teraz scena ma pojedyncze przesunięcie z=-7 i powinna zajmować większą część okna.
+- RAM: końcowy obiekt raportu trafia bezpośrednio do funkcji aktualizacji widoku. UI nie musi czekać na asynchroniczne zapisanie app.results, więc komunikat „test nie został jeszcze uruchomiony” nie powinien przykrywać nowszego raportu.
+- RAM: rozpoznawane są etykiety widoku RAM, PAMIĘĆ RAM i MEMORY; postęp wyświetla „TEST W TOKU”, a wynik końcowy używa świeżego statusu i rozmiaru faktycznie sprawdzonego bufora.
+- Windows CI sprawdza dokładną transformację kamery, brak starej transformacji -10, priorytet świeżego raportu RAM i przejście statusu z postępu do wyniku.
