@@ -14191,9 +14191,14 @@ def _u119_selftest_furmark_scene():
     assert "_u119_draw_furmark" in names
     assert "glCallList" in names
     assert "FUR_DONUT_OPENGL_STRESS" in literals
-    assert 12000 in numbers, "Renderer must create 12,000 hair strands in the real scene code."
     assert "GL_LINES" in names
-    print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 12,000 fur strands; animated OpenGL display list; synchronized FPS")
+    profiles=[_u128_furmark_profile(i) for i in range(1,111)]
+    assert len(profiles)==110
+    assert len({p["hair_count"] for p in profiles})==110
+    assert len({(p["major_radius"],p["tube_radius"],p["hair_count"],p["palette"],p["rotation_speed"],p["scale_x"],p["scale_y"],p["scale_z"]) for p in profiles})==110
+    assert min(p["hair_count"] for p in profiles)>=6000
+    assert "furmark_profile" in literals and "furmark_hair_count" in literals
+    print("FURMARK_DONUT_RENDERER_SELFTEST_OK: 110 unique seeded FurMark profiles; animated OpenGL display lists; synchronized FPS")
 
 
 # v4.3.121 — bring Serwis Ultimate service-job workflow into the main app.
