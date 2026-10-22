@@ -13099,6 +13099,7 @@ def _u114_measure_speed(app):
     except Exception:pass
     app._u131_speed_base_data=int(result.get("data_bytes",0) or 0)
     parallel_down=_u114_parallel_speed_phase("download",down_sizes,workers,app=app)
+    app._u131_speed_base_data=int(result.get("data_bytes",0) or 0)+int(parallel_down.get("bytes",0) or 0)
     try:
         app.queue_action(lambda p=profile,n=workers:_u66_set_speed_status(app,f"SPEED TEST {p}: {n} równoległe strumienie upload…"))
     except Exception:pass
