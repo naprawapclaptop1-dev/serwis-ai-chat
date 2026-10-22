@@ -11213,7 +11213,7 @@ def _u108_start_speed_test(app):
     if profile == "MAX":
         if not messagebox.askyesno(
             "Speed Test MAX — duży transfer",
-            "Maksymalny test może przesłać do około 300 MB łącznie, zależnie od prędkości łącza. "
+            "Maksymalny test może przesłać do około 340 MB łącznie, zależnie od prędkości łącza (w tym do 64 MB dodatkowego transferu równoległego). "
             "Wykona dłuższe próbki, aby ograniczyć wpływ narzutu HTTPS. Kontynuować?"
         ):
             _u66_set_speed_status(app, "Test MAX anulowany — nie rozpoczęto transferu.")
@@ -13589,14 +13589,14 @@ def _u126_show_process_manager(app):
         row=next((x for x in rows_cache if x["pid"]==pid),None)
         if not row:
             status.set("Proces zniknął z listy. Odśwież widok.");return
-        if row.get("protected") or pid==_u66_os.getpid():
+        if row.get("protected") or pid==_u126_os.getpid():
             messagebox.showwarning("Proces chroniony","Nie wolno zakończyć tego procesu z poziomu narzędzia serwisowego.");return
         if not messagebox.askyesno("Zakończyć proces?",f"Zakończyć proces {row['name']} (PID {pid})? Niezapisane dane tej aplikacji mogą zostać utracone."):
             return
         try:
             import psutil as _u126_psutil
             process=_u126_psutil.Process(pid)
-            if _u126_is_protected_process(process.name()) or pid==_u66_os.getpid():
+            if _u126_is_protected_process(process.name()) or pid==_u126_os.getpid():
                 raise PermissionError("Proces został rozpoznany jako chroniony.")
             process.terminate()
             try:process.wait(timeout=3)
@@ -13670,8 +13670,10 @@ def _u126_show_game_diagnostics(app):
     output=tk.Text(pane,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
     output.pack(fill="both",expand=True,padx=8,pady=8);output.insert("end","Raport nie został jeszcze pobrany.\n");output.configure(state="disabled")
     def show_report(result,path):
-        if not output.winfo_exists():return
-        output.configure(state="normal");output.delete("1.0","end");output.insert("end",result.get("body","N/D")+"\n\nRaport: "+str(path));output.configure(state="disabled")
+        try:
+            if not output.winfo_exists():return
+            output.configure(state="normal");output.delete("1.0","end");output.insert("end",result.get("body","N/D")+"\n\nRaport: "+str(path));output.configure(state="disabled")
+        except Exception:return
         status.set(("PASS" if result.get("state")=="good" else "WARN")+" — kod wyjścia: "+str(result.get("returncode","N/D"))+" — "+str(path))
         try:
             app.results["GAME_DIAGNOSTICS"]={"state":result.get("state"),"path":str(path),"returncode":result.get("returncode")}
