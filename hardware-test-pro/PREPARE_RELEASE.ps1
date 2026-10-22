@@ -174,6 +174,8 @@ $newLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__co
 '    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_dispatch_confirm_downloaded" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "startfile" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "NaprawaPC-Update-" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
+'    assert not re.match(r"^NAPRAWA-PC-HARDWARE-TEST-PRO-.*\.exe$", "NaprawaPC-Update-NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.140-deadbeef.exe", re.I)' + [Environment]::NewLine +
 '    assert "explorer.exe" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "_u39_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
@@ -253,8 +255,9 @@ def _u44_download_global_update(self, data):
         self.queue_action(lambda m=msg: messagebox.showerror("Aktualizacja globalna", m))
         return
 
-    # Unique names prevent stale/locked .download files from blocking the next update.
-    dest = root / (Path(filename).stem + "-" + token + ".exe")
+    # Prefix local EXE with NaprawaPC-Update- so Setup's legacy taskkill image-name filter
+    # cannot kill the installer itself while closing the older application process.
+    dest = root / ("NaprawaPC-Update-" + Path(filename).stem + "-" + token + ".exe")
     tmp = root / ("." + filename + "-" + token + ".download")
     self.queue_action(lambda v=version: self._u44_set_progress(0, f"Przygotowuje bezpieczne pobieranie aktualizacji {v}..."))
     try:
