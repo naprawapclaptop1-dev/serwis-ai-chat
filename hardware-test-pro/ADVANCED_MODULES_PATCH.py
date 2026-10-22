@@ -684,8 +684,10 @@ def _u66_measure_speed(self):
         total_data+=size; samples["upload"].append({"requested_bytes":size,**result})
     samples["latency_average_ms"]=round(sum(samples["latency_ms"])/max(1,len(samples["latency_ms"])),2)
     # Report median throughput, not the single fastest burst, to reduce misleading peaks.
-    samples["download_mbps"]=round(_u66_statistics.median([x["mbps"] for x in samples["download"]]) if samples["download"] else 0,2)
-    samples["upload_mbps"]=round(_u66_statistics.median([x["mbps"] for x in samples["upload"]]) if samples["upload"] else 0,2)
+    download_rates=sorted(x["mbps"] for x in samples["download"])
+    upload_rates=sorted(x["mbps"] for x in samples["upload"])
+    samples["download_mbps"]=round(download_rates[len(download_rates)//2] if download_rates else 0,2)
+    samples["upload_mbps"]=round(upload_rates[len(upload_rates)//2] if upload_rates else 0,2)
     samples["download_peak_mbps"]=round(max([x["mbps"] for x in samples["download"]] or [0]),2)
     samples["upload_peak_mbps"]=round(max([x["mbps"] for x in samples["upload"]] or [0]),2)
     samples["data_bytes"]=total_data
