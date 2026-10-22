@@ -14225,7 +14225,10 @@ def _u124_open_sensor_inspector(app):
             if needle and needle not in " ".join(values).casefold():continue
             shown.append((row,values))
         existing=tree.get_children("")
-        if existing:tree.delete(*existing)
+        try:old_scroll=float(tree.yview()[0]) if existing else 0.0
+        except Exception:old_scroll=0.0
+        rebuild=len(existing)!=len(shown)
+        if rebuild and existing:tree.delete(*existing)
         available=0;missing=0
         for idx,(row,values) in enumerate(shown):
             raw=values[3].strip().casefold()
@@ -14233,7 +14236,14 @@ def _u124_open_sensor_inspector(app):
             if is_missing:missing+=1
             else:available+=1
             tags=("missing",) if is_missing else (("temperature",) if "temp" in values[0].casefold() else ())
-            tree.insert("","end",iid=f"sensor124_{idx}",values=values,tags=tags)
+            iid=f"sensor124_{idx}"
+            if not rebuild and tree.exists(iid):
+                tree.item(iid,values=values,tags=tags)
+            else:
+                tree.insert("","end",iid=iid,values=values,tags=tags)
+        if rebuild and existing:
+            try:tree.yview_moveto(old_scroll)
+            except Exception:pass
         cache=getattr(app,"_u66_sensor_cache",{}) or {}
         stamp=cache.get("time")
         age=max(0,_u66_time.monotonic()-stamp) if isinstance(stamp,(int,float)) else None
@@ -14304,7 +14314,8 @@ def _u124_show_speed_test(app):
             tk.Label(card,text=title,bg=t["card"],fg=t["muted"],font=app.fnt(7,"bold")).pack(pady=(4,1))
             label=tk.Label(card,text="N/D",bg=t["card"],fg=t["accent2"],font=app.fnt(8,"bold"))
             label.pack(padx=3,pady=(0,4));app._u124_speed_quality_labels[key]=label
-        app._u124_speed_quality_labels["state"].config(text="GOTOWY") if "state" in app._u124_speed_quality_labels else None
+        app._u124_speed_quality_state=tk.Label(pane,text="STATUS: GOTOWY — wynik pojawi się po pomiarze",bg=t["panel"],fg=t["muted"],font=app.fnt(8,"bold"))
+        app._u124_speed_quality_state.pack(anchor="w",padx=8,pady=(0,5))
         return result
     except Exception as exc:
         try:app.queue_log("Panel jakości Speed Test: "+repr(exc))
@@ -14321,6 +14332,11 @@ def _u124_measure_speed(app):
             try:
                 if label is not None and label.winfo_exists():label.config(text=value)
             except Exception:pass
+        try:
+            state_label=getattr(app,"_u124_speed_quality_state",None)
+            if state_label is not None and state_label.winfo_exists():
+                state_label.config(text=f"STATUS: {values['state']} • prawidłowe próbki {values['samples']} • wynik główny = mediana")
+        except Exception:pass
         try:
             if getattr(app,"current_view","")=="SPEED_TEST":
                 _u66_set_speed_status(app,
