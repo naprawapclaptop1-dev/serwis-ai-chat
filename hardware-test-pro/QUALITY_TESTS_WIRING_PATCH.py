@@ -261,8 +261,16 @@ def _u147_selftest_quality_fixes():
     ok,msg=_u146_verify_ram_buffer(bytearray(4096),0,None,lambda:True,stopped)
     assert not ok and stopped.get("stopped")
     assert callable(AppV43._cpu_test) and callable(AppV43._ram_test)
-    assert "_set_stage" not in _u147_cpu_test.__code__.co_names, "CPU worker must not schedule an undefined UI method"
-    assert "_u147_safe_stage_update" in _u147_cpu_test.__code__.co_names and callable(_u147_safe_stage_update)
+    import types as _u147_types
+    def _u147_code_names_recursive(code):
+        names = set(code.co_names)
+        for value in code.co_consts:
+            if isinstance(value, _u147_types.CodeType):
+                names.update(_u147_code_names_recursive(value))
+        return names
+    cpu_names = _u147_code_names_recursive(_u147_cpu_test.__code__)
+    assert "_set_stage" not in cpu_names, "CPU worker must not schedule an undefined UI method"
+    assert "_u147_safe_stage_update" in cpu_names and callable(_u147_safe_stage_update), "safe UI progress callback must be wired"
     assert getattr(AppV43._ram_test,"_u102_ram_guard",False)
     keys=globals().get("_U86_COMPONENT_KEYS",{})
     assert keys.get("GPU",("",))[0]=="GPU_3D"
