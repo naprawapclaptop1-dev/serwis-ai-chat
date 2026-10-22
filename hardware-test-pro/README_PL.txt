@@ -45,3 +45,11 @@ WAŻNE GRANICE
 - Testy RAM/VRAM wykonywane z poziomu procesu nie gwarantują sprawdzenia wszystkich fizycznych komórek.
 - Wyniki scen OpenGL nie przewidują FPS każdej gry; edukacyjny symulator nie jest pomiarem, jeśli jego test nie wykonuje realnego renderowania.
 - Kanał stable jest opisany w updates/hardware-test-pro/latest.json. W repozytorium jest 40 odczytowych sond diagnostycznych i rozbudowane centrum napraw. To nie jest potwierdzenie pełnej kopii 1:1 każdego wewnętrznego modułu z archiwów System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3; kompletna zgodność źródłowa wymaga przeglądu każdego pliku i każdej funkcji tych projektów.
+
+KANDYDAT 4.3.124 — POPRAWKI WIZUALNE I TELEMETRII
+------------------------------------------------
+- Benchmark OpenGL ma dodatkowy HUD renderowany w tej samej klatce: pasek postępu, miernik FPS oraz historię ostatnich próbek. Pomiar synchronizuje klatkę przez glFinish; HUD nie zastępuje pomiaru.
+- Każda z 110 scen zachowuje własny identyfikator i podpis geometrii. Scena FurMark-style pozostaje osobnym testem obciążeniowym; pozostałe sceny mają inne układy i akcenty geometryczne.
+- Pełny inspektor czujników jest osobnym, dużym oknem z wyszukiwaniem, filtrem kategorii, automatycznym odświeżaniem, licznikami wartości/N/D oraz eksportem CSV. Pokazuje wyłącznie dane udostępnione przez Sensor Bridge, sterownik i Windows.
+- Panel Speed Test pokazuje medianę, peak, minimum, jitter, współczynnik zmienności i liczbę udanych próbek dla download/upload. Najlepsza pojedyncza próbka nie zastępuje mediany.
+- Wbudowane testy obejmują HUD GPU, 110 podpisów scen, tabelę sensorów i prezentację jakości Speed Testu. CI nie zastępuje testu na fizycznym GPU i komputerze użytkownika.
