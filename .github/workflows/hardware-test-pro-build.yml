@@ -85,6 +85,15 @@ jobs:
         shell: pwsh
         run: |
           Set-Location "${{ github.workspace }}\hardware-test-pro"
+          # The trigger commit may contain a stale manifest because the previous
+          # successful release updates latest.json after the triggering commit was created.
+          # Fetch the serialized mainline release state before calculating the next version.
+          git fetch origin main --depth=1
+          if ($LASTEXITCODE -ne 0) { throw "Cannot fetch latest main for version calculation." }
+          $latestManifest = git show FETCH_HEAD:updates/hardware-test-pro/latest.json
+          if ($LASTEXITCODE -ne 0 -or !$latestManifest) { throw "Cannot read latest stable manifest from current main." }
+          $manifestPath = Join-Path "${{ github.workspace }}" "updates\hardware-test-pro\latest.json"
+          [IO.File]::WriteAllText($manifestPath, (($latestManifest -join [Environment]::NewLine) + [Environment]::NewLine), [Text.UTF8Encoding]::new($false))
           & ".\PREPARE_RELEASE.ps1"
 
       - name: Install Python dependencies
