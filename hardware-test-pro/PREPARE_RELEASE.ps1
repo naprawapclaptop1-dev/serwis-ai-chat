@@ -1792,7 +1792,7 @@ $routeAnchor = '      "USB_LIST":lambda:self._start_module_test("USB")'
 $itemAnchor = '      ("RAPORT I HISTORIA","Wyniki faktycznie zapisanych pomiarów, nie przykładowe wartości.","RAPORT")'
 if (!$advancedPatch.Contains('"AUDYT_WINDOWS":lambda:self.show_windows_audit(),')) {
   if (!$advancedPatch.Contains($routeAnchor)) { throw "Missing test-center route for Windows Audit." }
-  $advancedPatch = $advancedPatch.Replace($routeAnchor, $routeAnchor + [Environment]::NewLine + '      "AUDYT_WINDOWS":lambda:self.show_windows_audit(),')
+  $advancedPatch = $advancedPatch.Replace($routeAnchor, $routeAnchor + ',' + [Environment]::NewLine + '      "AUDYT_WINDOWS":lambda:self.show_windows_audit(),')
 }
 if (!$advancedPatch.Contains('("AUDYT WINDOWS / STEROWNIKI"')) {
   if (!$advancedPatch.Contains($itemAnchor)) { throw "Missing test-center card insertion point for Windows Audit." }
