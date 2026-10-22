@@ -459,7 +459,7 @@ h1{margin:0 0 7px;color:#62d9ff}p{line-height:1.5;color:#c5d4e8}.stats{display:f
 table{width:100%;border-collapse:separate;border-spacing:0;background:#0d1c2e;border:1px solid #243d5a;border-radius:12px;overflow:hidden}
 th,td{padding:13px;text-align:left;border-bottom:1px solid #203650;vertical-align:top}th{background:#132942;color:#7cddff}tr:last-child td{border-bottom:0}
 .details{font-size:13px;color:#c7d7e9;margin-top:8px;line-height:1.5;overflow-wrap:anywhere}.rec{font-size:13px;color:#9fc4e8;margin-top:7px;line-height:1.5}
-.PASS td:first-child{color:#44e1a1}.WARN td:first-child{color:#ffc76b}.FAIL td:first-child{color:#ff7373}.INFO td:first-child{color:#79ceff}.N\/D td:first-child{color:#aab5c7}
+.PASS td:first-child{color:#44e1a1}.WARN td:first-child{color:#ffc76b}.FAIL td:first-child{color:#ff7373}.INFO td:first-child{color:#79ceff}[class="N/D"] td:first-child{color:#aab5c7}
 .note{margin-top:20px;border:1px solid #27466b;border-radius:10px;padding:14px;color:#bacbe0}small{color:#9fb4cf}
 </style></head><body><main>
 <section class="hero"><h1>Audyt Windows / sterowników</h1><p>NAPRAWA PC HARDWARE TEST PRO • raport odczytowy, bez napraw i zmian systemu.</p>
@@ -680,19 +680,23 @@ def _u141_show_windows_audit(self):
 
 AppV43.show_windows_audit = _u141_show_windows_audit
 
+def _u141_nested_constant_exists(code, target):
+    for constant in getattr(code, "co_consts", ()):
+        if constant == target:
+            return True
+        if isinstance(constant, (tuple, list, set)) and target in constant:
+            return True
+    return False
+
 def _u141_selftest_windows_audit():
-    assert _U141_WINDOWS_AUDIT_VERSION == "1.0.0"
-    assert len(_U141_CHECK_IDS) == 16 and len(set(_U141_CHECK_IDS)) == 16
-    assert _U141_VALID_STATES == {"PASS","WARN","FAIL","INFO","N/D"}
-    assert callable(AppV43.show_windows_audit)
-    assert "Get-CimInstance Win32_PnPEntity" in _U141_PS_SCRIPT
-    assert "Get-MpComputerStatus" in _U141_PS_SCRIPT
-    assert "Get-NetFirewallProfile" in _U141_PS_SCRIPT
-    assert "Confirm-SecureBootUEFI" in _U141_PS_SCRIPT
-    assert "Get-Tpm" in _U141_PS_SCRIPT
-    assert "Get-PhysicalDisk" in _U141_PS_SCRIPT
-    assert "Get-WinEvent" in _U141_PS_SCRIPT
-    assert not any(token in _U141_PS_SCRIPT.casefold() for token in ("remove-item","format-volume","clear-eventlog","set-executionpolicy","stop-computer","restart-computer"))
+    assert _U141_WINDOWS_AUDIT_VERSION == "1.0.0", "audit module version"
+    assert len(_U141_CHECK_IDS) == 16 and len(set(_U141_CHECK_IDS)) == 16, "expected 16 unique audit controls"
+    assert _U141_VALID_STATES == {"PASS","WARN","FAIL","INFO","N/D"}, "status vocabulary mismatch"
+    assert callable(AppV43.show_windows_audit), "audit view was not wired to AppV43"
+    for marker in ("Get-CimInstance Win32_PnPEntity","Get-MpComputerStatus","Get-NetFirewallProfile","Confirm-SecureBootUEFI","Get-Tpm","Get-PhysicalDisk","Get-WinEvent"):
+        assert marker in _U141_PS_SCRIPT, "missing PowerShell collector: " + marker
+    forbidden = ("remove-item","format-volume","clear-eventlog","set-executionpolicy","stop-computer","restart-computer")
+    assert not any(token in _U141_PS_SCRIPT.casefold() for token in forbidden), "read-only collector contains destructive/system-changing command text"
     sample = [
         _u141_result("pnp","Urządzenia PnP","WARN","Jedno urządzenie zgłasza kod 43.","Adapter testowy <script>alert(1)</script>","Zweryfikuj sterownik."),
         _u141_result("defender","Microsoft Defender","PASS","Ochrona włączona."),
@@ -700,20 +704,24 @@ def _u141_selftest_windows_audit():
     ]
     with _u141_tempfile.TemporaryDirectory(prefix="npchwaudit-test-") as temp:
         report = _u141_write_report(sample,{"PnpProblemCount":1},temp,run_at="2026-01-02T03:04:05+00:00")
-        assert _U141_Path(report["json"]).is_file() and _U141_Path(report["html"]).is_file()
+        assert _U141_Path(report["json"]).is_file() and _U141_Path(report["html"]).is_file(), "JSON/HTML report files were not created"
         loaded = _u141_json.loads(_U141_Path(report["json"]).read_text(encoding="utf-8"))
-        assert loaded["summary"]["WARN"] == 1 and loaded["summary"]["N/D"] == 1
+        assert loaded["summary"]["WARN"] == 1 and loaded["summary"]["N/D"] == 1, "report state counters mismatch"
         html_doc = _U141_Path(report["html"]).read_text(encoding="utf-8")
-        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html_doc
-        assert "<script>alert(1)</script>" not in html_doc
-        assert loaded["feature"] == "Windows Read-only Health and Driver Audit"
-    assert "AUDYT_WINDOWS" in _u66_open_tests_item.__code__.co_consts
-    print("WINDOWS_AUDIT_SELFTEST_OK: 16 checks, read-only PowerShell, HTML+JSON, escaping and local report")
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html_doc, "HTML did not escape potentially unsafe device text"
+        assert "<script>alert(1)</script>" not in html_doc, "unescaped script leaked into report"
+        assert loaded["feature"] == "Windows Read-only Health and Driver Audit", "report feature identifier mismatch"
+    assert callable(_u66_open_tests_item), "test-center route table helper missing"
+    assert _u141_nested_constant_exists(_u66_open_tests_item.__code__, "AUDYT_WINDOWS"), "test-center item route AUDYT_WINDOWS missing"
+    assert _u141_nested_constant_exists(_u66_show_tests_hub.__code__, "AUDYT WINDOWS / STEROWNIKI"), "Windows Audit card missing from Test Center"
+    print("WINDOWS_AUDIT_SELFTEST_OK: 16 checks, safe collector, test-center route, HTML+JSON reports and escaping")
 
 if __name__ == "__main__" and "--selftest-windows-audit" in sys.argv:
     try:
         _u141_selftest_windows_audit()
         raise SystemExit(0)
     except Exception as _u141_exc:
+        import traceback as _u141_traceback
         print("WINDOWS_AUDIT_SELFTEST_FAILED:",type(_u141_exc).__name__,str(_u141_exc))
+        _u141_traceback.print_exc()
         raise SystemExit(1)
