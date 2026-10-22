@@ -1,73 +1,38 @@
-RAPORT WERYFIKACJI ONLINE — NAPRAWA PC HARDWARE TEST PRO 4.3.114
-==================================================================
+RAPORT WERYFIKACJI ONLINE — NAPRAWA PC HARDWARE TEST PRO
+==========================================================
 
-GitHub Actions: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39673844878
-Status workflow: success
-Commit zweryfikowanego źródła: 475c7287b79e12efa97af5ff7865ef8460009885
-Data publikacji: 2026-10-21
-Tag: hardware-test-pro-v4.3.114
+Ten raport jest celowo wersjo-neutralny. Dokładny numer wydania, rozmiar i SHA-256 instalatora należy odczytać z manifestu stable:
+https://github.com/naprawapclaptop1-dev/serwis-ai-chat/blob/main/updates/hardware-test-pro/latest.json
 
-POTWIERDZONE PRZEZ WINDOWS CI
-[OK] Windows x64 / Python 3.12 oraz .NET 10.
-[OK] Samodzielny Hardware Sensor Bridge.
-[OK] Odtworzenie źródła i zasobów graficznych.
-[OK] Kontrola składni Pythona.
-[OK] Selftesty core, deep, updater, launcher, antivirus, themes, service center i update flow.
-[OK] LIVE_SENSOR_INSPECTOR_PER_CORE_DISK_NIC_PARTITION_SELFTEST_OK.
-[OK] FULL_LIVE_SENSOR_TABLE_SELFTEST_OK: temperatury, obciążenie na rdzeń, RAM/swap, I/O dysków, NIC i woluminy.
-[OK] SPEED_TEST_PROFILE_SELFTEST_OK: QUICK < STANDARD < MAX.
-[OK] SPEED_TEST_TURBO_SELFTEST_OK: 4 równoległe strumienie HTTPS z osobnym wynikiem transferu.
-[OK] SYSTEM_REPAIR_PRO_SERWIS_ULTIMATE_CATALOG_SELFTEST_OK: 40 odczytowych diagnostyk integracyjnych; 110 unikalnych testów/scen w 15 grupach.
-[OK] FULL_SENSOR_INVENTORY_SELFTEST_OK: wykryte sensory bez aktualnej wartości są zachowane jako N/D.
-[OK] GPU_SCENE_SELFTEST_OK: wszystkie 110 ID używają dedykowanego renderera z różnymi layoutami.
-[OK] UNIQUE_OPENGL_SCENE_PER_CATALOG_TEST_SELFTEST_OK: 110 odrębnych ID scen.
-[OK] Pozostałe testy modułów zaawansowanych.
-[OK] PyInstaller EXE.
-[OK] Inno Setup — kompilacja instalatora.
-[OK] Opublikowanie Setup.exe i ALL-IN-ONE ZIP.
-[OK] Manifest stable zaktualizowany dopiero po pomyślnej publikacji.
+Windows CI dla każdego wydania uruchamia poniższe kontrole. Status konkretnego przebiegu jest dostępny na stronie workflow:
+https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/workflows/hardware-test-pro-build.yml
 
-OPUBLIKOWANE PLIKI
-Setup:
-https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.114/NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.114.exe
-Rozmiar: 141,863,821 bajtów
-SHA-256: 380afbd6d8f47de6de883eb943e1f1150cf4e946c3e3bda5a3b7df512557dc96
+ZAKRES KONTROLI CI
+[ ] Windows x64 / Python 3.12 / .NET 10.
+[ ] Odtworzenie źródła, zasobów graficznych i Sensor Bridge.
+[ ] Kontrola składni Pythona i wbudowane testy core/deep/updater/launcher/antivirus/themes/service-center/update-flow.
+[ ] Testy sensorów: pełna tabela, per-core CPU, RAM/swap, dyski/NIC/woluminy, zachowanie N/D i scalanie poprawnych odczytów.
+[ ] Speed Test: walidacja HTTP i przesłanych bajtów, mediana bazowa, profile QUICK/STANDARD/MAX/TURBO oraz osobny wynik równoległego transferu.
+[ ] GPU: 110 ID scen, 31 trybów geometrii, unikalne sygnatury scen, renderer FurMark-style i synchronizowany pomiar FPS.
+[ ] 15 grup i 110 odrębnych testów; 40 odczytowych sond integracyjnych System Repair PRO / Serwis Ultimate.
+[ ] Serwis Ultimate: menedżer procesów z ochroną procesów krytycznych, odczytowa diagnostyka gier i menedżer lokalnych raportów.
+[ ] System Repair PRO: centrum napraw Windows, 14 profili problemów, baza wiedzy i raporty.
+[ ] PyInstaller EXE, kompilacja/weryfikacja Inno Setup, publikacja Setup.exe i ALL-IN-ONE ZIP oraz zgodność manifestu i SHA-256.
 
-ALL-IN-ONE ZIP:
-https://github.com/naprawapclaptop1-dev/serwis-ai-chat/releases/download/hardware-test-pro-v4.3.114/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-4.3.114.zip
-Rozmiar: 284,418,114 bajtów
-SHA-256: 135c73a20ac58ae99d118312dcf6230cc425223146edd47baba306ec5ca7a27d
-
-WERYFIKACJE NIEWYKONANE NA MASZYNIE BUILDOWEJ
+WERYFIKACJE POZA CI
 [ ] Uruchomienie GUI na fizycznym komputerze użytkownika.
-[ ] Rzeczywiste odczyty temperatur/mocy/fanów na każdym konkretnym sterowniku.
-[ ] Fizyczne testy audio, kamery, klawiatury, matrycy i USB.
+[ ] Potwierdzenie temperatur, mocy, zegarów i obrotów wentylatorów na konkretnych sterownikach.
+[ ] Fizyczne testy matrycy, baterii, klawiatury, audio, USB i pozostałych peryferiów.
 [ ] Instalacja/aktualizacja nad istniejącą instalacją na komputerze użytkownika.
-[ ] File-by-file parity check całych archiwów źródłowych System Repair PRO 5.6.25 i Serwis Ultimate 1.15.3.
+[ ] Porównanie plik-po-pliku wszystkich ekranów, metod, handlerów i raportów z archiwami źródłowymi System Repair PRO 5.6.25 oraz Serwis Ultimate 1.15.3.
 
-GRANICE
-CI nie zastępuje pomiarów fizycznego sprzętu. N/D oznacza brak danych. Testy pamięci aplikacyjnej nie obejmują gwarantowanie wszystkich komórek. Speed Test zależy od sieci i endpointu. 40 sond to odczytowa integracja diagnostyczna. Pełna zgodność 1:1 wszystkich źródłowych funkcji obu ZIP-ów pozostaje niepotwierdzona.
+OGRANICZENIA I UCZCIWY STATUS
+- CI potwierdza budowanie i samodzielne testy kodu, ale nie zastępuje pomiarów na fizycznym sprzęcie.
+- N/D oznacza brak danych udostępnionych przez sterownik lub system; nie wolno zastępować go wymyśloną temperaturą ani statusem PASS.
+- Test pamięci aplikacyjnej nie gwarantuje sprawdzenia każdej fizycznej komórki RAM.
+- Wynik Speed Testu zależy od połączenia, serwera i warunków sieci.
+- 40 sond to istniejąca integracja diagnostyczna, a nie dowód pełnej zgodności 1:1 z dwoma oryginalnymi projektami.
+- Pełna parytetowość wszystkich funkcji źródłowych pozostaje niepotwierdzona do czasu porównania obu archiwów i testów fizycznych.
 
-KANDYDAT 4.3.124 — NOWE TESTY REGRESYJNE (OCZEKUJĄ NA CI)
-- GPU_BENCHMARK_HUD_SELFTEST_OK: kontrola kodu HUD, synchronizacji glFinish i 110 różnych ziaren scen.
-- SPEED_TEST_QUALITY_PANEL_SELFTEST_OK: kontrola mediany, peak, minimum, jitter, CV i liczników próbek oraz obsługi N/D.
-- FULL_SENSOR_INSPECTOR_SELFTEST_OK: kontrola obecności wyszukiwalnej tabeli, odświeżania i eksportu CSV.
-- Wynik końcowy można uznać za zaliczony dopiero po przejściu tych testów w Windows CI. Nie wykonano w tym kroku pomiaru na fizycznej karcie graficznej użytkownika.
-
-4.3.124 CI — SUCCESS
-- Workflow: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39730436192
-- Wynik: sukces. Testy składni i wbudowane testy, build EXE, kompilacja/weryfikacja Setup.exe, publikacja assetów i manifestu zakończone sukcesem.
-- Opublikowane wydanie: hardware-test-pro-v4.3.124. To potwierdza build/CI, nie test fizycznego GPU ani pełną parytetowość dwóch aplikacji źródłowych.
-
-KANDYDAT 4.3.125 — NOWY TEST REGRESYJNY
-- GPU_SCENE_FAMILY_SELFTEST_OK: 31 jawnych trybów geometrii, wybór wszystkich stylów i 110 unikalnych sygnatur.
-- Wynik pozostaje oczekujący na Windows CI; nie uznawać go za zaliczony przed zakończeniem workflow.
-
-4.3.124 CI — SUCCESS
-- Workflow: https://github.com/naprawapclaptop1-dev/serwis-ai-chat/actions/runs/39730436192
-- Wynik: sukces. Testy składni i wbudowane testy, build EXE, kompilacja/weryfikacja Setup.exe, publikacja assetów i manifestu zakończone sukcesem.
-- Opublikowane wydanie: hardware-test-pro-v4.3.124. To potwierdza build/CI, nie test fizycznego GPU ani pełną parytetowość dwóch aplikacji źródłowych.
-
-KANDYDAT 4.3.125 — NOWY TEST REGRESYJNY
-- GPU_SCENE_FAMILY_SELFTEST_OK: 31 jawnych trybów geometrii, wybór wszystkich stylów i 110 unikalnych sygnatur.
-- Wynik pozostaje oczekujący na Windows CI; nie uznawać go za zaliczony przed zakończeniem workflow.
+ZASADA PUBLIKACJI
+Nie uznawać wydania za gotowe, jeżeli najnowszy Windows CI nie zakończy się sukcesem, nie ma obu plików wydania lub manifest nie zgadza się z SHA-256 instalatora.
