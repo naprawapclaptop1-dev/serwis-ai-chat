@@ -17,3 +17,9 @@ NOWE LABORATORIUM PODZESPOŁÓW:
 - Profile: SZYBKI 15 s / STANDARD 60 s / ULTRA 180 s / MAX 300 s.
 - Laboratorium dostępne z Centrum Testów i ekranów komponentów.
 - Checklista: CHECKLISTA_INTEGRACJI_HARDWARE_TEST_PRO_ULTIMATE_PL.md
+
+KANDYDAT 4.3.126 — SERWIS ULTIMATE: MONITOR PROCESÓW
+- Odczyt procesów przez PowerShell; CPU% liczone z różnicy czasu CPU, nie z fikcyjnej wartości.
+- RAM, pamięć prywatna, uchwyty, ścieżka, wyszukiwanie, sortowanie i eksport CSV.
+- Zakończenie procesu wymaga potwierdzenia; blokowane są PID systemowe, proces aplikacji i krytyczne procesy Windows.
+- Testy Windows CI i porównanie 1:1 z oryginalnym ShowProcesses pozostają wymagane.
