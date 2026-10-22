@@ -92,3 +92,6 @@ W module AUDYT WINDOWS / STEROWNIKI dostępne są trzy dodatkowe akcje:
 - PORÓWNAJ 2 OSTATNIE: porównuje poszczególne kontrole ze starszego i nowszego audytu; wykrywa pogorszenia, poprawy, nowe/brakujące kontrole oraz zmienione wyniki.
 - EKSPORT HISTORII CSV: zapisuje lokalny indeks raportów do CSV w kodowaniu UTF-8 z BOM; pola tekstowe są zabezpieczane przed interpretacją jako formuły arkusza.
 Raporty i historia pozostają lokalne w %LOCALAPPDATA%\\NaprawaPC\\WindowsAudits. Dopiero po wykonaniu co najmniej dwóch audytów porównanie może pokazać zmiany. N/D oznacza brak odczytu, a nie pozytywny wynik.
+
+
+Rozszerzenie 4.3.143: w historii raportów można zaznaczyć dowolne dwa audyty (Ctrl/Shift), porównać ich wyniki i wyeksportować pełną tabelę wszystkich kontroli z wybranego raportu do CSV.

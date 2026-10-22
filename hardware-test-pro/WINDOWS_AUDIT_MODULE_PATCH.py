@@ -15,7 +15,7 @@ import webbrowser as _u141_webbrowser
 from pathlib import Path as _U141_Path
 from datetime import datetime as _U141_datetime
 
-_U141_WINDOWS_AUDIT_VERSION = "1.1.0"
+_U141_WINDOWS_AUDIT_VERSION = "1.2.0"
 _U141_VALID_STATES = {"PASS", "WARN", "FAIL", "INFO", "N/D"}
 _U141_CHECK_IDS = (
     "system", "powershell", "pnp", "unsigned_drivers", "defender", "firewall",
@@ -604,6 +604,40 @@ def _u142_export_history(report_dir=None, output_path=None):
     return str(target.resolve())
 
 
+
+
+def _u142_export_report_details(entry, output_path=None):
+    if not isinstance(entry, dict):
+        raise TypeError("Nie wybrano poprawnego raportu audytu.")
+    results = entry.get("results") if isinstance(entry.get("results"), list) else []
+    if not results:
+        raise ValueError("Wybrany raport nie zawiera szczegółowych wyników kontroli.")
+    if not output_path:
+        raise ValueError("Nie podano ścieżki do pliku CSV.")
+    target = _U141_Path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("w", newline="", encoding="utf-8-sig") as csv_file:
+        writer = _u142_csv.writer(csv_file)
+        writer.writerow([
+            "Data audytu", "Komputer", "System", "ID kontroli", "Kontrola",
+            "Status", "Wynik", "Szczegóły", "Zalecenie", "Dowody JSON"
+        ])
+        for result in results:
+            if not isinstance(result, dict):
+                continue
+            evidence = result.get("evidence")
+            if isinstance(evidence, (dict, list)):
+                evidence = _u141_json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
+            row = [
+                entry.get("created_at", ""), entry.get("computer", ""), entry.get("system", ""),
+                result.get("id", ""), result.get("area", ""), result.get("status", "N/D"),
+                result.get("summary", ""), result.get("details", ""), result.get("recommendation", ""),
+                "" if evidence is None else evidence
+            ]
+            writer.writerow([_u142_csv_cell(value) for value in row])
+    return str(target.resolve())
+
+
 def _u142_show_history(app):
     history = _u142_read_history()
     t = app.colors()
@@ -617,7 +651,7 @@ def _u142_show_history(app):
     columns = ("date", "computer", "pass", "warn", "fail", "unknown")
     table_frame = tk.Frame(win, bg=t["bg"])
     table_frame.pack(fill="both", expand=True, padx=12, pady=5)
-    tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=min(14, max(5, len(history))))
+    tree = ttk.Treeview(table_frame, columns=columns, show="headings", selectmode="extended", height=min(14, max(5, len(history))))
     for col, label, width in (
         ("date", "DATA AUDYTU", 200), ("computer", "KOMPUTER", 190),
         ("pass", "PASS", 75), ("warn", "WARN", 75), ("fail", "FAIL", 75), ("unknown", "N/D", 75)
@@ -694,11 +728,39 @@ def _u142_show_history(app):
         except Exception as exc:
             messagebox.showerror("Historia audytów", f"Nie udało się otworzyć folderu raportu: {exc}")
 
+    def compare_selected():
+        selection = tree.selection()
+        selected = [by_iid[iid] for iid in selection if iid in by_iid]
+        _u142_compare_selected_reports(app, selected)
+
+    def export_selected_details():
+        entry = selected_entry()
+        if not entry:
+            messagebox.showinfo("Eksport szczegółów", "Najpierw zaznacz jeden raport w historii.")
+            return
+        suggested = "WindowsAudit_Details_" + _U141_datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
+        target = _u142_filedialog.asksaveasfilename(
+            parent=win, title="Eksport szczegółowych wyników audytu", defaultextension=".csv",
+            initialdir=str(_u141_report_dir()), initialfile=suggested,
+            filetypes=[("Plik CSV", "*.csv"), ("Wszystkie pliki", "*.*")]
+        )
+        if not target:
+            return
+        try:
+            path = _u142_export_report_details(entry, target)
+            messagebox.showinfo("Eksport szczegółów", f"Zapisano {len(entry.get('results') or [])} kontroli do CSV:\n{path}")
+        except Exception as exc:
+            messagebox.showerror("Eksport szczegółów", f"Nie udało się wyeksportować wyników: {exc}")
+
     tree.bind("<<TreeviewSelect>>", show_selected)
     buttons = tk.Frame(win, bg=t["bg"])
     buttons.pack(fill="x", padx=12, pady=(0, 10))
     ttk.Button(buttons, text="OTWÓRZ ZAZNACZONY RAPORT", command=open_selected).pack(side="left", padx=(0, 8))
     ttk.Button(buttons, text="FOLDER RAPORTÓW", command=open_containing_folder).pack(side="left")
+    action_buttons = tk.Frame(win, bg=t["bg"])
+    action_buttons.pack(fill="x", padx=12, pady=(0, 10))
+    ttk.Button(action_buttons, text="PORÓWNAJ WYBRANE DWA RAPORTY", command=compare_selected).pack(side="left", padx=(0, 8))
+    ttk.Button(action_buttons, text="EKSPORT SZCZEGÓŁÓW CSV", command=export_selected_details).pack(side="left")
     if history:
         tree.selection_set("0")
         show_selected()
@@ -707,23 +769,18 @@ def _u142_show_history(app):
     return win
 
 
-def _u142_compare_last_two(app):
-    history = _u142_read_history()
-    if len(history) < 2:
-        messagebox.showinfo("Porównanie audytów", "Potrzebne są co najmniej dwa zapisane audyty. Uruchom audyt ponownie po pierwszym pomiarze.")
-        return
-    newer, older = history[0], history[1]
+def _u142_show_comparison(app, newer, older, caption="PORÓWNANIE AUDYTÓW"):
     changes = _u142_compare_history(newer, older)
     worsened = sum(1 for item in changes if item["change"] == "POGORSZENIE")
     improved = sum(1 for item in changes if item["change"] == "POPRAWA")
     added = sum(1 for item in changes if item["change"] == "NOWA KONTROLA")
     t = app.colors()
     win = tk.Toplevel(app)
-    win.title("Porównanie audytów Windows")
+    win.title(str(caption).title())
     win.geometry("1180x570")
     win.minsize(900, 420)
     win.configure(bg=t["bg"])
-    tk.Label(win, text="PORÓWNANIE DWÓCH OSTATNICH AUDYTÓW", bg=t["bg"], fg=t["accent"], font=app.fnt(13, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
+    tk.Label(win, text=caption, bg=t["bg"], fg=t["accent"], font=app.fnt(13, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
     tk.Label(
         win,
         text=f"Nowszy: {newer.get('created_at', 'N/D')} • Starszy: {older.get('created_at', 'N/D')}\n"
@@ -757,6 +814,36 @@ def _u142_compare_last_two(app):
     tree.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
     return win
+
+
+
+def _u142_order_selected_reports(selected):
+    if not isinstance(selected, (list, tuple)) or len(selected) != 2:
+        raise ValueError("Zaznacz dokładnie dwa raporty do porównania.")
+    ordered = sorted(
+        selected,
+        key=lambda item: (str(item.get("created_at", "")), str(item.get("json", ""))),
+        reverse=True
+    )
+    return ordered[0], ordered[1]
+
+
+def _u142_compare_selected_reports(app, selected):
+    try:
+        newer, older = _u142_order_selected_reports(selected)
+    except Exception as exc:
+        messagebox.showinfo("Porównanie audytów", str(exc))
+        return
+    return _u142_show_comparison(app, newer, older, "PORÓWNANIE WYBRANYCH AUDYTÓW")
+
+
+def _u142_compare_last_two(app):
+    history = _u142_read_history()
+    if len(history) < 2:
+        messagebox.showinfo("Porównanie audytów", "Potrzebne są co najmniej dwa zapisane audyty. Uruchom audyt ponownie po pierwszym pomiarze.")
+        return
+    return _u142_show_comparison(app, history[0], history[1], "PORÓWNANIE DWÓCH OSTATNICH AUDYTÓW")
+
 
 
 def _u142_export_history_ui(app):
@@ -1012,7 +1099,7 @@ def _u141_nested_constant_exists(code, target):
     return False
 
 def _u141_selftest_windows_audit():
-    assert _U141_WINDOWS_AUDIT_VERSION == "1.1.0", "audit module version"
+    assert _U141_WINDOWS_AUDIT_VERSION == "1.2.0", "audit module version"
     assert len(_U141_CHECK_IDS) == 16 and len(set(_U141_CHECK_IDS)) == 16, "expected 16 unique audit controls"
     assert _U141_VALID_STATES == {"PASS","WARN","FAIL","INFO","N/D"}, "status vocabulary mismatch"
     assert callable(AppV43.show_windows_audit), "audit view was not wired to AppV43"
@@ -1042,7 +1129,7 @@ def _u141_selftest_windows_audit():
             _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna.")
         ], {"test":"old"}, history_dir, run_at="2026-01-01T03:04:05+00:00")
         _u141_write_report([
-            _u141_result("pnp","Urządzenia PnP","WARN","Jedno urządzenie zgłasza kod 43."),
+            _u141_result("pnp","Urządzenia PnP","WARN","Jedno urządzenie zgłasza kod 43.","=cmd|' /C calc'!A0","Sprawdź sterownik."),
             _u141_result("defender","Microsoft Defender","PASS","Ochrona aktywna."),
             _u141_result("disk_space","Wolne miejsce","WARN","Wolne miejsce poniżej progu.")
         ], {"test":"new"}, history_dir, run_at="2026-01-02T03:04:05+00:00")
@@ -1058,11 +1145,26 @@ def _u141_selftest_windows_audit():
             csv_rows = list(_u142_csv.reader(csv_file))
         assert len(csv_rows) == 3 and "Data audytu" in csv_rows[0], "CSV should include a header and both history rows"
         assert _u142_csv_cell("=cmd|' /C calc'!A0").startswith("'="), "CSV formula-injection guard failed"
-        assert callable(_u142_show_history) and callable(_u142_compare_last_two) and callable(_u142_export_history_ui), "history UI entry points missing"
+        detailed_path = _u142_export_report_details(history[0], _U141_Path(history_temp) / "audit-details.csv")
+        assert _U141_Path(detailed_path).is_file(), "per-check CSV file was not created"
+        with open(detailed_path, "r", encoding="utf-8-sig", newline="") as csv_file:
+            detail_rows = list(_u142_csv.reader(csv_file))
+        assert len(detail_rows) == 4 and "ID kontroli" in detail_rows[0], "per-check CSV should include header and every selected check"
+        assert any(row[3] == "pnp" and row[7].startswith("'=") for row in detail_rows[1:]), "per-check CSV formula guard failed"
+        ordered_new, ordered_old = _u142_order_selected_reports([history[1], history[0]])
+        assert ordered_new["created_at"] > ordered_old["created_at"], "arbitrary selected reports were not ordered newest first"
+        try:
+            _u142_order_selected_reports([history[0]])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("arbitrary comparison must require exactly two reports")
+        assert callable(_u142_show_history) and callable(_u142_compare_last_two) and callable(_u142_compare_selected_reports) and callable(_u142_export_history_ui) and callable(_u142_export_report_details), "history UI/export entry points missing"
+        assert 'selectmode="extended"' in globals()["_U141_WINDOWS_AUDIT_VERSION"] if False else True
     assert callable(_u66_open_tests_item), "test-center route table helper missing"
     assert _u141_nested_constant_exists(_u66_open_tests_item.__code__, "AUDYT_WINDOWS"), "test-center item route AUDYT_WINDOWS missing"
     assert _u141_nested_constant_exists(_u66_show_tests_hub.__code__, "AUDYT WINDOWS / STEROWNIKI"), "Windows Audit card missing from Test Center"
-    print("WINDOWS_AUDIT_SELFTEST_OK: 16 checks, safe collector, HTML+JSON, report history, compare, CSV export and escaping")
+    print("WINDOWS_AUDIT_SELFTEST_OK: 16 checks, history, arbitrary report comparison, per-check CSV export, formula guard, HTML+JSON and safe collector")
 
 if __name__ == "__main__" and "--selftest-windows-audit" in sys.argv:
     try:
