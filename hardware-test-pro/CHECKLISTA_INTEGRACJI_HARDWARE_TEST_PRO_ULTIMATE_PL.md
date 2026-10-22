@@ -37,3 +37,12 @@
 - RAM/VRAM testowane z procesu nie są pełnym testem wszystkich fizycznych komórek.
 - FPS OpenGL nie jest prognozą FPS w konkretnej grze.
 - Nowe 20 sond to integracja diagnostyczna w ramach znanego zakresu funkcji; nie jest to deklaracja pełnej kopi źródeł obu archiwów.
+
+
+## Kandydat 4.3.135 — dodatkowe sondy Serwis Ultimate
+- [x] Dodano 10 unikalnych sond odczytowych bez powielania istniejących 40 sond: DxDiag, drukarki/spooler, Bluetooth, historia niezawodności, punkty przywracania/migawki, BitLocker bez kluczy, funkcje opcjonalne, runtime'y .NET/VC++, profile Wi-Fi bez haseł oraz raporty/zrzuty WER.
+- [x] Przycisk modułu podłączony do Centrum napraw.
+- [x] Dodano selftest unikalnych ID/tytułów/poleceń i zakaz destrukcyjnych komend.
+- [ ] Windows CI, instalator i ALL-IN-ONE ZIP — do potwierdzenia po uruchomieniu workflow.
+- [ ] Test GUI i rzeczywistych wyników na fizycznym Windows — wymaga walidacji sprzętowej.
+- [ ] Porównanie wszystkich ekranów i handlerów z oryginalnym Serwis Ultimate 1.15.3 — nadal otwarte.

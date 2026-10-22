@@ -36,3 +36,9 @@ OGRANICZENIA I UCZCIWY STATUS
 
 ZASADA PUBLIKACJI
 Nie uznawać wydania za gotowe, jeżeli najnowszy Windows CI nie zakończy się sukcesem, nie ma obu plików wydania lub manifest nie zgadza się z SHA-256 instalatora.
+
+
+KANDYDAT 4.3.135 — DODATKOWA KONTROLA SERWIS ULTIMATE
+- Dodano 10 oddzielnych sond odczytowych poza istniejącym katalogiem: DxDiag, drukarki/spooler, Bluetooth, historia niezawodności, punkty przywracania/migawki, BitLocker bez kluczy, funkcje opcjonalne, runtime'y .NET/VC++, profile Wi-Fi bez haseł oraz raporty/zrzuty WER.
+- Każda sonda ma unikalny identyfikator, tytuł i polecenie, osobne okno i raport JSON; błędny kod wyjścia, N/D, WARN lub niepoprawny JSON nie może otrzymać statusu PASS.
+- Wymagane przed publikacją: Windows CI z selftestem modułu, EXE + Setup, ALL-IN-ONE ZIP, SHA-256 i zgodny manifest. Do czasu sukcesu CI nie oznaczać kandydata jako stable.

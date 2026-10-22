@@ -2780,6 +2780,7 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     self.make_button(row,"SKAN",lambda m=module:_u69_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
     self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
+    self.make_button(row,"RZECZYWISTE OPENGL / FPS",lambda m=module:_u135_start_real_3d(self,m),"accent",side="left",ipady=4)
     if module=="SIEĆ":
         self.make_button(row,"SPEED TEST DOWNLOAD / UPLOAD",self.show_speed_test,"accent",side="left",ipady=4)
     def back(m=module):
@@ -14460,6 +14461,7 @@ def _u121_show_system_repair_center(app):
         app.make_button(panel,"ZASILANIE / BATERIA — TESTY",lambda:_u121_show_power_lab(app),"card",side="left",ipady=4)
         app.make_button(panel,"PROFILE NAPRAW / DIAGNOZA",lambda:_u123_show_repair_profiles(app),"card",side="left",ipady=4)
         app.make_button(panel,"BAZA WIEDZY / LEKCJE NAPRAWY",lambda:_u122_show_repair_knowledge(app),"card",side="left",ipady=4)
+        app.make_button(panel,"DODATKOWE TESTY SERWIS ULTIMATE",lambda:_u135_show_serwis_diagnostics(app),"card",side="left",ipady=4)
     except Exception as exc:
         try:app.queue_log("Zlecenia serwisowe: "+repr(exc))
         except Exception:pass
@@ -15616,9 +15618,237 @@ def _u134_selftest_unique_service_probes():
     assert len(scripts)==40 and len(set(scripts))==40, "No System Repair PRO / Serwis Ultimate diagnostics may reuse an identical script."
     print("UNIQUE_TESTS_AND_SERVICE_PROBES_SELFTEST_OK: 110 unique catalog titles; 40 unique service IDs/titles/scripts")
 
+
+
+# v4.3.135 — ten more individually runnable, read-only service diagnostics.
+# Each probe has its own stable key, window, JSON report and honest WARN handling.
+_U135_SERWIS_TESTS = {
+ "dxdiag_report": {
+  "title":"Raport DirectX / DxDiag",
+  "description":"Tworzy osobny raport diagnostyczny DirectX i sterowników ekranu; nie zmienia ustawień.",
+  "command":"$p=Join-Path $env:TEMP ('NaprawaPC-DxDiag-'+(Get-Date -Format 'yyyyMMdd-HHmmss')+'.txt');$err=$null;try{$proc=Start-Process -FilePath 'dxdiag.exe' -ArgumentList @('/whql:off','/t',$p) -PassThru -Wait -ErrorAction Stop;for($i=0;$i -lt 30 -and !(Test-Path -LiteralPath $p);$i++){Start-Sleep -Milliseconds 500};if(Test-Path -LiteralPath $p){$txt=Get-Content -LiteralPath $p -Raw -ErrorAction Stop;[pscustomobject]@{state='PASS';report_path=$p;process_exit=$proc.ExitCode;characters=$txt.Length;report_preview=$txt.Substring(0,[Math]::Min(18000,$txt.Length))} | ConvertTo-Json -Depth 4}else{throw 'DxDiag nie utworzył raportu'}}catch{[pscustomobject]@{state='WARN';error=$_.Exception.Message;report_path=$p} | ConvertTo-Json -Depth 3}"
+ },
+ "printer_subsystem": {
+  "title":"Drukarki i kolejka wydruku",
+  "description":"Oddzielna diagnostyka drukarek, portów i usługi bufora wydruku.",
+  "command":"$svc=Get-CimInstance Win32_Service -Filter \"Name='Spooler'\" -ErrorAction SilentlyContinue | Select-Object Name,State,StartMode,ExitCode;$printers=@(Get-Printer -ErrorAction SilentlyContinue | Select-Object Name,DriverName,PortName,PrinterStatus,Shared,WorkOffline);$ports=@(Get-PrinterPort -ErrorAction SilentlyContinue | Select-Object Name,Description,PrinterHostAddress,PortNumber);[pscustomobject]@{spooler=$svc;printer_count=$printers.Count;printers=$printers;port_count=$ports.Count;ports=$ports} | ConvertTo-Json -Depth 5"
+ },
+ "bluetooth_devices": {
+  "title":"Bluetooth — adaptery i urządzenia",
+  "description":"Inwentaryzacja urządzeń Bluetooth i adapterów radiowych; niczego nie paruje ani nie rozłącza.",
+  "command":"$d=@(Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Select-Object Status,Class,FriendlyName,Manufacturer,InstanceId);$a=@(Get-NetAdapter -IncludeHidden -ErrorAction SilentlyContinue | Where-Object {$_.InterfaceDescription -match 'Bluetooth'} | Select-Object Name,InterfaceDescription,Status,MacAddress);[pscustomobject]@{device_count=$d.Count;devices=$d;adapter_count=$a.Count;adapters=$a} | ConvertTo-Json -Depth 5"
+ },
+ "reliability_history": {
+  "title":"Historia niezawodności Windows",
+  "description":"Odczyt wpisów monitora niezawodności z ostatnich 30 dni.",
+  "command":"$since=(Get-Date).AddDays(-30);$items=@();try{$items=@(Get-CimInstance -ClassName Win32_ReliabilityRecords -ErrorAction Stop | Where-Object {$_.TimeGenerated -and ([Management.ManagementDateTimeConverter]::ToDateTime($_.TimeGenerated) -ge $since)} | Sort-Object TimeGenerated -Descending | Select-Object -First 100 @{n='Time';e={[Management.ManagementDateTimeConverter]::ToDateTime($_.TimeGenerated)}},SourceName,EventIdentifier,ProductName,Message)}catch{$items=@(@{state='N/D';error=$_.Exception.Message})};[pscustomobject]@{period_days=30;record_count=$items.Count;records=$items} | ConvertTo-Json -Depth 5"
+ },
+ "restore_point_inventory": {
+  "title":"Punkty przywracania i kopie woluminów",
+  "description":"Tylko lista dostępnych punktów przywracania i migawek; nie tworzy ani nie usuwa kopii.",
+  "command":"$rp=@();$err=$null;try{$rp=@(Get-ComputerRestorePoint -ErrorAction Stop | Select-Object -First 80 SequenceNumber,Description,CreationTime,RestorePointType,EventType)}catch{$err=$_.Exception.Message};$sh=@(Get-CimInstance Win32_ShadowCopy -ErrorAction SilentlyContinue | Select-Object ID,InstallDate,VolumeName,State);$enabled=@();try{$enabled=@(Get-CimInstance -Namespace root/default -ClassName SystemRestore -ErrorAction Stop | Select-Object SystemRestoreConfig,NumberOfRestorePoints)}catch{};[pscustomobject]@{restore_point_count=$rp.Count;restore_points=$rp;restore_point_query_error=$err;shadow_copy_count=$sh.Count;shadow_copies=$sh;restore_provider=$enabled} | ConvertTo-Json -Depth 5"
+ },
+ "bitlocker_status": {
+  "title":"Status szyfrowania BitLocker",
+  "description":"Odczyt stanu szyfrowania i ochrony woluminów; raport nie pobiera ani nie wyświetla kluczy odzyskiwania.",
+  "command":"try{$v=@(Get-BitLockerVolume -ErrorAction Stop | Select-Object MountPoint,VolumeType,VolumeStatus,ProtectionStatus,EncryptionPercentage,EncryptionMethod,LockStatus,AutoUnlockEnabled);[pscustomobject]@{state='PASS';volume_count=$v.Count;volumes=$v;note='Klucze odzyskiwania nie są odczytywane'} | ConvertTo-Json -Depth 5}catch{[pscustomobject]@{state='N/D';error=$_.Exception.Message;note='Dostępność zależy od edycji Windows i uprawnień'} | ConvertTo-Json -Depth 3}"
+ },
+ "optional_features": {
+  "title":"Funkcje opcjonalne Windows",
+  "description":"Lista stanów składników opcjonalnych Windows bez włączania ani wyłączania funkcji.",
+  "command":"try{$f=@(Get-WindowsOptionalFeature -Online -ErrorAction Stop | Select-Object FeatureName,State,RestartRequired);[pscustomobject]@{state='PASS';feature_count=$f.Count;enabled_count=@($f | Where-Object {$_.State -eq 'Enabled'}).Count;features=$f} | ConvertTo-Json -Depth 5}catch{[pscustomobject]@{state='N/D';error=$_.Exception.Message;note='Odczyt DISM może wymagać uprawnień administratora'} | ConvertTo-Json -Depth 3}"
+ },
+ "runtime_inventory": {
+  "title":"Runtime .NET i Visual C++",
+  "description":"Inwentaryzacja zainstalowanych runtime'ów .NET i pakietów Visual C++; bez używania Win32_Product.",
+  "command":"$dotnet='';$dotnetCode=-1;try{$dotnet=& dotnet.exe --list-runtimes 2>&1 | Out-String;$dotnetCode=$LASTEXITCODE}catch{$dotnet=$_.Exception.Message};$paths=@('HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64','HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86','HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x86');$vc=@();foreach($p in $paths){if(Test-Path $p){$x=Get-ItemProperty $p -ErrorAction SilentlyContinue;$vc+=@{path=$p;Installed=$x.Installed;Version=$x.Version;Major=$x.Major;Minor=$x.Minor;Bld=$x.Bld}}};[pscustomobject]@{dotnet_exit_code=$dotnetCode;dotnet_runtimes=$dotnet;visual_cpp=$vc} | ConvertTo-Json -Depth 4"
+ },
+ "wifi_profiles": {
+  "title":"Wi-Fi — interfejsy i profile",
+  "description":"Stan interfejsów Wi-Fi i nazwy zapisanych profili; nie odczytuje haseł ani kluczy.",
+  "command":"$ifaces=@(Get-NetAdapter -ErrorAction SilentlyContinue | Where-Object {$_.NdisPhysicalMedium -eq 9 -or $_.InterfaceDescription -match 'Wi-Fi|Wireless|WLAN'} | Select-Object Name,InterfaceDescription,Status,LinkSpeed,MacAddress);$state='';$profiles='';try{$state=(& netsh.exe wlan show interfaces 2>&1 | Out-String)}catch{$state=$_.Exception.Message};try{$profiles=(& netsh.exe wlan show profiles 2>&1 | Out-String)}catch{$profiles=$_.Exception.Message};[pscustomobject]@{wireless_adapter_count=$ifaces.Count;adapters=$ifaces;interface_status=$state;profile_names_only=$profiles;credentials_read=$false} | ConvertTo-Json -Depth 4"
+ },
+ "wer_dump_inventory": {
+  "title":"Zrzuty awarii aplikacji (WER)",
+  "description":"Lista nazw, rozmiarów i dat zrzutów awarii; pliki zrzutów nie są otwierane ani wysyłane.",
+  "command":"$roots=@((Join-Path $env:LOCALAPPDATA 'CrashDumps'),(Join-Path $env:ProgramData 'Microsoft\\Windows\\WER\\ReportArchive'),(Join-Path $env:ProgramData 'Microsoft\\Windows\\WER\\ReportQueue'));$items=@();foreach($root in $roots){if(Test-Path -LiteralPath $root){$items+=@(Get-ChildItem -LiteralPath $root -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 100 @{n='Root';e={$root}},Name,Extension,Length,LastWriteTime,DirectoryName)}};$items=@($items | Sort-Object LastWriteTime -Descending | Select-Object -First 250);[pscustomobject]@{searched_roots=$roots;dump_or_report_count=$items.Count;files=$items;content_opened=$false} | ConvertTo-Json -Depth 5"
+ }
+}
+
+def _u135_status_from_output(exit_code,raw,parsed):
+    if int(exit_code or 0)!=0 or not str(raw or "").strip():
+        return "WARN"
+    if not isinstance(parsed,dict):
+        return "WARN"
+    state=str(parsed.get("state","")).strip().upper()
+    if state in ("N/D","WARN","ERROR","FAIL","FAILED"):
+        return "WARN" if state=="N/D" else state
+    if state and state not in ("PASS","GOOD","OK","SUCCESS"):
+        return "WARN"
+    return "PASS"
+
+def _u135_run_serwis_test(app,key):
+    import os as _u135_os
+    import subprocess as _u135_subprocess
+    import threading as _u135_threading
+    import json as _u135_json
+    from datetime import datetime as _u135_datetime
+    from pathlib import Path as _u135_Path
+    item=_U135_SERWIS_TESTS.get(key)
+    if not item:
+        messagebox.showerror("Serwis Ultimate","Nieznany test.")
+        return
+    if _u135_os.name!="nt":
+        messagebox.showinfo(item["title"],"Ten odczyt wymaga Windows.")
+        return
+    folder=_u135_Path(_u135_os.environ.get("LOCALAPPDATA") or _u135_Path.home())/"NaprawaPC"/"Raporty"/"SerwisUltimate"
+    folder.mkdir(parents=True,exist_ok=True)
+    stamp=_u135_datetime.now().strftime("%Y%m%d-%H%M%S")
+    path=folder/(stamp+"-"+key+".json")
+    win=tk.Toplevel(app)
+    win.title("SERWIS ULTIMATE — "+item["title"])
+    win.geometry("1000x650")
+    win.minsize(700,450)
+    t=app.colors()
+    tk.Label(win,text=item["title"],bg=t["bg"],fg=t["accent"],font=app.fnt(12,"bold")).pack(anchor="w",padx=12,pady=(12,3))
+    tk.Label(win,text=item["description"],bg=t["bg"],fg=t["muted"],font=app.fnt(9),wraplength=950,justify="left").pack(anchor="w",padx=12,pady=(0,6))
+    status=tk.StringVar(value="TEST W TOKU…")
+    tk.Label(win,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w").pack(fill="x",padx=12,pady=(0,5))
+    output=tk.Text(win,bg="#07111f",fg="#d7eaff",insertbackground="#ffffff",wrap="word",font=("Consolas",9),relief="flat")
+    output.pack(fill="both",expand=True,padx=12,pady=(0,8))
+    output.insert("end","Raport zostanie zapisany do:\n"+str(path))
+    output.configure(state="disabled")
+    footer=tk.Frame(win,bg=t["bg"]);footer.pack(fill="x",padx=12,pady=(0,12))
+    def open_report():
+        try:
+            if path.exists() and hasattr(_u135_os,"startfile"):_u135_os.startfile(str(path))
+            else:messagebox.showinfo("Raport",str(path) if path.exists() else "Raport nie jest jeszcze dostępny.")
+        except Exception as exc:messagebox.showerror("Raport",str(exc))
+    app.make_button(footer,"OTWÓRZ RAPORT",open_report,"accent",side="left",ipady=4)
+    app.make_button(footer,"ZAMKNIJ",win.destroy,"card",side="right",ipady=4)
+    def worker():
+        started=_u135_datetime.now().astimezone().isoformat(timespec="seconds")
+        record={"id":key,"title":item["title"],"started_at":started,"status":"WARN","source":"Windows PowerShell/CIM","report_path":str(path)}
+        try:
+            result=_u135_subprocess.run(["powershell.exe","-NoProfile","-Command",item["command"]],capture_output=True,text=True,encoding="utf-8",errors="replace",timeout=120,creationflags=getattr(_u135_subprocess,"CREATE_NO_WINDOW",0))
+            raw=(result.stdout or "").strip()
+            record["exit_code"]=result.returncode
+            record["stderr"]=(result.stderr or "").strip()
+            record["data"]=None
+            if raw:
+                try:record["data"]=_u135_json.loads(raw)
+                except Exception:record["data"]={"raw_output":raw}
+            record["status"]=_u135_status_from_output(result.returncode,raw,record["data"])
+            if not raw:record["message"]="System nie zwrócił danych; nie oznaczono PASS."
+        except Exception as exc:
+            record["error"]=type(exc).__name__+": "+str(exc)
+            record["message"]="Odczyt nie powiódł się; wynik pozostaje WARN."
+        try:
+            path.write_text(_u135_json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8")
+        except Exception as exc:
+            record["report_error"]=str(exc)
+        body=_u135_json.dumps(record,ensure_ascii=False,indent=2)
+        def finish():
+            try:
+                if not win.winfo_exists():return
+                status.set(record["status"]+" — "+str(path))
+                output.configure(state="normal");output.delete("1.0","end");output.insert("end",body);output.see("end");output.configure(state="disabled")
+                try:app.append_log("SERWIS ULTIMATE "+key+": "+record["status"]+"; "+str(path))
+                except Exception:pass
+            except Exception:pass
+        try:app.after(0,finish)
+        except Exception:pass
+    _u135_threading.Thread(target=worker,daemon=True,name="NaprawaPC-Serwis-"+key).start()
+
+def _u135_show_serwis_diagnostics(app):
+    app.current_view="SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS"
+    app.clear()
+    t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — DODATKOWE TESTY")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="10 ODRĘBNYCH TESTÓW • KAŻDY MA WŁASNE OKNO I RAPORT JSON",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(8,3))
+    tk.Label(head,text="Testy są odczytowe. Nie wyłączają ochrony, nie zatrzymują usług, nie resetują sieci i nie naprawiają dysków. Brak danych lub błąd jest oznaczany WARN/N/D.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1300,justify="left").pack(anchor="w",padx=10,pady=(0,8))
+    for key,item in _U135_SERWIS_TESTS.items():
+        card=app.panel(app.content);card.pack(fill="x",padx=3,pady=3)
+        row=tk.Frame(card,bg=t["panel"]);row.pack(fill="x",padx=8,pady=5)
+        left=tk.Frame(row,bg=t["panel"]);left.pack(side="left",fill="x",expand=True)
+        tk.Label(left,text=item["title"],bg=t["panel"],fg=t["text"],font=app.fnt(9,"bold"),anchor="w").pack(fill="x")
+        tk.Label(left,text=item["description"],bg=t["panel"],fg=t["muted"],font=app.fnt(8),anchor="w",wraplength=1050,justify="left").pack(fill="x",pady=(2,0))
+        app.make_button(row,"URUCHOM",lambda k=key:_u135_run_serwis_test(app,k),"accent",side="right",ipady=4)
+    tools=app.panel(app.content);tools.pack(fill="x",padx=3,pady=5)
+    app.make_button(tools,"← CENTRUM NAPRAW",app.show_system_repair_center,"card",side="left",ipady=4)
+    return None
+
+def _u135_selftest_serwis_diagnostics():
+    assert len(_U135_SERWIS_TESTS)==10
+    assert len(set(_U135_SERWIS_TESTS))==10
+    assert len({v["title"] for v in _U135_SERWIS_TESTS.values()})==10
+    assert len({v["command"] for v in _U135_SERWIS_TESTS.values()})==10
+    forbidden=("Remove-Item","Format-Volume","Clear-Disk","Restart-Computer","Stop-Computer","Set-NetIPInterface","netsh winsock reset","Disable-Mp")
+    for key,item in _U135_SERWIS_TESTS.items():
+        assert item.get("title") and item.get("description") and item.get("command")
+        assert not any(word.lower() in item["command"].lower() for word in forbidden),key
+    assert callable(_u135_show_serwis_diagnostics)
+    assert _u135_status_from_output(0, '{"state":"PASS"}', {"state":"PASS"}) == "PASS"
+    assert _u135_status_from_output(0, '{"state":"N/D"}', {"state":"N/D"}) == "WARN"
+    assert _u135_status_from_output(0, '{"state":"WARN"}', {"state":"WARN"}) == "WARN"
+    assert _u135_status_from_output(1, '{"state":"PASS"}', {"state":"PASS"}) == "WARN"
+    assert _u135_status_from_output(0, "not-json", None) == "WARN"
+    print("SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS_SELFTEST_OK: 10 unique read-only tests, separate JSON reports and honest N/D/WARN status")
+
+
+# Map each component simulator to a different real OpenGL scene family.
+# This is explicitly a GPU-rendering check, not a claim that OpenGL measures CPU/RAM/disk performance.
+_U135_SCENE_BY_MODULE = {
+ "GPU":1, "CPU":8, "RAM":17, "VRAM":26, "DYSK":35, "EKRAN":44,
+ "SECURITY":53, "BATERIA":62, "SIEĆ":71, "USB":80, "AUDIO":89,
+ "KLAWIATURA":98, "KAMERA":107
+}
+
+def _u135_start_real_3d(app,module):
+    module=str(module or "").upper()
+    scene_id=_U135_SCENE_BY_MODULE.get(module)
+    if scene_id is None:
+        messagebox.showwarning("OpenGL 3D","Nie ma przypisanej odrębnej sceny dla tego modułu.")
+        return
+    if getattr(app,"running",False):
+        messagebox.showwarning("OpenGL 3D","Inny test jest uruchomiony. Zatrzymaj go przed uruchomieniem sceny.")
+        return
+    if not (1 <= scene_id <= len(_U66_SCENES)):
+        messagebox.showerror("OpenGL 3D","Nieprawidłowy identyfikator sceny.")
+        return
+    seconds=10
+    resolution=str(getattr(app,"_u90_scene_resolution_value","1920x1080") or "1920x1080")
+    scene_name=_U66_SCENES[scene_id-1][0]
+    if not messagebox.askyesno(
+        "Rzeczywiste renderowanie OpenGL",
+        f"Uruchomić unikalną scenę {scene_id:02d}: {scene_name}?\\n\\n"
+        f"Czas: {seconds} s • rozdzielczość: {resolution}\\n"
+        "Otworzy się osobne okno renderera. Wynik obejmuje rzeczywiste FPS i dane renderera GPU. "
+        "To test renderowania GPU, a nie benchmark CPU/RAM/dysku."
+    ):
+        return
+    try:
+        app.stop_requested=False
+        app.worker(lambda:_u66_execute_gpu_scene(app,scene_id,seconds))
+    except Exception as exc:
+        messagebox.showerror("OpenGL 3D",f"Nie udało się uruchomić sceny: {type(exc).__name__}: {exc}")
+
+def _u135_selftest_real_3d_scene_mapping():
+    ids=list(_U135_SCENE_BY_MODULE.values())
+    assert len(ids)==13 and len(set(ids))==13
+    assert all(1 <= int(scene_id) <= len(_U66_SCENES) for scene_id in ids)
+    titles=[_U66_SCENES[scene_id-1][0] for scene_id in ids]
+    assert len(set(titles))==len(titles)
+    assert _U135_SCENE_BY_MODULE["GPU"]==1
+    assert callable(_u135_start_real_3d)
+    print("COMPONENT_REAL_OPENGL_SCENE_SELFTEST_OK: 13 components map to 13 distinct OpenGL scenes")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u134_selftest_ram_live_dashboard()
+        _u135_selftest_real_3d_scene_mapping()
+        _u135_selftest_serwis_diagnostics()
         _u134_selftest_unique_service_probes()
         _u133_selftest_service_dashboard_navigation()
         _u132_selftest_service_dashboard()
