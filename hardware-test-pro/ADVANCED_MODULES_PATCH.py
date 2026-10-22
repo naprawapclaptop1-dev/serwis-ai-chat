@@ -15674,6 +15674,18 @@ _U135_SERWIS_TESTS = {
  }
 }
 
+def _u135_status_from_output(exit_code,raw,parsed):
+    if int(exit_code or 0)!=0 or not str(raw or "").strip():
+        return "WARN"
+    if not isinstance(parsed,dict):
+        return "WARN"
+    state=str(parsed.get("state","")).strip().upper()
+    if state in ("N/D","WARN","ERROR","FAIL","FAILED"):
+        return "WARN" if state=="N/D" else state
+    if state and state not in ("PASS","GOOD","OK","SUCCESS"):
+        return "WARN"
+    return "PASS"
+
 def _u135_run_serwis_test(app,key):
     import os as _u135_os
     import subprocess as _u135_subprocess
@@ -15725,7 +15737,7 @@ def _u135_run_serwis_test(app,key):
             if raw:
                 try:record["data"]=_u135_json.loads(raw)
                 except Exception:record["data"]={"raw_output":raw}
-            record["status"]="PASS" if result.returncode==0 and bool(raw) else "WARN"
+            record["status"]=_u135_status_from_output(result.returncode,raw,record["data"])
             if not raw:record["message"]="System nie zwrócił danych; nie oznaczono PASS."
         except Exception as exc:
             record["error"]=type(exc).__name__+": "+str(exc)
@@ -15776,7 +15788,12 @@ def _u135_selftest_serwis_diagnostics():
         assert item.get("title") and item.get("description") and item.get("command")
         assert not any(word.lower() in item["command"].lower() for word in forbidden),key
     assert callable(_u135_show_serwis_diagnostics)
-    print("SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS_SELFTEST_OK: 10 unique read-only tests, separate JSON reports")
+    assert _u135_status_from_output(0, '{"state":"PASS"}', {"state":"PASS"}) == "PASS"
+    assert _u135_status_from_output(0, '{"state":"N/D"}', {"state":"N/D"}) == "WARN"
+    assert _u135_status_from_output(0, '{"state":"WARN"}', {"state":"WARN"}) == "WARN"
+    assert _u135_status_from_output(1, '{"state":"PASS"}', {"state":"PASS"}) == "WARN"
+    assert _u135_status_from_output(0, "not-json", None) == "WARN"
+    print("SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS_SELFTEST_OK: 10 unique read-only tests, separate JSON reports and honest N/D/WARN status")
 
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
