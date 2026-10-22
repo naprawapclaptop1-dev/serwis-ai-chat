@@ -40,7 +40,7 @@
 
 
 ## Kandydat 4.3.135 — dodatkowe sondy Serwis Ultimate
-- [x] Dodano 10 unikalnych sond odczytowych z oddzielnymi ekranami i raportami JSON.
+- [x] Dodano 10 unikalnych sond odczytowych bez powielania istniejących 40 sond: DxDiag, drukarki/spooler, Bluetooth, historia niezawodności, punkty przywracania/migawki, BitLocker bez kluczy, funkcje opcjonalne, runtime'y .NET/VC++, profile Wi-Fi bez haseł oraz raporty/zrzuty WER.
 - [x] Przycisk modułu podłączony do Centrum napraw.
 - [x] Dodano selftest unikalnych ID/tytułów/poleceń i zakaz destrukcyjnych komend.
 - [ ] Windows CI, instalator i ALL-IN-ONE ZIP — do potwierdzenia po uruchomieniu workflow.
