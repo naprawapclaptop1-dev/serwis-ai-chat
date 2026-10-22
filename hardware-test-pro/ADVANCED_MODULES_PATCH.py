@@ -7906,7 +7906,9 @@ def _u101_selftest_adaptive_speed():
     assert tele["vram_used_mb"]==4096 and tele["vram_total_mb"]==8192
     assert tele["gpu_clock_mhz"]==2400 and tele["fan_speed_rpm"]==1600 and tele["power_draw_w"]==185
     assert callable(_u101_refresh_sensor_table) and callable(_u101_sensor_poll)
-    assert _u66_measure_speed is _u100_measure_speed or getattr(_u66_measure_speed, "__name__", "") == "_u108_measure_speed"
+    _speed_name=getattr(_u66_measure_speed, "__name__", "")
+    _speed_wrapper_ok=(_speed_name=="_u124_measure_speed" and "_U124_ORIGINAL_MEASURE_SPEED" in _u66_measure_speed.__code__.co_names)
+    assert _u66_measure_speed is _u100_measure_speed or _speed_name=="_u108_measure_speed" or _speed_wrapper_ok
     _show_name=getattr(AppV43.show_speed_test, "__name__", "")
     _show_wrapper_ok=(_show_name=="_u124_show_speed_test" and "_U124_ORIGINAL_SHOW_SPEED" in AppV43.show_speed_test.__code__.co_names)
     assert AppV43.show_speed_test is _u107_show_speed_test or _show_name in ("_u108_show_speed_test", "_u114_show_speed_test") or _show_wrapper_ok
