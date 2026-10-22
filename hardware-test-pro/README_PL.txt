@@ -73,3 +73,5 @@ KANDYDAT 4.3.135 — DODATKOWE TESTY SERWIS ULTIMATE
 ---------------------------------------------------
 Dodano 10 osobnych diagnostyk odczytowych, każda z własnym ekranem i raportem JSON: błędy PnP, podpisy i wersje sterowników, programy autostartu, zadania harmonogramu, historia Windows Update, awarie aplikacji, stan nośników, karty/IP/DNS, status Defendera oraz szybka inwentaryzacja systemu.
 Testy są dostępne z Centrum napraw i nie zastępują oryginalnych modułów aplikacji źródłowych. Nie wyłączają ochrony, nie zmieniają konfiguracji sieci i nie naprawiają dysków. Wyniki niedostępne są oznaczane WARN/N/D. Zmiana oczekuje na Windows CI; nie jest jeszcze deklaracją nowego wydania stable ani pełnej zgodności 1:1 z oryginalnymi archiwami.
+
+Kontrola CI dla pull requestów została włączona w workflow; build kandydata nie publikuje stable, dopóki nie zostanie scalony do main.
