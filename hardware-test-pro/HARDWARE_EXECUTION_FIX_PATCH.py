@@ -32,7 +32,12 @@ def _u148_ram_status_payload(app, message=None, report=None):
         if not record and isinstance(ram, dict):
             record = ram.get("benchmark") if isinstance(ram.get("benchmark"), dict) else ram
     state = str(record.get("state") or (ram or {}).get("state") or "N/D").upper()
-    detail = str(message or record.get("message") or (ram or {}).get("message") or "Test RAM nie zwrócił wyniku.")
+    # Once a final report is supplied, its actual diagnosis must outrank the generic
+    # progress/status string passed through the UI callback.
+    if isinstance(report, dict) and report:
+        detail = str(report.get("message") or report.get("error") or message or (ram or {}).get("message") or "Test RAM zakończony bez szczegółów.")
+    else:
+        detail = str(message or record.get("message") or (ram or {}).get("message") or "Test RAM nie zwrócił wyniku.")
     tested = record.get("size_mb", record.get("tested_mb", (ram or {}).get("size_mb", "N/D")))
     if bool(getattr(app, "running", False)) and message and not (isinstance(report, dict) and report):
         return {"record": record, "state": "RUNNING", "status_text": "RAM — TEST W TOKU • " + str(message)}
