@@ -15428,6 +15428,41 @@ def _u133_selftest_service_dashboard_navigation():
     assert any("CENTRUM SERWISU" in str(value) for value in _u133_build_shell.__code__.co_consts)
     print("SERVICE_DASHBOARD_NAVIGATION_SELFTEST_OK: sidebar entry and correct network route")
 
+def _u134_get_commit_info():
+    # Windows commit charge via GetPerformanceInfo; do not mislabel pagefile usage as commit.
+    import os as _u134_os
+    if _u134_os.name!="nt":
+        return None
+    import ctypes as _u134_ctypes
+    from ctypes import wintypes as _u134_wintypes
+    class _U134_PERFORMANCE_INFORMATION(_u134_ctypes.Structure):
+        _fields_=[
+            ("cb",_u134_wintypes.DWORD),
+            ("CommitTotal",_u134_ctypes.c_size_t),("CommitLimit",_u134_ctypes.c_size_t),
+            ("CommitPeak",_u134_ctypes.c_size_t),("PhysicalTotal",_u134_ctypes.c_size_t),
+            ("PhysicalAvailable",_u134_ctypes.c_size_t),("SystemCache",_u134_ctypes.c_size_t),
+            ("KernelTotal",_u134_ctypes.c_size_t),("KernelPaged",_u134_ctypes.c_size_t),
+            ("KernelNonpaged",_u134_ctypes.c_size_t),("PageSize",_u134_ctypes.c_size_t),
+            ("HandleCount",_u134_wintypes.DWORD),("ProcessCount",_u134_wintypes.DWORD),
+            ("ThreadCount",_u134_wintypes.DWORD)
+        ]
+    try:
+        info=_U134_PERFORMANCE_INFORMATION()
+        info.cb=_u134_ctypes.sizeof(info)
+        api=_u134_ctypes.WinDLL("psapi")
+        fn=api.GetPerformanceInfo
+        fn.argtypes=[_u134_ctypes.POINTER(_U134_PERFORMANCE_INFORMATION),_u134_wintypes.DWORD]
+        fn.restype=_u134_wintypes.BOOL
+        if not fn(_u134_ctypes.byref(info),info.cb) or not info.PageSize or not info.CommitLimit:
+            return None
+        used=int(info.CommitTotal)*int(info.PageSize)
+        limit=int(info.CommitLimit)*int(info.PageSize)
+        return {"available":True,"used_bytes":used,"limit_bytes":limit,
+            "percent":round(used*100/limit,2) if limit else None,
+            "page_size":int(info.PageSize)}
+    except Exception:
+        return None
+
 def _u134_show_ram_live_dashboard(app):
     import time as _u134_time
     from datetime import datetime as _u134_datetime
@@ -15453,7 +15488,7 @@ def _u134_show_ram_live_dashboard(app):
     summary=tk.Frame(app.content,bg=t["bg"]);summary.pack(fill="x",padx=2,pady=2)
     fields=[
         ("RAM UŻYCIE","ram_used"),("RAM DOSTĘPNA","ram_available"),
-        ("COMMIT / SWAP","swap"),("CPU ŁĄCZNIE","cpu")
+        ("COMMIT CHARGE","commit"),("SWAP / PAGEFILE","swap"),("CPU ŁĄCZNIE","cpu")
     ]
     values={}
     for title,key in fields:
@@ -15485,7 +15520,7 @@ def _u134_show_ram_live_dashboard(app):
         chart.delete("all")
         width=max(400,chart.winfo_width());height=max(140,chart.winfo_height())
         left,right,top,bottom=42,width-16,18,height-28
-        chart.create_text(left,5,text="RAM I SWAP — HISTORIA LIVE (%)",anchor="nw",fill=t["muted"],font=app.fnt(8,"bold"))
+        chart.create_text(left,5,text="RAM / COMMIT / SWAP — HISTORIA LIVE (%)",anchor="nw",fill=t["muted"],font=app.fnt(8,"bold"))
         chart.create_line(left,top,left,bottom,fill=t["muted"])
         chart.create_line(left,bottom,right,bottom,fill=t["muted"])
         for pct in (0,25,50,75,100):
@@ -15494,15 +15529,20 @@ def _u134_show_ram_live_dashboard(app):
             chart.create_text(left-6,y,text=str(pct),anchor="e",fill=t["muted"],font=app.fnt(7))
         rows=history[-90:]
         if len(rows)>=2:
-            for key,color in (("ram",t["accent"]),("swap",t["warn"])):
-                points=[]
+            for key,color in (("ram",t["accent"]),("commit",t["accent2"]),("swap",t["warn"])):
+                segment=[]
                 for idx,row in enumerate(rows):
+                    value=row.get(key)
+                    if value is None:
+                        if len(segment)>=4:chart.create_line(*segment,fill=color,width=2,smooth=False)
+                        segment=[];continue
                     x=left+(right-left)*idx/max(1,len(rows)-1)
-                    y=bottom-(bottom-top)*max(0,min(100,float(row.get(key,0))))/100
-                    points.extend((x,y))
-                if len(points)>=4:chart.create_line(*points,fill=color,width=2,smooth=False)
-        chart.create_text(right-145,5,text="RAM",anchor="nw",fill=t["accent"],font=app.fnt(8,"bold"))
-        chart.create_text(right-95,5,text="SWAP",anchor="nw",fill=t["warn"],font=app.fnt(8,"bold"))
+                    y=bottom-(bottom-top)*max(0,min(100,float(value)))/100
+                    segment.extend((x,y))
+                if len(segment)>=4:chart.create_line(*segment,fill=color,width=2,smooth=False)
+        chart.create_text(right-190,5,text="RAM",anchor="nw",fill=t["accent"],font=app.fnt(8,"bold"))
+        chart.create_text(right-135,5,text="COMMIT",anchor="nw",fill=t["accent2"],font=app.fnt(8,"bold"))
+        chart.create_text(right-65,5,text="SWAP",anchor="nw",fill=t["warn"],font=app.fnt(8,"bold"))
 
     def refresh():
         if getattr(app,"current_view","")!="RAM_LIVE_DASHBOARD":
@@ -15510,12 +15550,16 @@ def _u134_show_ram_live_dashboard(app):
         try:
             mem=_u134_psutil.virtual_memory()
             swap=_u134_psutil.swap_memory()
+            commit=_u134_get_commit_info()
             cpu_per=_u134_psutil.cpu_percent(interval=None,percpu=True)
             cpu_total=sum(cpu_per)/len(cpu_per) if cpu_per else float(_u134_psutil.cpu_percent(interval=None))
-            history.append({"time":_u134_time.time(),"ram":float(mem.percent),"swap":float(swap.percent),"cpu":float(cpu_total),"per_core":list(cpu_per)})
+            history.append({"time":_u134_time.time(),"ram":float(mem.percent),
+                "commit":float(commit["percent"]) if commit and commit.get("percent") is not None else None,
+                "swap":float(swap.percent),"cpu":float(cpu_total),"per_core":list(cpu_per)})
             del history[:-90]
             values["ram_used"].config(text=f"{mem.percent:.1f}% • {mem.used/1_073_741_824:.2f}/{mem.total/1_073_741_824:.2f} GB")
             values["ram_available"].config(text=f"{mem.available/1_073_741_824:.2f} GB")
+            values["commit"].config(text=(f"{commit['used_bytes']/1_073_741_824:.2f}/{commit['limit_bytes']/1_073_741_824:.2f} GB • {commit['percent']:.1f}%" if commit and commit.get("percent") is not None else "N/D"))
             values["swap"].config(text=f"{swap.percent:.1f}% • {swap.used/1_073_741_824:.2f}/{swap.total/1_073_741_824:.2f} GB")
             values["cpu"].config(text=f"{cpu_total:.1f}% • {len(cpu_per)} rdzeni/logicznych")
             for item in tree.get_children():tree.delete(item)
@@ -15535,7 +15579,8 @@ def _u134_show_ram_live_dashboard(app):
             for pid,name,rss,private,cpu in processes[:15]:
                 tree.insert("","end",values=(pid,name,f"{rss/1_048_576:.1f}",f"{private/1_048_576:.1f}","N/D" if cpu is None else f"{cpu:.1f}"))
             per_core=" • ".join(f"Rdzeń {i+1}: {v:.0f}%" for i,v in enumerate(cpu_per[:32]))
-            status_var.set(f"LIVE • {_u134_datetime.now().strftime('%H:%M:%S')} • RAM {mem.percent:.1f}% • swap {swap.percent:.1f}% • CPU na rdzeń: {per_core or 'N/D'}")
+            commit_text=(f"commit {commit['percent']:.1f}%" if commit and commit.get("percent") is not None else "commit N/D")
+            status_var.set(f"LIVE • {_u134_datetime.now().strftime('%H:%M:%S')} • RAM {mem.percent:.1f}% • {commit_text} • swap {swap.percent:.1f}% • CPU na rdzeń: {per_core or 'N/D'}")
             draw_chart()
         except Exception as exc:
             status_var.set(f"N/D — nie udało się odczytać telemetrii: {type(exc).__name__}: {exc}")
@@ -15550,10 +15595,11 @@ AppV43.show_ram_live_dashboard=_u134_show_ram_live_dashboard
 def _u134_selftest_ram_live_dashboard():
     assert callable(_u134_show_ram_live_dashboard)
     assert AppV43.show_ram_live_dashboard is _u134_show_ram_live_dashboard
-    names=set(_u134_show_ram_live_dashboard.__code__.co_names)
+    names=_u93_deep_code_names(_u134_show_ram_live_dashboard)
     assert {"virtual_memory","swap_memory","cpu_percent","process_iter","after","Treeview"}.issubset(names)
     assert any("RAM LIVE DASHBOARD" in str(value) for value in _u134_show_ram_live_dashboard.__code__.co_consts)
-    print("RAM_LIVE_DASHBOARD_SELFTEST_OK: live RAM/swap/CPU-per-core, process table and bounded 90-sample history")
+    assert callable(_u134_get_commit_info) and "GetPerformanceInfo" in _u134_get_commit_info.__code__.co_names
+    print("RAM_LIVE_DASHBOARD_SELFTEST_OK: live RAM/Windows commit/swap/CPU-per-core, process table and bounded 90-sample history")
 
 def _u134_selftest_unique_service_probes():
     all_entries=[entry for entries in _U93_TEST_CATALOG.values() for entry in entries]
