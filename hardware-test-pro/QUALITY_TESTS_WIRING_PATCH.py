@@ -232,10 +232,11 @@ def _u147_run_gpu_suite(self,seconds=5):
 
 def _u147_selftest_quality_fixes():
     assert _U146_QUALITY_PATCH_VERSION=="1.0.0"
-    assert tuple(_U40_RAM_PATTERN_LIST)==(0x00,0xFF,0xAA,0x55)
+    assert tuple(_U146_RAM_PATTERNS)==(0x00,0xFF,0xAA,0x55)
+    assert len(_U146_RAM_PATTERN_MODES)==26 and len(_U40_RAM_PATTERN_LIST)==26
     progress=[];stats={}
     ok,msg=_u146_verify_ram_buffer(bytearray(1024*1024),0,lambda pct,txt:progress.append((pct,txt)),lambda:False,stats)
-    assert ok and stats["patterns_completed"]==4 and stats["bytes_verified"]==4*1024*1024
+    assert ok and stats["patterns_completed"]==26 and stats["bytes_verified"]==26*1024*1024
     assert progress and progress[-1][0]==100
     stopped={}
     ok,msg=_u146_verify_ram_buffer(bytearray(4096),0,None,lambda:True,stopped)

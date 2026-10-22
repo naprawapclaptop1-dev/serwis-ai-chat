@@ -9,7 +9,7 @@ from pathlib import Path as _u146_Path
 
 _U146_QUALITY_PATCH_VERSION = "1.0.0"
 _U146_RAM_PATTERNS = (0x00, 0xFF, 0xAA, 0x55)
-_U40_RAM_PATTERN_LIST = _U146_RAM_PATTERNS
+_U146_RAM_PATTERN_MODES = tuple(_U40_RAM_PATTERN_LIST)
 _U146_EXPECTED_DIGESTS = {}
 
 def _u146_stopped(check):
@@ -27,25 +27,26 @@ def _u146_progress(callback, percent, message):
         except Exception:
             pass
 
-def _u146_expected_digest(size, pattern, stop_check=None):
-    key = (int(size), int(pattern))
-    if key in _U146_EXPECTED_DIGESTS:
-        return _U146_EXPECTED_DIGESTS[key]
-    digest = _u146_hashlib.sha256()
-    block_size = min(8 * 1024 * 1024, max(1, int(size)))
-    block = bytes((int(pattern),)) * block_size
-    offset = 0
-    while offset < size:
-        if _u146_stopped(stop_check):
-            raise InterruptedError("Test RAM zatrzymany podczas przygotowania wzorca.")
-        length = min(block_size, size - offset)
-        digest.update(block[:length])
-        offset += length
-    result = digest.digest()
-    if len(_U146_EXPECTED_DIGESTS) >= 24:
-        _U146_EXPECTED_DIGESTS.clear()
-    _U146_EXPECTED_DIGESTS[key] = result
-    return result
+def _u146_expected_pattern_chunk(mode, value, start, length, chunk_index, pattern_index):
+    if mode == "constant":
+        return bytes((int(value) & 0xFF,)) * length
+    if mode == "alternate":
+        first = int(value) & 0xFF
+        pair = bytes((first, (first ^ 0xFF) & 0xFF))
+        if start & 1:
+            pair = pair[::-1]
+        return pair * (length // 2) + (pair[:length % 2] if length % 2 else b"")
+    if mode == "address":
+        from array import array
+        words = array("I")
+        if words.itemsize != 4 or start % 4 or length % 4:
+            raise RuntimeError("Nieprawidłowa szerokość dla wzorca adresowego RAM.")
+        return array("I", range(start // 4, (start + length) // 4)).tobytes()
+    if mode == "random":
+        seed = (0x4E415052 ^ ((chunk_index + 1) * 0x9E3779B1) ^ (pattern_index * 0x85EBCA6B)) & 0xFFFFFFFF
+        return _u40_random.Random(seed).randbytes(length)
+    raise ValueError("Nieznany tryb wzorca RAM: " + str(mode))
+
 
 def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_check=None, stats_out=None):
     started = _u146_time.monotonic()
@@ -53,81 +54,129 @@ def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_chec
     size = len(view)
     if size <= 0:
         raise ValueError("Bufor RAM ma zerowy rozmiar.")
-    ptr = _u146_ctypes.addressof(_u146_ctypes.c_ubyte.from_buffer(buffer))
-    stats = {"size_mb": round(size / 1048576, 2), "patterns_total": len(_U146_RAM_PATTERNS),
-             "patterns_completed": 0, "passes": 0, "bytes_written": 0, "bytes_verified": 0,
-             "elapsed_sec": 0.0, "stopped": False, "allocation_failed": False, "error_offset": None}
-    chunk_size = 8 * 1024 * 1024
-    duration = max(0.0, min(900.0, float(seconds or 0)))
-    passes = 0
     try:
-        while passes == 0 or (duration > 0 and _u146_time.monotonic() - started < duration):
-            for pattern_index, pattern in enumerate(_U146_RAM_PATTERNS):
+        _u146_ctypes.addressof(_u146_ctypes.c_ubyte.from_buffer(buffer))
+    except Exception as exc:
+        raise TypeError(f"Bufor RAM nie udostępnia zapisywalnej pamięci: {exc}") from exc
+    patterns = tuple(_U146_RAM_PATTERN_MODES)
+    pattern_count = len(patterns)
+    chunk_size = 4 * 1024 * 1024
+    chunk_count = (size + chunk_size - 1) // chunk_size
+    operations_per_pass = max(1, pattern_count * chunk_count * 2)
+    duration = max(0.0, min(900.0, float(seconds or 0)))
+    stats = {
+        "size_mb": round(size / 1048576, 2),
+        "patterns_total": pattern_count,
+        "patterns_completed": 0,
+        "pattern_names": [str(item[0]) for item in patterns],
+        "passes": 0,
+        "bytes_written": 0,
+        "bytes_verified": 0,
+        "elapsed_sec": 0.0,
+        "stopped": False,
+        "allocation_failed": False,
+        "error_offset": None,
+        "failed_pattern": None
+    }
+    try:
+        pass_number = 0
+        while True:
+            pass_number += 1
+            completed_operations = 0
+            stats["patterns_completed"] = 0
+            def update_progress(message, force=False):
+                percent = int(min(100, completed_operations * 100 / operations_per_pass))
+                _u146_progress(progress_callback, percent, f"Przebieg {pass_number}: {message}")
+            _u146_progress(progress_callback, 0, f"Przebieg {pass_number}/{max(1, pass_number)}: przygotowanie pełnego testu RAM.")
+            for pattern_index, (name, mode, value) in enumerate(patterns, start=1):
                 if _u146_stopped(stop_check):
                     stats["stopped"] = True
                     stats["elapsed_sec"] = round(_u146_time.monotonic() - started, 3)
                     if stats_out is not None: stats_out.update(stats)
-                    return False, "Test RAM zatrzymany przez użytkownika."
-                expected = _u146_expected_digest(size, pattern, stop_check)
-                _u146_ctypes.memset(ptr, pattern, size)
-                stats["bytes_written"] += size
-                actual = _u146_hashlib.sha256()
-                verified = 0
-                while verified < size:
+                    return False, f"Test RAM zatrzymany przez użytkownika przed wzorcem {name}."
+                expected_digest = _u146_hashlib.sha256()
+                write_label = f"{name}: zapis pełnego bufora {size / 1048576:.0f} MB."
+                _u146_progress(progress_callback, int((pattern_index - 1) * 50 / pattern_count), f"Przebieg {pass_number} • {write_label}")
+                for chunk_index in range(chunk_count):
                     if _u146_stopped(stop_check):
                         stats["stopped"] = True
+                        stats["patterns_completed"] = pattern_index - 1
                         stats["elapsed_sec"] = round(_u146_time.monotonic() - started, 3)
                         if stats_out is not None: stats_out.update(stats)
-                        return False, "Test RAM zatrzymany podczas weryfikacji."
-                    end = min(size, verified + chunk_size)
-                    actual.update(view[verified:end])
-                    verified = end
-                    if verified == size or (verified // chunk_size) % 4 == 0:
-                        within = verified / max(1, size)
-                        percent = int(((pattern_index + 0.15 + 0.85 * within) / len(_U146_RAM_PATTERNS)) * 100)
-                        _u146_progress(progress_callback, percent,
-                            f"Wzorzec {pattern:02X}: zweryfikowano {verified / 1048576:.0f}/{size / 1048576:.0f} MB.")
-                stats["bytes_verified"] += size
-                if actual.digest() != expected:
-                    bad_offset = None
-                    for scan_start in range(0, size, chunk_size):
-                        segment = bytes(view[scan_start:min(size, scan_start + chunk_size)])
-                        mismatch = next((i for i, value in enumerate(segment) if value != pattern), None)
+                        return False, f"Test RAM zatrzymany podczas zapisu wzorca {name}."
+                    offset = chunk_index * chunk_size
+                    end = min(size, offset + chunk_size)
+                    expected = _u146_expected_pattern_chunk(mode, value, offset, end - offset, chunk_index, pattern_index)
+                    view[offset:end] = expected
+                    expected_digest.update(expected)
+                    stats["bytes_written"] += len(expected)
+                    completed_operations += 1
+                    percent = int(completed_operations * 100 / operations_per_pass)
+                    _u146_progress(progress_callback, percent, f"Przebieg {pass_number} • {name}: zapis bloku {chunk_index + 1}/{chunk_count}.")
+                actual_digest = _u146_hashlib.sha256()
+                for chunk_index in range(chunk_count):
+                    if _u146_stopped(stop_check):
+                        stats["stopped"] = True
+                        stats["patterns_completed"] = pattern_index - 1
+                        stats["elapsed_sec"] = round(_u146_time.monotonic() - started, 3)
+                        if stats_out is not None: stats_out.update(stats)
+                        return False, f"Test RAM zatrzymany podczas weryfikacji wzorca {name}."
+                    offset = chunk_index * chunk_size
+                    end = min(size, offset + chunk_size)
+                    actual_chunk = view[offset:end]
+                    actual_digest.update(actual_chunk)
+                    stats["bytes_verified"] += len(actual_chunk)
+                    completed_operations += 1
+                    percent = int(completed_operations * 100 / operations_per_pass)
+                    _u146_progress(progress_callback, percent, f"Przebieg {pass_number} • {name}: weryfikacja bloku {chunk_index + 1}/{chunk_count}.")
+                if actual_digest.digest() != expected_digest.digest():
+                    first_bad = None
+                    for chunk_index in range(chunk_count):
+                        offset = chunk_index * chunk_size
+                        end = min(size, offset + chunk_size)
+                        expected = _u146_expected_pattern_chunk(mode, value, offset, end - offset, chunk_index, pattern_index)
+                        actual = view[offset:end]
+                        mismatch = next((idx for idx, (a, b) in enumerate(zip(actual, expected)) if a != b), None)
                         if mismatch is not None:
-                            bad_offset = scan_start + mismatch
+                            first_bad = offset + mismatch
                             break
-                    stats["error_offset"] = bad_offset
-                    stats["failed_pattern"] = f"{pattern:02X}"
+                    stats["error_offset"] = first_bad
+                    stats["failed_pattern"] = str(name)
+                    stats["patterns_completed"] = pattern_index - 1
+                    stats["passes"] = pass_number - 1
                     stats["elapsed_sec"] = round(_u146_time.monotonic() - started, 3)
                     if stats_out is not None: stats_out.update(stats)
-                    return False, f"Niezgodność pełnego wzorca 0x{pattern:02X}; błędny bajt: {bad_offset if bad_offset is not None else 'N/D'}."
-                stats["patterns_completed"] += 1
-            passes += 1
-            stats["passes"] = passes
+                    return False, f"Niezgodność wzorca RAM {name}; pierwszy błędny bajt: {first_bad if first_bad is not None else 'N/D'}."
+                stats["patterns_completed"] = pattern_index
+            stats["passes"] = pass_number
             stats["elapsed_sec"] = round(_u146_time.monotonic() - started, 3)
-            if duration <= 0 or _u146_stopped(stop_check):
+            if duration <= 0 or _u146_stopped(stop_check) or stats["elapsed_sec"] >= duration:
                 break
         stats["stopped"] = bool(_u146_stopped(stop_check))
         stats["elapsed_sec"] = round(_u146_time.monotonic() - started, 3)
         if stats_out is not None: stats_out.update(stats)
         if stats["stopped"]:
-            return False, f"Test RAM przerwany po {stats['patterns_completed']} sprawdzonych wzorcach."
+            return False, f"Test RAM zatrzymany po {stats['patterns_completed']}/{pattern_count} wzorcach."
         _u146_progress(progress_callback, 100,
-            f"ZAKOŃCZONO • {stats['patterns_completed']} kontroli wzorców • {stats['elapsed_sec']:.1f} s.")
-        return True, (f"OK — pełny zapis i weryfikacja wzorców 00/FF/AA/55; "
-                      f"{stats['size_mb']:.0f} MB • {passes} przebieg(ów) • {stats['elapsed_sec']:.1f} s.")
+            f"ZAKOŃCZONO • {pattern_count} pełnych wzorców • {stats['passes']} przebieg(ów) • {stats['elapsed_sec']:.1f} s.")
+        return True, (
+            f"OK — zapis i odczyt całego bufora dla {pattern_count} wzorców RAM (stałe, naprzemienne, adresowe, bity i pseudolosowe); "
+            f"{stats['size_mb']:.0f} MB • {stats['passes']} przebieg(ów) • {stats['elapsed_sec']:.1f} s."
+        )
     finally:
         try: view.release()
         except Exception: pass
+
 
 def ram_pattern_test(mb, seconds=0, progress_callback=None, stop_check=None, stats_out=None):
     try:
         requested = max(64, min(2048, int(mb or 512)))
         vm = psutil.virtual_memory() if globals().get("psutil") is not None else None
         available_mb = int(vm.available / 1048576) if vm is not None else 512
+        pattern_count = len(_U146_RAM_PATTERN_MODES)
         if vm is not None and available_mb < 192:
             if stats_out is not None:
-                stats_out.update({"size_mb": 0, "patterns_total": len(_U146_RAM_PATTERNS), "patterns_completed": 0,
+                stats_out.update({"size_mb": 0, "patterns_total": pattern_count, "patterns_completed": 0,
                     "passes": 0, "bytes_written": 0, "bytes_verified": 0, "allocation_failed": True,
                     "stopped": False, "elapsed_sec": 0.0})
             return False, f"Za mało dostępnej pamięci RAM ({available_mb} MB); test nie wystartował, aby chronić Windows."
@@ -140,7 +189,7 @@ def ram_pattern_test(mb, seconds=0, progress_callback=None, stop_check=None, sta
         return ok, message
     except MemoryError:
         if stats_out is not None:
-            stats_out.update({"allocation_failed": True, "patterns_total": len(_U146_RAM_PATTERNS),
+            stats_out.update({"allocation_failed": True, "patterns_total": len(_U146_RAM_PATTERN_MODES),
                 "patterns_completed": 0, "bytes_written": 0, "bytes_verified": 0, "stopped": False})
         return False, "Nie udało się przydzielić bufora RAM."
     except InterruptedError as exc:
@@ -149,6 +198,7 @@ def ram_pattern_test(mb, seconds=0, progress_callback=None, stop_check=None, sta
     except Exception as exc:
         if stats_out is not None: stats_out.update({"error": f"{type(exc).__name__}: {exc}"})
         return False, f"{type(exc).__name__}: {exc}"
+
 
 def _u146_save_quality_report(module, test_id, report):
     try:
