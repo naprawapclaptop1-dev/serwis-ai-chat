@@ -788,6 +788,77 @@ def _u66_start_speed_test(self):
             self.queue_action(fail)
     _u66_threading.Thread(target=job,name="NaprawaPCSpeedTest",daemon=True).start()
 
+def _u126_sensor_value_present(item):
+    if not isinstance(item,dict):
+        return False
+    value=item.get("value")
+    if value is None or isinstance(value,bool):
+        return False
+    if str(value).strip().casefold() in ("n/d","nd","n/a","na","none","null","—","-",""):
+        return False
+    try:
+        return _u66_math.isfinite(float(value))
+    except Exception:
+        return False
+
+def _u126_sensor_merge_key(item):
+    if not isinstance(item,dict):
+        return None
+    hardware=str(item.get("hardwareId") or item.get("hardware_id") or item.get("hardware") or item.get("parent") or "").strip().casefold()
+    identifier=str(item.get("identifier") or "").strip().casefold()
+    name=str(item.get("sensor") or item.get("name") or "").strip().casefold()
+    kind=str(item.get("sensorType") or item.get("sensor_type") or item.get("type") or "").strip().casefold()
+    unit=str(item.get("unit") or "").strip().casefold()
+    if not (hardware or identifier or name):
+        return None
+    return (hardware,identifier or name,kind,unit)
+
+def _u126_merge_sensor_rows(existing_rows,incoming_rows,source):
+    merged=[]
+    indexes={}
+    for item in existing_rows or []:
+        if not isinstance(item,dict):
+            continue
+        row=dict(item)
+        if not row.get("source"):
+            row["source"]=source
+        key=_u126_sensor_merge_key(row)
+        if key is None or key not in indexes:
+            if key is not None:
+                indexes[key]=len(merged)
+            merged.append(row)
+        else:
+            current=merged[indexes[key]]
+            if _u126_sensor_value_present(row) and not _u126_sensor_value_present(current):
+                merged[indexes[key]]={**current,**row}
+            else:
+                for field,value in row.items():
+                    if current.get(field) in (None,"") and value not in (None,""):
+                        current[field]=value
+    for item in (incoming_rows or [])[:10000]:
+        if not isinstance(item,dict):
+            continue
+        row=dict(item)
+        if not row.get("source"):
+            row["source"]=source
+        key=_u126_sensor_merge_key(row)
+        if key is None or key not in indexes:
+            if key is not None:
+                indexes[key]=len(merged)
+            merged.append(row)
+            continue
+        index=indexes[key]
+        current=merged[index]
+        # Critical: a later valid WMI/driver reading must replace a stale N/D row,
+        # while a later missing value must never erase a valid reading.
+        if _u126_sensor_value_present(row) and not _u126_sensor_value_present(current):
+            merged[index]={**current,**row}
+        else:
+            for field,value in row.items():
+                if current.get(field) in (None,"") and value not in (None,""):
+                    current[field]=value
+    return merged[:10000]
+
 def _u66_sensor_probe():
     result={"cpu_temp_c":None,"gpu_temp_c":None,"cpu_power_w":None,"gpu_power_w":None,
             "system_power_w":None,"battery_power_w":None,"cpu_voltage_v":None,"gpu_voltage_v":None,
@@ -801,25 +872,7 @@ def _u66_sensor_probe():
         if not isinstance(rows,list):
             return
         # Merge sensor inventory from bridge/WMI; keep unavailable values as N/D instead of discarding them.
-        existing_rows=list(result.get("sensors") or [])
-        merged_rows=list(existing_rows)
-        seen_rows=set()
-        def _row_key(item):
-            if not isinstance(item,dict):return None
-            hardware=str(item.get("hardwareId") or item.get("hardware_id") or item.get("hardware") or item.get("parent") or "").strip().casefold()
-            identifier=str(item.get("identifier") or "").strip().casefold()
-            name=str(item.get("sensor") or item.get("name") or "").strip().casefold()
-            kind=str(item.get("sensorType") or item.get("sensor_type") or item.get("type") or "").strip().casefold()
-            unit=str(item.get("unit") or "").strip().casefold()
-            return (hardware,identifier or name,kind,unit)
-        for item in existing_rows:
-            key=_row_key(item)
-            if key is not None:seen_rows.add(key)
-        for item in rows[:10000]:
-            key=_row_key(item)
-            if key is not None and key not in seen_rows:
-                merged_rows.append(item);seen_rows.add(key)
-        result["sensors"]=merged_rows[:10000]
+        result["sensors"]=_u126_merge_sensor_rows(result.get("sensors") or [],rows,source)
         power_rows=[]
         cpu_power_candidates=[]
         gpu_power_candidates=[]
@@ -12934,6 +12987,15 @@ def _u114_parallel_speed_phase(direction,stream_sizes,workers=4):
         "successful_streams":len(valid),"bytes":total_bytes,"wall_seconds":round(elapsed,3),
         "aggregate_mbps":aggregate,"state":"good" if samples and len(valid)==len(samples) else "warn"}
 
+def _u126_speed_parallel_config(profile):
+    profile=str(profile or "STANDARD").upper()
+    configs={
+        "STANDARD":{"workers":2,"download_sizes":(6_000_000,6_000_000),"upload_sizes":(2_000_000,2_000_000)},
+        "MAX":{"workers":4,"download_sizes":(12_000_000,12_000_000,12_000_000,12_000_000),"upload_sizes":(4_000_000,4_000_000,4_000_000,4_000_000)},
+        "TURBO":{"workers":4,"download_sizes":(24_000_000,24_000_000,24_000_000,24_000_000),"upload_sizes":(8_000_000,8_000_000,8_000_000,8_000_000)}
+    }
+    return configs.get(profile)
+
 def _u114_measure_speed(app):
     # Keep the published telemetry metric contract discoverable to existing regression checks.
     required_metric_names = ("download_peak_mbps", "upload_peak_mbps", "latency_jitter_ms")
@@ -12942,34 +13004,41 @@ def _u114_measure_speed(app):
     if not callable(request_engine):
         return {"state":"warn","message":"Brak poprawnego transportu HTTPS dla Speed Test.","measurement_profile":str(getattr(app,"_u108_speed_profile","STANDARD") or "STANDARD").upper()}
     profile=str(getattr(app,"_u108_speed_profile","STANDARD") or "STANDARD").upper()
-    if profile!="TURBO":
+    parallel_config=_u126_speed_parallel_config(profile)
+    if parallel_config is None:
         return _U114_ORIGINAL_MEASURE_SPEED(app)
-    # Reuse the verified standard engine, then add a four-stream concurrent transfer phase.
-    app._u108_speed_profile="STANDARD"
+    # STANDARD gets a small two-stream confirmation; MAX and TURBO add four streams.
+    # The headline result remains the median of validated baseline samples.
+    baseline_profile="STANDARD" if profile in ("STANDARD","TURBO") else "MAX"
+    app._u108_speed_profile=baseline_profile
     try:
         result=_U114_ORIGINAL_MEASURE_SPEED(app)
     finally:
-        app._u108_speed_profile="TURBO"
+        app._u108_speed_profile=profile
     if not isinstance(result,dict):return result
+    workers=parallel_config["workers"]
+    down_sizes=parallel_config["download_sizes"]
+    up_sizes=parallel_config["upload_sizes"]
     try:
-        app.queue_action(lambda:_u66_set_speed_status(app,"SPEED TEST TURBO: 4 równoległe strumienie download…"))
+        app.queue_action(lambda p=profile,n=workers:_u66_set_speed_status(app,f"SPEED TEST {p}: {n} równoległe strumienie download…"))
     except Exception:pass
-    parallel_down=_u114_parallel_speed_phase("download",(24_000_000,24_000_000,24_000_000,24_000_000),4)
+    parallel_down=_u114_parallel_speed_phase("download",down_sizes,workers)
     try:
-        app.queue_action(lambda:_u66_set_speed_status(app,"SPEED TEST TURBO: 4 równoległe strumienie upload…"))
+        app.queue_action(lambda p=profile,n=workers:_u66_set_speed_status(app,f"SPEED TEST {p}: {n} równoległe strumienie upload…"))
     except Exception:pass
-    parallel_up=_u114_parallel_speed_phase("upload",(8_000_000,8_000_000,8_000_000,8_000_000),4)
+    parallel_up=_u114_parallel_speed_phase("upload",up_sizes,workers)
     result["parallel_test"]={"download":parallel_down,"upload":parallel_up,
-        "method":"4 concurrent HTTPS streams to Cloudflare; throughput = summed valid bytes / wall-clock duration",
+        "profile":profile,"workers":workers,
+        "method":"Rzeczywiste równoległe strumienie HTTPS do Cloudflare; suma poprawnych bajtów / czas ścienny.",
         "extra_transfer_bytes":parallel_down["bytes"]+parallel_up["bytes"],
         "state":"good" if parallel_down["state"]=="good" and parallel_up["state"]=="good" else "warn"}
     result["parallel_download_mbps"]=parallel_down["aggregate_mbps"]
     result["parallel_upload_mbps"]=parallel_up["aggregate_mbps"]
-    result["measurement_profile"]="TURBO"
-    result["profile_note"]="Test bazowy z medianą próbek oraz dodatkowy, rzeczywisty równoległy transfer 4 strumieni."
+    result["measurement_profile"]=profile
+    result["profile_note"]="Mediana bazowych próbek pozostaje oddzielna od dodatkowego transferu równoległego."
     result["data_bytes"]=int(result.get("data_bytes",0) or 0)+parallel_down["bytes"]+parallel_up["bytes"]
     if result["parallel_test"]["state"]!="good":result["state"]="warn"
-    # Replace the just-written base row with the completed Turbo record so history contains its parallel measurements too.
+    # Replace the just-written base row with the completed parallel record so history contains its measurements too.
     try:
         history_path=result.get("history_path")
         if history_path:
@@ -12982,7 +13051,7 @@ def _u114_measure_speed(app):
                     history_file.write_text(_u66_json.dumps(records[-100:],ensure_ascii=False,indent=2),encoding="utf-8")
                     break
     except Exception as exc:
-        result["history_warning"]=f"Nie udało się zapisać rozszerzonego raportu Turbo: {type(exc).__name__}: {exc}"
+        result["history_warning"]=f"Nie udało się zapisać rozszerzonego raportu równoległego: {type(exc).__name__}: {exc}"
     try:
         def turbo_ui():
             controls=getattr(app,"_u114_turbo_labels",{}) or {}
@@ -12991,7 +13060,7 @@ def _u114_measure_speed(app):
                 if label is not None and label.winfo_exists():
                     label.config(text=(f"{value:.2f} Mbps" if isinstance(value,(int,float)) else "N/D"))
             if getattr(app,"current_view","")=="SPEED_TEST":
-                _u66_set_speed_status(app,"TURBO zakończony: równoległy DL "+
+                _u66_set_speed_status(app,profile+" zakończony: równoległy DL "+
                     (f"{result['parallel_download_mbps']:.2f}" if isinstance(result.get("parallel_download_mbps"),(int,float)) else "N/D")+
                     " Mbps / UL "+
                     (f"{result['parallel_upload_mbps']:.2f}" if isinstance(result.get("parallel_upload_mbps"),(int,float)) else "N/D")+
@@ -13037,7 +13106,7 @@ def _u114_show_speed_test(app):
         t=app.colors();pane=app.panel(app.content)
         children=app.content.winfo_children();before=children[-1] if children else None
         pane.pack(fill="x",padx=3,pady=(0,5),before=before)
-        tk.Label(pane,text="TURBO — PRÓBY RÓWNOLEGŁE (WYNIK ODDZIELNY OD MEDIANY)",bg=t["panel"],fg=t["accent"],
+        tk.Label(pane,text="TEST RÓWNOLEGŁY — WYNIK ODDZIELNY OD MEDIANY",bg=t["panel"],fg=t["accent"],
             font=app.fnt(9,"bold")).pack(anchor="w",padx=8,pady=(5,3))
         row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=5,pady=(0,5))
         app._u114_turbo_labels={}
@@ -13045,10 +13114,10 @@ def _u114_show_speed_test(app):
             card=tk.Frame(row,bg=t["card"],highlightbackground=t["panel"],highlightthickness=1)
             card.pack(side="left",fill="both",expand=True,padx=2)
             tk.Label(card,text=title,bg=t["card"],fg=t["muted"],font=app.fnt(8,"bold")).pack(pady=(5,1))
-            label=tk.Label(card,text="Tylko dla profilu TURBO",bg=t["card"],fg=t["accent2"],font=app.fnt(11,"bold"))
+            label=tk.Label(card,text="Po zakończeniu pomiaru",bg=t["card"],fg=t["accent2"],font=app.fnt(11,"bold"))
             label.pack(pady=(0,5));app._u114_turbo_labels[key]=label
     except Exception as exc:
-        try:app.queue_log("Speed Test TURBO UI: "+repr(exc))
+        try:app.queue_log("Speed Test — równoległy panel UI: "+repr(exc))
         except Exception:pass
 
 def _u114_set_speed_profile(app,widget,var,options):
@@ -13120,7 +13189,9 @@ def _u114_selftest_turbo_math():
     assert sum((24_000_000,24_000_000,24_000_000,24_000_000))==96_000_000
     assert sum((8_000_000,8_000_000,8_000_000,8_000_000))==32_000_000
     assert callable(_u114_parallel_speed_phase) and callable(_u114_measure_speed)
-    print("SPEED_TEST_TURBO_SELFTEST_OK: real byte validation, four parallel streams, 128 MB max extra payload")
+    assert _u126_speed_parallel_config("STANDARD")=={"workers":2,"download_sizes":(6_000_000,6_000_000),"upload_sizes":(2_000_000,2_000_000)}
+    assert _u126_speed_parallel_config("MAX")["workers"]==4 and _u126_speed_parallel_config("TURBO")["workers"]==4
+    print("SPEED_TEST_PARALLEL_PROFILES_SELFTEST_OK: standard 2 streams, max/turbo 4 streams, real byte validation")
 
 def _u114_selftest_sensor_inventory():
     class FakeApp:
@@ -13266,6 +13337,37 @@ def _u116_export_sensor_csv(app):
         except Exception:pass
         return None
 
+def _u126_refresh_live_sensor_summary(app):
+    try:
+        if getattr(app,"current_view","")!="LIVE_MONITOR":
+            return
+        label=getattr(app,"_u126_sensor_summary_label",None)
+        if label is None or not label.winfo_exists():
+            return
+        rows=_u107_get_sensor_rows(app)
+        def usable(row):
+            value=str(row.get("value","N/D") if row.get("value") is not None else "N/D").strip()
+            return value if value and value.casefold() not in ("none","null","") else "N/D"
+        temperatures=[]
+        loads=[]
+        for row in rows:
+            category=str(row.get("category") or "").casefold()
+            unit=str(row.get("unit") or "").casefold()
+            name=str(row.get("sensor") or "N/D")
+            hardware=str(row.get("hardware") or "N/D")
+            value=usable(row)
+            suffix=str(row.get("unit") or "")
+            if "temperature" in category or unit in ("°c","c"):
+                temperatures.append(f"{hardware} / {name}: {value}{suffix}")
+            if "load" in category or unit=="%" or "użycie" in name.casefold() or "obciążenie" in name.casefold():
+                loads.append(f"{hardware} / {name}: {value}{suffix}")
+        temps_text=" • ".join(temperatures) if temperatures else "N/D — brak odczytów temperatur"
+        loads_text=" • ".join(loads) if loads else "N/D — brak odczytów obciążenia"
+        label.config(text=f"TEMPERATURY ({len(temperatures)}): {temps_text}\nUŻYCIE / OBCIĄŻENIE ({len(loads)}): {loads_text}")
+        app.after(2500,lambda:_u126_refresh_live_sensor_summary(app))
+    except Exception:
+        return
+
 def _u116_show_live_monitor(app):
     result=_U116_ORIGINAL_SHOW_LIVE_MONITOR(app)
     try:
@@ -13274,8 +13376,12 @@ def _u116_show_live_monitor(app):
         pane.pack(fill="x",padx=3,pady=(2,6))
         tk.Label(pane,text="PEŁNA TELEMETRIA — CZUJNIKI + LICZNIKI SYSTEMOWE",
             bg=t["panel"],fg=t["accent"],font=app.fnt(10,"bold")).pack(anchor="w",padx=9,pady=(7,3))
-        tk.Label(pane,text="Pełny inspektor pokazuje wartości czujników, per-core CPU, RAM/swap, odczyt/zapis i IOPS dysków, interfejsy sieciowe oraz woluminy. Rekordy bez bieżącej wartości zostają na liście jako N/D.",
-            bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,5))
+        tk.Label(pane,text="Pełny inspektor pokazuje wszystkie wykryte sensory oraz liczniki systemowe. N/D oznacza, że sterownik nie udostępnił aktualnej wartości.",
+            bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1400,justify="left").pack(anchor="w",padx=9,pady=(0,4))
+        app._u126_sensor_summary_label=tk.Label(pane,text="Pobieranie temperatur i obciążeń…",
+            bg=t["card"],fg=t["fg"],font=app.fnt(8),wraplength=1400,justify="left",anchor="w")
+        app._u126_sensor_summary_label.pack(fill="x",padx=7,pady=(0,6))
+        app.after(300,lambda:_u126_refresh_live_sensor_summary(app))
         row=tk.Frame(pane,bg=t["panel"]);row.pack(fill="x",padx=6,pady=(0,7))
         app.make_button(row,"OTWÓRZ PEŁNY INSPEKTOR",lambda:_u107_open_sensor_inspector(app),"accent",side="left",ipady=5)
         app.make_button(row,"ODŚWIEŻ WSZYSTKIE CZUJNIKI",lambda:_u116_force_sensor_refresh(app),"good",side="left",ipady=5)
@@ -13316,6 +13422,20 @@ def _u116_selftest_scene_signatures():
     assert "signature_vertices" in literals and "scene_signature" in literals
     assert "geometry_objects" in literals and "geometry_vertices" in literals
     print("UNIQUE_GPU_GEOMETRY_SIGNATURE_SELFTEST_OK: 110 unique signatures, 31 renderer styles, real synchronized OpenGL FPS")
+
+def _u126_selftest_sensor_merge():
+    base={"hardwareId":"/cpu/0","identifier":"/cpu/0/temperature/0","hardware":"CPU","sensor":"CPU Package",
+          "sensorType":"Temperature","unit":"°C","value":None,"source":"Sensor Bridge"}
+    later={**base,"value":73.5,"source":"WMI fallback"}
+    merged=_u126_merge_sensor_rows([base],[later],"WMI fallback")
+    assert len(merged)==1 and merged[0]["value"]==73.5, "A valid fallback reading must replace a duplicate N/D row."
+    missing={**base,"value":None,"source":"later poll"}
+    merged_again=_u126_merge_sensor_rows(merged,[missing],"later poll")
+    assert len(merged_again)==1 and merged_again[0]["value"]==73.5, "A later N/D value must not erase a valid sensor reading."
+    distinct={**base,"identifier":"/cpu/0/temperature/1","sensor":"CPU Core 1","value":61.0}
+    final=_u126_merge_sensor_rows(merged_again,[distinct],"Sensor Bridge")
+    assert len(final)==2 and final[1]["value"]==61.0
+    print("SENSOR_MERGE_PRESERVES_VALID_READINGS_SELFTEST_OK: N/D fallback merge and duplicate protection")
 
 def _u116_selftest_sensor_display_controls():
     class FakeLabel:
@@ -14623,6 +14743,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u120_selftest_system_repair_center()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
+        _u126_selftest_sensor_merge()
         _u114_selftest_turbo_math()
         _u114_selftest_sensor_inventory()
         _u114_selftest_unique_gpu_scenes()
