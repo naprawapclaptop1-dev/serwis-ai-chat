@@ -1,83 +1,48 @@
 # Audyt integracji — NAPRAWA PC HARDWARE TEST PRO
 
-Data audytu: 2026-10-22  
-Baza online sprawdzona: aktualny manifest stable i źródło `hardware-test-pro/ADVANCED_MODULES_PATCH.py`; numer wydania jest pobierany dynamicznie z manifestu.
+Data audytu: 2026-10-22
+**Stable online:** 4.3.132 — Windows CI zakończyło się sukcesem.
+**Kandydat roboczy:** 4.3.133 — nawigacja do wspólnego centrum serwisu; nie jest wydaniem, dopóki CI nie zakończy się sukcesem.
 
-## Co już znajduje się w źródle Hardware Test PRO
+## Co jest obecnie w kodzie online
 
-- 110 pozycji katalogu testów w 15 grupach.
-- 110 identyfikatorów scen OpenGL, osobny wynik i osobny ekran szczegółów.
-- Renderer OpenGL synchronizuje pomiar FPS; wyniki są zależne od GPU, sterownika, rozdzielczości i dostępności kontekstu OpenGL.
-- Tabela sensorów łączy dane LibreHardwareMonitor/bridge i metryki systemowe: użycie CPU na rdzeń, RAM/swap, I/O dysków, sieć, woluminy oraz czujniki temperatury/napięć/zegarów/wentylatorów, jeśli są dostępne. Brak wartości ma być oznaczony N/D.
-- Speed Test: QUICK ma mały transfer; STANDARD dodaje 2 równoległe strumienie; MAX/TURBO dodają po 4 strumienie, a wynik równoległy jest oddzielony od mediany bazowej. Profile MAX/TURBO wymagają potwierdzenia przed dodatkowym transferem.
-- Katalog zawiera 20 testów diagnostycznych System Repair PRO i 20 Serwis Ultimate. Dodatkowo są osobne ekrany menedżera procesów, diagnostyki gier i lokalnego menedżera raportów. To nadal nie jest potwierdzona zgodność funkcja-w-funkcję z oryginalnymi aplikacjami.
-- W buildzie 4.3.121 dodano lokalną historię zleceń serwisowych z eksportem HTML oraz 7 niezależnych akcji zasilania/baterii: Battery Info, Battery Report, Energy Report, SleepStudy, Power Requests, Last Wake i aktywny plan zasilania.
-- W przygotowywanym buildzie 4.3.122 dodawana jest lokalna baza wiedzy: import dokumentów tekstowych/PDF, deduplikacja SHA-256, wyszukiwanie źródeł i szkic lekcji serwisowej.
-- W przygotowywanym buildzie 4.3.123 dodawany jest asystent profili napraw System Repair PRO: 14 profili objawów, osobne odczytowe skany PowerShell, skróty do narzędzi Windows, wyszukiwanie sieciowe i raport HTML.
+### Hardware Test PRO
+- 110 pozycji katalogu testów w 15 grupach, oddzielne ekrany i 110 identyfikatorów scen OpenGL.
+- Renderer ma 31 jawnych rodzin geometrii, a każda z 110 scen otrzymuje własny profil FurMark (promień, tuba, włókna, paleta, animacja i skala). FPS jest mierzony z synchronizacją renderowania; to nadal wymaga wizualnego testu na fizycznych GPU NVIDIA i AMD.
+- Pełny inspektor sensorów i przewijalne podsumowanie telemetrii łączą dane LibreHardwareMonitor/Sensor Bridge oraz liczniki Windows. Pokazują użycie CPU na rdzeń, RAM/swap, I/O dysków, sieć, woluminy oraz dostępne temperatury, napięcia, zegary, moc i wentylatory. Brak wartości jest oznaczany N/D.
+- Speed Test mierzy rzeczywiste transfery HTTPS do Cloudflare. STANDARD dodaje 2 strumienie równoległe, MAX/TURBO po 4, ULTRA 8; wynik bazowy (mediana) i wynik równoległy są raportowane osobno. Równoległe fazy pokazują transfer łączny, postęp i aktywne strumienie.
+- Każdy test katalogowy ma własny identyfikator, ekran i procedurę; automatyczne testy sprawdzają unikalność scen i tras. To nie zastępuje testu sprzętowego.
 
-## Źródła z biblioteki użytkownika odnalezione do porównania
+### Moduły System Repair PRO / Serwis Ultimate już włączone do Hardware Test PRO
+- Katalog 20 odczytowych diagnostyk System Repair PRO i 20 odczytowych diagnostyk Serwis Ultimate (łącznie 40 sond).
+- Centrum napraw Windows: SFC, DISM, CHKDSK, punkt przywracania i status WinRE; operacje naprawcze wymagają potwierdzenia/UAC.
+- 14 profili problemów System Repair PRO, osobne skany diagnostyczne, skróty do narzędzi Windows i raporty HTML.
+- Lokalna baza wiedzy z importem TXT/MD/PDF, deduplikacją SHA-256 i wyszukiwaniem.
+- Zlecenia serwisowe z lokalną historią i eksportem HTML; 7 raportów/akcji zasilania i baterii.
+- Menedżer procesów z ochroną procesów krytycznych, odczytowa diagnostyka gier oraz lokalny menedżer raportów z filtrem i eksportem CSV.
+- Kandydat 4.3.132 dodał wspólny pulpit z 18 bezpośrednimi trasami do istniejących ekranów. Kandydat 4.3.133 dodaje wejście do tego pulpitu na pasku bocznym.
 
-- System Repair PRO: pełny projekt bazowy 5.6.0 oraz pakiet aktualizacji źródła do 5.6.19 (m.in. `MainWindow.xaml`, `MainWindow.xaml.cs`, `MainWindow.Features.cs`, `App.xaml.cs`, `AppUpdateService.cs`, `BUILD.cmd`).
-- Serwis Ultimate: źródło 1.4.2 (`Program.cs`, `AllInOneUltimate.csproj`, `BUILD_WINDOWS.bat`, `app.manifest`).
-- Dodatkowo znaleziono małe patche System Repair PRO 5.6.23/5.6.24, ale same patche nie są pełnym projektem.
-- W dostępnych plikach biblioteki nie potwierdzono pełnych źródeł dokładnie wersji 5.6.25 i 1.15.3. Nie wolno deklarować ich pełnej zgodności na podstawie samego numeru wersji.
+## Źródła użytkownika i ograniczenia porównania
 
-## Najważniejsze pozostałe prace — nie oznaczać jako zakończone bez testu
+- W rozmowie wskazano archiwum NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_RAM_LIVE_DASHBOARD_ULTIMATE_FULL_PROJECT.zip o rozmiarze 166 715 344 B oraz NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip o rozmiarze 5 710 073 B.
+- W bibliotece dostępne są także starsze źródła: System Repair PRO 5.6.0 i patche do 5.6.19/5.6.24 oraz Serwis Ultimate 1.4.2. To nie są te same wersje co 5.6.25 i 1.15.3.
+- Pełny ZIP System Repair PRO 5.6.25 został zidentyfikowany, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik-po-pliku. Nie wolno deklarować pełnej zgodności 1:1 na podstawie samego numeru wersji ani obecności 40 sond.
 
-1. **Parzystość System Repair PRO:** porównać wszystkie przyciski i procedury źródła 5.6.19 z katalogiem; przenieść brakujące procedury do wspólnego wykonawcy, osobnych ekranów, raportów i logów. Obejmuje m.in. interaktywny Repair Center, profile problemów, wyszukiwanie rozwiązań, BIOS/licencję, aktualizator i funkcje wiedzy/PDF. Operacje naprawcze wymagają potwierdzenia i UAC.
-2. **Parzystość Serwis Ultimate:** w Hardware Test PRO są teraz osobne ekrany odczytowej diagnostyki gier (GPU/DirectX/usługi/planu zasilania), menedżera procesów (filtr, CSV, zakończenie z potwierdzeniem i blokada procesów krytycznych) oraz menedżera raportów (indeks lokalnych plików, filtr, otwieranie i eksport CSV). Nadal trzeba porównać wszystkie operacje `ShowDashboard`, `ShowHardware`, `ShowDisks`, `ShowLaptop`, `ShowWindows`, `ShowGameTroubleshooting`, `ShowSecurity`, `ShowNetwork`, `ShowProcesses`, `ShowJobs` i `ShowReports` z oryginalnym ZIP-em. Nowe ekrany nie oznaczają jeszcze zgodności 1:1.
-3. **GPU:** porównać wizualnie wszystkie 110 scen; testować na fizycznych kartach NVIDIA i AMD. Wymagany jest realny render, rzeczywisty FPS, widoczny renderer/API oraz bezpieczny STOP. Scena edukacyjna nie może być raportowana jako wynik FPS.
-4. **Sensory:** na rzeczywistym komputerze sprawdzić temperatury CPU package/rdzeni, GPU/hotspot/VRAM, płytę, dyski i pozostałe sensory, a także load, zegary, moc, napięcia, wentylatory i pamięć. N/D jest poprawne, jeśli sprzęt lub sterownik nie udostępnia wartości.
-5. **Speed Test:** sprawdzić wyniki na łączach wolnych i szybkich; zweryfikować rzeczywiste bajty, status HTTP, medianę próbek, jitter, błędne odpowiedzi oraz rozdzielenie wyniku bazowego od TURBO.
-6. **Izolacja ekranów:** uruchomić każdy test z osobna, zatrzymać go i przejść do kolejnego; potwierdzić, że żadne okna, wykresy ani timery nie zostają po poprzednim teście.
-7. **Raporty:** potwierdzić unikalny identyfikator, czas, stan PASS/WARN/ERROR/N/D, surowe metryki, ścieżkę raportu i brak fikcyjnego PASS.
-8. **Wydanie online:** budować tylko z tej samej gałęzi, która przeszła selftesty; sprawdzić zgodność wersji instalatora, ZIP-a, manifestu i SHA-256. Nie publikować manifestu przed zakończonym buildem.
-9. **Testy sprzętowe i wizualne:** CI może sprawdzić składnię, katalog, raportowanie i budowę, ale nie zastępuje fizycznego testu GPU, sensorów, baterii ani peryferiów.
+## Pełna lista otwartych prac
 
-## Zmiana w tym commicie
+1. **System Repair PRO — parzystość źródła:** porównać każdy przycisk, ekran, handler, usługę i raport z oryginalnym 5.6.25. Przenieść brakujące funkcje, w tym pełny RAM Live Dashboard, naprawy, profile problemów, BIOS/UEFI, licencję, aktualizator, bazę wiedzy i procedury z potwierdzeniem/UAC.
+2. **Serwis Ultimate — parzystość źródła:** porównać wszystkie oryginalne metody ShowDashboard, ShowHardware, ShowDisks, ShowLaptop, ShowWindows, ShowGameTroubleshooting, ShowSecurity, ShowNetwork, ShowProcesses, ShowJobs i ShowReports z wersją 1.15.3. Obecne ekrany nie potwierdzają zgodności 1:1.
+3. **GPU / FurMark:** obejrzeć wszystkie sceny na prawdziwych GPU NVIDIA i AMD, sprawdzić renderowanie, FPS, rozdzielczość, pamięć VRAM, STOP i brak fikcyjnego PASS. Każda scena musi różnić się faktyczną geometrią/profilami, nie tylko tytułem.
+4. **Sensory:** na fizycznych komputerach sprawdzić temperatury CPU package/rdzeni, GPU/hotspot/VRAM, płyty, dysków, baterii i pozostałych czujników oraz load, zegary, moc, napięcia, wentylatory, RAM/swap i I/O. N/D jest poprawne, gdy sprzęt/sterownik nie podaje wartości.
+5. **Speed Test:** sprawdzić profile QUICK/STANDARD/MAX/TURBO/ULTRA na wolnych i szybkich łączach; potwierdzić rzeczywiste bajty, status HTTP, medianę, peak, minimum, jitter, błędy i zgodność licznika danych. Porównać wynik z niezależnym pomiarem.
+6. **Izolacja ekranów:** uruchomić każdy test osobno, zatrzymać i przejść do kolejnego; sprawdzić brak wiszących okien, wykresów, timerów i procesów potomnych.
+7. **Raporty:** potwierdzić unikalny identyfikator, czas, stan PASS/WARN/ERROR/N/D, surowe metryki, źródła sensorów, ścieżkę raportu i brak fikcyjnych wyników.
+8. **Centrum serwisu / nawigacja:** uruchomić wszystkie 18 tras z paska bocznego i sprawdzić każdy ekran na różnych skalach/rozdzielczościach.
+9. **Wydanie online:** po każdej zmianie sprawdzić Windows CI, EXE, Setup, ALL-IN-ONE ZIP, manifest i SHA-256. Manifest może zostać opublikowany dopiero po udanym buildzie.
+10. **Test fizyczny:** CI nie zastępuje testu na prawdziwym komputerze: czujniki, bateria, peryferia, GPU, sterowniki, UAC i przerwanie testów wymagają walidacji na Windows.
 
-Przywrócono właściwy test regresyjny unikalnego mapowania 110 pozycji katalogu do 110 różnych scen. Wcześniej nazwa tego testu była nadpisywana aliasem do testu katalogu usług, przez co nie wykonywała asercji unikalności scen. Ten test ma teraz sprawdzać rzeczywiste mapowanie podczas kolejnego builda Windows.
+## Weryfikacja wydania 4.3.132
 
-## Status prawdy
-
-Buildy online 4.3.119 i 4.3.120 zakończyły się sukcesem w GitHub Actions. To potwierdza build i testy automatyczne z tego przebiegu, nie test fizycznego komputera. Pełna zgodność 1:1 obu aplikacji źródłowych nie jest jeszcze potwierdzona.
-
-## Kandydat 4.3.124 — aktualizacja zakresu
-
-### Zmiany kodu w tej gałęzi
-- Dodano do renderera GPU HUD z paskiem postępu, wskaźnikiem FPS i wykresem ostatnich próbek; renderowanie nadal synchronizuje się przez glFinish.
-- Zastąpiono mały inspektor czujników pełnym oknem tabeli z wyszukiwaniem, filtrem kategorii, automatycznym odświeżaniem, licznikami dostępnych wartości/N/D i eksportem CSV.
-- Dodano panel jakości Speed Testu: mediana, peak, minimum, jitter, CV i liczba poprawnych próbek download/upload.
-- Dodano testy regresyjne tych trzech zmian. Ich przejście wymaga uruchomienia workflow Windows; dopóki workflow nie zakończy się sukcesem, nie oznaczać kandydata jako wydanego.
-
-### Źródła dwóch aplikacji
-- W bieżącej rozmowie znajdują się archiwa nazwane NAPRAWA_PC_SYSTEM_REPAIR_PRO_5.6.25_RAM_LIVE_DASHBOARD_ULTIMATE_FULL_PROJECT.zip (166 715 344 B) i NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip (5 710 073 B).
-- Archiwum System Repair PRO o rozmiarze 166 715 344 B zostało zidentyfikowane, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik po pliku, więc zgodność 1:1 pozostaje niepotwierdzona.
-- W repozytorium pozostają zintegrowane istniejące procedury diagnostyczne, centrum napraw, profile problemów, baza wiedzy, zlecenia serwisowe i laboratorium zasilania. To nadal nie dowodzi pełnej parytetu każdego ekranu/handlera obu aplikacji źródłowych.
-- Wydanie online powinno być publikowane dopiero po przejściu testów CI. Osobny test fizycznego sprzętu pozostaje konieczny dla rzeczywistych temperatur, wentylatorów, mocy i renderowania GPU.
-
-## Kandydat 4.3.125 — geometria scen GPU
-
-- Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
-- Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
-- Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
-
-## Kandydat 4.3.125 — geometria scen GPU
-
-- Renderer ma 31 jawnych gałęzi geometrii zamiast kierowania wszystkich dodatkowych stylów do jednej gałęzi domyślnej.
-- Test regresyjny sprawdza obecność każdej gałęzi 0–30, wybór 31 stylów oraz 110 unikalnych kombinacji parametrów.
-- Nadal wymagany jest test obrazu/FPS na fizycznym GPU; test składni nie potwierdza jakości wizualnej na każdej karcie.
-
-
-## Kandydat roboczy 4.3.128 — zmiany oczekujące na końcowy Windows CI
-
-- Każda ze 110 scen GPU otrzymała osobny profil FurMark (promień, tuba, liczba włókien, paleta, animacja i skala); pozostałe sceny nakładają ten obiekt na własną geometrię. To zmiana kodu, nie dowód jakości obrazu na fizycznym GPU.
-- Inspektor sensorów zachowuje identyfikator sprzętowy w kluczu deduplikacji, aby identycznie nazwane wentylatory/sondy nie znikały w jednym wierszu.
-- Podsumowanie telemetrii live zostało zmienione na przewijalną listę wszystkich kategorii, z wartością i źródłem, zamiast dwóch długich linii temperatur/obciążenia.
-- Dodano regresje do istniejącego zestawu selftestów zaawansowanych. Kandydat nie jest wydaniem, dopóki pełny workflow Windows nie potwierdzi składni, selftestów, Sensor Bridge, EXE, Setup, ALL-IN-ONE ZIP i manifestu.
-
-## Główna lista wszystkich prac
-
-Pełny zakres, rozdzielony na gotowe w kodzie / wymagające CI / wymagające fizycznego sprzętu / wymagające źródeł obu aplikacji, znajduje się w `MASTER_WORKLIST_PL.md`.
-
-**Nadal otwarte:** dokładne porównanie plik-po-pliku archiwum System Repair PRO 5.6.25 (166 715 344 B) i Serwis Ultimate 1.15.3 z kodem zintegrowanym. Kafelki, 40 sond diagnostycznych ani 110 unikalnych scen nie stanowią dowodu pełnego przeniesienia wszystkich metod źródłowych.
+- GitHub Actions: workflow 39776395447 — sukces.
+- Opublikowano Windows x64 Setup i ALL-IN-ONE ZIP; manifest stable został zaktualizowany dopiero po ukończeniu workflow.
+- To potwierdza budowę i automatyczne testy, ale nie test fizycznego sprzętu ani pełną parzystość źródeł obu aplikacji.

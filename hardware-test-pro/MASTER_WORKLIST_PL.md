@@ -190,3 +190,12 @@
 - [ ] Uruchomić pełny Windows CI, zweryfikować instalator/ZIP/manifest.
 - [ ] Sprawdzić wizualnie na Windows, czy wszystkie kafle są widoczne przy różnych skalach i rozdzielczościach.
 - [ ] Ten pulpit poprawia nawigację, ale nie zamyka otwartego porównania 1:1 źródeł obu archiwów.
+
+
+## Kandydat 4.3.133 — nawigacja centrum serwisu
+- [x] Dodano widoczny przycisk „CENTRUM SERWISU” na pasku bocznym głównego okna.
+- [x] Poprawiono trasę „SIEĆ / WI-FI / LAN”, aby otwierała istniejący ekran pod właściwą nazwą.
+- [x] Dodano test regresyjny wpisu paska bocznego i trasy sieci.
+- [ ] Pełny Windows CI, EXE, Setup, ALL-IN-ONE ZIP i zgodność manifestu/SHA-256.
+- [ ] Wizualny test centrum serwisu na różnych rozdzielczościach i skalach Windows.
+- [ ] Parzystość 1:1 obu aplikacji źródłowych pozostaje otwarta.
