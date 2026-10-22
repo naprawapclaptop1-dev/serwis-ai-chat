@@ -12171,7 +12171,7 @@ def _u114_gpu_benchmark_child(output_path,seconds=30,scene_id=1,resolution="1920
             _u119_ny=_u114_math.sin(_u119_v)
             _u119_nz=_u114_math.cos(_u119_v)*_u114_math.sin(_u119_u)
             _u119_len=.025+.15*(.5+.5*_u114_math.sin(_u119_i*_u119_profile["hair_wave"]+_u119_profile["hair_phase"]))
-            _u119_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_palette+_u119_i//_u119_profile["color_stride"])%len(colors)))
+            _u119_furmark_hairs.append((_u119_x,_u119_y,_u119_z,_u119_nx,_u119_ny,_u119_nz,_u119_len,(_u119_palette+_u119_i//_u119_profile["color_stride"])%len(colors)))
         def _u119_draw_furmark(elapsed):
             if _u119_furmark_display_list[0] is None:
                 _u119_list=GL.glGenLists(1)
