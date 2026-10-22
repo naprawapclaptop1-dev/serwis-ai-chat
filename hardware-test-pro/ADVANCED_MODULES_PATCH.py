@@ -2780,6 +2780,7 @@ def _u69_open_component_simulator(self,module,run_test=False,mode="scan"):
     self.make_button(row,"SKAN",lambda m=module:_u69_launch_component_test(self,m,"scan"),"card",side="left",ipady=4)
     self.make_button(row,"TEST / BENCHMARK ULTRA/MAX",lambda m=module:_u69_launch_component_test(self,m,"benchmark"),"accent",side="left",ipady=4)
     self.make_button(row,"STOP TEST",self.stop_current_test,"bad",side="left",ipady=4)
+    self.make_button(row,"RZECZYWISTE OPENGL / FPS",lambda m=module:_u135_start_real_3d(self,m),"accent",side="left",ipady=4)
     if module=="SIEĆ":
         self.make_button(row,"SPEED TEST DOWNLOAD / UPLOAD",self.show_speed_test,"accent",side="left",ipady=4)
     def back(m=module):
@@ -15795,9 +15796,58 @@ def _u135_selftest_serwis_diagnostics():
     assert _u135_status_from_output(0, "not-json", None) == "WARN"
     print("SERWIS_ULTIMATE_EXTRA_DIAGNOSTICS_SELFTEST_OK: 10 unique read-only tests, separate JSON reports and honest N/D/WARN status")
 
+
+# Map each component simulator to a different real OpenGL scene family.
+# This is explicitly a GPU-rendering check, not a claim that OpenGL measures CPU/RAM/disk performance.
+_U135_SCENE_BY_MODULE = {
+ "GPU":1, "CPU":8, "RAM":17, "VRAM":26, "DYSK":35, "EKRAN":44,
+ "SECURITY":53, "BATERIA":62, "SIEĆ":71, "USB":80, "AUDIO":89,
+ "KLAWIATURA":98, "KAMERA":107
+}
+
+def _u135_start_real_3d(app,module):
+    module=str(module or "").upper()
+    scene_id=_U135_SCENE_BY_MODULE.get(module)
+    if scene_id is None:
+        messagebox.showwarning("OpenGL 3D","Nie ma przypisanej odrębnej sceny dla tego modułu.")
+        return
+    if getattr(app,"running",False):
+        messagebox.showwarning("OpenGL 3D","Inny test jest uruchomiony. Zatrzymaj go przed uruchomieniem sceny.")
+        return
+    if not (1 <= scene_id <= len(_U66_SCENES)):
+        messagebox.showerror("OpenGL 3D","Nieprawidłowy identyfikator sceny.")
+        return
+    seconds=10
+    resolution=str(getattr(app,"_u90_scene_resolution_value","1920x1080") or "1920x1080")
+    scene_name=_U66_SCENES[scene_id-1][0]
+    if not messagebox.askyesno(
+        "Rzeczywiste renderowanie OpenGL",
+        f"Uruchomić unikalną scenę {scene_id:02d}: {scene_name}?\\n\\n"
+        f"Czas: {seconds} s • rozdzielczość: {resolution}\\n"
+        "Otworzy się osobne okno renderera. Wynik obejmuje rzeczywiste FPS i dane renderera GPU. "
+        "To test renderowania GPU, a nie benchmark CPU/RAM/dysku."
+    ):
+        return
+    try:
+        app.stop_requested=False
+        app.worker(lambda:_u66_execute_gpu_scene(app,scene_id,seconds))
+    except Exception as exc:
+        messagebox.showerror("OpenGL 3D",f"Nie udało się uruchomić sceny: {type(exc).__name__}: {exc}")
+
+def _u135_selftest_real_3d_scene_mapping():
+    ids=list(_U135_SCENE_BY_MODULE.values())
+    assert len(ids)==13 and len(set(ids))==13
+    assert all(1 <= int(scene_id) <= len(_U66_SCENES) for scene_id in ids)
+    titles=[_U66_SCENES[scene_id-1][0] for scene_id in ids]
+    assert len(set(titles))==len(titles)
+    assert _U135_SCENE_BY_MODULE["GPU"]==1
+    assert callable(_u135_start_real_3d)
+    print("COMPONENT_REAL_OPENGL_SCENE_SELFTEST_OK: 13 components map to 13 distinct OpenGL scenes")
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
         _u134_selftest_ram_live_dashboard()
+        _u135_selftest_real_3d_scene_mapping()
         _u135_selftest_serwis_diagnostics()
         _u134_selftest_unique_service_probes()
         _u133_selftest_service_dashboard_navigation()
