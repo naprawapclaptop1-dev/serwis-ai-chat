@@ -47,7 +47,7 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 - [ ] Każdy z 110 wpisów katalogu ma własne ID sceny; unikalność ID nie zastępuje wizualnej kontroli geometrii.
 - [ ] Sceny 3D wykonują rzeczywisty OpenGL, synchronizują pomiar i pokazują FPS/renderer/rozdzielczość; brak renderera oznacza WARN, nie PASS.
 - [ ] Pełny inspektor sensorów pokazuje wszystkie rekordy udostępnione przez Sensor Bridge/Windows, wraz z N/D, wyszukiwaniem i eksportem CSV.
-- [ ] Speed Test raportuje medianę, peak, minimum, jitter, zmienność, poprawne próbki i bajty transferu; wynik równoległy TURBO pozostaje osobny.
+- [ ] Speed Test raportuje medianę, peak, minimum, jitter, zmienność, poprawne próbki i bajty transferu; STANDARD ma 2 strumienie równoległe, MAX/TURBO po 4, a wynik równoległy pozostaje oddzielny od mediany bazowej.
 - [ ] Naprawy wymagające uprawnień, zmian systemu lub potencjalnie destrukcyjnych działań mają jasne potwierdzenie i log.
 - [ ] Build Windows x64, instalator EXE, ALL-IN-ONE ZIP, manifest i SHA-256 są zgodne.
 - [ ] Poza CI trzeba wykonać test na fizycznym PC: temperatury, wentylatory, moc, VRAM, ekran, bateria i peryferia.
@@ -56,8 +56,8 @@ Plik źródłowy: `NAPRAWA_PC_SERWIS_ULTIMATE_v1_15_3_FIX (2).zip` (5 710 073 B)
 
 Archiwa 5.6.25 i 1.15.3 zostały wskazane w bibliotece użytkownika. Plik System Repair PRO o rozmiarze 166 715 344 B został zidentyfikowany, ale jego rozpakowana zawartość nie była dostępna dla bieżącego buildera. Nie wykonano porównania plik po pliku, więc zgodność 1:1 każdej klasy i metody pozostaje niepotwierdzona. Kod istniejących integracji i katalogów nie jest dowodem pełnej parytetu z oryginałami. Nie oznaczać całej integracji jako zakończonej, dopóki macierz nie zostanie wypełniona na podstawie zawartości obu źródeł i testów.
 
-## Kandydat 4.3.125 — testy grafiki
+## Renderer GPU — testy grafiki
 
-- [ ] Windows CI potwierdza wszystkie 31 jawnych gałęzi geometrii.
+- [x] Windows CI potwierdził wszystkie 31 trybów renderera w samoteście podpisów scen.
 - [ ] Obejrzeć 110 scen na fizycznym GPU i potwierdzić, że sceny są wizualnie rozróżnialne, a nie tylko mają różne ID.
 - [ ] Zweryfikować rzeczywiste FPS i stabilność na kilku klasach GPU.
