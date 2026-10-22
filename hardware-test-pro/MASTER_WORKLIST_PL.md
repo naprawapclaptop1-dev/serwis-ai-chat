@@ -199,3 +199,13 @@
 - [ ] Pełny Windows CI, EXE, Setup, ALL-IN-ONE ZIP i zgodność manifestu/SHA-256.
 - [ ] Wizualny test centrum serwisu na różnych rozdzielczościach i skalach Windows.
 - [ ] Parzystość 1:1 obu aplikacji źródłowych pozostaje otwarta.
+
+
+## Kandydat 4.3.134 — RAM Live Dashboard i unikalność testów
+- [x] Dodano ekran RAM Live Dashboard: użycie RAM, dostępna pamięć, swap/commit, CPU na rdzeń, lista 15 procesów z największym użyciem RAM oraz przewijalna historia 90 próbek.
+- [x] Ekran aktualizuje odczyty co sekundę, nie zapisuje danych do pliku i zatrzymuje odświeżanie po opuszczeniu widoku.
+- [x] Dodano test unikalności tytułów wszystkich 110 testów.
+- [x] Dodano test, że 40 sond System Repair PRO / Serwis Ultimate ma 40 unikalnych ID, nazw i skryptów PowerShell.
+- [ ] Pełny Windows CI, Setup, ALL-IN-ONE ZIP, manifest i SHA-256.
+- [ ] Sprawdzenie RAM Live Dashboard na rzeczywistym Windows i pod dużym obciążeniem pamięci.
+- [ ] Pełna parzystość 1:1 obu aplikacji źródłowych nadal otwarta.
