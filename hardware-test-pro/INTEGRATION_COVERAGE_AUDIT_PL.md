@@ -1,8 +1,8 @@
 # Audyt integracji — NAPRAWA PC HARDWARE TEST PRO
 
 Data audytu: 2026-10-22
-**Stable online:** 4.3.133 — Windows CI zakończyło się sukcesem.
-**Kandydat roboczy:** 4.3.134 — RAM Live Dashboard, commit charge i testy unikalności; pierwsza próba CI nie przeszła asercji selftestu, poprawka oczekuje na ponowny build.
+**Stable online:** 4.3.134 — Windows CI zakończyło się sukcesem.
+**Status:** RAM Live Dashboard, Windows commit charge, 110 unikalnych tytułów i 40 unikalnych skryptów zostały włączone do wydania. Pełna parzystość źródeł obu aplikacji pozostaje otwarta.
 
 ## Co jest obecnie w kodzie online
 
