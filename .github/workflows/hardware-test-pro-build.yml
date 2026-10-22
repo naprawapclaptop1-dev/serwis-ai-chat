@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - "hardware-test-pro/**"
+  pull_request:
+    paths:
+      - "hardware-test-pro/**"
   workflow_dispatch:
 
 permissions:
