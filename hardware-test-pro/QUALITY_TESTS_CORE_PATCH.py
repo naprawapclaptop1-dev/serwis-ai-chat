@@ -78,16 +78,20 @@ def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_chec
         "error_offset": None,
         "failed_pattern": None
     }
+    last_reported_percent = -1
+    def emit_progress(percent, message, force=False):
+        nonlocal last_reported_percent
+        normalized = max(0, min(100, int(percent)))
+        if force or normalized != last_reported_percent:
+            _u146_progress(progress_callback, normalized, message)
+            last_reported_percent = normalized
     try:
         pass_number = 0
         while True:
             pass_number += 1
             completed_operations = 0
             stats["patterns_completed"] = 0
-            def update_progress(message, force=False):
-                percent = int(min(100, completed_operations * 100 / operations_per_pass))
-                _u146_progress(progress_callback, percent, f"Przebieg {pass_number}: {message}")
-            _u146_progress(progress_callback, 0, f"Przebieg {pass_number}/{max(1, pass_number)}: przygotowanie pełnego testu RAM.")
+            emit_progress(0, f"Przebieg {pass_number}: przygotowanie pełnego testu RAM.", force=True)
             for pattern_index, (name, mode, value) in enumerate(patterns, start=1):
                 if _u146_stopped(stop_check):
                     stats["stopped"] = True
@@ -96,7 +100,7 @@ def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_chec
                     return False, f"Test RAM zatrzymany przez użytkownika przed wzorcem {name}."
                 expected_digest = _u146_hashlib.sha256()
                 write_label = f"{name}: zapis pełnego bufora {size / 1048576:.0f} MB."
-                _u146_progress(progress_callback, int((pattern_index - 1) * 50 / pattern_count), f"Przebieg {pass_number} • {write_label}")
+                emit_progress(int((pattern_index - 1) * 50 / pattern_count), f"Przebieg {pass_number} • {write_label}")
                 for chunk_index in range(chunk_count):
                     if _u146_stopped(stop_check):
                         stats["stopped"] = True
@@ -112,7 +116,7 @@ def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_chec
                     stats["bytes_written"] += len(expected)
                     completed_operations += 1
                     percent = int(completed_operations * 100 / operations_per_pass)
-                    _u146_progress(progress_callback, percent, f"Przebieg {pass_number} • {name}: zapis bloku {chunk_index + 1}/{chunk_count}.")
+                    emit_progress(percent, f"Przebieg {pass_number} • {name}: zapis bloku {chunk_index + 1}/{chunk_count}.")
                 actual_digest = _u146_hashlib.sha256()
                 for chunk_index in range(chunk_count):
                     if _u146_stopped(stop_check):
@@ -128,7 +132,7 @@ def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_chec
                     stats["bytes_verified"] += len(actual_chunk)
                     completed_operations += 1
                     percent = int(completed_operations * 100 / operations_per_pass)
-                    _u146_progress(progress_callback, percent, f"Przebieg {pass_number} • {name}: weryfikacja bloku {chunk_index + 1}/{chunk_count}.")
+                    emit_progress(percent, f"Przebieg {pass_number} • {name}: weryfikacja bloku {chunk_index + 1}/{chunk_count}.")
                 if actual_digest.digest() != expected_digest.digest():
                     first_bad = None
                     for chunk_index in range(chunk_count):
@@ -157,7 +161,7 @@ def _u146_verify_ram_buffer(buffer, seconds=0, progress_callback=None, stop_chec
         if stats_out is not None: stats_out.update(stats)
         if stats["stopped"]:
             return False, f"Test RAM zatrzymany po {stats['patterns_completed']}/{pattern_count} wzorcach."
-        _u146_progress(progress_callback, 100,
+        emit_progress(100,
             f"ZAKOŃCZONO • {pattern_count} pełnych wzorców • {stats['passes']} przebieg(ów) • {stats['elapsed_sec']:.1f} s.")
         return True, (
             f"OK — zapis i odczyt całego bufora dla {pattern_count} wzorców RAM (stałe, naprzemienne, adresowe, bity i pseudolosowe); "
