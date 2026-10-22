@@ -13559,11 +13559,12 @@ def _u126_show_process_manager(app):
     status=tk.StringVar(value="Odczyt procesów nie został jeszcze wykonany.")
     tk.Label(app.content,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=1350).pack(fill="x",padx=8,pady=3)
     cols=("pid","name","cpu","memory","user","state")
-    table=ttk.Treeview(app.content,columns=cols,show="headings",height=18)
+    table_frame=tk.Frame(app.content,bg=t["bg"]);table_frame.pack(fill="both",expand=True,padx=6,pady=4)
+    table=ttk.Treeview(table_frame,columns=cols,show="headings",height=18)
     for key,title,width in (("pid","PID",80),("name","Proces",300),("cpu","CPU %",90),("memory","RAM MB",100),("user","Użytkownik",240),("state","Status",140)):
         table.heading(key,text=title);table.column(key,width=width,anchor="w" if key in ("name","user","state") else "e")
-    scroll=ttk.Scrollbar(app.content,orient="vertical",command=table.yview);table.configure(yscrollcommand=scroll.set)
-    table.pack(side="left",fill="both",expand=True,padx=(6,0),pady=4);scroll.pack(side="right",fill="y",padx=(0,6),pady=4)
+    scroll=ttk.Scrollbar(table_frame,orient="vertical",command=table.yview);table.configure(yscrollcommand=scroll.set)
+    table.pack(side="left",fill="both",expand=True);scroll.pack(side="right",fill="y")
     rows_cache=[]
     def refresh():
         nonlocal rows_cache
@@ -13713,7 +13714,8 @@ def _u126_selftest_process_manager():
     assert _u126_is_protected_process("NAPRAWA-PC-HARDWARE-TEST-PRO.exe")
     assert not _u126_is_protected_process("notepad.exe")
     assert callable(_u126_collect_process_rows) and callable(_u126_show_process_manager)
-    print("SERWIS_ULTIMATE_PROCESS_MANAGER_SELFTEST_OK: process inventory, protected-process guard and CSV export UI")
+    assert "table_frame" in _u126_show_process_manager.__code__.co_varnames
+    print("SERWIS_ULTIMATE_PROCESS_MANAGER_SELFTEST_OK: process inventory, protected-process guard, contained table and CSV export UI")
 
 def _u126_selftest_game_diagnostics():
     assert "Win32_VideoController" in _U126_GAME_DIAGNOSTIC_PS
