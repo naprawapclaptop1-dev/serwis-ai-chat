@@ -13628,6 +13628,124 @@ def _u126_show_process_manager(app):
     search.bind("<Return>",lambda event:refresh())
     refresh()
 
+_U126_REPORT_EXTENSIONS={".json",".csv",".html",".htm",".txt",".md",".log",".xml",".pdf"}
+
+def _u126_report_root():
+    import os as _u126_report_os
+    from pathlib import Path as _u126_report_Path
+    base=_u126_report_os.environ.get("LOCALAPPDATA") or str(_u126_report_Path.home())
+    return _u126_report_Path(base)/"NaprawaPC"
+
+def _u126_scan_report_files(limit=5000):
+    import os as _u126_report_os
+    from datetime import datetime as _u126_report_datetime
+    root=_u126_report_root()
+    rows=[]
+    if not root.exists():
+        return rows
+    ignored={".git","venv",".venv","cache","temp","tmp","node_modules","dist","publish"}
+    for current,dirs,files in _u126_report_os.walk(root):
+        dirs[:]=[d for d in dirs if d.casefold() not in ignored]
+        for name in files:
+            path=__import__("pathlib").Path(current)/name
+            if path.suffix.casefold() not in _U126_REPORT_EXTENSIONS:
+                continue
+            try:
+                stat=path.stat()
+                if not path.is_file() or stat.st_size>100*1024*1024:
+                    continue
+                rows.append({"name":path.name,"path":str(path),"folder":str(path.parent.relative_to(root)),
+                    "extension":path.suffix.casefold(),"size_bytes":int(stat.st_size),
+                    "modified_at":_u126_report_datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="seconds")})
+            except Exception:
+                continue
+            if len(rows)>=max(1,min(5000,int(limit))):
+                return sorted(rows,key=lambda row:row["modified_at"],reverse=True)
+    return sorted(rows,key=lambda row:row["modified_at"],reverse=True)
+
+def _u126_show_report_manager(app):
+    import csv as _u126_report_csv
+    import os as _u126_report_os
+    import subprocess as _u126_report_subprocess
+    from tkinter import filedialog as _u126_report_filedialog
+    app.current_view="REPORT_MANAGER";app.clear();t=app.colors()
+    app.header_title.config(text="SERWIS ULTIMATE — RAPORTY I HISTORIA")
+    head=app.panel(app.content);head.pack(fill="x",padx=3,pady=(0,5))
+    tk.Label(head,text="RAPORTY • HISTORIA TESTÓW • DIAGNOSTYKA • ZLECENIA",bg=t["panel"],fg=t["accent"],font=app.fnt(11,"bold")).pack(anchor="w",padx=10,pady=(7,2))
+    tk.Label(head,text="Widok tylko do odczytu. Lista obejmuje raporty JSON/CSV/HTML/TXT/LOG/XML/PDF w katalogu lokalnym NaprawaPC. Nie usuwa ani nie wysyła plików.",bg=t["panel"],fg=t["muted"],font=app.fnt(8),wraplength=1350,justify="left").pack(anchor="w",padx=10,pady=(0,7))
+    query=tk.StringVar()
+    controls=tk.Frame(app.content,bg=t["bg"]);controls.pack(fill="x",padx=6,pady=4)
+    tk.Label(controls,text="Filtr:",bg=t["bg"],fg=t["muted"],font=app.fnt(8,"bold")).pack(side="left",padx=(0,5))
+    search=tk.Entry(controls,textvariable=query,bg=t["card"],fg=t["text"],insertbackground=t["text"],relief="flat")
+    search.pack(side="left",fill="x",expand=True,padx=(0,8),ipady=4)
+    status=tk.StringVar(value="Lista raportów nie została jeszcze odświeżona.")
+    tk.Label(app.content,textvariable=status,bg=t["bg"],fg=t["accent"],anchor="w",wraplength=1350).pack(fill="x",padx=8,pady=3)
+    table_frame=tk.Frame(app.content,bg=t["bg"]);table_frame.pack(fill="both",expand=True,padx=6,pady=4)
+    cols=("modified","name","folder","size","ext")
+    table=ttk.Treeview(table_frame,columns=cols,show="headings",height=18)
+    for key,title,width in (("modified","Data modyfikacji",170),("name","Plik",360),("folder","Katalog",420),("size","Rozmiar B",110),("ext","Typ",70)):
+        table.heading(key,text=title);table.column(key,width=width,anchor="w" if key in ("modified","name","folder","ext") else "e")
+    scroll=ttk.Scrollbar(table_frame,orient="vertical",command=table.yview);table.configure(yscrollcommand=scroll.set)
+    table.pack(side="left",fill="both",expand=True);scroll.pack(side="right",fill="y")
+    rows_cache=[]
+    def refresh():
+        nonlocal rows_cache
+        try:rows_cache=_u126_scan_report_files()
+        except Exception as exc:
+            status.set(f"BŁĄD skanowania raportów: {type(exc).__name__}: {exc}");return
+        needle=query.get().strip().casefold()
+        for iid in table.get_children():table.delete(iid)
+        visible=0
+        for index,row in enumerate(rows_cache):
+            searchable=(row["name"]+" "+row["folder"]+" "+row["extension"]).casefold()
+            if needle and needle not in searchable:continue
+            table.insert("","end",iid=str(index),values=(row["modified_at"],row["name"],row["folder"],row["size_bytes"],row["extension"]))
+            visible+=1
+        status.set(f"Katalog: {_u126_report_root()} • plików: {len(rows_cache)} • widoczne: {visible} • limit skanowania: 5000")
+        try:app.results["REPORT_MANAGER"]={"state":"good","files":len(rows_cache),"root":str(_u126_report_root())}
+        except Exception:pass
+    def open_selected():
+        selection=table.selection()
+        if not selection:
+            messagebox.showinfo("Raporty","Zaznacz raport na liście.");return
+        try:row=rows_cache[int(selection[0])]
+        except Exception:return
+        path=row["path"]
+        if not _u126_report_os.path.isfile(path):
+            status.set("Plik już nie istnieje. Odśwież listę.");return
+        try:
+            if hasattr(_u126_report_os,"startfile"):_u126_report_os.startfile(path)
+            elif row["extension"] in (".txt",".log",".json",".csv",".md",".xml"):_u126_report_subprocess.Popen(["notepad.exe",path])
+            else:messagebox.showinfo("Raport",path)
+            status.set("Otwarto: "+path)
+        except Exception as exc:messagebox.showerror("Otwieranie raportu",str(exc))
+    def export_index():
+        if not rows_cache:
+            messagebox.showinfo("Raporty","Najpierw odśwież listę.");return
+        path=_u126_report_filedialog.asksaveasfilename(title="Eksport indeksu raportów",defaultextension=".csv",filetypes=[("CSV","*.csv")],initialfile="naprawapc-indeks-raportow.csv")
+        if not path:return
+        try:
+            with open(path,"w",encoding="utf-8-sig",newline="") as stream:
+                writer=_u126_report_csv.DictWriter(stream,fieldnames=("modified_at","name","folder","extension","size_bytes","path"))
+                writer.writeheader()
+                for row in rows_cache:writer.writerow({key:row.get(key) for key in writer.fieldnames})
+            status.set(f"Zapisano indeks {len(rows_cache)} raportów: {path}")
+        except Exception as exc:messagebox.showerror("Eksport indeksu",str(exc))
+    row=tk.Frame(app.content,bg=t["bg"]);row.pack(fill="x",padx=6,pady=5)
+    app.make_button(row,"ODŚWIEŻ",refresh,"accent",side="left",ipady=5)
+    app.make_button(row,"OTWÓRZ WYBRANY RAPORT",open_selected,"good",side="left",ipady=5)
+    app.make_button(row,"EKSPORT INDEKSU CSV",export_index,"card",side="left",ipady=5)
+    app.make_button(row,"← CENTRUM NAPRAW",lambda:_u120_show_system_repair_center(app),"card",side="left",ipady=5)
+    search.bind("<Return>",lambda event:refresh())
+    table.bind("<Double-1>",lambda event:open_selected())
+    refresh()
+
+def _u126_selftest_report_manager():
+    assert _U126_REPORT_EXTENSIONS.issuperset({".json",".csv",".html",".txt",".log",".pdf"})
+    assert callable(_u126_report_root) and callable(_u126_scan_report_files) and callable(_u126_show_report_manager)
+    assert "remove" not in _u126_show_report_manager.__code__.co_names
+    print("SERWIS_ULTIMATE_REPORT_MANAGER_SELFTEST_OK: local report index, filtering, open and CSV export without delete actions")
+
 _U126_GAME_DIAGNOSTIC_PS = r"""
 $ErrorActionPreference='SilentlyContinue'
 $os=Get-CimInstance Win32_OperatingSystem | Select-Object Caption,Version,BuildNumber,OSArchitecture
@@ -13920,9 +14038,11 @@ def _u120_show_system_repair_center(app):
     app.make_button(row, "USTAWIENIA ODZYSKIWANIA", open_recovery, "card", side="left", ipady=4)
     app.make_button(row, "OTWÓRZ OSTATNI LOG", open_log, "card", side="left", ipady=4)
     app.make_button(row, "FOLDER RAPORTÓW", open_folder, "card", side="left", ipady=4)
-    app.make_button(row, "MENEDŻER PROCESÓW", lambda:_u126_show_process_manager(app), "card", side="left", ipady=4)
-    app.make_button(row, "DIAGNOSTYKA GIER", lambda:_u126_show_game_diagnostics(app), "card", side="left", ipady=4)
     app.make_button(row, "← LABORATORIUM", app.show_component_lab, "card", side="left", ipady=4)
+    service_tools=tk.Frame(tools,bg=t["panel"]);service_tools.pack(fill="x",padx=8,pady=(0,6))
+    app.make_button(service_tools, "MENEDŻER PROCESÓW", lambda:_u126_show_process_manager(app), "card", side="left", ipady=4)
+    app.make_button(service_tools, "DIAGNOSTYKA GIER", lambda:_u126_show_game_diagnostics(app), "card", side="left", ipady=4)
+    app.make_button(service_tools, "RAPORTY I HISTORIA", lambda:_u126_show_report_manager(app), "card", side="left", ipady=4)
     logbox = app.panel(app.content); logbox.pack(fill="both", expand=True, padx=3, pady=3)
     tk.Label(logbox, text="LOG NA ŻYWO — NIE ZAMYKAJ OKNA PODCZAS NAPRAWY", bg=t["panel"], fg=t["accent"], font=app.fnt(9,"bold")).pack(anchor="w", padx=8, pady=(6,3))
     body = tk.Text(logbox, height=8, bg="#07111f", fg="#cce6ff", insertbackground="#ffffff", wrap="word", font=("Consolas",8), relief="flat")
@@ -14962,6 +15082,7 @@ if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
         _u120_selftest_system_repair_center()
         _u126_selftest_process_manager()
         _u126_selftest_game_diagnostics()
+        _u126_selftest_report_manager()
         _u116_selftest_scene_signatures()
         _u116_selftest_sensor_display_controls()
         _u126_selftest_sensor_merge()
