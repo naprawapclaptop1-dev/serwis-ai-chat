@@ -67,3 +67,9 @@ RENDERER GPU — 31 RODZIN GEOMETRII
 - Wszystkie 110 ID scen korzystają z 31 trybów, ale mają unikalną kombinację parametrów, palety, liczby elementów i prędkości obrotu.
 - Nowy test regresyjny sprawdza, że każdy tryb 0–30 ma własną gałąź renderera, wszystkie 31 stylów są wybierane i 110 sygnatur jest unikalnych.
 - Szczegóły wydania i dostępność aktualnego pakietu potwierdza manifest stable; nie opieraj numeru wersji na tym opisie.
+
+
+KANDYDAT 4.3.135 — DODATKOWE TESTY SERWIS ULTIMATE
+---------------------------------------------------
+Dodano 10 osobnych diagnostyk odczytowych, każda z własnym ekranem i raportem JSON: błędy PnP, podpisy i wersje sterowników, programy autostartu, zadania harmonogramu, historia Windows Update, awarie aplikacji, stan nośników, karty/IP/DNS, status Defendera oraz szybka inwentaryzacja systemu.
+Testy są dostępne z Centrum napraw i nie zastępują oryginalnych modułów aplikacji źródłowych. Nie wyłączają ochrony, nie zmieniają konfiguracji sieci i nie naprawiają dysków. Wyniki niedostępne są oznaczane WARN/N/D. Zmiana oczekuje na Windows CI; nie jest jeszcze deklaracją nowego wydania stable ani pełnej zgodności 1:1 z oryginalnymi archiwami.
