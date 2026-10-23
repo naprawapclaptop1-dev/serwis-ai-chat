@@ -235,6 +235,20 @@ def _u146_update_view(app, module, percent, message, report=None):
                 if bar is not None and bar.winfo_exists(): bar.configure(value=max(0, min(100, int(percent))))
                 if label is not None and label.winfo_exists(): label.configure(text=str(message))
             except Exception: pass
+        if module == "CPU":
+            try:
+                # The CPU module creates these controls, but previously only RAM's
+                # branch updated a progressbar. Update the visible CPU bar/label for
+                # every worker sample, not just after the final report arrives.
+                bar = getattr(app, "_u146_cpu_progressbar", None)
+                label = getattr(app, "_u146_cpu_progress_label", None)
+                value = max(0, min(100, int(percent)))
+                if bar is not None and bar.winfo_exists():
+                    bar.configure(value=value)
+                if label is not None and label.winfo_exists():
+                    label.configure(text=str(message))
+            except Exception:
+                pass
         if module == "CPU" and report is not None:
             tree = getattr(app, "_u146_cpu_tree", None)
             try:

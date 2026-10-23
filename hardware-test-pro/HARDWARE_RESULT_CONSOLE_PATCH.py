@@ -449,7 +449,7 @@ def _u151_selftest_hardware_result_console():
     assert callable(_u151_attach_console) and callable(_u151_refresh_console) and callable(_u151_last_result)
     assert callable(_u151_start_direct_test) and callable(_u151_stop_direct_test)
     assert "direct_labels" in _u151_attach_console.__code__.co_varnames
-    assert "worker" in _u151_start_direct_test.__code__.co_names
+    assert "worker" in _u151_start_direct_test.__code__.co_varnames
     class FakeDirectTestApp:
         def __init__(self):
             self.running = False

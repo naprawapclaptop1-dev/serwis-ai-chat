@@ -183,3 +183,8 @@ BEZPOŚREDNIE START / STOP NA STRONACH CPU/RAM/GPU — 4.3.155
 - „STOP TEST” wywołuje istniejącą funkcję zatrzymania. Przerwany test nie może zostać przedstawiony jako pełny sukces.
 - Nie ma testów pod przykrywką przykładowych danych: jeśli sterownik nie podaje temperatury lub obciążenia, ekran pokazuje N/D; wynik benchmarku pochodzi z raportu wykonania.
 - Windows CI ma test regresyjny routingu START CPU/RAM/GPU poprzez atrapę workera, więc nie obciąża fizycznego komputera podczas kompilacji.
+
+
+PASEK POSTĘPU CPU — NAPRAWA SYNCHRONIZACJI
+------------------------------------------
+Podczas wieloetapowego testu CPU główny ekran odświeża teraz pasek postępu i etykietę etapu przy kolejnych próbkach, zamiast pozostawiać tekst „Gotowy” do końca testu. Końcowa tabela etapów nadal pojawia się po zamknięciu pomiaru; test regresyjny sprawdza obecność obu aktualizowanych kontrolek.
