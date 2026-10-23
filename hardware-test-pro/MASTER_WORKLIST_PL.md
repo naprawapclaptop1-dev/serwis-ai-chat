@@ -331,3 +331,12 @@
 - [x] Workbench oraz konsola wyniku odtwarzają i porównują dynamiczne klucze scen OpenGL.
 - [x] Selftest sprawdza bezpośrednie wywołanie workbencha na CPU, RAM i GPU, świeży raport z klucza sceny, zapis historii i przywrócenie wyniku.
 - [ ] Po publikacji: potwierdzić instalację i działanie na fizycznym PC, zwłaszcza sterownik OpenGL, sensory CPU/GPU i zachowanie UAC.
+
+
+## Kandydat 4.3.161 — poprawa rzeczywistych testów głównych
+- [x] Główny START CPU ma kierować do właściwego silnika SHA-256 (tryb wielowątkowy), a dodatkowy przycisk uruchamia test 1-wątkowy.
+- [x] Główny START RAM/GPU zachowuje rzeczywiste silniki i zapisuje świeży wynik; nie używa starego raportu, gdy silnik nie zwróci nowego.
+- [x] Każdy wynik przechodzi walidację metryk wymaganych dla GOOD: CPU operacje + ops/s; RAM zweryfikowane bajty + bufor; GPU klatki + FPS + renderer.
+- [x] Każdy bezpośredni pomiar ma test_id, czas trwania, status walidacji oraz raport JSON/HTML w historii.
+- [ ] Windows CI musi zaliczyć selftest dla wszystkich trzech rzeczywistych tras, trybu CPU 1-wątkowego, mapowania świeżego wyniku i raportowania braku pomiaru.
+- [ ] Na fizycznym Windows potwierdzić temperatury i źródła danych sensorów dla konkretnego CPU/GPU; N/D pozostaje dozwolone przy braku wsparcia sterownika.

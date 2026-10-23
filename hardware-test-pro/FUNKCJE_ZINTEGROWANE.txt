@@ -49,3 +49,10 @@ NOWE: PROFILE RZECZYWISTEGO BENCHMARKU CPU + RAM + GPU
 - ROZSZERZONY: CPU 180 s, RAM do 1024 MB i sześć odrębnych scen OpenGL 15 s.
 - Połączony raport JSON/HTML/CSV zawiera status i czas każdego etapu; zbiorczy PASS jest możliwy wyłącznie, gdy każdy etap zwróci prawidłowy stan GOOD.
 - STOP blokuje kolejne etapy i nie zamienia przerwanego testu w sukces. Pomiar RAM dotyczy bufora przydzielonego przez proces, a FPS tylko faktycznie wyrenderowanych scen.
+
+
+4.3.161 — NAPRAWA BEZPOŚREDNICH TESTÓW CPU/RAM/GPU
+- Główny przycisk CPU został podłączony do rzeczywistego silnika SHA-256; dodano osobny benchmark 1-wątkowy i pozostawiono tryb wielowątkowy.
+- Wyniki każdego bezpośredniego uruchomienia są walidowane pod kątem rzeczywistych operacji CPU, zweryfikowanych bajtów RAM lub klatek/FPS/renderer GPU.
+- Bez świeżych danych test kończy się WARN/ERROR. Poprzedni raport nie jest zaliczany jako wynik bieżącego uruchomienia.
+- CPU/RAM/GPU publikują wynik do głównych kluczy aplikacji i historii JSON+HTML wraz z identyfikatorem testu i czasem trwania.

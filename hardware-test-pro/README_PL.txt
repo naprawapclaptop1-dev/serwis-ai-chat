@@ -232,3 +232,11 @@ RAPORT GPU Z GŁÓWNEJ STRONY — POPRAWKA 4.3.160
 - START GPU na głównej stronie zapisuje raport JSON/HTML przez ten sam mechanizm historii co pozostałe testy. Etapy profilu złożonego nie zapisują duplikatu poza własnym raportem etapowym.
 - Workbench i konsola głównej strony potrafią też odczytać raporty pod starymi kluczami `3D_SCENE_N`, więc nie czekają na klucz `GPU_3D`, którego starszy renderer nie ustawiał.
 - Testy regresyjne sprawdzają nowe i zaktualizowane klucze scen GPU, odtworzenie wyniku po ponownym otwarciu ekranu i uruchomienie/załączenie workbencha na CPU, RAM oraz GPU.
+
+
+POPRAWKA 4.3.161 — GŁÓWNE URUCHOMIENIE CPU / RAM / GPU
+-------------------------------------------------------
+- START CPU na głównej stronie nie używa już ogólnego starego testu obciążenia. Wywołuje ten sam silnik rzeczywistego SHA-256 co katalog CPU, z wielowątkowym pomiarem ops/s i MiB/s; dodano osobny przycisk testu 1-wątkowego.
+- Każde uruchomienie CPU/RAM/GPU otrzymuje nowy test_id, czas rozpoczęcia/zakończenia, stan walidacji pomiaru i ścieżki raportu JSON/HTML.
+- CPU jest GOOD tylko gdy ma dodatnią liczbę operacji i ops/s; RAM tylko gdy ma dodatni bufor i zweryfikowane bajty; GPU tylko gdy ma klatki, FPS i renderer. Brak tych danych oznacza WARN, nigdy sztuczny PASS.
+- Świeży wynik jest umieszczany pod kluczami odczytywanymi przez główny ekran i zapisywany w historii. Stary wynik nie staje się automatycznie wynikiem nowego uruchomienia.

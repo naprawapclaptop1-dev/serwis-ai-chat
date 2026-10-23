@@ -5,7 +5,7 @@ import time as _u151_time
 import tkinter as _u151_tk
 from tkinter import messagebox as _u151_messagebox
 
-_U151_HARDWARE_RESULT_CONSOLE_VERSION = "1.2.0"
+_U151_HARDWARE_RESULT_CONSOLE_VERSION = "1.3.0"
 _U151_ORIGINAL_SHOW_MODULE = AppV43.show_module
 
 
@@ -252,7 +252,7 @@ def _u151_attach_console(app, module):
     controls = _u151_tk.Frame(frame, bg=t["panel"])
     controls.pack(fill="x", padx=8, pady=(0, 7))
     direct_labels = {
-        "CPU": "▶ START CPU 15 S",
+        "CPU": "▶ START CPU SHA-256 • MULTI 15 S",
         "RAM": "▶ START RAM 256 MB",
         "GPU": "▶ START GPU OPENGL 10 S",
     }
@@ -260,6 +260,12 @@ def _u151_attach_console(app, module):
         controls, direct_labels[module],
         lambda m=module: _u151_start_direct_test(app, m), "accent", side="left", ipady=3
     )
+    if module == "CPU":
+        app.make_button(
+            controls, "CPU • 1 WĄTEK 15 S",
+            lambda: _u151_start_direct_test(app, "CPU", cpu_mode="single"),
+            "card", side="left", ipady=3
+        )
     app.make_button(controls, "■ STOP TEST", lambda: _u151_stop_direct_test(app), "card", side="left", ipady=3)
     app.make_button(controls, f"KATALOG TESTÓW {module}", lambda m=module: _u93_show_catalog(app, m), "card", side="left", ipady=3)
     app.make_button(controls, "HISTORIA + PORÓWNANIE + CSV", lambda: _u149_show_history(app), "card", side="left", ipady=3)
@@ -367,8 +373,211 @@ def _u151_wrap_direct_module(name, module):
 
 
 
-def _u151_start_direct_test(app, module):
-    """Start an actual bounded CPU, RAM or OpenGL test from the visible component page."""
+
+def _u151_direct_measurement_valid(module, report):
+    """Require measured evidence before a direct hardware test can be marked GOOD."""
+    if not isinstance(report, dict) or not report:
+        return False
+    if module == "CPU":
+        operations = _u151_number(report.get("operations"))
+        rate = _u151_number(report.get("operations_per_second"))
+        return operations is not None and operations > 0 and rate is not None and rate > 0
+    if module == "RAM":
+        verified = _u151_number(report.get("bytes_verified"))
+        tested = _u151_number(report.get("tested_mb", report.get("size_mb", report.get("buffer_mb"))))
+        patterns = _u151_number(report.get("patterns_completed"))
+        return verified is not None and verified > 0 and tested is not None and tested > 0 and (patterns is None or patterns > 0)
+    if module == "GPU":
+        frames = _u151_number(report.get("frames"))
+        fps = _u151_number(report.get("average_fps", report.get("mean_fps")))
+        renderer = str(report.get("renderer") or "").strip()
+        return frames is not None and frames > 0 and fps is not None and fps > 0 and bool(renderer)
+    return False
+
+
+def _u151_normalize_direct_result(module, report, test_id, started_at, elapsed, stopped=False):
+    data = dict(report) if isinstance(report, dict) else {}
+    measured = _u151_direct_measurement_valid(module, data)
+    original_state = str(data.get("state") or "warn").strip().lower()
+    hard_fail = original_state in ("bad", "fail", "failed", "error")
+    stopped = bool(stopped or data.get("cancelled") or data.get("stopped") or data.get("stopped_by_user"))
+    if hard_fail:
+        final_state = "error" if original_state == "error" else "bad"
+    elif stopped:
+        final_state = "warn"
+    elif not measured:
+        final_state = "warn"
+    elif original_state in ("good", "pass", "ok", "completed", "success"):
+        final_state = "good"
+    else:
+        final_state = "warn"
+    finished = _u149_datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    data.update({
+        "app": "NAPRAWA PC HARDWARE TEST PRO",
+        "module": module,
+        "test_id": test_id,
+        "state": final_state,
+        "started_at": str(started_at),
+        "finished_at": str(data.get("finished_at") or finished),
+        "duration_seconds": round(max(0.001, float(elapsed or 0.001)), 2),
+        "measurement_verified": bool(measured),
+        "cancelled": bool(stopped),
+        "entry_point": "main-component-page",
+    })
+    if not measured and not data.get("error"):
+        data["measurement_warning"] = (
+            "Brak kompletnych, świeżych danych pomiarowych dla tego testu. "
+            "Nie oznaczono go jako PASS; sprawdź dziennik i sterowniki."
+        )
+    return data
+
+
+def _u151_run_direct_measurement(app, module, cpu_mode="multi"):
+    """Run the real engine, validate its evidence, then publish the same result to UI and local history."""
+    started_mono = _u151_time.perf_counter()
+    started_at = _u149_datetime.datetime.now().astimezone().isoformat(timespec="seconds")
+    stopped_before = bool(getattr(app, "stop_requested", False))
+    cpu_mode = "single" if str(cpu_mode).lower() == "single" else "multi"
+    settings = {"entry_point": "main-component-page"}
+    if module == "CPU":
+        kind = "cpu_single" if cpu_mode == "single" else "cpu_multi"
+        test_id = "CPU_DIRECT_SHA256_" + ("SINGLE" if cpu_mode == "single" else "MULTI")
+        settings.update({"duration": 15, "cpu_mode": cpu_mode, "algorithm": "SHA-256"})
+        app.queue_log("TEST CPU: rzeczywisty benchmark SHA-256, tryb " + cpu_mode + ", 15 s.")
+    elif module == "RAM":
+        kind = "ram_pattern"
+        test_id = "RAM_DIRECT_256MB"
+        settings.update({"memory_mb": 256, "test": "wzorce zapisu/odczytu/weryfikacji"})
+        app.queue_log("TEST RAM: rzeczywisty test wzorców i weryfikacji bufora 256 MB.")
+    else:
+        kind = "gpu_scene"
+        test_id = "GPU_DIRECT_OPENGL_SCENE_01"
+        settings.update({"scene_id": 1, "duration_seconds": 10, "renderer": "OpenGL"})
+        app.queue_log("TEST GPU: rzeczywista scena OpenGL 01, pomiar FPS przez 10 s.")
+
+    raw_result = None
+    error_text = None
+    try:
+        if module == "CPU":
+            engine = globals().get("_u145_cpu_benchmark")
+            if not callable(engine):
+                raise RuntimeError("Brak silnika rzeczywistego benchmarku CPU SHA-256.")
+            # This is the same measured engine used by the CPU catalog tests, not the old generic CPU-load button.
+            raw_result = engine(app, kind, {"duration": 15, "entry_point": "main-page", "cpu_mode": cpu_mode})
+        elif module == "RAM":
+            engine = getattr(app, "_ram_test", None)
+            if not callable(engine):
+                raise RuntimeError("Brak silnika rzeczywistego testu RAM.")
+            raw_result = engine(256)
+        else:
+            engine = globals().get("_u66_execute_gpu_scene")
+            if not callable(engine):
+                raise RuntimeError("Brak silnika renderera GPU/OpenGL.")
+            raw_result = engine(app, 1, 10)
+    except Exception as exc:
+        error_text = type(exc).__name__ + ": " + str(exc)
+        app.queue_log("TEST " + module + ": błąd rzeczywistego silnika: " + error_text)
+
+    elapsed = max(0.001, _u151_time.perf_counter() - started_mono)
+    if isinstance(raw_result, dict):
+        raw = dict(raw_result)
+    else:
+        raw = {
+            "state": "error" if error_text else "warn",
+            "message": "Silnik nie zwrócił świeżego słownika raportu; poprzedni raport nie został użyty.",
+        }
+        if error_text:
+            raw["error"] = error_text
+    result = _u151_normalize_direct_result(
+        module, raw, test_id, started_at, elapsed,
+        stopped=bool(getattr(app, "stop_requested", False)) or stopped_before,
+    )
+
+    # Persist JSON + HTML locally so the visible result, history and export use one report.
+    report_path = result.get("report_path")
+    html_path = result.get("html_report_path")
+    writer = globals().get("_u149_write_report")
+    if not report_path and callable(writer):
+        try:
+            saved = writer(module, test_id, result, settings=settings)
+            if saved:
+                report_path = str(saved)
+            html_path = result.get("html_report_path")
+        except Exception as exc:
+            result["report_save_error"] = type(exc).__name__ + ": " + str(exc)
+    if report_path:
+        result["report_path"] = str(report_path)
+    if html_path:
+        result["html_report_path"] = str(html_path)
+    if not report_path:
+        result.setdefault("report_save_error", "Raport nie został potwierdzony przez lokalny zapis JSON/HTML.")
+
+    # Publish the new measurement under the keys read by the existing CPU/RAM/GPU pages.
+    results = getattr(app, "results", None)
+    if not isinstance(results, dict):
+        results = {}
+        app.results = results
+    if module == "CPU":
+        keys = ("CPU_BENCHMARK", "CPU_HASH_BENCHMARK")
+    elif module == "RAM":
+        keys = ("RAM_BENCHMARK",)
+    else:
+        keys = ("3D_SCENE_1", "GPU_3D")
+    for key in keys:
+        results[key] = result
+        queue_results = getattr(app, "queue_results", None)
+        if callable(queue_results):
+            try:
+                queue_results(key, result)
+            except Exception as exc:
+                try:
+                    app.queue_log("Publikacja wyniku " + key + ": " + type(exc).__name__ + ": " + str(exc))
+                except Exception:
+                    pass
+    # Explicit final status for the workbench and main result panel.
+    state = str(result.get("state", "warn")).upper()
+    summary = _u151_report_summary(module, result, test_id)
+    lifecycle = "WYNIK TESTU • " + state + " • " + summary
+    try:
+        app._u151_direct_test_active = {
+            "module": module, "test_id": test_id, "state": state,
+            "started_at": started_at, "finished_at": result.get("finished_at"),
+            "report_path": result.get("report_path"), "html_report_path": result.get("html_report_path"),
+        }
+    except Exception:
+        pass
+    try:
+        app.queue_log(
+            "TEST " + module + " ZAKOŃCZONY: " + state + " • " + summary
+            + " • raport=" + str(result.get("html_report_path") or result.get("report_path") or "BRAK")
+        )
+    except Exception:
+        pass
+
+    def refresh_visible_results():
+        panel = getattr(app, "_u151_hardware_console", None)
+        if isinstance(panel, dict) and panel.get("module") == module:
+            try:
+                _u151_refresh_console(app, panel.get("token"))
+            except Exception:
+                pass
+        workbench = getattr(app, "_u153_component_workbench", None)
+        if isinstance(workbench, dict) and workbench.get("module") == module:
+            try:
+                _u153_workbench_tick(app, workbench.get("token"))
+            except Exception:
+                pass
+    try:
+        queue_action = getattr(app, "queue_action", None)
+        if callable(queue_action):
+            queue_action(refresh_visible_results)
+    except Exception:
+        pass
+    return result
+
+
+def _u151_start_direct_test(app, module, cpu_mode="multi"):
+    """Start a bounded real CPU SHA-256, RAM pattern, or OpenGL test from the component page."""
     module = _u151_module_key(module)
     if module not in ("CPU", "RAM", "GPU"):
         return False
@@ -379,16 +588,16 @@ def _u151_start_direct_test(app, module):
             parent=app,
         )
         return False
+    cpu_mode = "single" if str(cpu_mode).lower() == "single" else "multi"
     if module == "CPU":
-        test_fn = lambda: app._cpu_test(15)
-        label = "CPU SHA-256 — 15 sekund"
+        label = "CPU SHA-256 — " + ("1 wątek" if cpu_mode == "single" else "wielowątkowo") + " — 15 sekund"
+        test_id = "CPU_DIRECT_SHA256_" + ("SINGLE" if cpu_mode == "single" else "MULTI")
     elif module == "RAM":
-        test_fn = lambda: app._ram_test(256)
         label = "RAM — bufor 256 MB, zapis i weryfikacja wzorców"
+        test_id = "RAM_DIRECT_256MB"
     else:
-        # The real OpenGL renderer writes a JSON result and routes it back to GPU_3D/history.
-        test_fn = lambda: _u66_execute_gpu_scene(app, 1, 10)
         label = "GPU OpenGL — scena 01, 10 sekund"
+        test_id = "GPU_DIRECT_OPENGL_SCENE_01"
 
     worker = getattr(app, "worker", None)
     if not callable(worker):
@@ -399,15 +608,27 @@ def _u151_start_direct_test(app, module):
         )
         return False
     try:
-        try:
-            app.stop_requested = False
-        except Exception:
-            pass
+        app.stop_requested = False
+        app._u151_direct_test_active = {
+            "module": module, "test_id": test_id, "state": "STARTING",
+            "started_at": _u149_datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
+        }
+        panel = getattr(app, "_u151_hardware_console", None)
+        if isinstance(panel, dict) and panel.get("module") == module:
+            try:
+                summary = panel["summary"]
+                summary.configure(state="normal")
+                summary.delete("1.0", "end")
+                summary.insert("1.0", "STARTUJĘ RZECZYWISTY TEST • " + label + "\nOczekiwanie na pomiary i świeży raport; poprzedni wynik nie jest wynikiem nowego testu.")
+                summary.configure(state="disabled")
+                panel["last_text"] = None
+            except Exception:
+                pass
         try:
             app.queue_log("CENTRUM CPU/RAM/GPU: start — " + label)
         except Exception:
             pass
-        worker(test_fn)
+        worker(lambda: _u151_run_direct_measurement(app, module, cpu_mode))
         return True
     except Exception as exc:
         try:
@@ -440,7 +661,7 @@ def _u151_stop_direct_test(app):
 
 
 def _u151_selftest_hardware_result_console():
-    assert _U151_HARDWARE_RESULT_CONSOLE_VERSION == "1.2.0"
+    assert _U151_HARDWARE_RESULT_CONSOLE_VERSION == "1.3.0"
     assert _u151_module_key("PROCESOR / CPU") == "CPU"
     assert _u151_module_key("PAMIĘĆ RAM") == "RAM"
     assert _u151_module_key("KARTA GRAFICZNA / GPU") == "GPU"
@@ -474,28 +695,90 @@ def _u151_selftest_hardware_result_console():
             self.stop_requested = True
             self.pending = None
             self.calls = []
+            self.results = {}
         def worker(self, fn):
             self.pending = fn
         def _cpu_test(self, seconds):
-            self.calls.append(("CPU", seconds))
+            self.calls.append(("LEGACY_CPU", seconds))
         def _ram_test(self, size_mb):
-            self.calls.append(("RAM", size_mb))
+            self.calls.append(("RAM_ENGINE", size_mb))
+            return {"state": "good", "tested_mb": size_mb, "size_mb": size_mb,
+                    "patterns_completed": 26, "patterns_total": 26,
+                    "bytes_verified": size_mb * 1024 * 1024, "write_MiBps": 420.0,
+                    "verify_MiBps": 400.0, "message": "RAM pattern selftest"}
+        def queue_results(self, key, report):
+            self.results[key] = report
+            self.calls.append(("QUEUE_RESULT", key))
+        def queue_action(self, fn):
+            fn()
         def queue_log(self, text):
             self.calls.append(("LOG", text))
     fake = FakeDirectTestApp()
-    _original_gpu_scene = globals().get("_u66_execute_gpu_scene")
-    globals()["_u66_execute_gpu_scene"] = lambda app, scene, seconds: app.calls.append(("GPU", scene, seconds))
+    original_cpu_engine = globals().get("_u145_cpu_benchmark")
+    original_report_writer = globals().get("_u149_write_report")
+    original_gpu_scene = globals().get("_u66_execute_gpu_scene")
+    saved_reports = []
+    def fake_cpu_engine(app, kind, settings):
+        app.calls.append(("CPU_ENGINE", kind, dict(settings)))
+        return {"state": "good", "operations": 1200, "operations_per_second": 80.0,
+                "throughput_mib_s": 160.0, "workers": 4, "duration_seconds": 15.0,
+                "cpu_load_avg_percent": 82.0, "message": "CPU SHA-256 measurement"}
+    def fake_report_writer(module, test_id, report, base_dir=None, settings=None):
+        report.update({"report_path": "SELFTEST/" + test_id + ".json",
+                       "html_report_path": "SELFTEST/" + test_id + ".html",
+                       "created_at": "2026-10-23T12:00:00+00:00",
+                       "finished_at": "2026-10-23T12:00:15+00:00"})
+        saved_reports.append((module, test_id, dict(settings or {})))
+        return report["report_path"]
+    def fake_gpu_scene(app, scene, seconds):
+        app.calls.append(("GPU_ENGINE", scene, seconds))
+        return {"state": "good", "scene_id": scene, "average_fps": 61.5,
+                "peak_fps_1s": 75.0, "frames": 615, "renderer": "OpenGL selftest",
+                "duration_seconds": float(seconds)}
     try:
-        for module, expected in (("CPU", ("CPU", 15)), ("RAM", ("RAM", 256)), ("GPU", ("GPU", 1, 10))):
-            fake.pending = None
-            assert _u151_start_direct_test(fake, module), "direct test did not enqueue: " + module
-            assert callable(fake.pending), "test worker was not handed an executable job: " + module
-            fake.pending()
-            assert expected in fake.calls, "direct test route mismatch for " + module
-        assert fake.stop_requested is False, "starting a test should clear an old stop request"
+        globals()["_u145_cpu_benchmark"] = fake_cpu_engine
+        globals()["_u149_write_report"] = fake_report_writer
+        globals()["_u66_execute_gpu_scene"] = fake_gpu_scene
+        assert _u151_start_direct_test(fake, "CPU"), "multithread CPU test did not start"
+        assert callable(fake.pending), "CPU worker was not created"
+        fake.pending()
+        cpu_result = fake.results.get("CPU_BENCHMARK", {})
+        assert ("CPU_ENGINE", "cpu_multi", {"duration": 15, "entry_point": "main-page", "cpu_mode": "multi"}) in fake.calls, "main-page CPU route must call the real SHA-256 engine"
+        assert "LEGACY_CPU" not in [row[0] for row in fake.calls if row], "main-page CPU route still uses the generic legacy CPU test"
+        assert cpu_result.get("operations_per_second") == 80.0 and cpu_result.get("measurement_verified"), "CPU result did not map measured throughput"
+        assert cpu_result.get("report_path") == "SELFTEST/CPU_DIRECT_SHA256_MULTI.json", "CPU JSON/HTML report was not saved"
+        assert any(row[0] == "CPU" and row[1] == "CPU_DIRECT_SHA256_MULTI" for row in saved_reports), "CPU report missing from local history"
+        assert _u151_start_direct_test(fake, "CPU", cpu_mode="single"), "single-thread CPU test did not start"
+        fake.pending()
+        assert any(row[0] == "CPU_ENGINE" and row[1] == "cpu_single" for row in fake.calls), "single-thread CPU route did not select single-thread engine"
+        assert fake.results["CPU_BENCHMARK"].get("test_id") == "CPU_DIRECT_SHA256_SINGLE"
+        assert _u151_start_direct_test(fake, "RAM"), "RAM test did not start"
+        fake.pending()
+        ram_result = fake.results.get("RAM_BENCHMARK", {})
+        assert ("RAM_ENGINE", 256) in fake.calls, "RAM route did not call the real RAM engine"
+        assert ram_result.get("measurement_verified") and ram_result.get("bytes_verified") == 256 * 1024 * 1024, "RAM report missing verified byte count"
+        assert ram_result.get("report_path") == "SELFTEST/RAM_DIRECT_256MB.json", "RAM report was not saved"
+        assert _u151_start_direct_test(fake, "GPU"), "GPU test did not start"
+        fake.pending()
+        gpu_result = fake.results.get("GPU_3D", {})
+        assert ("GPU_ENGINE", 1, 10) in fake.calls, "GPU route did not call the real OpenGL renderer"
+        assert gpu_result.get("measurement_verified") and gpu_result.get("average_fps") == 61.5, "GPU FPS was not validated and published"
+        assert gpu_result.get("report_path") == "SELFTEST/GPU_DIRECT_OPENGL_SCENE_01.json", "GPU report was not saved"
+        assert fake.stop_requested is False, "starting any test should clear an old stop request"
+        assert len(saved_reports) == 4, "each direct CPU/RAM/GPU run should persist its own report"
     finally:
-        if _original_gpu_scene is not None:
-            globals()["_u66_execute_gpu_scene"] = _original_gpu_scene
+        if original_cpu_engine is None:
+            globals().pop("_u145_cpu_benchmark", None)
+        else:
+            globals()["_u145_cpu_benchmark"] = original_cpu_engine
+        if original_report_writer is None:
+            globals().pop("_u149_write_report", None)
+        else:
+            globals()["_u149_write_report"] = original_report_writer
+        if original_gpu_scene is None:
+            globals().pop("_u66_execute_gpu_scene", None)
+        else:
+            globals()["_u66_execute_gpu_scene"] = original_gpu_scene
     assert callable(AppV43.show_module)
     print("HARDWARE_RESULT_CONSOLE_SELFTEST_OK: live readings, visible direct CPU/RAM/GPU starters, STOP control, result/history mapping")
 
