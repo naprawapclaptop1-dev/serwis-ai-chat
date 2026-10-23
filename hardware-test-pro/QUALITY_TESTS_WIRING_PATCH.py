@@ -273,7 +273,7 @@ def _u147_selftest_quality_fixes():
     assert "_u147_safe_stage_update" in cpu_names and callable(_u147_safe_stage_update), "safe UI progress callback must be wired"
     core_update = globals().get("_U148_ORIGINAL_UPDATE_VIEW") or globals().get("_u146_update_view")
     core_update_code = getattr(core_update, "__code__", None)
-    core_update_names = set(core_update_code.co_names) if core_update_code is not None else set()
+    core_update_names = _u147_code_names_recursive(core_update_code) if core_update_code is not None else set()
     assert "_u146_cpu_progressbar" in core_update_names, "CPU progressbar is not updated by the central status updater"
     assert "_u146_cpu_progress_label" in core_update_names, "CPU progress label is not updated by the central status updater"
     assert getattr(AppV43._ram_test,"_u102_ram_guard",False)
