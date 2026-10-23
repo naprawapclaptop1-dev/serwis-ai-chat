@@ -261,3 +261,11 @@
 - [x] Dodano skróty do katalogu testów i historii/CSV; na świeżym uruchomieniu panel może odczytać ostatni raport lokalny.
 - [x] Przerwanie testu CPU jest rozpoznawane na podstawie rzeczywistego zdarzenia zatrzymania i nie daje fałszywego statusu sukcesu.
 - [ ] Na fizycznym PC sprawdzić panel podczas testu, po kliknięciu STOP oraz przy niedostępnych czujnikach.
+
+
+## Kandydat 4.3.151 — oddzielny GPU stress i niepowtarzalne symulatory
+- [x] Dodano ekran GPU FURMARK-STYLE STRESS z czasem, rozdzielczością, START/STOP, prawdziwym FPS i zapisem raportu.
+- [x] Ograniczono FurMark-style donut do sceny 01; pozostałe 109 scen nie otrzymują wspólnego overlay.
+- [x] Dodano osobne modele CPU, RAM, GPU, VRAM, dysku, ekranu, bezpieczeństwa, baterii, sieci, USB, audio, klawiatury i kamery.
+- [x] Zwykłe ekrany testów nie dostawiają już generycznego przycisku tego samego symulatora; wpisy rodzaju simulator otwierają właściwy model komponentu.
+- [ ] Windows CI musi zaliczyć nowy self-test. FPS/UAC/odczyt temperatur wymagają późniejszego sprawdzenia na fizycznym komputerze.

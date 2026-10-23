@@ -27,3 +27,9 @@ WYDANIE 4.3.150 — PANEL WYNIKÓW SPRZĘTOWYCH
 - Ekrany CPU/RAM/GPU pokazują osobno aktualny odczyt Windows oraz ostatni zakończony benchmark; dostępne są skróty do katalogu testów i historii/CSV.
 - RAM pokazuje faktyczny bufor, ukończone wzorce, bajty weryfikacji i MiB/s; GPU pokazuje FPS/klatki/renderer z raportu OpenGL; CPU pokazuje SHA-256/s i obciążenie testu.
 - N/D nie jest zastępowane sztucznym zerem. Anulowany test CPU jest raportowany jako ostrzeżenie, jeśli został przerwany.
+
+
+WYDANIE 4.3.151 — ODDZIELNY GPU STRESS I UNIKALNE SYMULATORY
+- GPU FURMARK-STYLE STRESS to osobny ekran z rzeczywistym FPS z renderera OpenGL i lokalnym raportem.
+- FurMark-style donut jest tylko na scenie 01; pozostałe 109 scen nie dostają nakładanego obiektu.
+- Każdy z 13 symulatorów ma oddzielny schemat komponentu. Powtarzający się przycisk ogólnego symulatora jest usuwany ze zwykłych ekranów testowych.

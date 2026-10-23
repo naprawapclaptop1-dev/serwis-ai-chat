@@ -140,3 +140,12 @@ Na ekranie głównym CPU, RAM i GPU widoczny jest panel, który co sekundę odś
 - GPU: bieżące obciążenie/temperatura/zegar tylko z dostępnych czujników oraz średni/peak FPS, wyrenderowane klatki i renderer ostatniej sceny OpenGL.
 Skróty prowadzą do katalogu testów i historii pomiarów/CSV. Po ponownym uruchomieniu panel może odczytać ostatni raport z lokalnej historii. Niewykonany benchmark jest opisany jako „NIE WYKONANO”; brak sensora pozostaje N/D.
 Test CPU po użyciu STOP kończy się ostrzeżeniem, jeśli pomiar został rzeczywiście przerwany; nie jest przedstawiany jako pełne zaliczenie.
+
+
+WYDANIE 4.3.151 — FURMARK-STYLE GPU STRESS I NIEPOWTARZALNE SYMULATORY
+----------------------------------------------------------------------
+- Osobny ekran GPU FURMARK-STYLE STRESS dostępny jest z centrum testów i ekranu GPU. Start uruchamia scenę OpenGL 01, pokazuje FPS zmierzony przez renderer oraz zapisuje raport JSON/HTML. Temperatura/obciążenie pozostają N/D, jeśli sterownik nie udostępnia czujnika.
+- Futrzasty donut FurMark-style jest zarezerwowany dla sceny 01; pozostałe 109 scen OpenGL zachowują swoje indywidualne geometrie bez wspólnego, powtarzanego obiektu.
+- Laboratorium zawiera 13 osobnych schematów: CPU, RAM, GPU, VRAM, SSD/NVMe, ekran, bezpieczeństwo, bateria, sieć, USB, audio, klawiatura i kamera.
+- Ogólny przycisk „UNIKALNA SCENA OPENGL / FPS” jest usuwany z ekranów zwykłych testów. Tylko pozycje symulatorów otwierają właściwy model podzespołu.
+- Nazwa FurMark-style oznacza autorski renderer OpenGL inspirowany testami obciążeniowymi; nie jest to oficjalny silnik FurMark 2.

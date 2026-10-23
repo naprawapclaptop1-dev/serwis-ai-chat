@@ -1926,6 +1926,60 @@ if (!$src.Contains("_U151_HARDWARE_RESULT_CONSOLE_VERSION") -or !$src.Contains("
     throw "CPU/RAM/GPU actual-result console integration failed."
 }
 
+# v4.3.151: dedicated GPU FurMark-style stress and 13 non-repeating component schematics.
+$gpuStart = $src.IndexOf("def _u114_gpu_benchmark_child(")
+$gpuEnd = if ($gpuStart -ge 0) { $src.IndexOf("_u37_gpu_benchmark_child=_u114_gpu_benchmark_child",$gpuStart) } else { -1 }
+if ($gpuStart -lt 0 -or $gpuEnd -le $gpuStart) { throw "Final OpenGL renderer not found for anti-duplicate scene fix." }
+$gpuFunction = $src.Substring($gpuStart,$gpuEnd-$gpuStart)
+$oldOverlay = @'
+            if sid!=1:
+                draw_scene_signature(elapsed)
+                # The scene-specific FurMark stress object is deliberately layered on top of
+                # each non-base layout; its seeded geometry differs for every scene ID.
+                _u119_draw_furmark(elapsed)
+'@
+if (!$gpuFunction.Contains($oldOverlay)) { throw "Could not locate the repeated FurMark overlay on the other 109 scenes." }
+$newOverlay = @'
+            if sid!=1:
+                draw_scene_signature(elapsed)
+'@
+$gpuFunction = $gpuFunction.Replace($oldOverlay,$newOverlay)
+$oldHairCount = '        _u119_hair_count=_u119_profile["hair_count"]'
+if (!$gpuFunction.Contains($oldHairCount)) { throw "FurMark hair-count setup not found." }
+$gpuFunction = $gpuFunction.Replace($oldHairCount,'        _u119_hair_count=_u119_profile["hair_count"] if sid == 1 else 0')
+$oldDrawBlock = @'
+            GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)
+            draw_scene(elapsed)
+'@
+$newDrawBlock = @'
+            GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)
+            if sid == 1:
+                GL.glScalef(2.1,2.1,2.1)
+            draw_scene(elapsed)
+'@
+if (!$gpuFunction.Contains($oldDrawBlock)) { throw "GPU scene camera/draw anchor missing." }
+$gpuFunction = $gpuFunction.Replace($oldDrawBlock,$newDrawBlock)
+$oldMetadata = '"furmark_overlay":True,"furmark_profile":_u119_profile,"furmark_hair_count":len(_u119_furmark_hairs),'
+$newMetadata = '"furmark_overlay":(sid==1),"furmark_profile":(_u119_profile if sid==1 else None),"furmark_hair_count":len(_u119_furmark_hairs),'
+if (!$gpuFunction.Contains($oldMetadata)) { throw "FurMark metadata anchor missing." }
+$gpuFunction = $gpuFunction.Replace($oldMetadata,$newMetadata)
+$src = $src.Substring(0,$gpuStart) + $gpuFunction + $src.Substring($gpuEnd)
+if ($src.Contains($oldOverlay.Trim())) { throw "Repeated FurMark overlay still appears in generated source." }
+
+$furmarkPatchPath = Join-Path $PSScriptRoot "FURMARK_UNIQUE_SIMULATORS_PATCH.py"
+if (!(Test-Path -LiteralPath $furmarkPatchPath)) { throw "Missing FurMark / unique simulators patch: $furmarkPatchPath" }
+$furmarkPatch = [IO.File]::ReadAllText($furmarkPatchPath,[Text.Encoding]::UTF8)
+# Correct a defensive closing-parenthesis typo before embedding and syntax-checking the patch.
+$badProgress = 'progress.configure(value=max(0.0,min(99.0,100.0*(_u152_time.monotonic()-started)/duration))'
+$goodProgress = 'progress.configure(value=max(0.0,min(99.0,100.0*(_u152_time.monotonic()-started)/duration)))'
+$furmarkPatch = $furmarkPatch.Replace($badProgress,$goodProgress)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $furmarkPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U152_FURMARK_UNIQUE_SIMULATORS_VERSION") -or !$src.Contains("FURMARK_AND_UNIQUE_SIMULATORS_SELFTEST_OK") -or !$src.Contains("FURMARK_STYLE_GPU_STRESS") -or !$src.Contains("13 UNIKALNYCH SYMULATORÓW")) {
+    throw "FurMark stress page / 13 unique simulators were not integrated."
+}
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
