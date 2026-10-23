@@ -5,7 +5,7 @@ import hashlib as _u153_hashlib
 import tkinter as _u153_tk
 from tkinter import ttk as _u153_ttk
 
-_U153_COMPONENT_TEST_WORKBENCH_VERSION = "1.2.0"
+_U153_COMPONENT_TEST_WORKBENCH_VERSION = "1.3.0"
 _U153_ORIGINAL_SHOW_TEST_DETAIL = AppV43.show_test_detail
 _U153_ORIGINAL_UPDATE_VIEW = _u146_update_view
 _U153_ORIGINAL_QUEUE_PANEL = _u145_queue_panel
@@ -34,12 +34,31 @@ def _u153_module(value):
     return ""
 
 
-def _u153_result_keys(module):
-    return {
+def _u153_result_keys(module, app=None):
+    key = _u153_module(module)
+    keys = {
         "CPU": ("CPU_BENCHMARK", "CPU_HASH_BENCHMARK", "CPU_LOAD_BENCHMARK", "CPU"),
         "RAM": ("RAM_BENCHMARK", "RAM"),
         "GPU": ("GPU_3D", "3D_SUITE", "GPU_WINSAT", "GPU"),
-    }.get(_u153_module(module), ())
+    }.get(key, ())
+    # Some real OpenGL handlers publish scene-specific keys (3D_SCENE_1..110).
+    # Include those keys in the baseline and fresh-result scan so the workbench
+    # does not wait forever for GPU_3D when a renderer only wrote its scene report.
+    results = getattr(app, "results", {}) if app is not None else {}
+    if key == "GPU" and isinstance(results, dict):
+        dynamic = []
+        for result_key, payload in results.items():
+            text_key = str(result_key)
+            if not isinstance(payload, dict) or not payload:
+                continue
+            for prefix in ("3D_SCENE_", "GPU_SCENE_"):
+                suffix = text_key[len(prefix):] if text_key.startswith(prefix) else ""
+                if suffix.isdigit():
+                    dynamic.append(text_key)
+                    break
+        dynamic.sort(key=lambda item: int(item.rsplit("_", 1)[-1]))
+        keys = tuple(keys) + tuple(dynamic)
+    return tuple(dict.fromkeys(keys))
 
 
 def _u153_result_signature(value):
@@ -55,7 +74,7 @@ def _u153_capture_result_ids(app, module):
     if not isinstance(results, dict):
         results = {}
     baseline = {}
-    for key in _u153_result_keys(module):
+    for key in _u153_result_keys(module, app):
         value = results.get(key)
         baseline[key] = {
             "id": id(value),
@@ -539,7 +558,7 @@ def _u153_show_test_detail(app, module, test_id):
 
 
 def _u153_selftest_component_test_workbench():
-    assert _U153_COMPONENT_TEST_WORKBENCH_VERSION == "1.2.0"
+    assert _U153_COMPONENT_TEST_WORKBENCH_VERSION == "1.3.0"
     assert _u153_module("Procesor / CPU") == "CPU"
     assert _u153_module("Pamięć RAM") == "RAM"
     assert _u153_module("Karta graficzna / GPU") == "GPU"
@@ -548,6 +567,16 @@ def _u153_selftest_component_test_workbench():
     assert _u153_result_keys("CPU")[0] == "CPU_BENCHMARK"
     assert _u153_result_keys("RAM")[0] == "RAM_BENCHMARK"
     assert _u153_result_keys("GPU")[0] == "GPU_3D"
+    gpu_fake = type("FakeGPUApp", (), {"results": {"3D_SCENE_17": {"state": "good", "average_fps": 20.0}}})()
+    gpu_baseline = _u153_capture_result_ids(gpu_fake, "GPU")
+    gpu_fake.results["3D_SCENE_17"] = {"state": "good", "average_fps": 67.5, "finished_at": "2026-10-23T15:08:00+00:00"}
+    gpu_fresh, gpu_key = _u153_get_fresh_result(gpu_fake, "GPU", gpu_baseline)
+    assert gpu_key == "3D_SCENE_17" and gpu_fresh and gpu_fresh["average_fps"] == 67.5, "GPU workbench did not detect a fresh scene-specific report"
+    gpu_new_fake = type("FakeGPUApp", (), {"results": {}})()
+    gpu_new_baseline = _u153_capture_result_ids(gpu_new_fake, "GPU")
+    gpu_new_fake.results["3D_SCENE_1"] = {"state": "good", "average_fps": 52.0}
+    gpu_new_fresh, gpu_new_key = _u153_get_fresh_result(gpu_new_fake, "GPU", gpu_new_baseline)
+    assert gpu_new_key == "3D_SCENE_1" and gpu_new_fresh and gpu_new_fresh["average_fps"] == 52.0, "GPU workbench missed a newly-created scene result"
     assert _u153_elapsed_percent("CPU", 7.5) in (49, 50)
     assert _u153_elapsed_percent("RAM", 10) == 99 and _u153_elapsed_percent("GPU", 30) == 99
     prior = {"CPU_BENCHMARK": {"state": "good"}, "CPU": {"state": "good"}}

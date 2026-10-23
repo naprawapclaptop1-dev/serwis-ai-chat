@@ -224,3 +224,11 @@ Panel rzeczywistego testu przejmuje teraz także uruchomienie rozpoczęte przez 
 PANEL WYNIKÓW NA GŁÓWNYCH EKRANACH CPU / RAM / GPU
 --------------------------------------------------
 W wydaniu 4.3.160 panel rzeczywistego testu jest dołączony bezpośrednio do głównych stron CPU, RAM i GPU oraz do widoków szczegółowych 3D. Śledzi test uruchomiony własnym przyciskiem panelu albo istniejącym przyciskiem strony, zapamiętuje punkt odniesienia przed startem i pokazuje tylko nowy raport z tego przebiegu. Puste „WYNIK TESTU” sprzed pomiaru nie jest uznawane za jego rezultat.
+
+
+RAPORT GPU Z GŁÓWNEJ STRONY — POPRAWKA 4.3.160
+------------------------------------------------
+- Wynik renderera OpenGL jest publikowany zarówno pod kluczem sceny `3D_SCENE_N`, jak i pod `GPU_3D`, z czasem zakończenia, prawdziwym FPS i ścieżką lokalnego raportu.
+- START GPU na głównej stronie zapisuje raport JSON/HTML przez ten sam mechanizm historii co pozostałe testy. Etapy profilu złożonego nie zapisują duplikatu poza własnym raportem etapowym.
+- Workbench i konsola głównej strony potrafią też odczytać raporty pod starymi kluczami `3D_SCENE_N`, więc nie czekają na klucz `GPU_3D`, którego starszy renderer nie ustawiał.
+- Testy regresyjne sprawdzają nowe i zaktualizowane klucze scen GPU, odtworzenie wyniku po ponownym otwarciu ekranu i uruchomienie/załączenie workbencha na CPU, RAM oraz GPU.

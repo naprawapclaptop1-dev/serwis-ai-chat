@@ -1,13 +1,14 @@
 import os as _u145_os
 import sys as _u145_sys
 import time as _u145_time
+import datetime as _u145_datetime
 import math as _u145_math
 import threading as _u145_threading
 import hashlib as _u145_hashlib
 import tkinter as _u145_tk
 from tkinter import ttk as _u145_ttk
 
-_U145_CPU_RAM_GPU_PATCH_VERSION = "1.0.1"
+_U145_CPU_RAM_GPU_PATCH_VERSION = "1.0.2"
 _U145_ORIGINAL_SHOW_TEST_DETAIL = _u93_show_test_detail
 _U145_ORIGINAL_EXECUTE_CATALOG_TEST = _u93_execute_catalog_test
 _U145_ORIGINAL_RAM_PROGRESS_UPDATE = globals().get("_u102_ram_progress_update")
@@ -293,6 +294,37 @@ def _u145_execute_gpu_scene(app,scene_id,seconds=5):
         if suite or "3D" in str(getattr(app,"current_view","")).upper():_u145_studio_status(app,headline)
     thread.join()
     result=holder.get("result") or {"state":"warn","scene_id":int(scene_id),"error":"Brak raportu renderera."}
+    if not isinstance(result,dict):
+        result={"state":"warn","scene_id":int(scene_id),"error":"Renderer nie zwrócił słownika raportu."}
+    scene_id=int(scene_id)
+    scene_key="3D_SCENE_"+str(scene_id)
+    result.setdefault("scene_id",scene_id)
+    result.setdefault("test_id",scene_key)
+    result.setdefault("finished_at",_u145_datetime.datetime.now().astimezone().isoformat(timespec="seconds"))
+    # The legacy renderer returns/stores results under 3D_SCENE_N. Main screens and
+    # report workbench also consume GPU_3D, so map the same real result to both keys.
+    # Keep the same dictionary object so queued UI callbacks and history share metadata.
+    try:
+        results=getattr(app,"results",None)
+        if not isinstance(results,dict):
+            results={}
+            app.results=results
+        results[scene_key]=result
+        results["GPU_3D"]=result
+    except Exception as exc:
+        try:app.queue_log("GPU report handoff: "+type(exc).__name__+": "+str(exc))
+        except Exception:pass
+    # Direct starts from the main GPU page bypass the catalog wrapper; persist them too.
+    # A selected multi-stage profile persists each scene in its own profile stage instead.
+    try:
+        profile_getter=globals().get("_u154_profile_active")
+        profile_state=profile_getter(app) if callable(profile_getter) else None
+        writer=globals().get("_u149_write_report")
+        if not result.get("report_path") and not profile_state and callable(writer):
+            writer("GPU",scene_key,result,settings={"scene_id":scene_id,"duration_seconds":int(seconds or 5)})
+    except Exception as exc:
+        try:app.queue_log("GPU report save: "+type(exc).__name__+": "+str(exc))
+        except Exception:pass
     snap=_u145_snapshot(app);metrics=_u145_metric_values("GPU","gpu_scene",snap,{},result)
     state=str(result.get("state","warn")).lower()
     headline=f"GPU scena {scene_id}: {state.upper()} • średnio {metrics['v2']} • peak {metrics['v3']} • {str(result.get('renderer') or result.get('error') or 'N/D')[:90]}"
@@ -334,7 +366,7 @@ def _u145_execute_catalog_test(app,module,test_id,kind,settings):
     return result
 
 def _u145_selftest_cpu_ram_gpu():
-    assert _U145_CPU_RAM_GPU_PATCH_VERSION=="1.0.1"
+    assert _U145_CPU_RAM_GPU_PATCH_VERSION=="1.0.2"
     assert "is_set" in _u145_cpu_benchmark.__code__.co_names, "CPU stop state must reflect the actual halt event"
     assert callable(_u145_snapshot) and callable(_u145_cpu_benchmark) and callable(_u145_show_test_detail)
     assert callable(_u145_execute_catalog_test) and callable(_u145_execute_gpu_scene) and callable(_u145_ram_progress_update)
@@ -347,7 +379,43 @@ def _u145_selftest_cpu_ram_gpu():
     assert "_U145_ORIGINAL_EXECUTE_CATALOG_TEST" in _u145_execute_catalog_test.__code__.co_names
     assert "_U145_ORIGINAL_SHOW_TEST_DETAIL" in _u145_show_test_detail.__code__.co_names
     assert "SHA-256" in _u145_cpu_benchmark.__code__.co_consts
-    print("CPU_RAM_GPU_LIVE_SELFTEST_OK: CPU utilization/throughput, live RAM pattern progress and GPU OpenGL FPS/result mapping")
+    # Regression: a real GPU renderer result must become available under both the
+    # scene key and GPU_3D, and main-page starts must save one JSON/HTML report.
+    original_scene=globals().get("_U145_ORIGINAL_GPU_SCENE")
+    original_writer=globals().get("_u149_write_report")
+    class _U145FakeGpuApp:
+        def __init__(self):
+            self.results={}
+            self.logs=[]
+            self.status=[]
+        def queue_action(self,fn):
+            fn()
+        def queue_status(self,value):
+            self.status.append(str(value))
+        def queue_log(self,value):
+            self.logs.append(str(value))
+    def _u145_fake_scene(app,scene_id,seconds):
+        return {"state":"good","scene_id":scene_id,"average_fps":42.5,"peak_fps_1s":51.2,
+                "frames":120,"renderer":"selftest OpenGL","duration_seconds":float(seconds)}
+    def _u145_fake_writer(module,test_id,report,base_dir=None,settings=None):
+        report.update({"module":module,"test_id":test_id,
+                       "report_path":"SELFTEST/"+test_id+".json",
+                       "html_report_path":"SELFTEST/"+test_id+".html"})
+        return report["report_path"]
+    try:
+        globals()["_U145_ORIGINAL_GPU_SCENE"]=_u145_fake_scene
+        globals()["_u149_write_report"]=_u145_fake_writer
+        fake_app=_U145FakeGpuApp()
+        mapped=_u145_execute_gpu_scene(fake_app,7,1)
+        assert fake_app.results.get("3D_SCENE_7") is mapped, "GPU renderer result did not reach its per-scene result key"
+        assert fake_app.results.get("GPU_3D") is mapped, "GPU renderer result did not reach the main-page result key"
+        assert mapped.get("average_fps")==42.5 and mapped.get("finished_at"), "GPU report lacks actual FPS or completion timestamp"
+        assert mapped.get("report_path")=="SELFTEST/3D_SCENE_7.json", "direct GPU test did not save a history report"
+    finally:
+        if original_scene is not None:globals()["_U145_ORIGINAL_GPU_SCENE"]=original_scene
+        if original_writer is None:globals().pop("_u149_write_report",None)
+        else:globals()["_u149_write_report"]=original_writer
+    print("CPU_RAM_GPU_LIVE_SELFTEST_OK: CPU utilization/throughput, RAM progress, GPU FPS handoff to main page, timestamps and local history")
 
 _u93_show_test_detail=_u145_show_test_detail
 _u93_execute_catalog_test=_u145_execute_catalog_test

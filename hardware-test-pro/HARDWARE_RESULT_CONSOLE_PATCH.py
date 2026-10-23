@@ -5,7 +5,7 @@ import time as _u151_time
 import tkinter as _u151_tk
 from tkinter import messagebox as _u151_messagebox
 
-_U151_HARDWARE_RESULT_CONSOLE_VERSION = "1.1.0"
+_U151_HARDWARE_RESULT_CONSOLE_VERSION = "1.2.0"
 _U151_ORIGINAL_SHOW_MODULE = AppV43.show_module
 
 
@@ -38,6 +38,19 @@ def _u151_last_result(app, module):
         "RAM": ("RAM_BENCHMARK",),
         "GPU": ("GPU_3D", "3D_SUITE"),
     }.get(module, ())
+    if module == "GPU":
+        dynamic = []
+        for result_key, payload in results.items():
+            text_key = str(result_key)
+            if not isinstance(payload, dict) or not payload:
+                continue
+            for prefix in ("3D_SCENE_", "GPU_SCENE_"):
+                suffix = text_key[len(prefix):] if text_key.startswith(prefix) else ""
+                if suffix.isdigit():
+                    dynamic.append(text_key)
+                    break
+        dynamic.sort(key=lambda item: int(item.rsplit("_", 1)[-1]))
+        keys = tuple(keys) + tuple(dynamic)
     candidates = []
     for rank, key in enumerate(keys):
         item = results.get(key)
@@ -427,7 +440,7 @@ def _u151_stop_direct_test(app):
 
 
 def _u151_selftest_hardware_result_console():
-    assert _U151_HARDWARE_RESULT_CONSOLE_VERSION == "1.1.0"
+    assert _U151_HARDWARE_RESULT_CONSOLE_VERSION == "1.2.0"
     assert _u151_module_key("PROCESOR / CPU") == "CPU"
     assert _u151_module_key("PAMIĘĆ RAM") == "RAM"
     assert _u151_module_key("KARTA GRAFICZNA / GPU") == "GPU"
@@ -446,6 +459,11 @@ def _u151_selftest_hardware_result_console():
     gpu_rows = _u151_metric_rows("GPU", {"gpu_load_percent": None, "gpu_temp_c": None, "gpu_clock_mhz": None}, gpu)
     assert gpu_rows[3][1] == 61.25 and gpu_rows[4][1] == 75.0 and gpu_rows[5][1] == 300
     assert "NIE WYKONANO" in _u151_report_summary("RAM", {}) and _u151_format_metric(None, "°C") == "N/D"
+    scene_app = type("FakeGPUHistoryApp", (), {"results": {
+        "3D_SCENE_17": {"state": "good", "average_fps": 81.5, "finished_at": "2026-10-23T15:08:00+00:00"}
+    }})()
+    scene_result, scene_key = _u151_last_result(scene_app, "GPU")
+    assert scene_key == "3D_SCENE_17" and scene_result.get("average_fps") == 81.5, "main GPU console did not restore the latest scene-specific result"
     assert callable(_u151_attach_console) and callable(_u151_refresh_console) and callable(_u151_last_result)
     assert callable(_u151_start_direct_test) and callable(_u151_stop_direct_test)
     assert "direct_labels" in _u151_attach_console.__code__.co_varnames

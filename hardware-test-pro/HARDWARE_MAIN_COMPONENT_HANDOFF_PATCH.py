@@ -36,6 +36,7 @@ AppV43.show_module = _u160_show_module_with_execution_workbench
 
 
 def _u160_selftest_main_component_handoff():
+    global _U160_ORIGINAL_SHOW_MODULE
     assert _U160_MAIN_COMPONENT_HANDOFF_VERSION == "1.0.0"
     assert _u160_main_module_key("CPU — PROCESOR") == "CPU"
     assert _u160_main_module_key("RAM — PAMIĘĆ") == "RAM"

@@ -1,9 +1,10 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online:** 4.3.157 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256 instalatora.
-**Kandydat następny:** profile rzeczywistego benchmarku CPU+RAM+GPU: SZYBKI, STANDARD i ROZSZERZONY, z kontrolowanym STOP oraz jednym raportem JSON/HTML/CSV. Kandydat staje się stable dopiero po Windows CI, kompilacji EXE/Setup i publikacji manifestu.
-**PC fizyczny:** odczyty czujników, limity pamięci i FPS OpenGL wymagają potwierdzenia na rzeczywistym sprzęcie.
-**Parytet źródeł:** dołączenie System Repair PRO 5.6.16 nie oznacza zgodności 1:1 ze starszym archiwum 5.6.25; pełny Serwis Ultimate 1.15.3 wymaga osobnego porównania.
+**Stable online:** 4.3.159 — Setup x64 i All-in-One ZIP opublikowane; `latest.json` zawiera SHA-256 instalatora.
+**Kandydat 4.3.160:** rzeczywisty workbench bezpośrednio na głównych ekranach CPU/RAM/GPU; naprawiony test wiązania ekranu; wynik OpenGL trafia do klucza głównego `GPU_3D`, do historii JSON/HTML i do odświeżonego panelu.
+**Wymagane przez Windows CI:** wszystkie testy istniejące + rzeczywisty test wywołania handoff CPU/RAM/GPU, zapis/mapowanie raportu GPU i odczyt nowego `3D_SCENE_N` bez przykładowych wyników. Stable zmienia się dopiero po zbudowaniu EXE, Setup.exe, weryfikacji ZIP i aktualizacji manifestu.
+**PC fizyczny:** temperatury i limity sprzętowe zależą od czujników/sterowników; N/D nie jest PASS.
+**Parytet źródeł:** pełny System Repair PRO 5.6.16 jest dołączony; zgodność 1:1 ze starszym archiwum 5.6.25 oraz Serwis Ultimate 1.15.3 wymaga osobnego porównania.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -321,3 +322,12 @@
 - [x] Panel śledzi też uruchomienie pierwotnym przyciskiem strony, z punktem odniesienia sprzed testu.
 - [x] Dodano selftest main-component handoff i włączono go do Windows CI.
 - [ ] Publikacja do stable nastąpi dopiero po przejściu Windows CI i potwierdzeniu nowego latest.json.
+
+
+## Kandydat 4.3.160 — ekran główny i zwrot wyników testu
+- [x] Główne ekrany CPU/RAM/GPU wywołują workbench rzeczywistego testu z istniejącymi przyciskami strony.
+- [x] GPU OpenGL ma wspólny raport `GPU_3D` plus szczegółowy `3D_SCENE_N`; wynik zawiera FPS, renderer, czas zakończenia i ścieżkę raportu.
+- [x] Pojedynczy test GPU z głównej strony zapisuje lokalną historię bez dublowania zapisów w profilu CPU+RAM+GPU.
+- [x] Workbench oraz konsola wyniku odtwarzają i porównują dynamiczne klucze scen OpenGL.
+- [x] Selftest sprawdza bezpośrednie wywołanie workbencha na CPU, RAM i GPU, świeży raport z klucza sceny, zapis historii i przywrócenie wyniku.
+- [ ] Po publikacji: potwierdzić instalację i działanie na fizycznym PC, zwłaszcza sterownik OpenGL, sensory CPU/GPU i zachowanie UAC.
