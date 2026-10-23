@@ -1949,16 +1949,14 @@ if (!$gpuFunction.Contains($oldHairCount)) { throw "FurMark hair-count setup not
 $gpuFunction = $gpuFunction.Replace($oldHairCount,'        _u119_hair_count=_u119_profile["hair_count"] if sid == 1 else 0')
 $oldDrawBlock = @'
             GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)
-            if sid == 1:
-                GL.glScalef(2.1,2.1,2.1)
-            else:
-                GL.glScalef(1.35,1.35,1.35)
             draw_scene(elapsed)
 '@
 $newDrawBlock = @'
             GL.glRotatef(9.0+5.0*_u114_math.sin(elapsed*.7),1,0,0)
             if sid == 1:
                 GL.glScalef(2.1,2.1,2.1)
+            else:
+                GL.glScalef(1.35,1.35,1.35)
             draw_scene(elapsed)
 '@
 if (!$gpuFunction.Contains($oldDrawBlock)) { throw "GPU scene camera/draw anchor missing." }
