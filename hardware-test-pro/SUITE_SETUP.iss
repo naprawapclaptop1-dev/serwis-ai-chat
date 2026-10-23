@@ -75,9 +75,10 @@ begin
   WizardForm.WelcomeLabel2.Caption :=
     'Zainstaluj centrum diagnostyki CPU, RAM, GPU i dyskow oraz zintegrowane narzedzia serwisowe.' + #13#10 + #13#10 +
     'Kreator przygotuje program w katalogu aplikacji. Ustawienia i lokalne raporty pozostaja na komputerze.';
-  WizardForm.ReadyLabel1.Caption := 'Wszystko jest gotowe do instalacji.';
-  WizardForm.ReadyLabel2.Caption :=
-    'Kliknij Instaluj, aby skopiowac Hardware Test PRO oraz dolaczone moduly System Repair PRO.';
+  WizardForm.ReadyLabel.Caption := 'Wszystko jest gotowe do instalacji.';
+  WizardForm.ReadyMemo.Lines.Clear;
+  WizardForm.ReadyMemo.Lines.Add('Instalacja obejmie Hardware Test PRO oraz dolaczone moduly System Repair PRO.');
+  WizardForm.ReadyMemo.Lines.Add('Ustawienia i lokalne raporty pozostaja na komputerze.');
   WizardForm.FinishedHeadingLabel.Caption := 'Instalacja zakonczona';
   WizardForm.FinishedLabel.Caption :=
     'NAPRAWA PC HARDWARE TEST PRO zostal zainstalowany.' + #13#10 + #13#10 +

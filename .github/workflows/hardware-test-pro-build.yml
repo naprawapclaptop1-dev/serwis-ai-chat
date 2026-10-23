@@ -238,9 +238,16 @@ jobs:
             'WizardBackImageFile=installer-wizard-background.bmp',
             'WizardImageFile=installer-wizard-left.bmp',
             'WizardSmallImageFile=installer-wizard-small.bmp',
-            'procedure InitializeWizard'
+            'procedure InitializeWizard',
+            'WizardForm.ReadyLabel.Caption',
+            'WizardForm.ReadyMemo.Lines.Clear',
+            'WizardForm.ReadyMemo.Lines.Add',
+            'WizardForm.FinishedHeadingLabel.Caption'
           )) {
             if (!$iss.Contains($marker)) { throw "Branded wizard configuration missing: $marker" }
+          }
+          if ($iss -match 'WizardForm\.ReadyLabel[12]\.Caption' -or $iss -match 'WizardForm\.ReadyLabel2') {
+            throw "Unsupported Ready-page object name found; use WizardForm.ReadyLabel and WizardForm.ReadyMemo."
           }
           $images = @(
             @{ Path = ".\installer-wizard-background.bmp"; MinWidth = 800; MinHeight = 500 },
