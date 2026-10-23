@@ -1,8 +1,8 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online:** 4.3.151 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256 instalatora.
-**Kandydat 4.3.152:** główny benchmark CPU ma mierzyć rzeczywistą przepustowość SHA-256; wynik pojedynczej sceny OpenGL ma trafiać do głównego panelu GPU; workbench zapisuje raporty JSON+HTML, historię lokalną i eksport CSV. Windows CI musi zaliczyć testy przed publikacją.
-**PC fizyczny:** odczyty czujników i FPS OpenGL wymagają potwierdzenia na rzeczywistym sprzęcie.
+**Stable online:** 4.3.157 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256 instalatora.
+**Kandydat następny:** profile rzeczywistego benchmarku CPU+RAM+GPU: SZYBKI, STANDARD i ROZSZERZONY, z kontrolowanym STOP oraz jednym raportem JSON/HTML/CSV. Kandydat staje się stable dopiero po Windows CI, kompilacji EXE/Setup i publikacji manifestu.
+**PC fizyczny:** odczyty czujników, limity pamięci i FPS OpenGL wymagają potwierdzenia na rzeczywistym sprzęcie.
 **Parytet źródeł:** dołączenie System Repair PRO 5.6.16 nie oznacza zgodności 1:1 ze starszym archiwum 5.6.25; pełny Serwis Ultimate 1.15.3 wymaga osobnego porównania.
 
 ## Statusy — jak czytać listę
@@ -291,3 +291,12 @@
 - [x] Ekran zachowuje stan STARTUJĘ/OCZEKIWANIE/SAVING przez ograniczony czas; nie usuwa aktywnego testu przy pierwszym odczycie `running=False`.
 - [x] Windows CI sprawdza świeży raport, fallback i fazy cyklu pracy testu.
 - [ ] Po instalacji 4.3.157 na fizycznym komputerze należy powtórzyć CPU 15 s, RAM 256 MB i GPU OpenGL 10 s, sprawdzić wartości i zapisać raport.
+
+
+## Następny kandydat — profile testów CPU/RAM/GPU
+- [x] Dodano wybór profilu SZYBKI / STANDARD / ROZSZERZONY na ekranie TESTY i ekranach CPU/RAM/GPU.
+- [x] Profil uruchamia rzeczywiste handlery CPU SHA-256, testu zapisu/weryfikacji bufora RAM oraz oddzielnych scen OpenGL; nie zalicza testu na podstawie animacji.
+- [x] Połączony raport przechowuje etap, status, faktyczny czas, ustawienia, wynik GPU i ścieżki raportów; zapisuje JSON + HTML + CSV.
+- [x] STOP przekazuje sygnał do bieżącego handlera i zatrzymuje rozpoczęcie kolejnych etapów.
+- [ ] Windows CI musi zaliczyć selftest profili i pełny build instalatora.
+- [ ] Na fizycznym PC potwierdzić pomiar CPU/RAM/GPU oraz zakończenie/STOP przy prawdziwych sterownikach.

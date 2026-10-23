@@ -41,3 +41,11 @@ WYDANIE 4.3.153 — RZECZYWISTE TESTY NA GŁÓWNYCH EKRANACH
 - GPU: rzeczywiste renderowanie OpenGL, FPS/renderer/rozdzielczość wracają do głównego panelu; test FurMark-style jest oddzielną opcją.
 - Raporty każdego modułu są zapisywane lokalnie jako JSON+HTML; dostępna jest historia i eksport CSV.
 - Testy nie fabrykują wyników z przykładowych danych; nieudany start, anulowanie i brak czujnika nie są traktowane jako pełny PASS.
+
+
+NOWE: PROFILE RZECZYWISTEGO BENCHMARKU CPU + RAM + GPU
+- SZYBKI: wieloetapowy CPU SHA-256 15 s, test wzorców RAM 256 MB i jedna scena OpenGL 10 s.
+- STANDARD: CPU 60 s, RAM 512 MB i trzy różne sceny OpenGL 10 s.
+- ROZSZERZONY: CPU 180 s, RAM do 1024 MB i sześć odrębnych scen OpenGL 15 s.
+- Połączony raport JSON/HTML/CSV zawiera status i czas każdego etapu; zbiorczy PASS jest możliwy wyłącznie, gdy każdy etap zwróci prawidłowy stan GOOD.
+- STOP blokuje kolejne etapy i nie zamienia przerwanego testu w sukces. Pomiar RAM dotyczy bufora przydzielonego przez proces, a FPS tylko faktycznie wyrenderowanych scen.

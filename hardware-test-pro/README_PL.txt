@@ -197,3 +197,14 @@ NAPRAWA TESTÓW CPU / RAM / GPU — CYKL RAPORTU (4.3.157)
 - Końcowy raport przekazany przez callback UI jest awaryjnym źródłem, jeżeli zapisywanie do tabeli wyników opóźni się.
 - Wprowadzono ograniczony czas startu i finalizacji raportu. Po jego upływie program jasno pokazuje brak raportu zamiast używać starego wyniku.
 - Windows CI ma regresyjne testy modyfikacji in-place, fallback raportu, fazy startu, zapisu końcowego i timeoutu.
+
+
+PROFILE RZECZYWISTEGO BENCHMARKU CPU + RAM + GPU
+------------------------------------------------
+Na ekranie TESTY oraz na ekranach CPU/RAM/GPU i szczegółach katalogu dostępne jest wspólne centrum profili:
+- SZYBKI: CPU 15 s (pięć etapów obciążenia), zapis/weryfikacja bufora RAM 256 MB i jedna scena OpenGL 10 s.
+- STANDARD: CPU 60 s, RAM 512 MB i trzy różne sceny OpenGL po 10 s.
+- ROZSZERZONY: CPU 180 s, RAM do 1024 MB oraz sześć różnych scen OpenGL po 15 s.
+Profil uruchamia istniejące funkcje diagnostyczne i zapisuje połączony raport JSON + HTML + CSV w %LOCALAPPDATA%\NaprawaPC\Raporty\HardwareProfiles.
+STOP zatrzymuje bieżący test w sposób kontrolowany i blokuje uruchamianie kolejnych etapów. Raport wskazuje faktycznie sprawdzony bufor RAM, stan każdego testu, rzeczywiste FPS z OpenGL i ścieżki szczegółowych raportów.
+To nie jest test każdej fizycznej komórki RAM ani test FPS w konkretnej grze. Wynik WARN/ERROR pozostaje widoczny; brak sensora ani brak raportu nie są uznawane za PASS.

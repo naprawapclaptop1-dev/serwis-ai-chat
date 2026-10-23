@@ -1992,6 +1992,17 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
 if (!$src.Contains("_U153_COMPONENT_TEST_WORKBENCH_VERSION") -or !$src.Contains("COMPONENT_TEST_WORKBENCH_SELFTEST_OK") -or !$src.Contains("START RZECZYWISTEGO TESTU") -or !$src.Contains("BRAK NOWEGO RAPORTU")) {
     throw "CPU/RAM/GPU test workbench is incomplete or was not integrated into the generated application."
 }
+
+$profilePatchPath = Join-Path $PSScriptRoot "HARDWARE_PROFILE_SUITE_PATCH.py"
+if (!(Test-Path -LiteralPath $profilePatchPath)) { throw "Missing CPU/RAM/GPU benchmark profile suite patch." }
+$profilePatch = [IO.File]::ReadAllText($profilePatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $profilePatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U154_HARDWARE_PROFILE_VERSION") -or !$src.Contains("HARDWARE_PROFILE_SUITE_SELFTEST_OK") -or !$src.Contains("PROFIL RZECZYWISTEGO BENCHMARKU") -or !$src.Contains("URUCHOM PROFIL CPU + RAM + GPU")) {
+    throw "Selectable CPU/RAM/GPU benchmark profiles were not integrated into the generated application."
+}
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
