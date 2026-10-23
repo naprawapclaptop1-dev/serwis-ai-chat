@@ -2104,7 +2104,7 @@ def _u159_selftest_auto_update():
     worker_names = set(_u159_auto_update_worker.__code__.co_names)
     assert "askyesno" not in offer_names, "update discovery must not stop at a manual Yes/No prompt"
     assert "threading" in offer_names and "_u159_auto_update_worker" in offer_names
-    assert "_u39_download_global_update" in worker_names, "auto update must use the SHA-256 verified downloader"
+    assert "_u39_download_global_update" in _u159_auto_update_worker.__code__.co_consts, "auto update must use the SHA-256 verified downloader"
     download_code = globals().get("_u44_download_global_update")
     assert callable(download_code)
     assert "startfile" not in download_code.__code__.co_names
