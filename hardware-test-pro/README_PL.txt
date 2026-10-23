@@ -208,3 +208,9 @@ Na ekranie TESTY oraz na ekranach CPU/RAM/GPU i szczegółach katalogu dostępne
 Profil uruchamia istniejące funkcje diagnostyczne i zapisuje połączony raport JSON + HTML + CSV w %LOCALAPPDATA%\NaprawaPC\Raporty\HardwareProfiles.
 STOP zatrzymuje bieżący test w sposób kontrolowany i blokuje uruchamianie kolejnych etapów. Raport wskazuje faktycznie sprawdzony bufor RAM, stan każdego testu, rzeczywiste FPS z OpenGL i ścieżki szczegółowych raportów.
 To nie jest test każdej fizycznej komórki RAM ani test FPS w konkretnej grze. Wynik WARN/ERROR pozostaje widoczny; brak sensora ani brak raportu nie są uznawane za PASS.
+
+
+AKTUALIZACJA AUTOMATYCZNA — WYDANIE 4.3.159
+------------------------------------------
+Po wykryciu nowszego wydania stable aplikacja automatycznie rozpoczyna pobieranie instalatora. Weryfikuje deklarowany rozmiar, SHA-256 i plik Windows PE, po czym uruchamia instalator z normalnym monitorem UAC systemu Windows.
+Nie ma dodatkowego pytania „Pobrać aktualizację?” ani nie otwiera się Explorer z folderem pobierania. Użytkownik nadal musi zaakceptować lub odrzucić standardowy monit UAC; aplikacja nie omija zabezpieczeń Windows. W przypadku błędu pozostaje czytelny status i log aktualizatora.

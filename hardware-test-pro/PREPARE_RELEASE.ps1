@@ -173,10 +173,10 @@ $newLauncherSelfTest = 'assert "ShellExecuteExW" in _u44_confirm_downloaded.__co
 '    assert "askyesno" not in _u44_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
 '    assert "uuid4" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_dispatch_confirm_downloaded" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
-'    assert "startfile" in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
+'    assert "startfile" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "NaprawaPC-Update-" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert not re.match(r"^NAPRAWA-PC-HARDWARE-TEST-PRO-.*\.exe$", "NaprawaPC-Update-NAPRAWA-PC-HARDWARE-TEST-PRO-Setup-4.3.140-deadbeef.exe", re.I)' + [Environment]::NewLine +
-'    assert "explorer.exe" in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
+'    assert "explorer.exe" not in _u44_download_global_update.__code__.co_consts' + [Environment]::NewLine +
 '    assert "_u39_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_confirm_downloaded" not in _u44_download_global_update.__code__.co_names' + [Environment]::NewLine +
 '    assert "_u44_confirm_downloaded" in _u44_dispatch_confirm_downloaded.__code__.co_names' + [Environment]::NewLine +
@@ -297,21 +297,8 @@ def _u44_download_global_update(self, data):
                 raise ValueError("Pobrany plik nie jest plikiem wykonywalnym Windows PE.")
         os.replace(tmp, dest)
 
-        # Emergency fallback: always open the verified update folder in Explorer,
-        # even if UAC or the installer process launch is blocked afterwards.
-        try:
-            _u47_os.startfile(str(root))
-        except Exception as folder_exc:
-            try:
-                self.queue_action(lambda folder=str(root): subprocess.Popen(["explorer.exe", folder]))
-            except Exception:
-                pass
-            try:
-                self.queue_action(lambda err=str(folder_exc): self.append_log("Nie udało się automatycznie otworzyć folderu aktualizacji: " + err))
-            except Exception:
-                pass
-
-        self.queue_action(lambda p=str(dest), v=version, root=str(root): self._u44_set_progress(100, f"Pobieranie {v} zakończone. SHA-256 i rozmiar poprawne; otwarto folder: {root}. Instalator: {p}"))
+        # Automatic update: do not send the user to Explorer; queue the verified Setup with normal Windows UAC.
+        self.queue_action(lambda p=str(dest), v=version: self._u44_set_progress(100, f"Pobrano {v}; rozmiar, PE i SHA-256 są poprawne. Uruchamiam instalator przez Windows UAC."))
         self.queue_action(lambda p=str(dest), v=version: _u44_dispatch_confirm_downloaded(self, p, v))
     except Exception as exc:
         try:
@@ -2003,6 +1990,153 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
 if (!$src.Contains("_U154_HARDWARE_PROFILE_VERSION") -or !$src.Contains("HARDWARE_PROFILE_SUITE_SELFTEST_OK") -or !$src.Contains("PROFIL RZECZYWISTEGO BENCHMARKU") -or !$src.Contains("URUCHOM PROFIL CPU + RAM + GPU")) {
     throw "Selectable CPU/RAM/GPU benchmark profiles were not integrated into the generated application."
 }
+# v4.3.159 — automatic global update after a newer stable release is detected.
+# The file is downloaded by the existing SHA-256/size/PE-verified worker; Windows UAC remains mandatory.
+$autoUpdatePatch = @'
+_U159_AUTO_UPDATE_VERSION = "1.0.0"
+
+def _u159_update_decision(current, latest, release_ready=True):
+    if not release_ready:
+        return "not_ready"
+    current_tuple = _u37_version_tuple(str(current or ""))
+    latest_tuple = _u37_version_tuple(str(latest or ""))
+    if latest_tuple == (0, 0, 0):
+        return "invalid"
+    return "update" if latest_tuple > current_tuple else "current"
+
+
+def _u159_auto_update_worker(app, data, version):
+    try:
+        downloader = getattr(app, "_u39_download_global_update", None)
+        if not callable(downloader):
+            raise RuntimeError("Brak zweryfikowanego mechanizmu pobierania aktualizacji.")
+        downloader(data)
+    except Exception as exc:
+        try:
+            app._u159_auto_update_target = ""
+        except Exception:
+            pass
+        message = f"Automatyczna aktualizacja {version} nie powiodła się: {type(exc).__name__}: {exc}"
+        try:
+            app.queue_action(lambda m=message: app._u39_set_update_status(m))
+            app.queue_action(lambda m=message: messagebox.showerror("Aktualizacja globalna", m))
+        except Exception:
+            pass
+        try:
+            app.queue_log(message)
+        except Exception:
+            pass
+
+
+def _u159_auto_offer_global_update(self, data):
+    if not isinstance(data, dict):
+        self._u39_set_update_status("Automatyczna aktualizacja: manifest nie jest poprawnym obiektem.")
+        return False
+    version = str(data.get("version") or "").strip()
+    decision = _u159_update_decision(
+        str(VERSION).split()[0], version, bool(data.get("release_ready"))
+    )
+    if decision == "not_ready":
+        self._u39_set_update_status("Kanał odpowiada, ale nowy instalator nie jest jeszcze gotowy.")
+        return False
+    if decision == "invalid":
+        self._u39_set_update_status("Automatyczna aktualizacja zatrzymana: manifest ma nieprawidłową wersję.")
+        return False
+    if decision != "update":
+        return False
+
+    previous_target = str(getattr(self, "_u159_auto_update_target", "") or "")
+    previous_status = str(getattr(self, "_u39_last_update_status", "") or "").casefold()
+    if previous_target == version:
+        # Allow another manual check to retry after an explicit download/verification error.
+        if any(marker in previous_status for marker in (
+            "błąd pobierania", "blad pobierania", "nie udało się pobrać",
+            "sha-256 niezgodne", "niepełny plik", "niepelny plik",
+            "nie można pobrać", "nie mozna pobrac"
+        )):
+            self._u159_auto_update_target = ""
+        else:
+            return False
+
+    self._u159_auto_update_target = version
+    message = (
+        f"Wykryto nową stabilną wersję {version}. Automatycznie pobieram instalator, "
+        "sprawdzę rozmiar i SHA-256, a następnie uruchomię instalację. "
+        "Windows może poprosić o zgodę UAC."
+    )
+    self._u39_set_update_status(message)
+    try:
+        self.append_log("AKTUALIZATOR AUTO: " + message)
+    except Exception:
+        pass
+    try:
+        thread = threading.Thread(
+            target=_u159_auto_update_worker,
+            args=(self, dict(data), version),
+            name="NaprawaPCAutomaticGlobalUpdate",
+            daemon=True,
+        )
+        thread.start()
+        return True
+    except Exception as exc:
+        self._u159_auto_update_target = ""
+        error = f"Nie udało się rozpocząć automatycznej aktualizacji: {type(exc).__name__}: {exc}"
+        self._u39_set_update_status(error)
+        try:
+            messagebox.showerror("Aktualizacja globalna", error, parent=self)
+        except Exception:
+            pass
+        return False
+
+
+AppV43._u39_offer_global_update = _u159_auto_offer_global_update
+
+
+def _u159_selftest_auto_update():
+    assert _U159_AUTO_UPDATE_VERSION == "1.0.0"
+    assert _u159_update_decision("4.3.158", "4.3.159", True) == "update"
+    assert _u159_update_decision("4.3.159", "4.3.158", True) == "current"
+    assert _u159_update_decision("4.3.159", "4.3.159", True) == "current"
+    assert _u159_update_decision("4.3.158", "4.3.159", False) == "not_ready"
+    assert _u159_update_decision("4.3.158", "not-a-version", True) == "invalid"
+    assert AppV43._u39_offer_global_update is _u159_auto_offer_global_update
+    offer_names = set(_u159_auto_offer_global_update.__code__.co_names)
+    worker_names = set(_u159_auto_update_worker.__code__.co_names)
+    assert "askyesno" not in offer_names, "update discovery must not stop at a manual Yes/No prompt"
+    assert "threading" in offer_names and "_u159_auto_update_worker" in offer_names
+    assert "_u39_download_global_update" in worker_names, "auto update must use the SHA-256 verified downloader"
+    download_code = globals().get("_u44_download_global_update")
+    assert callable(download_code)
+    assert "startfile" not in download_code.__code__.co_names
+    assert "explorer.exe" not in download_code.__code__.co_consts
+    launch = globals().get("_u44_confirm_downloaded")
+    assert callable(launch) and "ShellExecuteExW" in launch.__code__.co_names
+    assert "runas" in launch.__code__.co_consts and "askyesno" not in launch.__code__.co_names
+    print("AUTO_UPDATE_SELFTEST_OK: newer stable release triggers verified download and UAC installer without extra confirmation or Explorer detour")
+'@
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $autoUpdatePatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U159_AUTO_UPDATE_VERSION") -or !$src.Contains("AUTO_UPDATE_SELFTEST_OK") -or !$src.Contains("AppV43._u39_offer_global_update = _u159_auto_offer_global_update")) {
+    throw "Automatic update patch was not integrated into the generated source."
+}
+
+$mainAutoTest = @'
+    elif "--selftest-auto-update" in sys.argv:
+        try:
+            _u159_selftest_auto_update()
+            raise SystemExit(0)
+        except Exception as _u159_exc:
+            print("AUTO_UPDATE_SELFTEST_FAILED:", type(_u159_exc).__name__, str(_u159_exc))
+            raise SystemExit(1)
+'@
+$mainAnchor = '    else:' + [Environment]::NewLine +
+'        app = AppV43()' + [Environment]::NewLine +
+'        app.protocol("WM_DELETE_WINDOW", app.close_app)' + [Environment]::NewLine +
+'        app.mainloop()'
+if (!$src.Contains($mainAnchor)) { throw "Could not find original app startup block for the auto-update selftest." }
+$src = $src.Replace($mainAnchor,$mainAutoTest + $mainAnchor)
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.

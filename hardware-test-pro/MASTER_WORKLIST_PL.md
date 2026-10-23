@@ -300,3 +300,11 @@
 - [x] STOP przekazuje sygnał do bieżącego handlera i zatrzymuje rozpoczęcie kolejnych etapów.
 - [ ] Windows CI musi zaliczyć selftest profili i pełny build instalatora.
 - [ ] Na fizycznym PC potwierdzić pomiar CPU/RAM/GPU oraz zakończenie/STOP przy prawdziwych sterownikach.
+
+
+## Kandydat 4.3.159 — automatyczna aktualizacja po wykryciu nowej stable
+- [x] Usunięto dodatkowe pytanie przed pobieraniem; wykrycie nowszej wersji uruchamia istniejący pobieracz SHA-256/rozmiar/PE.
+- [x] Po weryfikacji instalator uruchamia się automatycznie przez ShellExecuteExW/runas; standardowy monit UAC pozostaje wymagany.
+- [x] Usunięto otwieranie folderu pobierania w Explorer po prawidłowym pobraniu.
+- [x] Dodano test porównania wersji, release_ready, użycia zweryfikowanego download handlera oraz ścieżki UAC.
+- [ ] Windows CI musi przejść pełne testy i opublikować nowy manifest stable przed wdrożeniem na komputerach użytkowników.
