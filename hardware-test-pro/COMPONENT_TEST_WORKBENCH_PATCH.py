@@ -1,10 +1,11 @@
 # v4.3.156 — real CPU/RAM/GPU execution and report workbench on 3D test-detail pages.
 import time as _u153_time
 import json as _u153_json
+import hashlib as _u153_hashlib
 import tkinter as _u153_tk
 from tkinter import ttk as _u153_ttk
 
-_U153_COMPONENT_TEST_WORKBENCH_VERSION = "1.0.0"
+_U153_COMPONENT_TEST_WORKBENCH_VERSION = "1.1.0"
 _U153_ORIGINAL_SHOW_TEST_DETAIL = AppV43.show_test_detail
 _U153_ORIGINAL_UPDATE_VIEW = _u146_update_view
 _U153_ORIGINAL_QUEUE_PANEL = _u145_queue_panel
@@ -41,21 +42,89 @@ def _u153_result_keys(module):
     }.get(_u153_module(module), ())
 
 
+def _u153_result_signature(value):
+    try:
+        canonical = _u153_json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), default=str)
+    except Exception:
+        canonical = repr(value)
+    return _u153_hashlib.sha256(canonical.encode("utf-8", "replace")).hexdigest()
+
+
 def _u153_capture_result_ids(app, module):
     results = getattr(app, "results", {}) or {}
     if not isinstance(results, dict):
         results = {}
-    return {key: id(results.get(key)) for key in _u153_result_keys(module)}
+    baseline = {}
+    for key in _u153_result_keys(module):
+        value = results.get(key)
+        baseline[key] = {
+            "id": id(value),
+            "signature": _u153_result_signature(value) if isinstance(value, dict) else None,
+        }
+    return baseline
 
 
 def _u153_get_fresh_result(app, module, baseline):
     results = getattr(app, "results", {}) or {}
     if not isinstance(results, dict):
         return None, ""
+    baseline = baseline or {}
     for key in _u153_result_keys(module):
         value = results.get(key)
-        if isinstance(value, dict) and value and id(value) != (baseline or {}).get(key):
+        if not isinstance(value, dict) or not value:
+            continue
+        previous = baseline.get(key)
+        if isinstance(previous, dict):
+            old_id = previous.get("id")
+            old_signature = previous.get("signature")
+        else:
+            # Backward compatibility with older callers that captured only object IDs.
+            old_id = previous
+            old_signature = None
+        current_signature = _u153_result_signature(value)
+        if id(value) != old_id or (old_signature is not None and current_signature != old_signature):
             return dict(value), key
+    return None, ""
+
+
+def _u153_report_timeout(module):
+    return {"CPU": 45.0, "RAM": 75.0, "GPU": 50.0}.get(_u153_module(module), 50.0)
+
+
+def _u153_lifecycle_state(active, module, is_running, now=None):
+    """Avoid treating the worker's startup/teardown gap as a failed or absent test."""
+    now = _u153_time.monotonic() if now is None else float(now)
+    if is_running:
+        active["saw_running"] = True
+        active["last_running"] = True
+        active["finished_seen_at"] = None
+        return "running"
+    if active.get("last_running"):
+        active["last_running"] = False
+        active["finished_seen_at"] = now
+    if active.get("saw_running"):
+        finished_seen_at = active.get("finished_seen_at")
+        if finished_seen_at is not None and now - float(finished_seen_at) < 8.0:
+            return "saving_result"
+        return "missing"
+    elapsed = max(0.0, now - float(active.get("started_at", now) or now))
+    if elapsed < 8.0:
+        return "starting"
+    if elapsed < _u153_report_timeout(module):
+        return "waiting_for_worker"
+    return "missing"
+
+
+def _u153_resolve_result(app, module, baseline, active=None):
+    fresh, key = _u153_get_fresh_result(app, module, baseline)
+    if fresh is not None:
+        return fresh, key
+    active = active if isinstance(active, dict) else {}
+    worker_report = active.get("worker_report")
+    if isinstance(worker_report, dict) and worker_report:
+        state = str(worker_report.get("state") or "").strip().lower()
+        if state not in ("running", "pending", "starting", "queued"):
+            return dict(worker_report), str(active.get("worker_report_key") or "WORKER_REPORT")
     return None, ""
 
 
@@ -227,7 +296,9 @@ def _u153_start_real_test(app, module):
     baseline = _u153_capture_result_ids(app, module)
     active = {
         "module": module, "started_at": _u153_time.monotonic(),
-        "baseline": baseline, "last_percent": 0, "last_message": "Uruchamianie rzeczywistego testu..."
+        "baseline": baseline, "last_percent": 0, "last_message": "Uruchamianie rzeczywistego testu...",
+        "saw_running": False, "last_running": False, "finished_seen_at": None,
+        "worker_report": None, "worker_report_key": "",
     }
     panel["active"] = active
     panel["last_percent"] = 0
@@ -281,8 +352,11 @@ def _u153_workbench_tick(app, token):
     module = panel["module"]
     active = panel.get("active")
     if isinstance(active, dict):
-        if bool(getattr(app, "running", False)):
-            elapsed = max(0.0, _u153_time.monotonic() - float(active.get("started_at", _u153_time.monotonic())))
+        now = _u153_time.monotonic()
+        is_running = bool(getattr(app, "running", False))
+        lifecycle = _u153_lifecycle_state(active, module, is_running, now)
+        if is_running:
+            elapsed = max(0.0, now - float(active.get("started_at", now)))
             timed_percent = _u153_elapsed_percent(module, elapsed)
             reported = max(0, min(99, int(active.get("last_percent", 0) or 0)))
             percent = max(reported, timed_percent)
@@ -299,27 +373,46 @@ def _u153_workbench_tick(app, token):
             seconds = _u153_expected_seconds(module)
             _u153_update_widgets(
                 app, token, percent,
-                f"TEST W TOKU • {module} • {elapsed:.1f} s • upłynął czas testu (cel ok. {seconds:.0f} s) • zbieram rzeczywiste próbki.",
+                f"TEST W TOKU • {module} • {elapsed:.1f} s • cel ok. {seconds:.0f} s • zbieram rzeczywiste próbki.",
             )
         else:
-            fresh, key = _u153_get_fresh_result(app, module, active.get("baseline", {}))
-            if fresh is not None:
+            fresh, key = _u153_resolve_result(app, module, active.get("baseline", {}), active)
+            fresh_state = str((fresh or {}).get("state") or "").strip().lower()
+            if fresh is not None and fresh_state not in ("running", "pending", "starting", "queued"):
                 panel["active"] = None
                 state = str(fresh.get("state") or "N/D").upper()
                 summary = _u151_report_summary(module, fresh, key)
-                _u153_update_widgets(app, token, 100, "WYNIK TESTU • " + summary, _u153_json.dumps(fresh, ensure_ascii=False, indent=2, default=str), fresh)
+                _u153_update_widgets(
+                    app, token, 100 if state not in ("ERROR", "FAIL", "BAD", "WARN", "N/D") else 0,
+                    "WYNIK TESTU • " + summary,
+                    _u153_json.dumps(fresh, ensure_ascii=False, indent=2, default=str),
+                    fresh,
+                )
                 try:
-                    app.queue_log("WORKBENCH " + module + ": zakończono test; raport " + state + "; klucz=" + key)
+                    app.queue_log("WORKBENCH " + module + ": raport odebrany (" + state + "); źródło=" + key)
                 except Exception:
                     pass
+            elif lifecycle in ("starting", "waiting_for_worker", "saving_result"):
+                elapsed = max(0.0, now - float(active.get("started_at", now)))
+                panel["last_percent"] = max(int(panel.get("last_percent", 0) or 0), min(99, _u153_elapsed_percent(module, elapsed)))
+                if lifecycle == "starting":
+                    status_text = f"STARTUJĘ TEST • {module} • oczekiwanie na uruchomienie pracownika…"
+                elif lifecycle == "saving_result":
+                    status_text = f"TEST ZAKOŃCZONY • {module} • czekam na finalny raport z wątku…"
+                else:
+                    status_text = f"OCZEKIWANIE NA PRACOWNIKA • {module} • {elapsed:.1f} s • raport nie jest jeszcze gotowy."
+                _u153_update_widgets(
+                    app, token, panel["last_percent"], status_text,
+                    "Trwa synchronizacja testu i końcowego raportu. Poprzedni wynik nie jest przedstawiany jako nowy pomiar.",
+                )
             else:
                 panel["active"] = None
-                log_entries = list(getattr(app, "_log_history", []) or [])[-8:]
+                log_entries = list(getattr(app, "_log_history", []) or [])[-12:]
                 error_lines = [str(x) for x in log_entries if any(term in str(x).upper() for term in ("BŁĄD", "ERROR", "BRAK RAPORTU", "NIE UDAŁO SIĘ"))]
-                detail = "Nie otrzymano nowego raportu po zakończeniu testu. Nie oznaczam tego jako PASS."
+                detail = "Nie otrzymano nowego raportu po upływie czasu oczekiwania. Nie oznaczam tego jako PASS."
                 if error_lines:
-                    detail += "\n\nOstatnie wpisy diagnostyczne:\n" + "\n".join(error_lines[-4:])
-                detail += "\n\nOtwórz dziennik aplikacji; poprzedni pomiar nie jest przedstawiany jako wynik bieżącego testu."
+                    detail += "\n\nOstatnie wpisy diagnostyczne:\n" + "\n".join(error_lines[-6:])
+                detail += "\n\nSprawdź dziennik aplikacji; wynik poprzedniego pomiaru nie został użyty jako bieżący raport."
                 _u153_update_widgets(app, token, 0, "BRAK NOWEGO RAPORTU • " + module + " • sprawdź dziennik.", detail)
     else:
         report, key = _u151_last_result(app, module)
@@ -344,6 +437,7 @@ def _u153_update_view(app, module, percent, message, report=None):
         active["last_message"] = str(message or "")
         if isinstance(report, dict) and report:
             active["worker_report"] = dict(report)
+            active["worker_report_key"] = str(report.get("test_id") or report.get("result_key") or "WORKER_REPORT")
         token = panel.get("token")
         _u153_schedule_widgets(app, token, active["last_percent"], "TEST W TOKU • " + key + " • " + str(message or "Próbkowanie..."))
     return result
@@ -393,7 +487,7 @@ def _u153_show_test_detail(app, module, test_id):
 
 
 def _u153_selftest_component_test_workbench():
-    assert _U153_COMPONENT_TEST_WORKBENCH_VERSION == "1.0.0"
+    assert _U153_COMPONENT_TEST_WORKBENCH_VERSION == "1.1.0"
     assert _u153_module("Procesor / CPU") == "CPU"
     assert _u153_module("Pamięć RAM") == "RAM"
     assert _u153_module("Karta graficzna / GPU") == "GPU"
@@ -413,11 +507,28 @@ def _u153_selftest_component_test_workbench():
     changed["CPU_BENCHMARK"] = {"state": "warn", "stopped": True, "message": "Test zatrzymany"}
     fresh, key = _u153_get_fresh_result(type("FakeApp", (), {"results": changed})(), "CPU", baseline)
     assert isinstance(fresh, dict) and fresh.get("stopped") and key == "CPU_BENCHMARK"
+    # The real application may mutate a result dictionary in place rather than replace the object.
+    shared_result = {"state": "running", "operations": 1}
+    mutable_app = type("FakeApp", (), {"results": {"CPU_BENCHMARK": shared_result}})()
+    mutable_baseline = _u153_capture_result_ids(mutable_app, "CPU")
+    shared_result.update({"state": "good", "operations": 42, "finished_at": "2026-10-23T10:00:00"})
+    fresh, key = _u153_get_fresh_result(mutable_app, "CPU", mutable_baseline)
+    assert isinstance(fresh, dict) and fresh.get("operations") == 42 and key == "CPU_BENCHMARK", "in-place result mutation was not detected"
+    # A final report passed through the worker's update callback is a valid fallback if storage is delayed.
+    worker_only = {"state": "warn", "message": "report delivered via UI callback", "operations_per_second": 0}
+    fallback, fallback_key = _u153_resolve_result(type("FakeApp", (), {"results": prior})(), "CPU", _u153_capture_result_ids(type("FakeApp", (), {"results": prior})(), "CPU"), {"worker_report": worker_only})
+    assert fallback == worker_only and fallback_key == "WORKER_REPORT"
+    life = {"started_at": 100.0, "saw_running": False, "last_running": False, "finished_seen_at": None}
+    assert _u153_lifecycle_state(life, "CPU", False, 101.0) == "starting"
+    assert _u153_lifecycle_state(life, "CPU", False, 110.0) == "waiting_for_worker"
+    assert _u153_lifecycle_state(life, "CPU", True, 111.0) == "running"
+    assert _u153_lifecycle_state(life, "CPU", False, 112.0) == "saving_result"
+    assert _u153_lifecycle_state(life, "CPU", False, 121.0) == "missing"
     assert callable(_u153_attach_component_workbench) and callable(_u153_start_real_test) and callable(_u153_stop_real_test)
-    assert callable(_u153_workbench_tick) and callable(_u153_show_test_detail)
+    assert callable(_u153_workbench_tick) and callable(_u153_show_test_detail) and callable(_u153_result_signature) and callable(_u153_resolve_result) and callable(_u153_lifecycle_state)
     assert "_u151_start_direct_test" in _u153_start_real_test.__code__.co_names
     assert "_U153_ORIGINAL_SHOW_TEST_DETAIL" in _u153_show_test_detail.__code__.co_names
-    print("COMPONENT_TEST_WORKBENCH_SELFTEST_OK: real CPU/RAM/GPU start, bounded progress, fresh-report detection, explicit error when no report arrives")
+    print("COMPONENT_TEST_WORKBENCH_SELFTEST_OK: real CPU/RAM/GPU start, bounded progress, in-place result mutations, worker-report fallback, startup/teardown grace and explicit timeout when no report arrives")
 
 
 _u146_update_view = _u153_update_view

@@ -188,3 +188,12 @@ BEZPOŚREDNIE START / STOP NA STRONACH CPU/RAM/GPU — 4.3.155
 PASEK POSTĘPU CPU — NAPRAWA SYNCHRONIZACJI
 ------------------------------------------
 Podczas wieloetapowego testu CPU główny ekran odświeża teraz pasek postępu i etykietę etapu przy kolejnych próbkach, zamiast pozostawiać tekst „Gotowy” do końca testu. Końcowa tabela etapów nadal pojawia się po zamknięciu pomiaru; test regresyjny sprawdza obecność obu aktualizowanych kontrolek.
+
+
+NAPRAWA TESTÓW CPU / RAM / GPU — CYKL RAPORTU (4.3.157)
+--------------------------------------------------------
+- Ekran testu nie może uznać braku raportu tylko dlatego, że pracownik nie zdążył ustawić flagi `running` lub dopiero zapisuje wynik.
+- Wykrywanie raportu sprawdza zarówno zmianę obiektu, jak i zmianę zawartości istniejącego słownika wyniku (podpis SHA-256 kanonicznego JSON).
+- Końcowy raport przekazany przez callback UI jest awaryjnym źródłem, jeżeli zapisywanie do tabeli wyników opóźni się.
+- Wprowadzono ograniczony czas startu i finalizacji raportu. Po jego upływie program jasno pokazuje brak raportu zamiast używać starego wyniku.
+- Windows CI ma regresyjne testy modyfikacji in-place, fallback raportu, fazy startu, zapisu końcowego i timeoutu.

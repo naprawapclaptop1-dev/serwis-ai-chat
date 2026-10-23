@@ -283,3 +283,11 @@
 
 **Stable online przed tym kandydatem:** 4.3.152 — Windows Setup i All-in-One opublikowane.
 **Kandydat 4.3.153:** na głównych ekranach CPU/RAM/GPU dodano bezpośrednie uruchomienia testów, widoczny postęp i raport końcowy. Windows CI musi zaliczyć benchmark CPU, wynik testu RAM, wynik OpenGL oraz zapis historii JSON/HTML/CSV.
+
+
+## Kandydat 4.3.157 — niezawodność cyklu START → POMIAR → RAPORT
+- [x] Wykrywanie świeżego wyniku uwzględnia nowy słownik i modyfikację istniejącego słownika.
+- [x] Raport końcowy z callbacka pracownika może zostać pokazany, jeśli zapis do `app.results` dotrze później.
+- [x] Ekran zachowuje stan STARTUJĘ/OCZEKIWANIE/SAVING przez ograniczony czas; nie usuwa aktywnego testu przy pierwszym odczycie `running=False`.
+- [x] Windows CI sprawdza świeży raport, fallback i fazy cyklu pracy testu.
+- [ ] Po instalacji 4.3.157 na fizycznym komputerze należy powtórzyć CPU 15 s, RAM 256 MB i GPU OpenGL 10 s, sprawdzić wartości i zapisać raport.
