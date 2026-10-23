@@ -2131,12 +2131,52 @@ $mainAutoTest = @'
             print("AUTO_UPDATE_SELFTEST_FAILED:", type(_u159_exc).__name__, str(_u159_exc))
             raise SystemExit(1)
 '@
-$mainAnchor = '    else:' + [Environment]::NewLine +
-'        app = AppV43()' + [Environment]::NewLine +
-'        app.protocol("WM_DELETE_WINDOW", app.close_app)' + [Environment]::NewLine +
-'        app.mainloop()'
-if (!$src.Contains($mainAnchor)) { throw "Could not find original app startup block for the auto-update selftest." }
-$src = $src.Replace($mainAnchor,$mainAutoTest + $mainAnchor)
+$mainPattern = '(?m)^    else:\r?\n        app = AppV43\(\)\r?\n        app\.protocol\("WM_DELETE_WINDOW", app\.close_app\)\r?\n        app\.mainloop\(\)
+[IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
+
+# Keep the user-facing documentation aligned with the generated build.
+$readmePath = Join-Path $PSScriptRoot "README_PL.txt"
+if (Test-Path -LiteralPath $readmePath) {
+    $readme = [IO.File]::ReadAllText($readmePath,[Text.Encoding]::UTF8)
+    if (!$readme.Contains("CENTRUM SERWISU ULTIMATE + SYSTEM REPAIR PRO")) {
+        $readme += @"
+
+CENTRUM SERWISU ULTIMATE + SYSTEM REPAIR PRO
+-------------------------------------------
+W wersji budowanej z aktualnego źródła dostępna jest dodatkowa sekcja CENTRUM SERWISU / NAPRAWA PRO w ekranie TESTY:
+- zakładki Serwis Ultimate, System Repair PRO, Zgłoszenia prywatne i Narzędzia serwisowe;
+- prywatne zgłoszenia z weryfikacją PBKDF2 i szyfrowaniem danych lokalnych;
+- SFC, DISM, CHKDSK, odświeżanie DNS, reset Winsock, raport baterii oraz skróty do narzędzi Windows;
+- automatyczny aktualizator z próbą zapisu w lokalnym folderze aktualizacji i bezpiecznym folderze TEMP, nazwami tymczasowymi i kontrolą SHA-256.
+Zgłoszenia nie są wysyłane do Internetu. Operacje wymagające administratora wyświetlają monit UAC.
+"@
+        [IO.File]::WriteAllText($readmePath,$readme,[Text.UTF8Encoding]::new($false))
+    }
+}
+
+
+$setup=[IO.File]::ReadAllText($setupPath,[Text.Encoding]::UTF8)
+$setup=[regex]::Replace($setup,'(?m)^(\s*#define AppVersion\s+")\d+\.\d+\.\d+(".*)$',[System.Text.RegularExpressions.MatchEvaluator]{param($m) $m.Groups[1].Value+$next+$m.Groups[2].Value},1)
+$setup=[regex]::Replace($setup,'(?m)^(\s*#define ExeName\s+"NAPRAWA-PC-HARDWARE-TEST-PRO-)\d+\.\d+\.\d+(\.exe".*)$', [System.Text.RegularExpressions.MatchEvaluator]{param($m) $m.Groups[1].Value+$next+$m.Groups[2].Value},1)
+$oldRunFlags = 'Flags: postinstall nowait skipifsilent'
+if (!$setup.Contains($oldRunFlags)) { throw "Nie znaleziono wpisu uruchamiania programu po instalacji." }
+$setup = $setup.Replace($oldRunFlags, 'Flags: nowait runasoriginaluser')
+if ($setup.Contains('postinstall nowait skipifsilent')) { throw "Instalator nadal pomija ponowne uruchomienie w trybie cichym." }
+[IO.File]::WriteAllText($setupPath,$setup,[Text.UTF8Encoding]::new($false))
+$nl=[Environment]::NewLine
+[IO.File]::AppendAllText($env:GITHUB_ENV,("APP_VERSION=$next"+$nl+"SETUP_FILENAME=$setupName"+$nl),[Text.UTF8Encoding]::new($false))
+[IO.File]::AppendAllText($env:GITHUB_OUTPUT,("app_version=$next"+$nl+"setup_filename=$setupName"+$nl),[Text.UTF8Encoding]::new($false))
+Write-Host "AUTO_RELEASE_VERSION=$next"
+Write-Host "NEXT_VERSION=$next"
+Write-Host "THEMES=125 (115 added)"
+Write-Host "HOVER_GLOW=patched"
+
+$mainMatches = [regex]::Matches($src,$mainPattern)
+if ($mainMatches.Count -ne 1) { throw "Could not find exactly one original app startup block for the auto-update selftest; found $($mainMatches.Count)." }
+$src = [regex]::Replace($src,$mainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $mainAutoTest + [Environment]::NewLine + $m.Value
+},1)
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.

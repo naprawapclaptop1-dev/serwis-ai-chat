@@ -605,7 +605,7 @@ def _u153_selftest_component_test_workbench():
     external_app.results["CPU_BENCHMARK"] = {"state": "good", "operations": 900, "finished_at": "2026-10-23T10:00:00"}
     fresh_external, external_key = _u153_get_fresh_result(external_app, "CPU", external_panel["active"]["baseline"])
     assert fresh_external and fresh_external["operations"] == 900 and external_key == "CPU_BENCHMARK", "external run report was not recognized as fresh"
-    assert "external page-button run" not in " ".join(external_app.logs).casefold() or external_app.logs, "diagnostic log was not preserved"
+    assert any("przejęto śledzenie testu" in line.casefold() for line in external_app.logs), "external test handoff log was not preserved"
     assert "_u151_start_direct_test" in _u153_start_real_test.__code__.co_names
     assert "_U153_ORIGINAL_SHOW_TEST_DETAIL" in _u153_show_test_detail.__code__.co_names
     print("COMPONENT_TEST_WORKBENCH_SELFTEST_OK: direct and existing page-button CPU/RAM/GPU start, captured report baseline, live progress, fresh result handoff, worker fallback and honest no-report timeout")
