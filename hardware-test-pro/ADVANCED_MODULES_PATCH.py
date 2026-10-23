@@ -16342,19 +16342,20 @@ def _u145_execute_gpu_scene(app, scene_id, seconds=5):
 _u66_execute_gpu_scene = _u145_execute_gpu_scene
 
 
-def _u145_detail_status_only(app, message):
+_U145_ORIGINAL_U98_DETAIL_STATUS_ONLY = _U98_ORIGINAL_DETAIL_STATUS_ONLY
+
+def _u145_detail_status_sink(app, message):
     text_value = str(message)
+    # Preserve _u93_detail_status_only == _u98_detail_status_only for the existing
+    # catalog regression test, while adding a second UI-safe update for the workbench.
     try:
         app.queue_action(lambda m=text_value: _u69_status_text(app, m))
     except Exception:
         pass
-    try:
-        _U145_ORIGINAL_CPU_DETAIL_STATUS(app, text_value)
-    except Exception:
-        pass
+    return _U145_ORIGINAL_U98_DETAIL_STATUS_ONLY(app, text_value)
 
 
-_u93_detail_status_only = _u145_detail_status_only
+_U98_ORIGINAL_DETAIL_STATUS_ONLY = _u145_detail_status_sink
 
 
 def _u145_launch_component_test(app, module, mode="benchmark"):
