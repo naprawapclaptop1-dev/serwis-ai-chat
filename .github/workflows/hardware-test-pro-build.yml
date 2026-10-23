@@ -256,18 +256,18 @@ jobs:
             if ($width -lt $image.MinWidth -or $height -lt $image.MinHeight) { throw "Installer graphic resolution too small: $($image.Path) ($width x $height)" }
             Write-Host ("INSTALLER_ARTWORK_OK: {0} ({1}x{2}, {3} bytes)" -f $image.Path,$width,$height,$bytes.Length)
           }
-          $iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue).Source
-          if (!$iscc) {
-            $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
-            $pf = [Environment]::GetEnvironmentVariable("ProgramFiles")
-            if (Test-Path "$pf86\Inno Setup 6\ISCC.exe") { $iscc = "$pf86\Inno Setup 6\ISCC.exe" }
-            elseif (Test-Path "$pf\Inno Setup 6\ISCC.exe") { $iscc = "$pf\Inno Setup 6\ISCC.exe" }
+          $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+          $pf = [Environment]::GetEnvironmentVariable("ProgramFiles")
+          $iscc = $null
+          # Prefer the real compiler binary: Get-Command may return the Chocolatey shim (version 0.0.0.0).
+          foreach ($candidate in @("$pf86\Inno Setup 6\ISCC.exe", "$pf\Inno Setup 6\ISCC.exe")) {
+            if ($candidate -and (Test-Path -LiteralPath $candidate)) { $iscc = $candidate; break }
           }
-          if (!$iscc) { throw "ISCC.exe not found after installation." }
+          if (!$iscc) { throw "The real Inno Setup compiler was not found in Program Files." }
           $product = (Get-Item -LiteralPath $iscc).VersionInfo.ProductVersion
           $match = [regex]::Match($product, '\d+\.\d+\.\d+')
-          if (!$match.Success -or [version]$match.Value -lt [version]'6.7.0') { throw "Custom installer background requires Inno Setup 6.7.0 or newer; found '$product'." }
-          Write-Host ("BRANDED_INSTALLER_DESIGN_OK: Inno Setup {0}" -f $match.Value)
+          if (!$match.Success -or [version]$match.Value -lt [version]'6.7.0') { throw "Custom installer background requires Inno Setup 6.7.0 or newer; found '$product' at '$iscc'." }
+          Write-Host ("BRANDED_INSTALLER_DESIGN_OK: Inno Setup {0} ({1})" -f $match.Value,$iscc)
 
       - name: Compile and verify Setup.exe
         id: installer
