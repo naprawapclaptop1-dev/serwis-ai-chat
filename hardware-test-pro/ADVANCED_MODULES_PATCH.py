@@ -16768,7 +16768,16 @@ def _u153_module_ram(app):
     return None
 
 
-AppV43._ram_test = _u153_main_ram_test
+_U153_MAIN_RAM_TEST_UNWRAPPED = _u153_main_ram_test
+
+def _u153_main_ram_test_sound(app, mb=512):
+    return _u80_run_with_sound(app, "własny test RAM / wzorce", _U153_MAIN_RAM_TEST_UNWRAPPED, app, mb)
+
+
+_u153_main_ram_test._u102_ram_guard = True
+_u153_main_ram_test_sound._u102_ram_guard = True
+_u153_main_ram_test_sound._u80_sound_wrapped = True
+AppV43._ram_test = _u153_main_ram_test_sound
 AppV43.module_ram = _u153_module_ram
 
 
@@ -16874,7 +16883,7 @@ def _u153_start_cpu_benchmark(app):
     except Exception:
         pass
     _u153_update_cpu_ui(app, 0, f"CPU SHA-256 — START • planowane {seconds} s. Wykonywanie obliczeń…")
-    app.worker(lambda: _u153_cpu_benchmark_worker(app, seconds))
+    app.worker(lambda: _u80_run_with_sound(app, "benchmark CPU SHA-256", _u153_cpu_benchmark_worker, app, seconds))
 
 
 def _u153_module_cpu(app):
@@ -17081,7 +17090,7 @@ AppV43.module_gpu = _u153_module_gpu
 def _u153_selftest_main_hardware_workbenches():
     assert _U153_MAIN_HARDWARE_WORKBENCH_VERSION == "1.0.0"
     assert callable(_u153_main_ram_test) and callable(_u153_cpu_benchmark_worker) and callable(_u153_gpu_benchmark_worker)
-    assert AppV43._ram_test is _u153_main_ram_test and getattr(AppV43._ram_test, "_u102_ram_guard", False)
+    assert AppV43._ram_test is _u153_main_ram_test_sound and getattr(AppV43._ram_test, "_u102_ram_guard", False) and getattr(AppV43._ram_test, "_u80_sound_wrapped", False)
     assert AppV43.module_ram is _u153_module_ram and AppV43.module_cpu is _u153_module_cpu and AppV43.module_gpu is _u153_module_gpu
     ram = _u153_ram_result_lines({"state":"warn","requested_mb":512,"tested_mb":256,"patterns_completed":3,
         "patterns_total":26,"duration_seconds":2.5,"bytes_written":4096,"bytes_verified":4096,
