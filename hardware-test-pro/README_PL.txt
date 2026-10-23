@@ -167,3 +167,9 @@ WŁASNE TESTY NA GŁÓWNYCH EKRANACH CPU/RAM/GPU — 4.3.153
 - GPU: główny ekran udostępnia rzeczywiste renderowanie OpenGL oraz oddzielny krótki test FurMark-style. Raport zawiera FPS, liczbę klatek, renderer, wersję OpenGL i rozdzielczość. Renderer otwiera własne okno, ale wynik wraca na główną kartę GPU.
 - Wszystkie trzy ekrany udostępniają lokalną historię raportów JSON+HTML oraz eksport CSV. Brak sensora lub wyniku nie jest zamieniany na PASS.
 - SHA-256 jest pomiarem przerobu software, RAM testuje przydzielony bufor procesu, a FPS OpenGL opisuje renderowanie — nie gwarantuje pełnej sprawności każdego bloku GPU.
+
+
+WYGLAD INSTALATORA WINDOWS
+-------------------------
+Instalator uzywa nowoczesnego ciemnego stylu Inno Setup 6.7 lub nowszego, granatowo-niebieskiego tla z subtelnym wzorem obwodow, autorskiej grafiki paska bocznego i znaku diagnostycznego w naglowku.
+Ekrany powitalny, gotowosci do instalacji i koncowy maja spojne opisy po polsku. Obrazy instalatora sa walidowane w Windows CI przed kompilacja Setup.exe.

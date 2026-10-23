@@ -21,7 +21,22 @@ UninstallDisplayIcon={app}\{#ExeName}
 ArchitecturesAllowed=x64
 ArchitecturesInstallIn64BitMode=x64
 PrivilegesRequired=admin
-WizardStyle=modern
+WizardStyle=modern dark includetitlebar hidebevels
+WizardBackColor=#071323
+WizardBackImageFile=installer-wizard-background.bmp
+WizardBackImageOpacity=42
+WizardImageFile=installer-wizard-left.bmp
+WizardImageBackColor=#071323
+WizardImageOpacity=100
+WizardSmallImageFile=installer-wizard-small.bmp
+WizardSmallImageBackColor=#071323
+DefaultDialogFontName=Segoe UI
+DefaultDialogFontSize=9
+WizardSizePercent=120,120
+AppPublisherURL=https://github.com/naprawapclaptop1-dev/serwis-ai-chat
+AppSupportURL=https://github.com/naprawapclaptop1-dev/serwis-ai-chat/issues
+AppUpdatesURL=https://raw.githubusercontent.com/naprawapclaptop1-dev/serwis-ai-chat/main/updates/hardware-test-pro/latest.json
+SetupLogging=yes
 Compression=lzma2/ultra64
 SolidCompression=yes
 DisableProgramGroupPage=yes
@@ -54,6 +69,22 @@ Filename: "{app}\{#ExeName}"; Description: "Uruchom NAPRAWA PC HARDWARE TEST PRO
 
 
 [Code]
+procedure InitializeWizard;
+begin
+  WizardForm.Caption := 'NAPRAWA PC - Instalator Hardware Test PRO';
+  WizardForm.WelcomeLabel1.Caption := 'Witamy w instalatorze NAPRAWA PC!';
+  WizardForm.WelcomeLabel2.Caption :=
+    'Zainstaluj centrum diagnostyki CPU, RAM, GPU i dyskow oraz zintegrowane narzedzia serwisowe.' + #13#10 + #13#10 +
+    'Kreator przygotuje program w katalogu aplikacji. Ustawienia i lokalne raporty pozostaja na komputerze.';
+  WizardForm.ReadyLabel1.Caption := 'Wszystko jest gotowe do instalacji.';
+  WizardForm.ReadyLabel2.Caption :=
+    'Kliknij Instaluj, aby skopiowac Hardware Test PRO oraz dolaczone moduly System Repair PRO.';
+  WizardForm.FinishedHeadingLabel.Caption := 'Instalacja zakonczona';
+  WizardForm.FinishedLabel.Caption :=
+    'NAPRAWA PC HARDWARE TEST PRO zostal zainstalowany.' + #13#10 + #13#10 +
+    'Uruchom program z menu Start, aby wykonac diagnostyke i przegladac raporty pomiarow.';
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;

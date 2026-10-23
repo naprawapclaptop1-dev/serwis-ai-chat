@@ -227,9 +227,47 @@ jobs:
           } | ConvertTo-Json
           [IO.File]::WriteAllText((Join-Path $destination "companion-manifest.json"),$manifest,[Text.UTF8Encoding]::new($false))
 
-      - name: Install Inno Setup
+      - name: Validate branded installer design and Inno Setup
         shell: pwsh
-        run: choco install innosetup --yes --no-progress
+        run: |
+          $ErrorActionPreference = "Stop"
+          Set-Location "$env:GITHUB_WORKSPACE\hardware-test-pro"
+          $iss = Get-Content -LiteralPath ".\SUITE_SETUP.iss" -Raw
+          foreach ($marker in @(
+            'WizardStyle=modern dark includetitlebar hidebevels',
+            'WizardBackImageFile=installer-wizard-background.bmp',
+            'WizardImageFile=installer-wizard-left.bmp',
+            'WizardSmallImageFile=installer-wizard-small.bmp',
+            'procedure InitializeWizard'
+          )) {
+            if (!$iss.Contains($marker)) { throw "Branded wizard configuration missing: $marker" }
+          }
+          $images = @(
+            @{ Path = ".\installer-wizard-background.bmp"; MinWidth = 800; MinHeight = 500 },
+            @{ Path = ".\installer-wizard-left.bmp"; MinWidth = 400; MinHeight = 700 },
+            @{ Path = ".\installer-wizard-small.bmp"; MinWidth = 128; MinHeight = 128 }
+          )
+          foreach ($image in $images) {
+            if (!(Test-Path -LiteralPath $image.Path)) { throw "Installer graphic missing: $($image.Path)" }
+            $bytes = [IO.File]::ReadAllBytes((Resolve-Path -LiteralPath $image.Path))
+            if ($bytes.Length -lt 1000 -or $bytes[0] -ne 66 -or $bytes[1] -ne 77) { throw "Invalid BMP header: $($image.Path)" }
+            $width = [BitConverter]::ToInt32($bytes,18)
+            $height = [BitConverter]::ToInt32($bytes,22)
+            if ($width -lt $image.MinWidth -or $height -lt $image.MinHeight) { throw "Installer graphic resolution too small: $($image.Path) ($width x $height)" }
+            Write-Host ("INSTALLER_ARTWORK_OK: {0} ({1}x{2}, {3} bytes)" -f $image.Path,$width,$height,$bytes.Length)
+          }
+          $iscc = (Get-Command "ISCC.exe" -ErrorAction SilentlyContinue).Source
+          if (!$iscc) {
+            $pf86 = [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+            $pf = [Environment]::GetEnvironmentVariable("ProgramFiles")
+            if (Test-Path "$pf86\Inno Setup 6\ISCC.exe") { $iscc = "$pf86\Inno Setup 6\ISCC.exe" }
+            elseif (Test-Path "$pf\Inno Setup 6\ISCC.exe") { $iscc = "$pf\Inno Setup 6\ISCC.exe" }
+          }
+          if (!$iscc) { throw "ISCC.exe not found after installation." }
+          $product = (Get-Item -LiteralPath $iscc).VersionInfo.ProductVersion
+          $match = [regex]::Match($product, '\d+\.\d+\.\d+')
+          if (!$match.Success -or [version]$match.Value -lt [version]'6.7.0') { throw "Custom installer background requires Inno Setup 6.7.0 or newer; found '$product'." }
+          Write-Host ("BRANDED_INSTALLER_DESIGN_OK: Inno Setup {0}" -f $match.Value)
 
       - name: Compile and verify Setup.exe
         id: installer
@@ -308,6 +346,7 @@ jobs:
             - Poprawka testów 4.3.145: synchronizacja głównego raportu RAM podczas pomiaru i po jego zakończeniu; usunięty błędny callback etapów CPU; prawidłowa odległość kamery sceny OpenGL i widoczniejsza geometria.
             - Poprawka 4.3.146: usunięte podwójne przesunięcie kamery GPU (stare -7 plus -10 oddalało scenę do -17); końcowy raport RAM jest przekazywany bezpośrednio do widoku, niezależnie od kolejności aktualizacji wyników.
             - Kandydat 4.3.148: lokalna historia pomiarów CPU/RAM/GPU z raportami JSON+HTML, porównanie dwóch przebiegów, eksport CSV z ochroną przed formułami i ciaśniejsze kadrowanie scen OpenGL.
+            - Nowy wyglad instalatora Windows: nowoczesny ciemny kreator, granatowo-neonowe grafiki marki, wlasne tlo i pasek boczny, ikona naglowka oraz dopracowane ekrany powitalny, gotowosci i zakonczenia.
           files: |
             hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
@@ -371,7 +410,7 @@ jobs:
               installer_sha256: process.env.INSTALLER_SHA256,
               installer_size: Number(process.env.INSTALLER_SIZE),
               minimum_supported_version: "4.3.39",
-              notes: "Wydanie " + version + ": główne ekrany CPU/RAM/GPU mają własne testy, widoczny postęp, końcowe raporty i lokalną historię JSON/HTML+CSV; rzeczywisty wielowątkowy SHA-256 CPU; wynik pojedynczej sceny GPU OpenGL przekazywany do panelu raportu; lokalna historia komponentów JSON+HTML i bezpieczny CSV; oddzielny ekran GPU FurMark-style stress z rzeczywistym FPS OpenGL; 13 schematycznych modeli podzespołów; FurMark tylko w scenie 01, 109 pozostałych scen bez powtarzanego overlay; panel wyników CPU/RAM/GPU z odczytami Windows na żywo i ostatnim zapisanym benchmarkiem, skrótami do katalogu oraz historii/CSV; poprawiono status przerwanego testu CPU; lokalna historia pomiarów CPU/RAM/GPU JSON+HTML, porównanie dwóch raportów, CSV z zabezpieczeniem przed formułami; raport końcowy RAM i postęp na żywo; ciaśniejsze kadrowanie OpenGL (kamera -5.25, FOV 45 stopni); aktualizator HTTPS z SHA-256; bezpieczny callback CPU i raport FPS z rzeczywistego renderera; wspólne centrum modułów; pełny System Repair PRO 5.6.16 dołączony do instalatora; historia audytów i szczegółowy CSV; moduły Serwis Ultimate; zgodność 1:1 ze starszym archiwum 1.15.3 wymaga osobnego audytu; 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk katalogowych System Repair PRO / Serwis Ultimate oraz 10 dodatkowych, odrębnych testów serwisowych (DxDiag, drukarki/spooler, Bluetooth, historia niezawodności, punkty przywracania, BitLocker bez kluczy, funkcje opcjonalne, runtime’y .NET/VC++, profile Wi-Fi bez haseł, raporty WER), 13 symulatorów podzespołów z odrębnymi scenami rzeczywistego OpenGL/FPS, pełniejsza tabela sensorów z N/D, Speed Test STANDARD z 2 równoległymi strumieniami oraz MAX/TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, menedżer procesów, diagnostyka gier, menedżer raportów, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
+              notes: "Wydanie " + version + ": odswiezony instalator Windows: modern dark, granatowo-neonowe tlo, wlasne grafiki paska bocznego i naglowka, spojne teksty ekranow Welcome/Ready/Finish; walidacja grafik i Inno Setup >= 6.7; glowne ekrany CPU/RAM/GPU maja własne testy, widoczny postęp, końcowe raporty i lokalną historię JSON/HTML+CSV; rzeczywisty wielowątkowy SHA-256 CPU; wynik pojedynczej sceny GPU OpenGL przekazywany do panelu raportu; lokalna historia komponentów JSON+HTML i bezpieczny CSV; oddzielny ekran GPU FurMark-style stress z rzeczywistym FPS OpenGL; 13 schematycznych modeli podzespołów; FurMark tylko w scenie 01, 109 pozostałych scen bez powtarzanego overlay; panel wyników CPU/RAM/GPU z odczytami Windows na żywo i ostatnim zapisanym benchmarkiem, skrótami do katalogu oraz historii/CSV; poprawiono status przerwanego testu CPU; lokalna historia pomiarów CPU/RAM/GPU JSON+HTML, porównanie dwóch raportów, CSV z zabezpieczeniem przed formułami; raport końcowy RAM i postęp na żywo; ciaśniejsze kadrowanie OpenGL (kamera -5.25, FOV 45 stopni); aktualizator HTTPS z SHA-256; bezpieczny callback CPU i raport FPS z rzeczywistego renderera; wspólne centrum modułów; pełny System Repair PRO 5.6.16 dołączony do instalatora; historia audytów i szczegółowy CSV; moduły Serwis Ultimate; zgodność 1:1 ze starszym archiwum 1.15.3 wymaga osobnego audytu; 110 odrębnych testów w 15 grupach, 110 unikalnych layoutów scen OpenGL, 40 odczytowych diagnostyk katalogowych System Repair PRO / Serwis Ultimate oraz 10 dodatkowych, odrębnych testów serwisowych (DxDiag, drukarki/spooler, Bluetooth, historia niezawodności, punkty przywracania, BitLocker bez kluczy, funkcje opcjonalne, runtime’y .NET/VC++, profile Wi-Fi bez haseł, raporty WER), 13 symulatorów podzespołów z odrębnymi scenami rzeczywistego OpenGL/FPS, pełniejsza tabela sensorów z N/D, Speed Test STANDARD z 2 równoległymi strumieniami oraz MAX/TURBO z 4 strumieniami HTTPS, zlecenia serwisowe HTML, 7 testów zasilania/baterii, menedżer procesów, diagnostyka gier, menedżer raportów, lokalna baza wiedzy PDF/TXT/MD oraz 14 profili problemów System Repair PRO. Centrum napraw Windows, prywatne szyfrowane zgłoszenia oraz aktualizator HTTPS ze sprawdzaniem SHA-256/UAC. Windows x64. Pełna zgodność 1:1 wszystkich funkcji z archiwami źródłowymi nie jest deklarowana, dopóki nie przejdzie osobnego przeglądu.",
               published_at: new Date().toISOString()
             };
             await github.rest.repos.createOrUpdateFileContents({
