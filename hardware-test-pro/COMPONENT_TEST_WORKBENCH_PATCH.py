@@ -5,7 +5,7 @@ import hashlib as _u153_hashlib
 import tkinter as _u153_tk
 from tkinter import ttk as _u153_ttk
 
-_U153_COMPONENT_TEST_WORKBENCH_VERSION = "1.1.0"
+_U153_COMPONENT_TEST_WORKBENCH_VERSION = "1.2.0"
 _U153_ORIGINAL_SHOW_TEST_DETAIL = AppV43.show_test_detail
 _U153_ORIGINAL_UPDATE_VIEW = _u146_update_view
 _U153_ORIGINAL_QUEUE_PANEL = _u145_queue_panel
@@ -262,6 +262,7 @@ def _u153_attach_component_workbench(app, module, test_id="", kind=""):
         "module": module, "test_id": str(test_id or ""), "kind": str(kind or ""),
         "frame": frame, "status": status, "progress": progress, "report": report,
         "metric_widgets": metric_widgets, "token": token, "active": None,
+        "idle_baseline": _u153_capture_result_ids(app, module),
         "last_percent": 0,
     }
     last_report, last_key = _u151_last_result(app, module)
@@ -340,6 +341,46 @@ def _u153_stop_real_test(app):
         return False
 
 
+def _u153_adopt_external_run(app, panel, now=None):
+    """Adopt a CPU/RAM/GPU test started by an existing page button, preserving the pre-start result baseline."""
+    if not isinstance(panel, dict) or isinstance(panel.get("active"), dict):
+        return False
+    if not bool(getattr(app, "running", False)):
+        return False
+    module = _u153_module(panel.get("module"))
+    if module not in ("CPU", "RAM", "GPU"):
+        return False
+    now = _u153_time.monotonic() if now is None else float(now)
+    baseline = panel.get("idle_baseline")
+    if not isinstance(baseline, dict):
+        baseline = _u153_capture_result_ids(app, module)
+    active = {
+        "module": module,
+        "started_at": now,
+        "baseline": baseline,
+        "last_percent": 0,
+        "last_message": "Wykryto aktywny test uruchomiony przyciskiem strony.",
+        "saw_running": True,
+        "last_running": True,
+        "finished_seen_at": None,
+        "worker_report": None,
+        "worker_report_key": "",
+        "external_start": True,
+    }
+    panel["active"] = active
+    token = panel.get("token")
+    _u153_schedule_widgets(
+        app, token, 0,
+        f"TEST W TOKU • {module} • wykryto uruchomienie z istniejącego przycisku; śledzę wynik.",
+        "Test został rozpoczęty poza przyciskiem panelu szczegółów. Oczekuję na nowe próbki i raport tego uruchomienia."
+    )
+    try:
+        app.queue_log("WORKBENCH " + module + ": przejęto śledzenie testu uruchomionego przez istniejący przycisk strony.")
+    except Exception:
+        pass
+    return True
+
+
 def _u153_workbench_tick(app, token):
     panel = getattr(app, "_u153_component_workbench", None)
     if not isinstance(panel, dict) or panel.get("token") != token:
@@ -351,6 +392,17 @@ def _u153_workbench_tick(app, token):
         return
     module = panel["module"]
     active = panel.get("active")
+    if not isinstance(active, dict):
+        if bool(getattr(app, "running", False)):
+            _u153_adopt_external_run(app, panel)
+            active = panel.get("active")
+        else:
+            # The baseline is refreshed while idle so a subsequent run started elsewhere
+            # cannot accidentally display an older result as the new test's report.
+            try:
+                panel["idle_baseline"] = _u153_capture_result_ids(app, module)
+            except Exception:
+                pass
     if isinstance(active, dict):
         now = _u153_time.monotonic()
         is_running = bool(getattr(app, "running", False))
@@ -487,7 +539,7 @@ def _u153_show_test_detail(app, module, test_id):
 
 
 def _u153_selftest_component_test_workbench():
-    assert _U153_COMPONENT_TEST_WORKBENCH_VERSION == "1.1.0"
+    assert _U153_COMPONENT_TEST_WORKBENCH_VERSION == "1.2.0"
     assert _u153_module("Procesor / CPU") == "CPU"
     assert _u153_module("Pamięć RAM") == "RAM"
     assert _u153_module("Karta graficzna / GPU") == "GPU"
@@ -526,9 +578,37 @@ def _u153_selftest_component_test_workbench():
     assert _u153_lifecycle_state(life, "CPU", False, 121.0) == "missing"
     assert callable(_u153_attach_component_workbench) and callable(_u153_start_real_test) and callable(_u153_stop_real_test)
     assert callable(_u153_workbench_tick) and callable(_u153_show_test_detail) and callable(_u153_result_signature) and callable(_u153_resolve_result) and callable(_u153_lifecycle_state)
+    assert callable(_u153_adopt_external_run), "existing page-button run handoff helper missing"
+
+    class _U153FakeExternalRunApp:
+        def __init__(self):
+            self.running = True
+            self.results = {"CPU_BENCHMARK": {"state": "good", "operations": 10}}
+            self.logs = []
+            self._u153_component_workbench = None
+        def queue_action(self, fn):
+            fn()
+        def queue_log(self, message):
+            self.logs.append(str(message))
+
+    external_app = _U153FakeExternalRunApp()
+    external_panel = {
+        "module": "CPU", "token": 41, "active": None,
+        "idle_baseline": _u153_capture_result_ids(external_app, "CPU")
+    }
+    before = external_panel["idle_baseline"]
+    external_app._u153_component_workbench = external_panel
+    assert _u153_adopt_external_run(external_app, external_panel, now=100.0), "running test from an existing page button was not adopted"
+    assert external_panel["active"]["external_start"] is True and external_panel["active"]["saw_running"] is True
+    assert external_panel["active"]["baseline"] == before, "handoff must preserve the report baseline from before test start"
+    external_app.running = False
+    external_app.results["CPU_BENCHMARK"] = {"state": "good", "operations": 900, "finished_at": "2026-10-23T10:00:00"}
+    fresh_external, external_key = _u153_get_fresh_result(external_app, "CPU", external_panel["active"]["baseline"])
+    assert fresh_external and fresh_external["operations"] == 900 and external_key == "CPU_BENCHMARK", "external run report was not recognized as fresh"
+    assert "external page-button run" not in " ".join(external_app.logs).casefold() or external_app.logs, "diagnostic log was not preserved"
     assert "_u151_start_direct_test" in _u153_start_real_test.__code__.co_names
     assert "_U153_ORIGINAL_SHOW_TEST_DETAIL" in _u153_show_test_detail.__code__.co_names
-    print("COMPONENT_TEST_WORKBENCH_SELFTEST_OK: real CPU/RAM/GPU start, bounded progress, in-place result mutations, worker-report fallback, startup/teardown grace and explicit timeout when no report arrives")
+    print("COMPONENT_TEST_WORKBENCH_SELFTEST_OK: direct and existing page-button CPU/RAM/GPU start, captured report baseline, live progress, fresh result handoff, worker fallback and honest no-report timeout")
 
 
 _u146_update_view = _u153_update_view

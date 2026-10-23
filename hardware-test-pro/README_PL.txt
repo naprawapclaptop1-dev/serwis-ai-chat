@@ -214,3 +214,8 @@ AKTUALIZACJA AUTOMATYCZNA — WYDANIE 4.3.159
 ------------------------------------------
 Po wykryciu nowszego wydania stable aplikacja automatycznie rozpoczyna pobieranie instalatora. Weryfikuje deklarowany rozmiar, SHA-256 i plik Windows PE, po czym uruchamia instalator z normalnym monitorem UAC systemu Windows.
 Nie ma dodatkowego pytania „Pobrać aktualizację?” ani nie otwiera się Explorer z folderem pobierania. Użytkownik nadal musi zaakceptować lub odrzucić standardowy monit UAC; aplikacja nie omija zabezpieczeń Windows. W przypadku błędu pozostaje czytelny status i log aktualizatora.
+
+
+POPRAWKA CPU/RAM/GPU — WYNIK Z DOWOLNEGO PRZYCISKU TESTU
+--------------------------------------------------------
+Panel rzeczywistego testu przejmuje teraz także uruchomienie rozpoczęte przez istniejący przycisk strony CPU/RAM/GPU, a nie tylko przez swój własny przycisk START. Zachowuje punkt odniesienia sprzed uruchomienia, pokazuje stan aktywnego pomiaru i dopiero po zakończeniu przyjmuje świeży raport. Stary raport nie jest używany jako wynik nowego testu.

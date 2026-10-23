@@ -308,3 +308,9 @@
 - [x] Usunięto otwieranie folderu pobierania w Explorer po prawidłowym pobraniu.
 - [x] Dodano test porównania wersji, release_ready, użycia zweryfikowanego download handlera oraz ścieżki UAC.
 - [ ] Windows CI musi przejść pełne testy i opublikować nowy manifest stable przed wdrożeniem na komputerach użytkowników.
+
+
+## Poprawka CPU/RAM/GPU — start z istniejących przycisków
+- [x] Workbench na stronach szczegółów wykrywa także aktywny test uruchomiony przez pierwotny przycisk strony.
+- [x] Zapamiętuje wcześniejsze identyfikatory i sygnatury wyników, by nie pokazywać starego pomiaru jako nowego.
+- [x] Test regresyjny wykonuje cykl: stan idle → istniejący przycisk uruchamia test → wynik obiektu ulega zmianie → panel rozpoznaje świeży raport.
