@@ -271,11 +271,32 @@ def _u147_selftest_quality_fixes():
     cpu_names = _u147_code_names_recursive(_u147_cpu_test.__code__)
     assert "_set_stage" not in cpu_names, "CPU worker must not schedule an undefined UI method"
     assert "_u147_safe_stage_update" in cpu_names and callable(_u147_safe_stage_update), "safe UI progress callback must be wired"
-    core_update = globals().get("_U148_ORIGINAL_UPDATE_VIEW") or globals().get("_u146_update_view")
-    core_update_code = getattr(core_update, "__code__", None)
-    core_update_names = _u147_code_names_recursive(core_update_code) if core_update_code is not None else set()
-    assert "_u146_cpu_progressbar" in core_update_names, "CPU progressbar is not updated by the central status updater"
-    assert "_u146_cpu_progress_label" in core_update_names, "CPU progress label is not updated by the central status updater"
+    class _U147FakeWidget:
+        def __init__(self):
+            self.values = {}
+        def winfo_exists(self):
+            return True
+        def configure(self, **kwargs):
+            self.values.update(kwargs)
+        def cget(self, key):
+            return self.values.get(key, "")
+
+    class _U147FakeCpuPage:
+        def __init__(self):
+            self.header_status = _U147FakeWidget()
+            self._u146_cpu_progressbar = _U147FakeWidget()
+            self._u146_cpu_progress_label = _U147FakeWidget()
+        def queue_action(self, callback):
+            callback()
+        def colors(self):
+            return {"good": "#00aa00", "warn": "#ffaa00", "bad": "#aa0000"}
+
+    cpu_page = _U147FakeCpuPage()
+    central_updater = globals().get("_u146_update_view")
+    assert callable(central_updater), "central UI updater is not callable"
+    central_updater(cpu_page, "CPU", 42, "Etap 50% • odczyt CPU na żywo", None)
+    assert cpu_page._u146_cpu_progressbar.values.get("value") == 42, "CPU progressbar did not receive live progress"
+    assert cpu_page._u146_cpu_progress_label.values.get("text") == "Etap 50% • odczyt CPU na żywo", "CPU progress label did not receive live stage text"
     assert getattr(AppV43._ram_test,"_u102_ram_guard",False)
     keys=globals().get("_U86_COMPONENT_KEYS",{})
     assert keys.get("GPU",("",))[0]=="GPU_3D"
