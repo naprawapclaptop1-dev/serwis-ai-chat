@@ -1,7 +1,8 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online przed tym kandydatem:** 4.3.146 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256.
-**Kandydat 4.3.147:** poprawiono synchronizację końcowych wyników RAM na głównym widoku, polskim wariancie widoku i ekranie szczegółów katalogu. Windows CI musi potwierdzić, że status i raport końcowy trafiają do tych widoków i że inne ekrany nie są przypadkowo modyfikowane.
+**Stable online:** 4.3.151 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256 instalatora.
+**Kandydat 4.3.152:** główny benchmark CPU ma mierzyć rzeczywistą przepustowość SHA-256; wynik pojedynczej sceny OpenGL ma trafiać do głównego panelu GPU; workbench zapisuje raporty JSON+HTML, historię lokalną i eksport CSV. Windows CI musi zaliczyć testy przed publikacją.
+**PC fizyczny:** odczyty czujników i FPS OpenGL wymagają potwierdzenia na rzeczywistym sprzęcie.
 **Parytet źródeł:** dołączenie System Repair PRO 5.6.16 nie oznacza zgodności 1:1 ze starszym archiwum 5.6.25; pełny Serwis Ultimate 1.15.3 wymaga osobnego porównania.
 
 ## Statusy — jak czytać listę
@@ -269,3 +270,12 @@
 - [x] Dodano osobne modele CPU, RAM, GPU, VRAM, dysku, ekranu, bezpieczeństwa, baterii, sieci, USB, audio, klawiatury i kamery.
 - [x] Zwykłe ekrany testów nie dostawiają już generycznego przycisku tego samego symulatora; wpisy rodzaju simulator otwierają właściwy model komponentu.
 - [ ] Windows CI musi zaliczyć nowy self-test. FPS/UAC/odczyt temperatur wymagają późniejszego sprawdzenia na fizycznym komputerze.
+
+
+## Kandydat 4.3.152 — rzeczywiste wyniki komponentów i raporty
+- [x] CPU workbench benchmark mierzy SHA-256 ops/s, MiB/s, wątki, wielkość danych i czas; przerwany test pozostaje WARN.
+- [x] Wynik pojedynczej sceny GPU trafia do klucza GPU_REAL_RENDER oraz głównego raportu GPU.
+- [x] Każdy run z workbencha zapisuje raport JSON+HTML.
+- [x] Workbench zawiera historię raportów, otwarcie folderu oraz eksport CSV z ochroną przed formułami.
+- [x] Windows CI sprawdza historię, pliki raportów, sortowanie i CSV przed publikacją.
+- [ ] Na fizycznym PC sprawdzić pracę sensorów i OpenGL na aktualnych sterownikach.

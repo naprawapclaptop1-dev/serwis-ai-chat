@@ -15856,8 +15856,562 @@ def _u135_selftest_real_3d_scene_mapping():
     assert callable(_u135_start_real_3d)
     print("COMPONENT_REAL_OPENGL_SCENE_SELFTEST_OK: 13 components map to 13 distinct OpenGL scenes")
 
+
+
+# v4.3.152 — actual CPU throughput, GPU render result handoff, persistent component reports.
+import csv as _u145_csv
+import html as _u145_html
+import json as _u145_json
+import os as _u145_os
+import re as _u145_re
+from pathlib import Path as _u145_Path
+from datetime import datetime as _u145_datetime
+from tkinter import filedialog as _u145_filedialog
+
+_U145_COMPONENT_WORKBENCH_VERSION = "1.0.0"
+_U145_ORIGINAL_COMPONENT_WORKER = _u69_run_component_worker
+_U145_ORIGINAL_EXECUTE_GPU_SCENE = _u66_execute_gpu_scene
+_U145_ORIGINAL_COMPONENT_KEYS = _u76_component_result_keys
+_U145_ORIGINAL_COMPONENT_REPORT_TEXT = _u76_component_report_text
+_U145_ORIGINAL_CPU_DETAIL_STATUS = _u93_detail_status_only
+_U145_ORIGINAL_LAUNCH_COMPONENT_TEST = _u69_launch_component_test
+_U145_ORIGINAL_OPEN_COMPONENT_SIMULATOR = _u69_open_component_simulator
+
+
+def _u145_component_report_dir(base_dir=None):
+    if base_dir is not None:
+        return _u145_Path(base_dir)
+    root = _u145_os.environ.get("LOCALAPPDATA") or str(_u145_Path.home())
+    return _u145_Path(root) / "NaprawaPC" / "Raporty" / "ComponentWorkbench"
+
+
+def _u145_csv_cell(value):
+    text = "" if value is None else str(value)
+    text = text.replace("\x00", " ")
+    if text[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
+
+
+def _u145_write_component_record(module, mode, result, started_at=None, report_dir=None, result_key="N/D", finished_at=None):
+    directory = _u145_component_report_dir(report_dir)
+    directory.mkdir(parents=True, exist_ok=True)
+    now = _u145_datetime.now().astimezone()
+    finished = str(finished_at or now.isoformat(timespec="seconds"))
+    started = str(started_at or finished)
+    stamp = now.strftime("%Y%m%d-%H%M%S-%f")
+    slug = _u145_re.sub(r"[^a-z0-9_-]+", "-", str(module or "component").lower()).strip("-") or "component"
+    mode_slug = _u145_re.sub(r"[^a-z0-9_-]+", "-", str(mode or "test").lower()).strip("-") or "test"
+    stem = f"{stamp}-{slug}-{mode_slug}"
+    json_path = directory / (stem + ".json")
+    html_path = directory / (stem + ".html")
+    source = result if isinstance(result, dict) else {"state": "warn", "message": "Procedura nie zwróciła raportu."}
+    safe_result = _u76_trim_report(source)
+    record = {
+        "schema": "NaprawaPC.ComponentWorkbench.v1",
+        "module": str(module or "N/D"),
+        "mode": str(mode or "N/D"),
+        "result_key": str(result_key or "N/D"),
+        "state": str(source.get("state") or "warn").upper(),
+        "started_at": started,
+        "finished_at": finished,
+        "json_path": str(json_path.resolve()),
+        "html_path": str(html_path.resolve()),
+        "report_path": str(html_path.resolve()),
+        "result": safe_result
+    }
+    payload = _u145_json.dumps(record, ensure_ascii=False, indent=2, default=str)
+    json_path.write_text(payload, encoding="utf-8")
+    title = _u145_html.escape("NAPRAWA PC — " + record["module"] + " — " + record["mode"])
+    page = (
+        "<!doctype html><html lang='pl'><head><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>" + title + "</title>"
+        "<style>body{font:14px Segoe UI,Arial;background:#08111f;color:#e8f3ff;margin:24px}"
+        "h1{color:#54d7ff}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101e31;"
+        "padding:16px;border:1px solid #294260;border-radius:8px}</style></head><body>"
+        "<h1>" + title + "</h1><p>Stan: <b>" + _u145_html.escape(record["state"]) + "</b></p>"
+        "<p>Rozpoczęto: " + _u145_html.escape(started) + "<br>Zakończono: " + _u145_html.escape(finished) + "</p>"
+        "<p>Raport JSON: " + _u145_html.escape(str(json_path.resolve())) + "</p>"
+        "<pre>" + _u145_html.escape(payload) + "</pre></body></html>"
+    )
+    html_path.write_text(page, encoding="utf-8")
+    return record
+
+
+def _u145_read_component_history(report_dir=None, limit=500):
+    directory = _u145_component_report_dir(report_dir)
+    if not directory.is_dir():
+        return []
+    entries = []
+    for path in directory.glob("*.json"):
+        try:
+            item = _u145_json.loads(path.read_text(encoding="utf-8-sig"))
+            if not isinstance(item, dict) or item.get("schema") != "NaprawaPC.ComponentWorkbench.v1":
+                continue
+            item.setdefault("json_path", str(path.resolve()))
+            item.setdefault("html_path", str(path.with_suffix(".html").resolve()))
+            item.setdefault("report_path", item.get("html_path"))
+            entries.append(item)
+        except Exception:
+            continue
+    entries.sort(key=lambda item: (str(item.get("finished_at", "")), str(item.get("json_path", ""))), reverse=True)
+    try:
+        cap = max(1, min(5000, int(limit)))
+    except Exception:
+        cap = 500
+    return entries[:cap]
+
+
+def _u145_export_component_history(report_dir=None, output_path=None, module=None):
+    entries = _u145_read_component_history(report_dir)
+    if module:
+        entries = [item for item in entries if str(item.get("module", "")).upper() == str(module).upper()]
+    if not entries:
+        raise ValueError("Brak zapisanych raportów testów podzespołów do eksportu.")
+    if not output_path:
+        raise ValueError("Nie podano ścieżki pliku CSV.")
+    target = _u145_Path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with target.open("w", newline="", encoding="utf-8-sig") as stream:
+        writer = _u145_csv.writer(stream)
+        writer.writerow(["Data rozpoczęcia", "Data zakończenia", "Podzespół", "Tryb", "Stan", "Klucz wyniku", "Ścieżka HTML", "Ścieżka JSON"])
+        for item in entries:
+            writer.writerow([
+                _u145_csv_cell(item.get("started_at", "")),
+                _u145_csv_cell(item.get("finished_at", "")),
+                _u145_csv_cell(item.get("module", "")),
+                _u145_csv_cell(item.get("mode", "")),
+                _u145_csv_cell(item.get("state", "")),
+                _u145_csv_cell(item.get("result_key", "")),
+                _u145_csv_cell(item.get("html_path", "")),
+                _u145_csv_cell(item.get("json_path", ""))
+            ])
+    return str(target.resolve())
+
+
+def _u145_open_report_path(path):
+    if not path:
+        raise ValueError("Brak ścieżki raportu.")
+    target = _u145_Path(str(path)).resolve()
+    if not target.is_file():
+        raise FileNotFoundError("Plik raportu nie istnieje: " + str(target))
+    if hasattr(_u145_os, "startfile"):
+        _u145_os.startfile(str(target))
+    else:
+        import webbrowser as _u145_webbrowser
+        _u145_webbrowser.open(target.as_uri())
+    return str(target)
+
+
+def _u145_open_report_folder(app=None):
+    directory = _u145_component_report_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    try:
+        if app is not None and callable(getattr(app, "open_shell", None)):
+            app.open_shell(str(directory))
+        elif hasattr(_u145_os, "startfile"):
+            _u145_os.startfile(str(directory))
+        else:
+            import webbrowser as _u145_webbrowser
+            _u145_webbrowser.open(directory.as_uri())
+    except Exception as exc:
+        _u145_messagebox.showerror("Raporty testów", f"Nie udało się otworzyć folderu: {type(exc).__name__}: {exc}")
+    return directory
+
+
+def _u145_export_history_dialog(app, module=None):
+    entries = _u145_read_component_history()
+    if module:
+        entries = [item for item in entries if str(item.get("module", "")).upper() == str(module).upper()]
+    if not entries:
+        _u145_messagebox.showinfo("Eksport CSV", "Brak zapisanych raportów testów podzespołów.")
+        return
+    suggested = "ComponentWorkbench_History_" + _u145_datetime.now().strftime("%Y%m%d_%H%M%S") + ".csv"
+    target = _u145_filedialog.asksaveasfilename(
+        parent=app, title="Eksport historii testów", defaultextension=".csv",
+        initialdir=str(_u145_component_report_dir()), initialfile=suggested,
+        filetypes=[("Plik CSV", "*.csv"), ("Wszystkie pliki", "*.*")]
+    )
+    if not target:
+        return
+    try:
+        saved = _u145_export_component_history(output_path=target, module=module)
+        _u145_messagebox.showinfo("Eksport CSV", f"Zapisano {len(entries)} raportów: {saved}")
+    except Exception as exc:
+        _u145_messagebox.showerror("Eksport CSV", f"Nie udało się zapisać historii: {type(exc).__name__}: {exc}")
+
+
+def _u145_show_component_history(app, module=None):
+    import tkinter as _u145_tk
+    from tkinter import ttk as _u145_ttk
+    entries = _u145_read_component_history()
+    if module:
+        entries = [item for item in entries if str(item.get("module", "")).upper() == str(module).upper()]
+    theme = app.colors()
+    win = _u145_tk.Toplevel(app)
+    win.title("HISTORIA TESTÓW — NAPRAWA PC HARDWARE TEST PRO")
+    win.geometry("1040x560")
+    win.minsize(780, 420)
+    win.configure(bg=theme["bg"])
+    _u145_tk.Label(win, text="HISTORIA TESTÓW PODZESPOŁÓW", bg=theme["bg"], fg=theme["accent"], font=app.fnt(12, "bold")).pack(anchor="w", padx=12, pady=(12, 4))
+    _u145_tk.Label(win, text="Raporty pozostają lokalne. Brak czujnika lub niewykonany test nie jest zamieniany na PASS.", bg=theme["bg"], fg=theme["muted"], font=app.fnt(9)).pack(anchor="w", padx=12, pady=(0, 8))
+    frame = _u145_tk.Frame(win, bg=theme["bg"])
+    frame.pack(fill="both", expand=True, padx=12, pady=4)
+    columns = ("date", "module", "mode", "state", "result")
+    tree = _u145_ttk.Treeview(frame, columns=columns, show="headings", height=14)
+    for key, label, width in (
+        ("date", "DATA", 190), ("module", "PODZESPÓŁ", 125), ("mode", "TRYB", 110),
+        ("state", "STAN", 85), ("result", "KLUCZ WYNIKU", 360)
+    ):
+        tree.heading(key, text=label)
+        tree.column(key, width=width, minwidth=70, stretch=(key == "result"))
+    scroll = _u145_ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=scroll.set)
+    tree.pack(side="left", fill="both", expand=True)
+    scroll.pack(side="right", fill="y")
+    by_iid = {}
+    for index, item in enumerate(entries):
+        iid = str(index)
+        by_iid[iid] = item
+        tree.insert("", "end", iid=iid, values=(
+            str(item.get("finished_at", "N/D")), str(item.get("module", "N/D")),
+            str(item.get("mode", "N/D")), str(item.get("state", "N/D")),
+            str(item.get("result_key", "N/D"))
+        ))
+    if entries:
+        tree.selection_set("0")
+    else:
+        tree.insert("", "end", values=("—", module or "—", "—", "BRAK RAPORTÓW", "Uruchom najpierw test podzespołu."))
+    footer = _u145_tk.Frame(win, bg=theme["bg"])
+    footer.pack(fill="x", padx=12, pady=(5, 12))
+    def open_selected():
+        selection = tree.selection()
+        if not selection or selection[0] not in by_iid:
+            _u145_messagebox.showinfo("Historia testów", "Zaznacz zapisany raport.")
+            return
+        try:
+            _u145_open_report_path(by_iid[selection[0]].get("html_path") or by_iid[selection[0]].get("json_path"))
+        except Exception as exc:
+            _u145_messagebox.showerror("Historia testów", str(exc))
+    tree.bind("<Double-1>", lambda _event: open_selected())
+    app.make_button(footer, "OTWÓRZ RAPORT", open_selected, "accent", side="left", ipady=4)
+    app.make_button(footer, "FOLDER RAPORTÓW", lambda: _u145_open_report_folder(app), "card", side="left", ipady=4)
+    app.make_button(footer, "EKSPORT CSV", lambda: _u145_export_history_dialog(app, module), "card", side="left", ipady=4)
+    app.make_button(footer, "ZAMKNIJ", win.destroy, "card", side="right", ipady=4)
+    return win
+
+
+def _u145_merge_gpu_render(existing, render):
+    merged = dict(existing) if isinstance(existing, dict) else {}
+    measured = render if isinstance(render, dict) else {}
+    merged.update({
+        "state": str(measured.get("state") or "warn"),
+        "benchmark_kind": "OpenGL — rzeczywiste renderowanie pojedynczej sceny",
+        "renderer": measured.get("renderer"),
+        "opengl_version": measured.get("opengl_version"),
+        "average_fps": measured.get("average_fps"),
+        "peak_fps_1s": measured.get("peak_fps_1s"),
+        "frames": measured.get("frames"),
+        "duration_seconds": measured.get("duration_seconds"),
+        "scene_id": measured.get("scene_id"),
+        "scene_name": measured.get("scene_name"),
+        "real_render": _u76_trim_report(measured),
+        "sampled_at": measured.get("finished_at") or measured.get("time") or _U66_datetime.now().isoformat(timespec="seconds"),
+        "note": measured.get("note") or "FPS pochodzi z renderowania OpenGL; nie jest wynikiem gry."
+    })
+    return merged
+
+
+def _u145_component_result_keys(module, mode):
+    base = tuple(_U145_ORIGINAL_COMPONENT_KEYS(module, mode))
+    if str(module).upper() == "GPU":
+        return ("GPU_REAL_RENDER",) + tuple(key for key in base if key != "GPU_REAL_RENDER")
+    return base
+
+
+_u76_component_result_keys = _u145_component_result_keys
+
+
+def _u145_component_report_text(app):
+    body = _U145_ORIGINAL_COMPONENT_REPORT_TEXT(app)
+    module = str(getattr(app, "_u76_component_module", "") or str(getattr(app, "current_view", "")).replace("SIM3D_", "")).upper()
+    results = getattr(app, "results", {}) or {}
+    additions = []
+    if module == "CPU":
+        cpu = results.get("CPU") or results.get("CPU_HASH_BENCHMARK") or {}
+        if isinstance(cpu, dict) and cpu.get("operations_per_second") is not None:
+            additions.extend([
+                "BENCHMARK CPU — PRZERÓB SHA-256",
+                f"Tryb: {cpu.get('mode', 'N/D')} • wątki: {cpu.get('workers', 'N/D')} / logiczne: {cpu.get('logical_processors', 'N/D')}",
+                f"Operacje SHA-256/s: {cpu.get('operations_per_second', 'N/D')}",
+                f"Przepustowość: {cpu.get('throughput_mib_s', 'N/D')} MiB/s • dane: {cpu.get('processed_mib', 'N/D')} MiB",
+                f"Czas: {cpu.get('duration_seconds', 'N/D')} s • przerwano: {'TAK' if cpu.get('cancelled') else 'NIE'}"
+            ])
+    elif module == "RAM":
+        ram = results.get("RAM_BENCHMARK") or results.get("RAM") or {}
+        bench = ram.get("benchmark") if isinstance(ram.get("benchmark"), dict) else ram
+        if isinstance(bench, dict) and bench:
+            additions.extend([
+                "RAPORT RAM — WYNIK OSTATNIEGO RZECZYWISTEGO TESTU",
+                f"Stan: {str(bench.get('state', ram.get('state', 'N/D'))).upper()} • testowano: {bench.get('tested_mb', bench.get('buffer_mb', bench.get('size_mb', 'N/D')))} MB",
+                f"Przebiegi: {bench.get('passes_run', bench.get('passes', 'N/D'))} • wzorce: {bench.get('patterns_completed', 'N/D')}/{bench.get('patterns_total_per_pass', 'N/D')}",
+                f"Zapis: {bench.get('write_mib_s_overall', bench.get('write_MBps', 'N/D'))} MiB/s • odczyt/weryfikacja: {bench.get('verify_mib_s_overall', bench.get('read_MBps', 'N/D'))} MiB/s",
+                f"Zweryfikowane bajty: {bench.get('bytes_verified', 'N/D')} • błąd offset: {bench.get('error_offset', 'N/D')}",
+                f"Informacja: {bench.get('message', ram.get('message', bench.get('note', 'N/D')))}"
+            ])
+    elif module == "GPU":
+        render = results.get("GPU_REAL_RENDER")
+        if isinstance(render, dict):
+            additions.extend([
+                "WYNIK SCENY GPU — PRAWDZIWE OPENGL",
+                f"Scena: {render.get('scene_id', 'N/D')} • {render.get('scene_name', 'N/D')}",
+                f"Renderer: {render.get('renderer', 'N/D')} • OpenGL: {render.get('opengl_version', 'N/D')}",
+                f"FPS średni: {render.get('average_fps', 'N/D')} • peak 1 s: {render.get('peak_fps_1s', 'N/D')}",
+                f"Klatki: {render.get('frames', 'N/D')} • czas: {render.get('duration_seconds', 'N/D')} s • stan: {render.get('state', 'N/D')}"
+            ])
+    record = results.get("COMPONENT_WORKBENCH_REPORT_" + module)
+    if isinstance(record, dict):
+        additions.extend(["RAPORT LOKALNY ZAPISANY", "HTML: " + str(record.get("html_path", "N/D")), "JSON: " + str(record.get("json_path", "N/D"))])
+    return body + ("\n\n" + "\n".join(additions) if additions else "")
+
+
+_u76_component_report_text = _u145_component_report_text
+
+
+def _u145_component_result_snapshot(app, module, mode):
+    results = getattr(app, "results", {}) or {}
+    for key in _u76_component_result_keys(module, mode):
+        value = results.get(key)
+        if isinstance(value, dict) and value:
+            return key, value
+    error = results.get("COMPONENT_ERROR_" + str(module).upper())
+    if isinstance(error, dict) and error:
+        return "COMPONENT_ERROR_" + str(module).upper(), error
+    return "N/D", {"state": "warn", "message": "Procedura zakończyła się bez raportu. Brak raportu nie oznacza zaliczenia testu."}
+
+
+def _u145_finish_component_run(app, context, attempt=0):
+    module = str(context.get("module") or "N/D").upper()
+    mode = str(context.get("mode") or "N/D").lower()
+    key, result = _u145_component_result_snapshot(app, module, mode)
+    if key == "N/D" and attempt < 6:
+        try:
+            app.after(120, lambda c=context, a=attempt + 1: _u145_finish_component_run(app, c, a))
+            return
+        except Exception:
+            pass
+    try:
+        record = _u145_write_component_record(module, mode, result,
+            started_at=context.get("started_at"), result_key=key,
+            finished_at=_U66_datetime.now().astimezone().isoformat(timespec="seconds"))
+        record_key = "COMPONENT_WORKBENCH_REPORT_" + module
+        app.results[record_key] = record
+        app.results["COMPONENT_WORKBENCH_LAST"] = record
+        try:
+            app.queue_results(record_key, record)
+        except Exception:
+            pass
+        if module == "CPU" and result.get("operations_per_second") is not None:
+            status_text = (
+                f"CPU SHA-256: {result.get('operations_per_second', 'N/D')} ops/s • "
+                f"{result.get('throughput_mib_s', 'N/D')} MiB/s • {result.get('workers', 'N/D')} wątków • "
+                f"{result.get('duration_seconds', 'N/D')} s • {str(result.get('state', 'warn')).upper()}")
+        elif module == "GPU" and context.get("real_scene") and result.get("average_fps") is not None:
+            status_text = (
+                f"GPU OPENGL: scena {result.get('scene_id', 'N/D')} • średni FPS {result.get('average_fps', 'N/D')} • "
+                f"peak {result.get('peak_fps_1s', 'N/D')} • {str(result.get('state', 'warn')).upper()}")
+        else:
+            status_text = _u69_component_result_text(app, module, mode, float(context.get("started_monotonic", _u66_time.monotonic())))
+        try:
+            label = getattr(app, "_u69_workbench_status", None)
+            if label is not None and label.winfo_exists():
+                label.configure(text=status_text, fg=app.colors()["good"] if str(result.get("state", "")).lower() == "good" else app.colors()["warn"])
+        except Exception:
+            pass
+        try:
+            app.header_status.config(text="GOTOWY — " + module, fg=app.colors()["good"] if str(result.get("state", "")).lower() == "good" else app.colors()["warn"])
+        except Exception:
+            pass
+        try:
+            app._u76_live_progress = status_text
+            _u76_refresh_component_report(app)
+        except Exception:
+            pass
+        return record
+    except Exception as exc:
+        try:
+            app.queue_log("Component workbench report: " + repr(exc))
+        except Exception:
+            pass
+        return None
+
+
+def _u145_component_worker(app, module, mode):
+    module = str(module or "").upper()
+    mode = str(mode or "scan").lower()
+    context = {
+        "module": module, "mode": mode,
+        "started_at": _U66_datetime.now().astimezone().isoformat(timespec="seconds"),
+        "started_monotonic": _u66_time.monotonic()
+    }
+    if module == "GPU":
+        try:
+            app.results.pop("GPU_REAL_RENDER", None)
+        except Exception:
+            pass
+    try:
+        if module == "CPU" and mode == "benchmark":
+            seconds = max(5, min(300, int(_u68_profile_seconds(app))))
+            result = _u93_cpu_hash_benchmark(app, True, seconds)
+            result["benchmark_kind"] = "SHA-256 throughput"
+            result["cpu"] = getattr(app, "cpu", {}) or {}
+            if result.get("cancelled"):
+                result["state"] = "warn"
+                result["note"] = "Pomiar został przerwany; metryki obejmują tylko wykonaną część testu."
+            _u93_put_result(app, "CPU", result)
+            app.queue_log(
+                f"CPU SHA-256 benchmark: {result.get('operations_per_second', 'N/D')} ops/s; "
+                f"{result.get('throughput_mib_s', 'N/D')} MiB/s; {result.get('workers', 'N/D')} workerów.")
+            return result
+        return _U145_ORIGINAL_COMPONENT_WORKER(app, module, mode)
+    except Exception as exc:
+        result = {"state": "error", "module": module, "mode": mode,
+                  "error": f"{type(exc).__name__}: {exc}",
+                  "message": "Test przerwany błędem; brak wyniku nie jest zaliczeniem testu."}
+        _u93_put_result(app, "COMPONENT_ERROR_" + module, result)
+        app.queue_log(f"Component workbench {module}/{mode}: {result['error']}")
+        return result
+    finally:
+        try:
+            app.queue_action(lambda c=context: _u145_finish_component_run(app, c))
+        except Exception:
+            try:
+                _u145_finish_component_run(app, context)
+            except Exception:
+                pass
+
+
+_u69_run_component_worker = _u145_component_worker
+_u68_run_component_worker = _u145_component_worker
+
+
+def _u145_execute_gpu_scene(app, scene_id, seconds=5):
+    source_view = str(getattr(app, "current_view", ""))
+    result = _U145_ORIGINAL_EXECUTE_GPU_SCENE(app, scene_id, seconds)
+    if source_view.startswith("SIM3D_GPU"):
+        try:
+            _u93_put_result(app, "GPU_REAL_RENDER", result)
+            merged = _u145_merge_gpu_render(getattr(app, "results", {}).get("GPU", {}), result)
+            _u93_put_result(app, "GPU", merged)
+            context = {"module": "GPU", "mode": "benchmark", "real_scene": True,
+                "started_at": _U66_datetime.now().astimezone().isoformat(timespec="seconds"),
+                "started_monotonic": _u66_time.monotonic() - float(result.get("duration_seconds", 0) or 0)}
+            app.queue_action(lambda c=context: _u145_finish_component_run(app, c))
+        except Exception as exc:
+            try:
+                app.queue_log("GPU OpenGL result handoff: " + repr(exc))
+            except Exception:
+                pass
+    return result
+
+
+_u66_execute_gpu_scene = _u145_execute_gpu_scene
+
+
+def _u145_detail_status_only(app, message):
+    text_value = str(message)
+    try:
+        app.queue_action(lambda m=text_value: _u69_status_text(app, m))
+    except Exception:
+        pass
+    try:
+        _U145_ORIGINAL_CPU_DETAIL_STATUS(app, text_value)
+    except Exception:
+        pass
+
+
+_u93_detail_status_only = _u145_detail_status_only
+
+
+def _u145_launch_component_test(app, module, mode="benchmark"):
+    if str(module).upper() == "CPU" and str(mode).lower() != "scan":
+        seconds = max(5, min(300, int(_u68_profile_seconds(app))))
+        if seconds >= 180 and not _u145_messagebox.askyesno(
+            "CPU BENCHMARK ULTRA/MAX",
+            f"Uruchomić wielowątkowy benchmark SHA-256 przez {seconds} s? Wynik pokaże operacje/s i MiB/s rzeczywistego obliczania."):
+            return
+    return _U145_ORIGINAL_LAUNCH_COMPONENT_TEST(app, module, mode)
+
+
+_u69_launch_component_test = _u145_launch_component_test
+
+
+def _u145_open_component_simulator(app, module, run_test=False, mode="scan"):
+    _U145_ORIGINAL_OPEN_COMPONENT_SIMULATOR(app, module, run_test, mode)
+    try:
+        box = getattr(app, "_u76_result_text", None)
+        if box is None or not box.winfo_exists():
+            return
+        report_panel = box.master.master
+        existing = getattr(app, "_u145_report_buttons_panel", None)
+        try:
+            if existing is not None and existing.winfo_exists():
+                existing.destroy()
+        except Exception:
+            pass
+        theme = app.colors()
+        footer = _u145_tk.Frame(report_panel, bg=theme["panel"])
+        footer.pack(fill="x", padx=5, pady=(0, 5))
+        app._u145_report_buttons_panel = footer
+        app.make_button(footer, "HISTORIA TESTÓW", lambda m=module: _u145_show_component_history(app, m), "accent", side="left", ipady=4)
+        app.make_button(footer, "OTWÓRZ FOLDER RAPORTÓW", lambda: _u145_open_report_folder(app), "card", side="left", ipady=4)
+        app.make_button(footer, "EKSPORT CSV", lambda m=module: _u145_export_history_dialog(app, m), "card", side="left", ipady=4)
+    except Exception as exc:
+        try:
+            app.queue_log("Przyciski historii raportów komponentu: " + repr(exc))
+        except Exception:
+            pass
+
+
+_u69_open_component_simulator = _u145_open_component_simulator
+_u68_open_component_simulator = _u145_open_component_simulator
+
+
+def _u145_selftest_component_workbench():
+    import tempfile as _u145_tempfile
+    assert _U145_COMPONENT_WORKBENCH_VERSION == "1.0.0"
+    assert callable(_u145_component_worker) and callable(_u145_execute_gpu_scene)
+    assert _u76_component_result_keys("GPU", "scan")[0] == "GPU_REAL_RENDER"
+    merged = _u145_merge_gpu_render({"Name": "GPU A"}, {
+        "state": "good", "scene_id": 4, "scene_name": "scene-four", "renderer": "Test renderer",
+        "average_fps": 123.4, "peak_fps_1s": 150, "frames": 600, "duration_seconds": 5})
+    assert merged["average_fps"] == 123.4 and merged["Name"] == "GPU A"
+    assert callable(_u93_cpu_hash_benchmark)
+    with _u145_tempfile.TemporaryDirectory(prefix="npch-workbench-report-test-") as temp:
+        first = _u145_write_component_record("CPU", "benchmark", {"state": "good", "message": "=SUM(1,1)"},
+            started_at="2026-10-22T10:00:00+00:00", finished_at="2026-10-22T10:00:01+00:00",
+            report_dir=temp, result_key="CPU")
+        second = _u145_write_component_record("GPU", "benchmark", {"state": "warn", "error": "renderer unavailable"},
+            started_at="2026-10-22T11:00:00+00:00", finished_at="2026-10-22T11:00:01+00:00",
+            report_dir=temp, result_key="GPU_REAL_RENDER")
+        history = _u145_read_component_history(temp)
+        assert len(history) == 2 and history[0]["module"] == "GPU", "component history should sort newest first"
+        assert _u145_Path(first["json_path"]).is_file() and _u145_Path(second["html_path"]).is_file()
+        csv_path = _u145_export_component_history(report_dir=temp, output_path=_u145_Path(temp) / "history.csv")
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as stream:
+            rows = list(_u145_csv.reader(stream))
+        assert len(rows) == 3 and rows[0][2] == "Podzespół", "component CSV should include headers and all reports"
+        assert _u145_csv_cell("=SUM(1,1)").startswith("'="), "CSV formula injection protection failed"
+    assert callable(_u145_show_component_history) and callable(_u145_export_history_dialog)
+    assert callable(_u145_open_component_simulator) and callable(_u145_component_report_text)
+    assert callable(_u145_finish_component_run)
+    print("COMPONENT_WORKBENCH_REPORT_PIPELINE_SELFTEST_OK: CPU throughput, GPU FPS handoff, per-run JSON+HTML history and safe CSV")
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u145_selftest_component_workbench()
         _u134_selftest_ram_live_dashboard()
         _u135_selftest_real_3d_scene_mapping()
         _u135_selftest_serwis_diagnostics()

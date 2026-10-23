@@ -149,3 +149,12 @@ WYDANIE 4.3.151 — FURMARK-STYLE GPU STRESS I NIEPOWTARZALNE SYMULATORY
 - Laboratorium zawiera 13 osobnych schematów: CPU, RAM, GPU, VRAM, SSD/NVMe, ekran, bezpieczeństwo, bateria, sieć, USB, audio, klawiatura i kamera.
 - Ogólny przycisk „UNIKALNA SCENA OPENGL / FPS” jest usuwany z ekranów zwykłych testów. Tylko pozycje symulatorów otwierają właściwy model podzespołu.
 - Nazwa FurMark-style oznacza autorski renderer OpenGL inspirowany testami obciążeniowymi; nie jest to oficjalny silnik FurMark 2.
+
+
+WYDANIE 4.3.152 — BENCHMARK CPU, RAPORT GPU I HISTORIA TESTÓW
+------------------------------------------------------------
+- Główny przycisk BENCHMARK ULTRA/MAX na stronie CPU uruchamia wielowątkowy benchmark SHA-256 i zapisuje operacje/s, MiB/s, liczbę wątków, ilość danych oraz czas. Długi test wymaga potwierdzenia; STOP pozostawia wynik WARN.
+- Wynik pojedynczej sceny OpenGL przekazuje średni FPS, peak FPS 1 s, liczbę klatek, renderer i wersję OpenGL do głównego panelu wyniku GPU. To nie jest szacunek FPS w grze.
+- Każdy test uruchamiany z workbencha zapisuje lokalne raporty JSON+HTML do %LOCALAPPDATA%\NaprawaPC\Raporty\ComponentWorkbench.
+- Panel raportu ma HISTORIA TESTÓW, OTWÓRZ FOLDER RAPORTÓW i EKSPORT CSV. CSV zawiera datę, komponent, tryb, stan i ścieżki oraz zabezpiecza pola przed formułami arkusza.
+- Testy automatyczne sprawdzają zapis i odczyt raportów, kolejność historii, eksport CSV i ochronę przed formułami. Nie zastępują testu na fizycznym CPU/GPU.
