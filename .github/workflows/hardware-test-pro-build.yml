@@ -181,6 +181,7 @@ jobs:
             "--selftest-service-center",
             "--selftest-update-flow",
             "--selftest-auto-update",
+            "--selftest-main-component-handoff",
             "--selftest-advanced-modules",
             "--selftest-windows-audit",
             "--selftest-integrated-apps",
@@ -357,6 +358,7 @@ jobs:
             - Poprawka aktualizatora: lokalny instalator ma bezpieczny prefiks NaprawaPC-Update-, aby procedura zamykania starego EXE nie zakończyła procesu Setup.
             - 4.3.159: po wykryciu nowszej stable aktualizator automatycznie pobiera Setup, weryfikuje rozmiar/SHA-256/PE i uruchamia go przez Windows UAC. Nie ma osobnego pytania przed pobieraniem ani otwierania folderu Explorer.
             - Workbench CPU/RAM/GPU przyjmuje także start z istniejących przycisków strony, zachowuje baseline sprzed testu i wykrywa świeży raport; test regresyjny sprawdza cykl start → wynik.
+            - Główne ekrany CPU/RAM/GPU mają ten sam panel rzeczywistego testu co katalog 3D: START/STOP, postęp, bieżące odczyty i świeży raport także dla testu uruchomionego pierwotnym przyciskiem strony.
             - Brak czujnika jest oznaczany N/D. Windows CI nie zastępuje testu fizycznego komputera użytkownika.
             - Uwaga dotycząca zakresu: 40 sond to integracja diagnostyczna w katalogu; pełna zgodność 1:1 wszystkich wewnętrznych ekranów i funkcji z obydwoma archiwami źródłowymi nie została jeszcze potwierdzona.
             - Poprawka testów 4.3.145: synchronizacja głównego raportu RAM podczas pomiaru i po jego zakończeniu; usunięty błędny callback etapów CPU; prawidłowa odległość kamery sceny OpenGL i widoczniejsza geometria.

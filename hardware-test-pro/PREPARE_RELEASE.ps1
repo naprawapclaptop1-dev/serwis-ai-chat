@@ -1990,6 +1990,17 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
 if (!$src.Contains("_U154_HARDWARE_PROFILE_VERSION") -or !$src.Contains("HARDWARE_PROFILE_SUITE_SELFTEST_OK") -or !$src.Contains("PROFIL RZECZYWISTEGO BENCHMARKU") -or !$src.Contains("URUCHOM PROFIL CPU + RAM + GPU")) {
     throw "Selectable CPU/RAM/GPU benchmark profiles were not integrated into the generated application."
 }
+$mainComponentPatchPath = Join-Path $PSScriptRoot "HARDWARE_MAIN_COMPONENT_HANDOFF_PATCH.py"
+if (!(Test-Path -LiteralPath $mainComponentPatchPath)) { throw "Missing main CPU/RAM/GPU execution handoff patch." }
+$mainComponentPatch = [IO.File]::ReadAllText($mainComponentPatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $mainComponentPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U160_MAIN_COMPONENT_HANDOFF_VERSION") -or !$src.Contains("MAIN_COMPONENT_HANDOFF_SELFTEST_OK") -or !$src.Contains("AppV43.show_module = _u160_show_module_with_execution_workbench")) {
+    throw "Main CPU/RAM/GPU execution handoff was not integrated."
+}
+
 # v4.3.159 — automatic global update after a newer stable release is detected.
 # The file is downloaded by the existing SHA-256/size/PE-verified worker; Windows UAC remains mandatory.
 $autoUpdatePatch = @'
@@ -2129,6 +2140,13 @@ $mainAutoTest = @'
             raise SystemExit(0)
         except Exception as _u159_exc:
             print("AUTO_UPDATE_SELFTEST_FAILED:", type(_u159_exc).__name__, str(_u159_exc))
+            raise SystemExit(1)
+    elif "--selftest-main-component-handoff" in sys.argv:
+        try:
+            _u160_selftest_main_component_handoff()
+            raise SystemExit(0)
+        except Exception as _u160_exc:
+            print("MAIN_COMPONENT_HANDOFF_SELFTEST_FAILED:", type(_u160_exc).__name__, str(_u160_exc))
             raise SystemExit(1)
 '@
 $mainPattern = '(?m)^    else:\r?\n        app = AppV43\(\)\r?\n        app\.protocol\("WM_DELETE_WINDOW", app\.close_app\)\r?\n        app\.mainloop\(\)$'

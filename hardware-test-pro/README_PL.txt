@@ -219,3 +219,8 @@ Nie ma dodatkowego pytania „Pobrać aktualizację?” ani nie otwiera się Exp
 POPRAWKA CPU/RAM/GPU — WYNIK Z DOWOLNEGO PRZYCISKU TESTU
 --------------------------------------------------------
 Panel rzeczywistego testu przejmuje teraz także uruchomienie rozpoczęte przez istniejący przycisk strony CPU/RAM/GPU, a nie tylko przez swój własny przycisk START. Zachowuje punkt odniesienia sprzed uruchomienia, pokazuje stan aktywnego pomiaru i dopiero po zakończeniu przyjmuje świeży raport. Stary raport nie jest używany jako wynik nowego testu.
+
+
+PANEL WYNIKÓW NA GŁÓWNYCH EKRANACH CPU / RAM / GPU
+--------------------------------------------------
+W wydaniu 4.3.160 panel rzeczywistego testu jest dołączony bezpośrednio do głównych stron CPU, RAM i GPU oraz do widoków szczegółowych 3D. Śledzi test uruchomiony własnym przyciskiem panelu albo istniejącym przyciskiem strony, zapamiętuje punkt odniesienia przed startem i pokazuje tylko nowy raport z tego przebiegu. Puste „WYNIK TESTU” sprzed pomiaru nie jest uznawane za jego rezultat.

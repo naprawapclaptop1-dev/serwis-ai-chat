@@ -314,3 +314,10 @@
 - [x] Workbench na stronach szczegółów wykrywa także aktywny test uruchomiony przez pierwotny przycisk strony.
 - [x] Zapamiętuje wcześniejsze identyfikatory i sygnatury wyników, by nie pokazywać starego pomiaru jako nowego.
 - [x] Test regresyjny wykonuje cykl: stan idle → istniejący przycisk uruchamia test → wynik obiektu ulega zmianie → panel rozpoznaje świeży raport.
+
+
+## Kandydat 4.3.160 — test i wynik bezpośrednio na głównych stronach CPU/RAM/GPU
+- [x] Dodano panel rzeczywistego testu do głównych stron CPU, RAM i GPU, nie tylko do katalogu 3D.
+- [x] Panel śledzi też uruchomienie pierwotnym przyciskiem strony, z punktem odniesienia sprzed testu.
+- [x] Dodano selftest main-component handoff i włączono go do Windows CI.
+- [ ] Publikacja do stable nastąpi dopiero po przejściu Windows CI i potwierdzeniu nowego latest.json.
