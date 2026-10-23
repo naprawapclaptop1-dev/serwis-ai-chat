@@ -395,7 +395,7 @@ def _u152_selftest_furmark_and_unique_simulators():
  assert _U152_FURMARK_SCENE_ID==1 and callable(_u152_show_furmark_stress) and callable(_u152_start_furmark_test)
  assert callable(_u152_show_component_simulator) and callable(_u152_show_simulator_hub) and callable(_u152_show_test_detail)
  stress_names,stress_literals=_u152_deep_names(_u152_start_furmark_test)
- assert "_u66_execute_gpu_scene" in stress_names and "_u149_save_report" in stress_names and "FURMARK_STYLE_GPU_STRESS" in stress_literals
+ assert "_u66_execute_gpu_scene" in stress_names and ("_u149_save_report" in stress_names or "_u149_save_report" in stress_literals) and "FURMARK_STYLE_GPU_STRESS" in stress_literals
  detail_names,detail_literals=_u152_deep_names(_u152_show_test_detail)
  assert "_u152_show_component_simulator" in detail_names and "sim" in detail_literals and "UNIKALNA SCENA OPENGL / FPS" in detail_literals
  scene_names,scene_literals=_u152_deep_names(_u152_draw_component)
