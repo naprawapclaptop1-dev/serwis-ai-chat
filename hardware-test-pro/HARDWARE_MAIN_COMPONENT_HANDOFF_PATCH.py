@@ -44,10 +44,45 @@ def _u160_selftest_main_component_handoff():
     assert callable(globals().get("_u153_attach_component_workbench")), "component execution workbench helper missing"
     assert callable(AppV43.show_module) and AppV43.show_module is _u160_show_module_with_execution_workbench
     names = set(_u160_show_module_with_execution_workbench.__code__.co_names)
+    constants = set(_u160_show_module_with_execution_workbench.__code__.co_consts)
     assert "_U160_ORIGINAL_SHOW_MODULE" in names
-    assert "_u153_attach_component_workbench" in names, "main component pages do not attach live result workbench"
-    assert "MAIN_MODULE_" in _u160_show_module_with_execution_workbench.__code__.co_consts
-    print("MAIN_COMPONENT_HANDOFF_SELFTEST_OK: main CPU/RAM/GPU pages attach live execution, progress and fresh-report panels")
+    # The helper is intentionally looked up by string through globals(); its symbol
+    # belongs to co_consts, not co_names. Test the call behavior as well as its wiring.
+    assert "_u153_attach_component_workbench" in constants, "main component pages do not reference the live workbench helper"
+    assert "MAIN_MODULE_" in constants
+
+    original_show = _U160_ORIGINAL_SHOW_MODULE
+    original_attach = globals().get("_u153_attach_component_workbench")
+    calls = []
+    class _U160FakeApp:
+        pass
+    def _u160_fake_show(app, module):
+        return ("original-view", module)
+    def _u160_fake_attach(app, module, test_id="", kind=""):
+        calls.append((module, test_id, kind))
+        return True
+    try:
+        _U160_ORIGINAL_SHOW_MODULE = _u160_fake_show
+        globals()["_u153_attach_component_workbench"] = _u160_fake_attach
+        fake = _U160FakeApp()
+        for module in ("CPU", "RAM", "GPU"):
+            result = _u160_show_module_with_execution_workbench(fake, module)
+            assert result == ("original-view", module), "original main view was not preserved for " + module
+        assert calls == [
+            ("CPU", "MAIN_MODULE_CPU", "main_module"),
+            ("RAM", "MAIN_MODULE_RAM", "main_module"),
+            ("GPU", "MAIN_MODULE_GPU", "main_module"),
+        ], "opening main CPU/RAM/GPU pages must attach exactly one workbench per module"
+        calls.clear()
+        _u160_show_module_with_execution_workbench(fake, "DYSKI")
+        assert not calls, "non-CPU/RAM/GPU views must not receive the component workbench"
+    finally:
+        _U160_ORIGINAL_SHOW_MODULE = original_show
+        if original_attach is None:
+            globals().pop("_u153_attach_component_workbench", None)
+        else:
+            globals()["_u153_attach_component_workbench"] = original_attach
+    print("MAIN_COMPONENT_HANDOFF_SELFTEST_OK: actual CPU/RAM/GPU page calls attach live execution workbench; other modules unchanged")
 
 
 if __name__ == "__main__" and "--selftest-main-component-handoff" in _u160_sys.argv:
