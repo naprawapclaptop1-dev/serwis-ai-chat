@@ -173,3 +173,13 @@ WYGLAD INSTALATORA WINDOWS
 -------------------------
 Instalator uzywa nowoczesnego ciemnego stylu Inno Setup 6.7 lub nowszego, granatowo-niebieskiego tla z subtelnym wzorem obwodow, autorskiej grafiki paska bocznego i znaku diagnostycznego w naglowku.
 Ekrany powitalny, gotowosci do instalacji i koncowy maja spojne opisy po polsku. Obrazy instalatora sa walidowane w Windows CI przed kompilacja Setup.exe.
+
+
+BEZPOŚREDNIE START / STOP NA STRONACH CPU/RAM/GPU — 4.3.155
+------------------------------------------------------------
+- Na ekranie CPU: „START CPU 15 S” uruchamia wielowątkowy test SHA-256 przez natywny worker aplikacji. Raport zawiera operacje/s, MiB/s, liczbę wątków, próbki obciążenia i czas.
+- Na ekranie RAM: „START RAM 256 MB” uruchamia zapis i weryfikację rzeczywistego bufora. Wynik zawiera ilość faktycznie sprawdzonych bajtów, liczbę wzorców, status i przepustowość.
+- Na ekranie GPU: „START GPU OPENGL 10 S” uruchamia rzeczywisty renderer OpenGL; raport z procesu renderującego trafia do karty GPU, historii JSON/HTML oraz CSV. W trakcie pomiaru renderer używa osobnego okna.
+- „STOP TEST” wywołuje istniejącą funkcję zatrzymania. Przerwany test nie może zostać przedstawiony jako pełny sukces.
+- Nie ma testów pod przykrywką przykładowych danych: jeśli sterownik nie podaje temperatury lub obciążenia, ekran pokazuje N/D; wynik benchmarku pochodzi z raportu wykonania.
+- Windows CI ma test regresyjny routingu START CPU/RAM/GPU poprzez atrapę workera, więc nie obciąża fizycznego komputera podczas kompilacji.

@@ -3,8 +3,9 @@ import os as _u151_os
 import sys as _u151_sys
 import time as _u151_time
 import tkinter as _u151_tk
+from tkinter import messagebox as _u151_messagebox
 
-_U151_HARDWARE_RESULT_CONSOLE_VERSION = "1.0.0"
+_U151_HARDWARE_RESULT_CONSOLE_VERSION = "1.1.0"
 _U151_ORIGINAL_SHOW_MODULE = AppV43.show_module
 
 
@@ -237,7 +238,17 @@ def _u151_attach_console(app, module):
     summary.pack(fill="x", padx=8, pady=(0, 6))
     controls = _u151_tk.Frame(frame, bg=t["panel"])
     controls.pack(fill="x", padx=8, pady=(0, 7))
-    app.make_button(controls, f"KATALOG TESTÓW {module}", lambda m=module: _u93_show_catalog(app, m), "accent", side="left", ipady=3)
+    direct_labels = {
+        "CPU": "▶ START CPU 15 S",
+        "RAM": "▶ START RAM 256 MB",
+        "GPU": "▶ START GPU OPENGL 10 S",
+    }
+    app.make_button(
+        controls, direct_labels[module],
+        lambda m=module: _u151_start_direct_test(app, m), "accent", side="left", ipady=3
+    )
+    app.make_button(controls, "■ STOP TEST", lambda: _u151_stop_direct_test(app), "card", side="left", ipady=3)
+    app.make_button(controls, f"KATALOG TESTÓW {module}", lambda m=module: _u93_show_catalog(app, m), "card", side="left", ipady=3)
     app.make_button(controls, "HISTORIA + PORÓWNANIE + CSV", lambda: _u149_show_history(app), "card", side="left", ipady=3)
     if module == "GPU":
         app.make_button(controls, "STUDIO OPENGL • 110 SCEN", lambda: _u66_show_3d_studio(app), "good", side="left", ipady=3)
@@ -342,8 +353,81 @@ def _u151_wrap_direct_module(name, module):
     return True
 
 
+
+def _u151_start_direct_test(app, module):
+    """Start an actual bounded CPU, RAM or OpenGL test from the visible component page."""
+    module = _u151_module_key(module)
+    if module not in ("CPU", "RAM", "GPU"):
+        return False
+    if bool(getattr(app, "running", False)):
+        _u151_messagebox.showwarning(
+            "Test sprzętu",
+            "Inny test już działa. Poczekaj na wynik albo użyj STOP TEST przed uruchomieniem następnego.",
+            parent=app,
+        )
+        return False
+    if module == "CPU":
+        test_fn = lambda: app._cpu_test(15)
+        label = "CPU SHA-256 — 15 sekund"
+    elif module == "RAM":
+        test_fn = lambda: app._ram_test(256)
+        label = "RAM — bufor 256 MB, zapis i weryfikacja wzorców"
+    else:
+        # The real OpenGL renderer writes a JSON result and routes it back to GPU_3D/history.
+        test_fn = lambda: _u66_execute_gpu_scene(app, 1, 10)
+        label = "GPU OpenGL — scena 01, 10 sekund"
+
+    worker = getattr(app, "worker", None)
+    if not callable(worker):
+        _u151_messagebox.showerror(
+            "Test sprzętu",
+            "Nie znaleziono bezpiecznego mechanizmu pracownika testów. Nie uruchomiono pomiaru.",
+            parent=app,
+        )
+        return False
+    try:
+        try:
+            app.stop_requested = False
+        except Exception:
+            pass
+        try:
+            app.queue_log("CENTRUM CPU/RAM/GPU: start — " + label)
+        except Exception:
+            pass
+        worker(test_fn)
+        return True
+    except Exception as exc:
+        try:
+            app.queue_log("Nie udało się uruchomić testu " + module + ": " + type(exc).__name__ + ": " + str(exc))
+        except Exception:
+            pass
+        _u151_messagebox.showerror(
+            "Test sprzętu",
+            "Uruchomienie rzeczywistego testu nie powiodło się:\n" + type(exc).__name__ + ": " + str(exc),
+            parent=app,
+        )
+        return False
+
+
+def _u151_stop_direct_test(app):
+    stop = getattr(app, "stop_current_test", None)
+    if not callable(stop):
+        _u151_messagebox.showinfo("STOP TEST", "Ta wersja nie udostępnia kontrolki STOP TEST.", parent=app)
+        return False
+    try:
+        stop()
+        return True
+    except Exception as exc:
+        try:
+            app.queue_log("STOP TEST: " + type(exc).__name__ + ": " + str(exc))
+        except Exception:
+            pass
+        _u151_messagebox.showerror("STOP TEST", str(exc), parent=app)
+        return False
+
+
 def _u151_selftest_hardware_result_console():
-    assert _U151_HARDWARE_RESULT_CONSOLE_VERSION == "1.0.0"
+    assert _U151_HARDWARE_RESULT_CONSOLE_VERSION == "1.1.0"
     assert _u151_module_key("PROCESOR / CPU") == "CPU"
     assert _u151_module_key("PAMIĘĆ RAM") == "RAM"
     assert _u151_module_key("KARTA GRAFICZNA / GPU") == "GPU"
@@ -363,8 +447,39 @@ def _u151_selftest_hardware_result_console():
     assert gpu_rows[3][1] == 61.25 and gpu_rows[4][1] == 75.0 and gpu_rows[5][1] == 300
     assert "NIE WYKONANO" in _u151_report_summary("RAM", {}) and _u151_format_metric(None, "°C") == "N/D"
     assert callable(_u151_attach_console) and callable(_u151_refresh_console) and callable(_u151_last_result)
+    assert callable(_u151_start_direct_test) and callable(_u151_stop_direct_test)
+    assert "direct_labels" in _u151_attach_console.__code__.co_varnames
+    assert "worker" in _u151_start_direct_test.__code__.co_names
+    class FakeDirectTestApp:
+        def __init__(self):
+            self.running = False
+            self.stop_requested = True
+            self.pending = None
+            self.calls = []
+        def worker(self, fn):
+            self.pending = fn
+        def _cpu_test(self, seconds):
+            self.calls.append(("CPU", seconds))
+        def _ram_test(self, size_mb):
+            self.calls.append(("RAM", size_mb))
+        def queue_log(self, text):
+            self.calls.append(("LOG", text))
+    fake = FakeDirectTestApp()
+    _original_gpu_scene = globals().get("_u66_execute_gpu_scene")
+    globals()["_u66_execute_gpu_scene"] = lambda app, scene, seconds: app.calls.append(("GPU", scene, seconds))
+    try:
+        for module, expected in (("CPU", ("CPU", 15)), ("RAM", ("RAM", 256)), ("GPU", ("GPU", 1, 10))):
+            fake.pending = None
+            assert _u151_start_direct_test(fake, module), "direct test did not enqueue: " + module
+            assert callable(fake.pending), "test worker was not handed an executable job: " + module
+            fake.pending()
+            assert expected in fake.calls, "direct test route mismatch for " + module
+        assert fake.stop_requested is False, "starting a test should clear an old stop request"
+    finally:
+        if _original_gpu_scene is not None:
+            globals()["_u66_execute_gpu_scene"] = _original_gpu_scene
     assert callable(AppV43.show_module)
-    print("HARDWARE_RESULT_CONSOLE_SELFTEST_OK: real Windows CPU/RAM/GPU metrics, explicit last benchmark, report/catalog actions, no sample values")
+    print("HARDWARE_RESULT_CONSOLE_SELFTEST_OK: live readings, visible direct CPU/RAM/GPU starters, STOP control, result/history mapping")
 
 
 _U151_ORIGINAL_SHOW_MODULE_METHOD = AppV43.show_module
