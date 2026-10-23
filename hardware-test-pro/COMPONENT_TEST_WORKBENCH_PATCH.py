@@ -88,7 +88,7 @@ def _u153_get_fresh_result(app, module, baseline):
     if not isinstance(results, dict):
         return None, ""
     baseline = baseline or {}
-    for key in _u153_result_keys(module):
+    for key in _u153_result_keys(module, app):
         value = results.get(key)
         if not isinstance(value, dict) or not value:
             continue
@@ -567,6 +567,7 @@ def _u153_selftest_component_test_workbench():
     assert _u153_result_keys("CPU")[0] == "CPU_BENCHMARK"
     assert _u153_result_keys("RAM")[0] == "RAM_BENCHMARK"
     assert _u153_result_keys("GPU")[0] == "GPU_3D"
+    assert "3D_SCENE_17" in _u153_result_keys("GPU", type("FakeGPUKeys", (), {"results": {"3D_SCENE_17": {"state": "good"}}})()), "scene-specific GPU result keys are not included in fresh-result lookup"
     gpu_fake = type("FakeGPUApp", (), {"results": {"3D_SCENE_17": {"state": "good", "average_fps": 20.0}}})()
     gpu_baseline = _u153_capture_result_ids(gpu_fake, "GPU")
     gpu_fake.results["3D_SCENE_17"] = {"state": "good", "average_fps": 67.5, "finished_at": "2026-10-23T15:08:00+00:00"}
