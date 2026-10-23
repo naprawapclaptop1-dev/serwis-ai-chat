@@ -33,3 +33,11 @@ WYDANIE 4.3.151 — ODDZIELNY GPU STRESS I UNIKALNE SYMULATORY
 - GPU FURMARK-STYLE STRESS to osobny ekran z rzeczywistym FPS z renderera OpenGL i lokalnym raportem.
 - FurMark-style donut jest tylko na scenie 01; pozostałe 109 scen nie dostają nakładanego obiektu.
 - Każdy z 13 symulatorów ma oddzielny schemat komponentu. Powtarzający się przycisk ogólnego symulatora jest usuwany ze zwykłych ekranów testowych.
+
+
+WYDANIE 4.3.153 — RZECZYWISTE TESTY NA GŁÓWNYCH EKRANACH
+- CPU: wielowątkowy benchmark SHA-256 z postępem w obrębie strony i wynikiem operacji/s oraz MiB/s.
+- RAM: test wzorców własnym kodem z bezpiecznym limitem alokacji, postępem, liczbą sprawdzonych bajtów i prędkością.
+- GPU: rzeczywiste renderowanie OpenGL, FPS/renderer/rozdzielczość wracają do głównego panelu; test FurMark-style jest oddzielną opcją.
+- Raporty każdego modułu są zapisywane lokalnie jako JSON+HTML; dostępna jest historia i eksport CSV.
+- Testy nie fabrykują wyników z przykładowych danych; nieudany start, anulowanie i brak czujnika nie są traktowane jako pełny PASS.

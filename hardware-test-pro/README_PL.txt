@@ -158,3 +158,12 @@ WYDANIE 4.3.152 — BENCHMARK CPU, RAPORT GPU I HISTORIA TESTÓW
 - Każdy test uruchamiany z workbencha zapisuje lokalne raporty JSON+HTML do %LOCALAPPDATA%\NaprawaPC\Raporty\ComponentWorkbench.
 - Panel raportu ma HISTORIA TESTÓW, OTWÓRZ FOLDER RAPORTÓW i EKSPORT CSV. CSV zawiera datę, komponent, tryb, stan i ścieżki oraz zabezpiecza pola przed formułami arkusza.
 - Testy automatyczne sprawdzają zapis i odczyt raportów, kolejność historii, eksport CSV i ochronę przed formułami. Nie zastępują testu na fizycznym CPU/GPU.
+
+
+WŁASNE TESTY NA GŁÓWNYCH EKRANACH CPU/RAM/GPU — 4.3.153
+--------------------------------------------------------
+- CPU: przycisk „BENCHMARK CPU SHA-256” na głównej karcie CPU wykonuje rzeczywiste wielowątkowe obliczenia SHA-256 i pokazuje postęp, operacje/s, MiB/s, liczbę wątków, czas i status przerwania.
+- RAM: główny ekran korzysta bezpośrednio z testu wzorców przydzielonego bufora, pokazuje postęp i końcowe bajty zapisane/zweryfikowane, wielkość faktycznie testowanego bufora oraz prędkość.
+- GPU: główny ekran udostępnia rzeczywiste renderowanie OpenGL oraz oddzielny krótki test FurMark-style. Raport zawiera FPS, liczbę klatek, renderer, wersję OpenGL i rozdzielczość. Renderer otwiera własne okno, ale wynik wraca na główną kartę GPU.
+- Wszystkie trzy ekrany udostępniają lokalną historię raportów JSON+HTML oraz eksport CSV. Brak sensora lub wyniku nie jest zamieniany na PASS.
+- SHA-256 jest pomiarem przerobu software, RAM testuje przydzielony bufor procesu, a FPS OpenGL opisuje renderowanie — nie gwarantuje pełnej sprawności każdego bloku GPU.

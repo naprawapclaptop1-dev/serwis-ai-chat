@@ -279,3 +279,7 @@
 - [x] Workbench zawiera historię raportów, otwarcie folderu oraz eksport CSV z ochroną przed formułami.
 - [x] Windows CI sprawdza historię, pliki raportów, sortowanie i CSV przed publikacją.
 - [ ] Na fizycznym PC sprawdzić pracę sensorów i OpenGL na aktualnych sterownikach.
+
+
+**Stable online przed tym kandydatem:** 4.3.152 — Windows Setup i All-in-One opublikowane.
+**Kandydat 4.3.153:** na głównych ekranach CPU/RAM/GPU dodano bezpośrednie uruchomienia testów, widoczny postęp i raport końcowy. Windows CI musi zaliczyć benchmark CPU, wynik testu RAM, wynik OpenGL oraz zapis historii JSON/HTML/CSV.

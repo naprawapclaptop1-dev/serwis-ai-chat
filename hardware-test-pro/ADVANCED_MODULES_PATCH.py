@@ -5852,7 +5852,14 @@ def _u93_cpu_hash_benchmark(app,multi,seconds):
             if app._test_should_stop():halt.set()
         except Exception:pass
         if now-last>=1:
-            _u93_detail_status_only(app,f"CPU SHA-256: {sum(counts):,} operacji • {now-started:.0f}/{seconds} s");last=now
+            _u93_detail_status_only(app,f"CPU SHA-256: {sum(counts):,} operacji • {now-started:.0f}/{seconds} s")
+            _u153_progress = getattr(app, "_u153_cpu_progress_callback", None)
+            if callable(_u153_progress):
+                try:
+                    _u153_progress(sum(counts), max(0.0, now-started), seconds)
+                except Exception:
+                    pass
+            last=now
         for th in threads:th.join(.05)
     elapsed=max(.001,_tm.perf_counter()-started);ops=sum(counts);total_bytes=sum(byte_counts)
     result={"state":"good" if ops else "warn","benchmark":"software SHA-256 throughput; not a physical silicon pass/fail test",
@@ -16433,8 +16440,672 @@ def _u145_selftest_component_workbench():
     print("COMPONENT_WORKBENCH_REPORT_PIPELINE_SELFTEST_OK: CPU throughput, GPU FPS handoff, per-run JSON+HTML history and safe CSV")
 
 
+
+
+# v4.3.153 — real CPU/RAM/GPU tests directly on the three main component screens.
+import time as _u153_time
+from datetime import datetime as _u153_datetime
+from tkinter import ttk as _u153_ttk, messagebox as _u153_messagebox
+
+_U153_MAIN_HARDWARE_WORKBENCH_VERSION = "1.0.0"
+_U153_ORIGINAL_MODULE_CPU = AppV43.module_cpu
+_U153_ORIGINAL_MODULE_RAM = AppV43.module_ram
+_U153_ORIGINAL_MODULE_GPU = AppV43.module_gpu
+
+
+def _u153_number(value, digits=2):
+    try:
+        number = float(value)
+        if not _u66_math.isfinite(number):
+            return "N/D"
+        return f"{number:,.{digits}f}".replace(",", " ")
+    except Exception:
+        return "N/D"
+
+
+def _u153_ram_result_lines(result):
+    if not isinstance(result, dict) or not result:
+        return [
+            "BRAK WYNIKU TESTU RAM.",
+            "Uruchom własny test wzorców. Brak raportu nie oznacza zaliczenia.",
+        ]
+    state = str(result.get("state") or "warn").upper()
+    lines = [
+        f"STAN TESTU RAM: {state}",
+        f"Bufor żądany: {result.get('requested_mb', result.get('size_mb', 'N/D'))} MB",
+        f"Bufor rzeczywiście sprawdzony: {result.get('tested_mb', result.get('size_mb', 'N/D'))} MB",
+        f"Wzorce: {result.get('patterns_completed', 'N/D')}/{result.get('patterns_total', result.get('patterns_total_per_pass', 'N/D'))}",
+        f"Przebiegi: {result.get('passes_run', 1)} • czas: {_u153_number(result.get('duration_seconds', result.get('duration_sec')), 2)} s",
+        f"Bajty zapisane: {result.get('bytes_written', 'N/D')} • zweryfikowane: {result.get('bytes_verified', 'N/D')}",
+        f"Zapis: {_u153_number(result.get('write_mib_s_overall', result.get('write_MBps')), 2)} MiB/s • odczyt/weryfikacja: {_u153_number(result.get('verify_mib_s_overall', result.get('read_MBps')), 2)} MiB/s",
+    ]
+    if result.get("error_offset") is not None:
+        lines.append(f"PIERWSZY BŁĘDNY OFFSET: {result.get('error_offset')}")
+    if result.get("stopped") or result.get("cancelled"):
+        lines.append("Test przerwany — wynik częściowy nie oznacza pełnego PASS.")
+    lines.append(str(result.get("message") or result.get("note") or "Test obejmuje wyłącznie przydzielony bufor procesu, nie każdą fizyczną komórkę RAM."))
+    return lines
+
+
+def _u153_cpu_result_lines(result):
+    if not isinstance(result, dict) or not result:
+        return [
+            "BRAK WYNIKU BENCHMARKU CPU.",
+            "Uruchom wielowątkowy SHA-256, aby zmierzyć wykonane operacje i przepustowość.",
+        ]
+    lines = [
+        f"STAN BENCHMARKU CPU: {str(result.get('state') or 'warn').upper()}",
+        f"Algorytm: {result.get('benchmark', result.get('benchmark_kind', 'software SHA-256 throughput'))}",
+        f"Tryb: {result.get('mode', 'multi-thread')} • wątki robocze: {result.get('workers', 'N/D')} • logiczne procesory: {result.get('logical_processors', 'N/D')}",
+        f"Rzeczywiste operacje SHA-256/s: {_u153_number(result.get('operations_per_second'), 2)}",
+        f"Przetworzone dane: {_u153_number(result.get('processed_mib'), 2)} MiB • przepustowość: {_u153_number(result.get('throughput_mib_s'), 2)} MiB/s",
+        f"Czas: {_u153_number(result.get('duration_seconds'), 2)} s • przerwano: {'TAK' if result.get('cancelled') else 'NIE'}",
+        "To pomiar przerobu SHA-256 w oprogramowaniu, a nie automatyczna ocena fizycznego stanu krzemu CPU.",
+    ]
+    if result.get("error"):
+        lines.append("BŁĄD: " + str(result.get("error")))
+    return lines
+
+
+def _u153_gpu_result_lines(result):
+    if not isinstance(result, dict) or not result:
+        return [
+            "BRAK WYNIKU PRAWDZIWEGO RENDEROWANIA GPU.",
+            "Uruchom scenę OpenGL, aby otrzymać FPS, liczbę klatek i identyfikację renderera.",
+        ]
+    lines = [
+        f"STAN RENDEROWANIA GPU: {str(result.get('state') or 'warn').upper()}",
+        f"Scena: {result.get('scene_id', 'N/D')} — {result.get('scene_name', 'N/D')}",
+        f"Renderer: {result.get('renderer', 'N/D')} • OpenGL: {result.get('opengl_version', 'N/D')}",
+        f"FPS średni: {_u153_number(result.get('average_fps'), 2)} • szczyt FPS/1 s: {_u153_number(result.get('peak_fps_1s'), 2)}",
+        f"Klatki: {result.get('frames', 'N/D')} • geometria: {result.get('geometry_vertices', 'N/D')} wierzchołków",
+        f"Czas: {_u153_number(result.get('duration_seconds'), 2)} s • rozdzielczość: {result.get('resolution_rendered', 'N/D')}",
+        "FPS pochodzi z zakończonych klatek OpenGL. Nie jest wynikiem gry ani dowodem pełnej sprawności GPU.",
+    ]
+    if result.get("stopped_by_user"):
+        lines.append("Scena została zamknięta/przerwana przed upływem pełnego czasu.")
+    if result.get("error"):
+        lines.append("BŁĄD RENDERERA: " + str(result.get("error")))
+    if result.get("note"):
+        lines.append(str(result.get("note")))
+    return lines
+
+
+def _u153_queue_ui(app, callback):
+    try:
+        app.queue_action(callback)
+        return True
+    except Exception as exc:
+        try:
+            app.queue_log("Main hardware test UI callback: " + repr(exc))
+        except Exception:
+            pass
+        return False
+
+
+def _u153_write_component_record(app, module, mode, result, result_key, started_at):
+    try:
+        record = _u145_write_component_record(
+            module, mode, result, started_at=started_at,
+            result_key=result_key,
+            finished_at=_u153_datetime.now().astimezone().isoformat(timespec="seconds")
+        )
+        app.results["COMPONENT_WORKBENCH_REPORT_" + str(module).upper()] = record
+        app.results["COMPONENT_WORKBENCH_LAST"] = record
+        return record
+    except Exception as exc:
+        try:
+            result["report_save_warning"] = f"{type(exc).__name__}: {exc}"
+            app.queue_log(f"{module}: nie udało się zapisać historii HTML/JSON: {type(exc).__name__}: {exc}")
+        except Exception:
+            pass
+        return None
+
+
+def _u153_update_ram_ui(app, percent, message, result=None):
+    def apply():
+        percent_value = max(0, min(100, int(percent)))
+        try:
+            bar = getattr(app, "_u40_ram_progressbar", None)
+            if bar is not None and bar.winfo_exists():
+                bar.configure(value=percent_value)
+        except Exception:
+            pass
+        try:
+            label = getattr(app, "_u40_ram_progress_label", None)
+            if label is not None and label.winfo_exists():
+                label.configure(text=str(message))
+        except Exception:
+            pass
+        try:
+            box = getattr(app, "_u153_ram_result_text", None)
+            if box is not None and box.winfo_exists() and result is not None:
+                box.configure(state="normal")
+                box.delete("1.0", "end")
+                box.insert("1.0", "\n".join(_u153_ram_result_lines(result)))
+                box.configure(state="disabled")
+        except Exception:
+            pass
+        try:
+            if result is not None and getattr(app, "header_status", None) is not None:
+                state = str(result.get("state", "warn")).lower()
+                color = app.colors()["good"] if state == "good" else app.colors()["bad"] if state == "bad" else app.colors()["warn"]
+                app.header_status.configure(text=f"RAM {state.upper()} — {result.get('tested_mb', result.get('size_mb', 'N/D'))} MB", fg=color)
+        except Exception:
+            pass
+        try:
+            if getattr(app, "current_view", "") == "RAM":
+                updater = getattr(app, "_update_ram_module_live", None)
+                if callable(updater):
+                    updater()
+        except Exception:
+            pass
+    _u153_queue_ui(app, apply)
+
+
+def _u153_main_ram_test(app, mb=512):
+    # Explicit result lifecycle on the main RAM page: real memory patterns, progress, final report.
+    requested = max(64, min(2048, int(mb or 512)))
+    started_at = _u153_datetime.now().astimezone().isoformat(timespec="seconds")
+    started = _u153_time.monotonic()
+    try:
+        app.stop_requested = False
+    except Exception:
+        pass
+    available_mb = None
+    try:
+        vm = psutil.virtual_memory() if psutil else None
+        if vm is not None:
+            available_mb = int(vm.available / (1024 * 1024))
+    except Exception:
+        vm = None
+    safe_mb = _u102_ram_safe_size(requested, available_mb if available_mb is not None else 512)
+    for key in ("RAM", "RAM_BENCHMARK", "COMPONENT_ERROR_RAM"):
+        try:
+            app.results.pop(key, None)
+        except Exception:
+            pass
+    _u153_update_ram_ui(app, 0, f"RAM — START • przygotowanie bufora {safe_mb} MB; żądano {requested} MB.")
+    try:
+        app.queue_log(f"RAM MAIN: start własnego testu wzorców; bufor {safe_mb} MB / żądano {requested} MB.")
+    except Exception:
+        pass
+    stats = {}
+    if available_mb is not None and available_mb < 160:
+        result = {
+            "state": "warn", "kind": "ram_pattern", "requested_mb": requested, "tested_mb": 0,
+            "available_mb_at_start": available_mb, "patterns_completed": 0,
+            "patterns_total": len(_U40_RAM_PATTERN_LIST), "passes_run": 0,
+            "duration_seconds": 0.0, "bytes_written": 0, "bytes_verified": 0,
+            "stopped": False,
+            "message": f"Za mało dostępnej pamięci RAM ({available_mb} MB). Test nie wystartował, aby nie zagłodzić systemu.",
+            "note": "Brak testu nie jest zaliczeniem. Zamknij część programów i uruchom ponownie."
+        }
+    else:
+        last_enqueued = [0.0]
+        def progress(percent, detail):
+            now = _u153_time.monotonic()
+            try:
+                amount = max(0, min(100, int(percent)))
+            except Exception:
+                amount = 0
+            if amount < 100 and now - last_enqueued[0] < 0.08:
+                return
+            last_enqueued[0] = now
+            _u153_update_ram_ui(app, amount, f"RAM — TEST W TOKU • {amount}% • {detail}")
+        try:
+            ok, msg = ram_pattern_test(
+                safe_mb, 0.0, progress_callback=progress,
+                stop_check=app._test_should_stop, stats_out=stats
+            )
+            elapsed = max(0.001, _u153_time.monotonic() - started)
+            stopped = bool(stats.get("stopped")) or bool(getattr(app, "stop_requested", False))
+            allocation_failed = bool(stats.get("allocation_failed"))
+            if ok and not stopped:
+                final_state = "good"
+            elif stopped or allocation_failed or (available_mb is not None and available_mb < requested):
+                final_state = "warn"
+            else:
+                final_state = "bad"
+            result = {
+                "state": final_state, "kind": "ram_pattern", "requested_mb": requested,
+                "tested_mb": int(stats.get("size_mb", safe_mb) or safe_mb),
+                "available_mb_at_start": available_mb, "passes_run": 1,
+                "patterns_completed": int(stats.get("patterns_completed", 0) or 0),
+                "patterns_total": int(stats.get("patterns_total", len(_U40_RAM_PATTERN_LIST)) or len(_U40_RAM_PATTERN_LIST)),
+                "duration_seconds": round(float(stats.get("elapsed_sec", elapsed) or elapsed), 2),
+                "bytes_written": int(stats.get("bytes_written", 0) or 0),
+                "bytes_verified": int(stats.get("bytes_verified", 0) or 0),
+                "write_mib_s_overall": round(int(stats.get("bytes_written", 0) or 0) / 1_048_576 / elapsed, 2),
+                "verify_mib_s_overall": round(int(stats.get("bytes_verified", 0) or 0) / 1_048_576 / elapsed, 2),
+                "mb_per_sec_combined": stats.get("mb_per_sec_combined"),
+                "error_offset": stats.get("error_offset"),
+                "stopped": stopped, "allocation_failed": allocation_failed,
+                "message": str(msg),
+                "note": "Test zapisuje i weryfikuje przydzielony bufor procesu; nie sprawdza każdej fizycznej komórki pamięci RAM."
+            }
+        except Exception as exc:
+            elapsed = max(0.001, _u153_time.monotonic() - started)
+            result = {
+                "state": "warn", "kind": "ram_pattern", "requested_mb": requested,
+                "tested_mb": int(stats.get("size_mb", safe_mb) or 0),
+                "available_mb_at_start": available_mb, "passes_run": 1,
+                "patterns_completed": int(stats.get("patterns_completed", 0) or 0),
+                "patterns_total": int(stats.get("patterns_total", len(_U40_RAM_PATTERN_LIST)) or len(_U40_RAM_PATTERN_LIST)),
+                "duration_seconds": round(elapsed, 2),
+                "bytes_written": int(stats.get("bytes_written", 0) or 0),
+                "bytes_verified": int(stats.get("bytes_verified", 0) or 0),
+                "error_offset": stats.get("error_offset"), "stopped": bool(getattr(app, "stop_requested", False)),
+                "message": f"Test RAM przerwany błędem: {type(exc).__name__}: {exc}",
+                "error": f"{type(exc).__name__}: {exc}"
+            }
+    result["started_at"] = started_at
+    result["finished_at"] = _u153_datetime.now().astimezone().isoformat(timespec="seconds")
+    result["elapsed_wall_seconds"] = round(max(0.001, _u153_time.monotonic() - started), 2)
+    _u153_write_component_record(app, "RAM", "main-page-pattern-test", result, "RAM_BENCHMARK", started_at)
+    summary = {
+        "state": result.get("state", "warn"),
+        "message": str(result.get("message") or result.get("note") or "Test RAM zakończony bez komunikatu."),
+        "size_mb": result.get("tested_mb", 0),
+        "benchmark": result
+    }
+    app.results["RAM_BENCHMARK"] = result
+    app.results["RAM"] = summary
+    for key, value in (("RAM_BENCHMARK", result), ("RAM", summary)):
+        try:
+            app.queue_results(key, value)
+        except Exception:
+            pass
+    ram_percent = 100 if result.get("state") == "good" else int(100 * result.get("patterns_completed", 0) / max(1, result.get("patterns_total", 1)))
+    state_text = f"RAM — ZAKOŃCZONO • {str(result.get('state', 'warn')).upper()} • {result.get('tested_mb', 0)} MB • {result.get('patterns_completed', 0)}/{result.get('patterns_total', 0)} wzorców • {result.get('elapsed_wall_seconds', 0):.1f} s"
+    _u153_update_ram_ui(app, ram_percent, state_text, result)
+    try:
+        app.queue_log(
+            f"RAM MAIN: {str(result.get('state', 'warn')).upper()} • {result.get('tested_mb', 0)} MB • "
+            f"{result.get('patterns_completed', 0)}/{result.get('patterns_total', 0)} wzorców • "
+            f"{result.get('bytes_verified', 0)} bajtów zweryfikowano."
+        )
+    except Exception:
+        pass
+    return result
+
+
+_U153_ORIGINAL_RAM_TEST = AppV43._ram_test
+_u153_main_ram_test._u102_ram_guard = True
+
+
+def _u153_module_ram(app):
+    _U153_ORIGINAL_MODULE_RAM(app)
+    try:
+        theme = app.colors()
+        chart = getattr(app, "ram_module_chart", None)
+        anchor = chart.master if chart is not None and chart.winfo_exists() else None
+        panel = app.panel(app.content)
+        if anchor is not None:
+            panel.pack(fill="x", padx=3, pady=(3, 6), before=anchor)
+        else:
+            panel.pack(fill="x", padx=3, pady=(3, 6))
+        tk.Label(panel, text="OSTATNI RZECZYWISTY WYNIK TESTU RAM", bg=theme["panel"], fg=theme["accent"], font=app.fnt(9, "bold")).pack(anchor="w", padx=9, pady=(6, 2))
+        box = tk.Text(panel, height=4, wrap="word", bg=theme["card"], fg=theme["fg"], relief="flat", font=("Consolas", 8), padx=7, pady=4)
+        box.pack(fill="x", padx=7, pady=(0, 5))
+        app._u153_ram_result_text = box
+        previous = (getattr(app, "results", {}) or {}).get("RAM_BENCHMARK") or {}
+        if not previous:
+            ram = (getattr(app, "results", {}) or {}).get("RAM") or {}
+            previous = ram.get("benchmark") if isinstance(ram, dict) and isinstance(ram.get("benchmark"), dict) else ram
+        box.insert("1.0", "\n".join(_u153_ram_result_lines(previous)))
+        box.configure(state="disabled")
+        row = tk.Frame(panel, bg=theme["panel"])
+        row.pack(fill="x", padx=7, pady=(0, 6))
+        app.make_button(row, "HISTORIA TESTÓW RAM", lambda: _u145_show_component_history(app, "RAM"), "accent", side="left", ipady=4)
+        app.make_button(row, "EKSPORT CSV RAM", lambda: _u145_export_history_dialog(app, "RAM"), "card", side="left", ipady=4)
+        app.make_button(row, "FOLDER RAPORTÓW", lambda: _u145_open_report_folder(app), "card", side="left", ipady=4)
+    except Exception as exc:
+        try:
+            app.queue_log("RAM main result console: " + repr(exc))
+        except Exception:
+            pass
+    return None
+
+
+AppV43._ram_test = _u153_main_ram_test
+AppV43.module_ram = _u153_module_ram
+
+
+def _u153_update_cpu_ui(app, percent, message, result=None):
+    def apply():
+        try:
+            bar = getattr(app, "_u153_cpu_progressbar", None)
+            if bar is not None and bar.winfo_exists():
+                bar.configure(value=max(0, min(100, int(percent))))
+        except Exception:
+            pass
+        try:
+            label = getattr(app, "_u153_cpu_status", None)
+            if label is not None and label.winfo_exists():
+                label.configure(text=str(message))
+        except Exception:
+            pass
+        try:
+            box = getattr(app, "_u153_cpu_result_text", None)
+            if box is not None and box.winfo_exists() and result is not None:
+                box.configure(state="normal")
+                box.delete("1.0", "end")
+                box.insert("1.0", "\n".join(_u153_cpu_result_lines(result)))
+                box.configure(state="disabled")
+        except Exception:
+            pass
+    _u153_queue_ui(app, apply)
+
+
+def _u153_cpu_benchmark_worker(app, seconds):
+    started_at = _u153_datetime.now().astimezone().isoformat(timespec="seconds")
+    app._u153_cpu_bench_start_mono = _u153_time.monotonic()
+    def progress(operations, elapsed, target):
+        pct = min(99, int(100.0 * max(0.0, elapsed) / max(1.0, float(target))))
+        _u153_update_cpu_ui(app, pct, f"CPU SHA-256 • {int(operations):,} operacji • {elapsed:.0f}/{target} s • trwa pomiar…".replace(",", " "))
+    app._u153_cpu_progress_callback = progress
+    try:
+        result = _u93_cpu_hash_benchmark(app, True, seconds)
+    except Exception as exc:
+        result = {
+            "state": "warn", "mode": "multi-thread", "workers": 0,
+            "duration_seconds": max(0.0, _u153_time.monotonic() - app._u153_cpu_bench_start_mono),
+            "cancelled": bool(getattr(app, "stop_requested", False)),
+            "error": f"{type(exc).__name__}: {exc}",
+            "note": "Benchmark CPU przerwany błędem. Brak wyniku nie jest zaliczeniem."
+        }
+    finally:
+        try:
+            delattr(app, "_u153_cpu_progress_callback")
+        except Exception:
+            pass
+    if result.get("cancelled") or not result.get("operations"):
+        result["state"] = "warn"
+    result["benchmark_kind"] = "software SHA-256 throughput"
+    result["started_at"] = started_at
+    result["finished_at"] = _u153_datetime.now().astimezone().isoformat(timespec="seconds")
+    result["note"] = result.get("note") or "Mierzy przerób SHA-256 w oprogramowaniu; nie jest oceną fizycznej sprawności krzemu CPU."
+    old_cpu = (getattr(app, "results", {}) or {}).get("CPU")
+    merged_cpu = dict(old_cpu) if isinstance(old_cpu, dict) else {}
+    merged_cpu.update(result)
+    app.results["CPU"] = merged_cpu
+    app.results["CPU_SHA256_BENCHMARK"] = result
+    app.results["CPU_HASH_BENCHMARK"] = result
+    try:
+        app.queue_results("CPU", merged_cpu)
+        app.queue_results("CPU_SHA256_BENCHMARK", result)
+        app.queue_results("CPU_HASH_BENCHMARK", result)
+    except Exception:
+        pass
+    _u153_write_component_record(app, "CPU", "main-page-sha256-benchmark", result, "CPU_SHA256_BENCHMARK", started_at)
+    _u153_update_cpu_ui(
+        app, 100 if result.get("state") == "good" else min(99, max(0, int(100 * result.get("duration_seconds", 0) / max(1, seconds)))),
+        f"CPU — ZAKOŃCZONO • {str(result.get('state', 'warn')).upper()} • {_u153_number(result.get('operations_per_second'), 2)} SHA-256/s",
+        result
+    )
+    try:
+        app.queue_log(f"CPU MAIN: {str(result.get('state', 'warn')).upper()} • {result.get('operations_per_second', 'N/D')} SHA-256/s • {result.get('throughput_mib_s', 'N/D')} MiB/s.")
+    except Exception:
+        pass
+    return result
+
+
+def _u153_start_cpu_benchmark(app):
+    if getattr(app, "running", False):
+        _u153_messagebox.showwarning("Benchmark CPU", "Inny test już działa. Poczekaj albo zatrzymaj go przyciskiem STOP TEST.")
+        return
+    try:
+        seconds = max(5, min(300, int(str(app._u153_cpu_duration_var.get()).split()[0])))
+    except Exception:
+        seconds = 15
+    if seconds >= 180 and not _u153_messagebox.askyesno(
+        "Benchmark CPU — długi przebieg",
+        f"Uruchomić wielowątkowy benchmark SHA-256 przez {seconds} s? CPU będzie mocno obciążony; można przerwać przez STOP TEST."
+    ):
+        return
+    for key in ("CPU_SHA256_BENCHMARK", "CPU_HASH_BENCHMARK", "COMPONENT_ERROR_CPU"):
+        try:
+            app.results.pop(key, None)
+        except Exception:
+            pass
+    try:
+        app.stop_requested = False
+    except Exception:
+        pass
+    _u153_update_cpu_ui(app, 0, f"CPU SHA-256 — START • planowane {seconds} s. Wykonywanie obliczeń…")
+    app.worker(lambda: _u153_cpu_benchmark_worker(app, seconds))
+
+
+def _u153_module_cpu(app):
+    _U153_ORIGINAL_MODULE_CPU(app)
+    try:
+        theme = app.colors()
+        children = app.content.winfo_children()
+        anchor = children[-1] if children else None
+        panel = app.panel(app.content)
+        if anchor is not None:
+            panel.pack(fill="x", padx=3, pady=(5, 5), before=anchor)
+        else:
+            panel.pack(fill="x", padx=3, pady=(5, 5))
+        tk.Label(panel, text="RZECZYWISTY BENCHMARK CPU — SHA-256 / WIELE WĄTKÓW", bg=theme["panel"], fg=theme["accent"], font=app.fnt(10, "bold")).pack(anchor="w", padx=9, pady=(7, 2))
+        row = tk.Frame(panel, bg=theme["panel"])
+        row.pack(fill="x", padx=7, pady=(0, 5))
+        app._u153_cpu_duration_var = tk.StringVar(value="15 s")
+        _u153_ttk.Combobox(row, textvariable=app._u153_cpu_duration_var, values=("5 s", "15 s", "30 s", "60 s", "180 s", "300 s"), state="readonly", width=10).pack(side="left", padx=(0, 5), ipady=3)
+        app.make_button(row, "▶ BENCHMARK CPU SHA-256", lambda: _u153_start_cpu_benchmark(app), "accent", side="left", ipady=5)
+        app.make_button(row, "HISTORIA CPU", lambda: _u145_show_component_history(app, "CPU"), "card", side="left", ipady=5)
+        app.make_button(row, "EKSPORT CSV", lambda: _u145_export_history_dialog(app, "CPU"), "card", side="left", ipady=5)
+        app._u153_cpu_status = tk.Label(panel, text="Gotowy — uruchom benchmark, aby otrzymać rzeczywiste operacje/s i MiB/s.", bg=theme["panel"], fg=theme["muted"], font=app.fnt(8, "bold"), anchor="w", justify="left", wraplength=1400)
+        app._u153_cpu_status.pack(fill="x", padx=9, pady=(0, 3))
+        app._u153_cpu_progressbar = _u153_ttk.Progressbar(panel, mode="determinate", maximum=100, value=0)
+        app._u153_cpu_progressbar.pack(fill="x", padx=9, pady=(0, 3))
+        box = tk.Text(panel, height=4, wrap="word", bg=theme["card"], fg=theme["fg"], relief="flat", font=("Consolas", 8), padx=7, pady=3)
+        box.pack(fill="x", padx=7, pady=(0, 6))
+        app._u153_cpu_result_text = box
+        previous = (getattr(app, "results", {}) or {}).get("CPU_SHA256_BENCHMARK") or (getattr(app, "results", {}) or {}).get("CPU_HASH_BENCHMARK")
+        box.insert("1.0", "\n".join(_u153_cpu_result_lines(previous)))
+        box.configure(state="disabled")
+    except Exception as exc:
+        try:
+            app.queue_log("CPU main benchmark console: " + repr(exc))
+        except Exception:
+            pass
+    return None
+
+
+AppV43.module_cpu = _u153_module_cpu
+
+
+def _u153_finish_gpu_ui(app, token, result):
+    if token != getattr(app, "_u153_gpu_token", None):
+        return
+    try:
+        app._u153_gpu_progressbar.configure(value=100 if result.get("state") == "good" else 0)
+    except Exception:
+        pass
+    try:
+        app._u153_gpu_status.configure(
+            text=f"GPU — ZAKOŃCZONO • {str(result.get('state', 'warn')).upper()} • "
+                 f"{_u153_number(result.get('average_fps'), 2)} FPS",
+            fg=app.colors()["good"] if result.get("state") == "good" else app.colors()["warn"]
+        )
+    except Exception:
+        pass
+    try:
+        box = getattr(app, "_u153_gpu_result_text", None)
+        if box is not None and box.winfo_exists():
+            box.configure(state="normal")
+            box.delete("1.0", "end")
+            box.insert("1.0", "\n".join(_u153_gpu_result_lines(result)))
+            box.configure(state="disabled")
+    except Exception:
+        pass
+    try:
+        app.header_status.configure(text=f"GPU RENDERER — {str(result.get('state', 'warn')).upper()}", fg=app.colors()["good"] if result.get("state") == "good" else app.colors()["warn"])
+    except Exception:
+        pass
+
+
+def _u153_gpu_benchmark_worker(app, scene_id, seconds, token):
+    started_at = _u153_datetime.now().astimezone().isoformat(timespec="seconds")
+    try:
+        result = _u66_execute_gpu_scene(app, scene_id, seconds) or {}
+        if not isinstance(result, dict):
+            result = {"state": "warn", "message": "Renderer nie zwrócił słownika wyniku."}
+    except Exception as exc:
+        result = {"state": "warn", "error": f"{type(exc).__name__}: {exc}", "scene_id": scene_id}
+    if int(result.get("frames", 0) or 0) <= 0:
+        result["state"] = "warn"
+    if result.get("stopped_by_user"):
+        result["state"] = "warn"
+    result["started_at"] = started_at
+    result["finished_at"] = _u153_datetime.now().astimezone().isoformat(timespec="seconds")
+    result.setdefault("note", "Rzeczywisty pomiar renderowania OpenGL; FPS nie jest wynikiem gry ani diagnozą wszystkich bloków GPU.")
+    app.results["GPU_REAL_RENDER"] = result
+    app.results["GPU"] = _u145_merge_gpu_render(app.results.get("GPU", {}), result)
+    try:
+        app.queue_results("GPU_REAL_RENDER", result)
+        app.queue_results("GPU", app.results["GPU"])
+    except Exception:
+        pass
+    _u153_write_component_record(app, "GPU", "main-page-opengl-scene", result, "GPU_REAL_RENDER", started_at)
+    try:
+        app.queue_log(f"GPU MAIN: scena {scene_id} • {result.get('average_fps', 'N/D')} FPS • renderer {result.get('renderer', 'N/D')} • {result.get('state', 'warn')}")
+    except Exception:
+        pass
+    _u153_queue_ui(app, lambda r=result, t=token: _u153_finish_gpu_ui(app, t, r))
+    return result
+
+
+def _u153_gpu_progress_tick(app, token, started, seconds):
+    if token != getattr(app, "_u153_gpu_token", None):
+        return
+    if str(getattr(app, "current_view", "")) != "GPU":
+        return
+    try:
+        if not app._u153_gpu_status.winfo_exists():
+            return
+    except Exception:
+        return
+    elapsed = max(0.0, _u153_time.monotonic() - started)
+    percent = min(96, int(100.0 * elapsed / max(1.0, float(seconds))))
+    try:
+        app._u153_gpu_progressbar.configure(value=percent)
+        app._u153_gpu_status.configure(text=f"GPU OpenGL — scena renderuje • {elapsed:.1f}/{seconds} s • trwa odbiór pomiaru…")
+    except Exception:
+        pass
+    try:
+        app.after(250, lambda t=token, st=started, d=seconds: _u153_gpu_progress_tick(app, t, st, d))
+    except Exception:
+        pass
+
+
+def _u153_start_gpu_benchmark(app, scene_id):
+    if getattr(app, "running", False):
+        _u153_messagebox.showwarning("Test GPU", "Inny test już działa. Poczekaj albo zatrzymaj go przyciskiem STOP TEST.")
+        return
+    if scene_id == 1:
+        seconds = 15
+        message = (
+            "Uruchomić 15-sekundowy test GPU FurMark-style? To intensywniejsza scena OpenGL. "
+            "Monitoruj temperatury i przerwij test, jeżeli sprzęt zachowuje się nieprawidłowo."
+        )
+    else:
+        seconds = 10
+        message = (
+            "Uruchomić 10-sekundową scenę OpenGL? Wynik będzie zawierał FPS, liczbę klatek, "
+            "renderer i wersję OpenGL. To pomiar renderowania, nie automatyczny test wszystkich bloków GPU."
+        )
+    if not _u153_messagebox.askyesno("Rzeczywisty test GPU", message):
+        return
+    app._u153_gpu_token = int(getattr(app, "_u153_gpu_token", 0)) + 1
+    token = app._u153_gpu_token
+    started = _u153_time.monotonic()
+    try:
+        app.stop_requested = False
+    except Exception:
+        pass
+    app._u153_gpu_started = started
+    app._u153_gpu_status.configure(text=f"GPU — START • scena {scene_id} • {seconds} s")
+    app._u153_gpu_progressbar.configure(value=0)
+    box = getattr(app, "_u153_gpu_result_text", None)
+    if box is not None and box.winfo_exists():
+        box.configure(state="normal")
+        box.delete("1.0", "end")
+        box.insert("1.0", "Test w toku. Wynik pojawi się po zakończeniu renderowania OpenGL.")
+        box.configure(state="disabled")
+    app.worker(lambda: _u153_gpu_benchmark_worker(app, scene_id, seconds, token))
+    app.after(250, lambda t=token, st=started, d=seconds: _u153_gpu_progress_tick(app, t, st, d))
+
+
+def _u153_module_gpu(app):
+    _U153_ORIGINAL_MODULE_GPU(app)
+    try:
+        theme = app.colors()
+        canvas = getattr(app, "gpu_canvas", None)
+        anchor = canvas.master if canvas is not None and canvas.winfo_exists() else None
+        panel = app.panel(app.content)
+        if anchor is not None:
+            panel.pack(fill="x", padx=3, pady=(4, 5), before=anchor)
+        else:
+            panel.pack(fill="x", padx=3, pady=(4, 5))
+        tk.Label(panel, text="RZECZYWISTY GPU OPENGL — FPS / RENDERER / RAPORT", bg=theme["panel"], fg=theme["accent"], font=app.fnt(9, "bold")).pack(anchor="w", padx=9, pady=(6, 2))
+        row = tk.Frame(panel, bg=theme["panel"])
+        row.pack(fill="x", padx=7, pady=(0, 4))
+        app.make_button(row, "▶ TEST OPENGL 3D — 10 s", lambda: _u153_start_gpu_benchmark(app, 2), "accent", side="left", ipady=4)
+        app.make_button(row, "▶ FURMARK-STYLE STRESS — 15 s", lambda: _u153_start_gpu_benchmark(app, 1), "bad", side="left", ipady=4)
+        app.make_button(row, "HISTORIA GPU", lambda: _u145_show_component_history(app, "GPU"), "card", side="left", ipady=4)
+        app.make_button(row, "EKSPORT CSV", lambda: _u145_export_history_dialog(app, "GPU"), "card", side="left", ipady=4)
+        app._u153_gpu_status = tk.Label(panel, text="Gotowy — wybierz scenę OpenGL lub krótki test FurMark-style.", bg=theme["panel"], fg=theme["muted"], font=app.fnt(8, "bold"), anchor="w", justify="left", wraplength=1400)
+        app._u153_gpu_status.pack(fill="x", padx=9, pady=(0, 3))
+        app._u153_gpu_progressbar = _u153_ttk.Progressbar(panel, mode="determinate", maximum=100, value=0)
+        app._u153_gpu_progressbar.pack(fill="x", padx=9, pady=(0, 3))
+        box = tk.Text(panel, height=4, wrap="word", bg=theme["card"], fg=theme["fg"], relief="flat", font=("Consolas", 8), padx=7, pady=3)
+        box.pack(fill="x", padx=7, pady=(0, 6))
+        app._u153_gpu_result_text = box
+        previous = (getattr(app, "results", {}) or {}).get("GPU_REAL_RENDER")
+        box.insert("1.0", "\n".join(_u153_gpu_result_lines(previous)))
+        box.configure(state="disabled")
+    except Exception as exc:
+        try:
+            app.queue_log("GPU main benchmark console: " + repr(exc))
+        except Exception:
+            pass
+    return None
+
+
+AppV43.module_gpu = _u153_module_gpu
+
+
+def _u153_selftest_main_hardware_workbenches():
+    assert _U153_MAIN_HARDWARE_WORKBENCH_VERSION == "1.0.0"
+    assert callable(_u153_main_ram_test) and callable(_u153_cpu_benchmark_worker) and callable(_u153_gpu_benchmark_worker)
+    assert AppV43._ram_test is _u153_main_ram_test and getattr(AppV43._ram_test, "_u102_ram_guard", False)
+    assert AppV43.module_ram is _u153_module_ram and AppV43.module_cpu is _u153_module_cpu and AppV43.module_gpu is _u153_module_gpu
+    ram = _u153_ram_result_lines({"state":"warn","requested_mb":512,"tested_mb":256,"patterns_completed":3,
+        "patterns_total":26,"duration_seconds":2.5,"bytes_written":4096,"bytes_verified":4096,
+        "message":"Test zatrzymany przez użytkownika.","stopped":True})
+    assert any("WARN" in line for line in ram) and any("256 MB" in line for line in ram)
+    assert any("4096" in line for line in ram)
+    cpu = _u153_cpu_result_lines({"state":"good","workers":8,"logical_processors":16,"operations_per_second":1234.5,
+        "processed_mib":70,"throughput_mib_s":14,"duration_seconds":5,"cancelled":False})
+    assert any("1 234.50" in line for line in cpu) and any("14.00 MiB/s" in line for line in cpu)
+    gpu = _u153_gpu_result_lines({"state":"good","scene_id":2,"scene_name":"test scene","renderer":"test renderer",
+        "opengl_version":"4.6","average_fps":60,"peak_fps_1s":72,"frames":600,"duration_seconds":10,
+        "resolution_rendered":"1280x720","geometry_vertices":25000})
+    assert any("60.00" in line for line in gpu) and any("1280x720" in line for line in gpu)
+    assert "_u153_cpu_progress_callback" in _u93_cpu_hash_benchmark.__code__.co_names
+    assert "ram_pattern_test" in _u153_main_ram_test.__code__.co_names
+    assert "_u145_write_component_record" in _u153_main_ram_test.__code__.co_names
+    assert "_u153_start_cpu_benchmark" in _u153_module_cpu.__code__.co_names
+    assert "_u153_start_gpu_benchmark" in _u153_module_gpu.__code__.co_names
+    print("MAIN_HARDWARE_WORKBENCHES_SELFTEST_OK: main CPU throughput UI, RAM pattern progress/report, GPU OpenGL/FurMark result pane and local history")
+
+
 if __name__ == "__main__" and "--selftest-advanced-modules" in sys.argv:
     try:
+        _u153_selftest_main_hardware_workbenches()
         _u145_selftest_component_workbench()
         _u134_selftest_ram_live_dashboard()
         _u135_selftest_real_3d_scene_mapping()
