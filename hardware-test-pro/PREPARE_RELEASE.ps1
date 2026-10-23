@@ -1982,6 +1982,16 @@ $src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpression
 if (!$src.Contains("_U152_FURMARK_UNIQUE_SIMULATORS_VERSION") -or !$src.Contains("FURMARK_AND_UNIQUE_SIMULATORS_SELFTEST_OK") -or !$src.Contains("FURMARK_STYLE_GPU_STRESS") -or !$src.Contains("13 UNIKALNYCH SYMULATORÓW")) {
     throw "FurMark stress page / 13 unique simulators were not integrated."
 }
+$workbenchPatchPath = Join-Path $PSScriptRoot "COMPONENT_TEST_WORKBENCH_PATCH.py"
+if (!(Test-Path -LiteralPath $workbenchPatchPath)) { throw "Missing CPU/RAM/GPU component test workbench patch." }
+$workbenchPatch = [IO.File]::ReadAllText($workbenchPatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $workbenchPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U153_COMPONENT_TEST_WORKBENCH_VERSION") -or !$src.Contains("COMPONENT_TEST_WORKBENCH_SELFTEST_OK") -or !$src.Contains("START RZECZYWISTEGO TESTU") -or !$src.Contains("BRAK NOWEGO RAPORTU")) {
+    throw "CPU/RAM/GPU test workbench is incomplete or was not integrated into the generated application."
+}
 [IO.File]::WriteAllText($sourcePath,$src,[Text.UTF8Encoding]::new($false))
 
 # Keep the user-facing documentation aligned with the generated build.
