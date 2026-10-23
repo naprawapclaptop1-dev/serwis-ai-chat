@@ -202,20 +202,30 @@ def _u144_integrated_suite_routes(app):
             "description": "Pełna tabela dostępnych sensorów; nieudostępnione pomiary są N/D.",
             "action": lambda: sensor_fn(app), "companion": False, "route_id": "sensors:inspector",
         })
-    profile_fn = globals().get("_u154_start_profile")
-    if callable(profile_fn):
-        for profile, description in (
-            ("SZYBKI", "CPU 15 s, RAM 256 MB i jedna scena OpenGL."),
-            ("STANDARD", "CPU 60 s, RAM 512 MB i trzy sceny OpenGL."),
-            ("ROZSZERZONY", "CPU 180 s, RAM do 1024 MB i sześć scen OpenGL."),
-        ):
-            add_route({
-                "category": "HARDWARE TEST PRO",
-                "title": "PROFIL SPRZĘTU — " + profile,
-                "description": description + " Uruchamia rzeczywiste pomiary i zapisuje raport.",
-                "action": lambda p=profile: profile_fn(app, p),
-                "companion": False, "route_id": "profile:" + profile,
-            })
+    # The integrated-hub selftest runs before the later profile patch is executed
+    # in source order. Resolve the real handler at click time, but always expose the cards.
+    def launch_profile(profile):
+        profile_fn = globals().get("_u154_start_profile")
+        if not callable(profile_fn):
+            _u144_messagebox.showwarning(
+                "Profil sprzętu",
+                "Moduł profili nie został jeszcze załadowany. Uruchom ponownie aplikację po aktualizacji."
+            )
+            return False
+        return profile_fn(app, profile)
+
+    for profile, description in (
+        ("SZYBKI", "CPU 15 s, RAM 256 MB i jedna scena OpenGL."),
+        ("STANDARD", "CPU 60 s, RAM 512 MB i trzy sceny OpenGL."),
+        ("ROZSZERZONY", "CPU 180 s, RAM do 1024 MB i sześć scen OpenGL."),
+    ):
+        add_route({
+            "category": "HARDWARE TEST PRO",
+            "title": "PROFIL SPRZĘTU — " + profile,
+            "description": description + " Uruchamia rzeczywiste pomiary i zapisuje raport.",
+            "action": lambda p=profile: launch_profile(p),
+            "companion": False, "route_id": "profile:" + profile,
+        })
     return routes
 
 def _u144_show_integrated_apps_hub(app):
