@@ -7,7 +7,7 @@ from pathlib import Path as _u144_Path
 import tkinter as _u144_tk
 from tkinter import ttk as _u144_ttk, messagebox as _u144_messagebox
 
-_U144_INTEGRATED_APPS_VERSION = "1.0.0"
+_U144_INTEGRATED_APPS_VERSION = "1.1.0"
 _U144_COMPANION_VERSION = "5.6.16"
 _U144_COMPANION_RELATIVE = ("Companions", "SystemRepairPRO", "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe")
 _U144_COMPANION_MANIFEST = "companion-manifest.json"
@@ -99,23 +99,136 @@ def _u144_route_category(title):
 def _u144_integrated_suite_routes(app):
     installed, status = _u144_companion_status()
     routes = [{
-        "category":"SYSTEM REPAIR PRO", "title":"PEŁNY SYSTEM REPAIR PRO 5.6.16",
-        "description":"Pełna aplikacja WPF dołączona do wspólnego instalatora. Przed uruchomieniem sprawdzana jest suma SHA-256; Windows może pokazać UAC. " + status,
-        "action":lambda:_u144_launch_system_repair(app), "companion":True
+        "category": "SYSTEM REPAIR PRO",
+        "title": "PEŁNY SYSTEM REPAIR PRO 5.6.16",
+        "description": "Pełna aplikacja WPF w tym samym instalatorze. SHA-256 jest sprawdzany przed uruchomieniem; UAC obsługuje Windows. " + status,
+        "action": lambda: _u144_launch_system_repair(app),
+        "companion": True,
+        "route_id": "companion:system-repair-pro",
     }]
+    seen = {str(route["title"]).strip().casefold() for route in routes}
+
+    def add_route(route):
+        title = str(route.get("title", "") or "").strip()
+        folded = title.casefold()
+        if not title or folded in seen or not callable(route.get("action")):
+            return False
+        route["title"] = title
+        seen.add(folded)
+        routes.append(route)
+        return True
+
+    # Keep every existing Serwis Ultimate workflow.
     for title, description, action in _u132_service_dashboard_routes(app):
-        routes.append({"category":_u144_route_category(title),"title":str(title),"description":str(description),"action":action,"companion":False})
+        add_route({
+            "category": _u144_route_category(title),
+            "title": str(title),
+            "description": str(description),
+            "action": action,
+            "companion": False,
+            "route_id": "service:" + str(title),
+        })
+
+    # Expose EVERY catalog group. The old hub only listed service-dashboard actions,
+    # which left the actual CPU/RAM/GPU/VRAM/peripheral test catalogs buried elsewhere.
+    catalog = globals().get("_U93_TEST_CATALOG", {})
+    catalog = catalog if isinstance(catalog, dict) else {}
+    labels = {}
+    for row in globals().get("_U93_MODULES", ()) or ():
+        if isinstance(row, (tuple, list)) and len(row) >= 2:
+            key = str(row[0] or "").strip().upper()
+            label = str(row[1] or "").strip()
+            if key and label:
+                labels[key] = label
+    fallbacks = {
+        "CPU": "CPU — PROCESOR", "RAM": "RAM — PAMIĘĆ",
+        "GPU": "GPU — KARTA GRAFICZNA", "VRAM": "VRAM — PAMIĘĆ GRAFICZNA",
+        "DYSK": "DYSKI — SSD / HDD / NVME", "EKRAN": "MATRYCA / MONITOR / EDID",
+        "SECURITY": "BEZPIECZEŃSTWO WINDOWS", "BATERIA": "BATERIA / ZASILANIE",
+        "SIEĆ": "SIEĆ / WI-FI / LAN", "USB": "USB / URZĄDZENIA",
+        "KLAWIATURA": "KLAWIATURA / TOUCHPAD", "AUDIO": "DŹWIĘK / AUDIO",
+        "KAMERA": "KAMERA / WEBCAM",
+    }
+    for raw_key, tests in catalog.items():
+        key = str(raw_key or "").strip().upper()
+        if not key or not isinstance(tests, (tuple, list)) or not tests:
+            continue
+        label = labels.get(key) or fallbacks.get(key) or key.replace("_", " ")
+        examples = []
+        for test in tests[:5]:
+            if isinstance(test, (tuple, list)) and len(test) > 1 and str(test[1]).strip():
+                examples.append(str(test[1]).strip())
+        description = f"{len(tests)} osobnych testów z własnymi handlerami i raportami. Otwórz katalog, aby wybrać pomiar."
+        if examples:
+            description += " Przykłady: " + "; ".join(examples) + "."
+        add_route({
+            "category": _u144_route_category(label),
+            "title": "KATALOG TESTÓW — " + label,
+            "description": description,
+            "action": lambda k=key: _u93_show_catalog(app, k),
+            "companion": False,
+            "route_id": "catalog:" + key,
+            "catalog_key": key,
+        })
+
+    shortcuts = (
+        ("show_tests_hub", "CENTRUM WSZYSTKICH TESTÓW", "HARDWARE TEST PRO", "Katalog pełnych testów sprzętowych i serwisowych."),
+        ("show_live_monitor", "MONITOR SPRZĘTU LIVE", "HARDWARE TEST PRO", "Rzeczywiste odczyty CPU/RAM/GPU i dostępnych sensorów."),
+        ("show_speed_test", "SPEED TEST INTERNETU", "HARDWARE TEST PRO", "Pomiar transferu i opóźnień."),
+        ("show_3d_studio", "STUDIO 3D — 110 SCEN", "HARDWARE TEST PRO", "OpenGL i rzeczywisty FPS; wizualizacja nie zastępuje testu."),
+        ("show_component_lab", "LABORATORIUM PODZESPOŁÓW", "HARDWARE TEST PRO", "Stanowiska testowe i narzędzia diagnostyczne."),
+        ("show_ai_reader", "AI CZYTNIK WIEDZY", "SYSTEM REPAIR PRO", "Baza wiedzy diagnostycznej i lokalne źródła."),
+        ("show_system_repair_center", "CENTRUM NAPRAW WINDOWS", "SYSTEM REPAIR PRO", "SFC, DISM, CHKDSK i narzędzia naprawcze Windows."),
+    )
+    for method, title, category, description in shortcuts:
+        if callable(getattr(AppV43, method, None)):
+            add_route({
+                "category": category, "title": title, "description": description,
+                "action": lambda m=method: getattr(app, m)(),
+                "companion": False, "route_id": "app:" + method,
+            })
+
+    history_fn = globals().get("_u149_show_history")
+    if callable(history_fn):
+        add_route({
+            "category": "HARDWARE TEST PRO", "title": "HISTORIA POMIARÓW CPU / RAM / GPU",
+            "description": "Lokalne raporty JSON/HTML, porównanie wyników i bezpieczny eksport CSV.",
+            "action": lambda: history_fn(app), "companion": False, "route_id": "history:benchmarks",
+        })
+    sensor_fn = globals().get("_u106_open_sensor_inspector")
+    if callable(sensor_fn):
+        add_route({
+            "category": "HARDWARE TEST PRO", "title": "INSPEKTOR CZUJNIKÓW + CSV",
+            "description": "Pełna tabela dostępnych sensorów; nieudostępnione pomiary są N/D.",
+            "action": lambda: sensor_fn(app), "companion": False, "route_id": "sensors:inspector",
+        })
+    profile_fn = globals().get("_u154_start_profile")
+    if callable(profile_fn):
+        for profile, description in (
+            ("SZYBKI", "CPU 15 s, RAM 256 MB i jedna scena OpenGL."),
+            ("STANDARD", "CPU 60 s, RAM 512 MB i trzy sceny OpenGL."),
+            ("ROZSZERZONY", "CPU 180 s, RAM do 1024 MB i sześć scen OpenGL."),
+        ):
+            add_route({
+                "category": "HARDWARE TEST PRO",
+                "title": "PROFIL SPRZĘTU — " + profile,
+                "description": description + " Uruchamia rzeczywiste pomiary i zapisuje raport.",
+                "action": lambda p=profile: profile_fn(app, p),
+                "companion": False, "route_id": "profile:" + profile,
+            })
     return routes
 
 def _u144_show_integrated_apps_hub(app):
     app.current_view = "INTEGRATED_APPS_HUB"
     app.clear()
     t = app.colors()
+    routes = _u144_integrated_suite_routes(app)
     app.header_title.config(text="ZINTEGROWANA SUITA — HARDWARE TEST PRO • SYSTEM REPAIR PRO • SERWIS ULTIMATE")
     intro = app.panel(app.content)
     intro.pack(fill="x", padx=8, pady=(6,5))
     _u144_tk.Label(intro,text="JEDNO CENTRUM • WSZYSTKIE DOSTĘPNE MODUŁY",bg=t["panel"],fg=t["accent"],font=app.fnt(13,"bold")).pack(anchor="w",padx=12,pady=(9,3))
-    _u144_tk.Label(intro,text="110 testów sprzętowych, diagnostyka Windows, profile napraw, baza wiedzy, zlecenia, zasilanie, procesy, gry, raporty i pełny System Repair PRO dostępne z jednego miejsca. Moduły Serwis Ultimate działają wewnątrz Hardware Test PRO. Pełny program WPF otwiera własne okno, a brak czujnika pozostaje N/D.",bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1500,justify="left").pack(anchor="w",padx=12,pady=(0,7))
+    catalog_count = sum(1 for route in routes if route.get("catalog_key"))
+    _u144_tk.Label(intro,text=f"{len(routes)} pozycji w jednym wyszukiwanym centrum, w tym {catalog_count} osobnych katalogów testów. Każda grupa otwiera istniejący katalog pomiarów. Skróty prowadzą także do telemetrii Live, Speed Test, Studio 3D, AI Reader, historii CSV i profili sprzętu. Pełny System Repair PRO WPF jest dołączony do tego samego instalatora; brak czujnika pozostaje N/D.",bg=t["panel"],fg=t["muted"],font=app.fnt(9),wraplength=1500,justify="left").pack(anchor="w",padx=12,pady=(0,7))
     installed,status = _u144_companion_status()
     _u144_tk.Label(intro,text=status,bg=t["panel"],fg=t["good"] if installed else t["warn"],font=app.fnt(9,"bold"),wraplength=1500,justify="left").pack(anchor="w",padx=12,pady=(0,8))
     tools = _u144_tk.Frame(app.content,bg=t["bg"]);tools.pack(fill="x",padx=8,pady=(0,6))
@@ -134,7 +247,6 @@ def _u144_show_integrated_apps_hub(app):
     inner.bind("<Configure>",lambda event:canvas.configure(scrollregion=canvas.bbox("all")))
     canvas.bind("<Configure>",lambda event:canvas.itemconfigure(window_id,width=event.width))
     canvas.bind("<MouseWheel>",lambda event:(canvas.yview_scroll(-1*int(event.delta/120 or (1 if event.delta<0 else -1)),"units"),"break")[1])
-    routes=_u144_integrated_suite_routes(app)
     for col in range(3):inner.grid_columnconfigure(col,weight=1,uniform="suite")
     def render_cards(*_args):
         for child in inner.winfo_children(): child.destroy()
@@ -159,17 +271,28 @@ def _u144_show_integrated_apps_hub(app):
 AppV43.show_integrated_apps_hub = _u144_show_integrated_apps_hub
 
 def _u144_selftest_integrated_apps():
-    assert _U144_INTEGRATED_APPS_VERSION == "1.0.0"
+    assert _U144_INTEGRATED_APPS_VERSION == "1.1.0"
     assert callable(AppV43.show_integrated_apps_hub) and callable(_u144_launch_system_repair)
-    routes=_u144_integrated_suite_routes(object())
-    assert len(routes)==20, "expected 19 internal routes plus full System Repair PRO companion"
-    titles=[item["title"] for item in routes]
-    assert len(titles)==len(set(titles)) and all(callable(item["action"]) for item in routes)
-    assert routes[0]["title"]=="PEŁNY SYSTEM REPAIR PRO 5.6.16" and routes[0]["companion"]
-    assert {"HARDWARE TEST PRO","SYSTEM REPAIR PRO","SERWIS ULTIMATE"}.issubset({item["category"] for item in routes})
-    assert _u144_companion_path("C:/NaprawaPC-Test").parts[-3:]==("Companions","SystemRepairPRO","NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe")
+    routes = _u144_integrated_suite_routes(object())
+    titles = [item["title"] for item in routes]
+    assert len(titles) == len(set(title.casefold() for title in titles)), "all integrated hub titles must be unique"
+    assert all(callable(item["action"]) for item in routes), "every hub card must have a callable handler"
+    assert routes[0]["title"] == "PEŁNY SYSTEM REPAIR PRO 5.6.16" and routes[0]["companion"]
+    catalog = globals().get("_U93_TEST_CATALOG", {})
+    assert isinstance(catalog, dict) and catalog, "actual test catalog is missing"
+    covered = {item.get("catalog_key") for item in routes if item.get("catalog_key")}
+    missing = set(str(key).strip().upper() for key in catalog) - covered
+    assert not missing, "unreachable catalog groups: " + ", ".join(sorted(missing))
+    assert {"CPU", "RAM", "GPU"}.issubset(covered), "CPU/RAM/GPU must be reachable from the integrated hub"
+    assert len(routes) >= len(catalog) + 20, "hub must include all catalog groups plus service and quick access"
+    assert any(item["title"] == "SPEED TEST INTERNETU" for item in routes), "Speed Test entry point missing"
+    assert any(item["title"] == "MONITOR SPRZĘTU LIVE" for item in routes), "live telemetry entry point missing"
+    assert any(item["title"] == "STUDIO 3D — 110 SCEN" for item in routes), "3D entry point missing"
+    assert any(item["title"] == "PROFIL SPRZĘTU — SZYBKI" for item in routes), "hardware profile entry point missing"
+    assert {"HARDWARE TEST PRO", "SYSTEM REPAIR PRO", "SERWIS ULTIMATE"}.issubset({item["category"] for item in routes})
+    assert _u144_companion_path("C:/NaprawaPC-Test").parts[-3:] == ("Companions", "SystemRepairPRO", "NAPRAWA-PC-SYSTEM-REPAIR-PRO.exe")
     assert "ShellExecuteW" in _u144_launch_system_repair.__code__.co_names and "_u144_hashlib" in _u144_launch_system_repair.__code__.co_names
-    print("INTEGRATED_APPS_SELFTEST_OK: searchable hub, 19 internal module routes, full WPF companion and SHA-256/UAC launcher")
+    print(f"INTEGRATED_APPS_SELFTEST_OK: searchable hub, {len(covered)} live catalog groups, {len(routes)} launchable entries, full System Repair PRO companion and SHA-256/UAC launcher")
 
 if __name__ == "__main__" and "--selftest-integrated-apps" in _u144_sys.argv:
     try:

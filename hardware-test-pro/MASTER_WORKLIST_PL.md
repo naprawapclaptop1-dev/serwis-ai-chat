@@ -1,10 +1,8 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online:** 4.3.159 — Setup x64 i All-in-One ZIP opublikowane; `latest.json` zawiera SHA-256 instalatora.
-**Kandydat 4.3.160:** rzeczywisty workbench bezpośrednio na głównych ekranach CPU/RAM/GPU; naprawiony test wiązania ekranu; wynik OpenGL trafia do klucza głównego `GPU_3D`, do historii JSON/HTML i do odświeżonego panelu.
-**Wymagane przez Windows CI:** wszystkie testy istniejące + rzeczywisty test wywołania handoff CPU/RAM/GPU, zapis/mapowanie raportu GPU i odczyt nowego `3D_SCENE_N` bez przykładowych wyników. Stable zmienia się dopiero po zbudowaniu EXE, Setup.exe, weryfikacji ZIP i aktualizacji manifestu.
-**PC fizyczny:** temperatury i limity sprzętowe zależą od czujników/sterowników; N/D nie jest PASS.
-**Parytet źródeł:** pełny System Repair PRO 5.6.16 jest dołączony; zgodność 1:1 ze starszym archiwum 5.6.25 oraz Serwis Ultimate 1.15.3 wymaga osobnego porównania.
+**Stable online:** 4.3.161 — Setup x64 i All-in-One ZIP opublikowane; latest.json wskazuje SHA-256 instalatora.
+**Kandydat 4.3.162:** przebudowa wspólnego centrum, aby automatycznie wystawiało kartę dla każdej grupy z prawdziwego katalogu testów, razem ze skrótami do telemetrii, Speed Test, Studio 3D, AI Reader, historii CSV oraz profili sprzętowych.
+**Weryfikacja Windows CI:** pokrycie grup katalogu, unikalność kart, prawdziwe handlery i obecność głównych modułów CPU/RAM/GPU.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -340,3 +338,10 @@
 - [x] Każdy bezpośredni pomiar ma test_id, czas trwania, status walidacji oraz raport JSON/HTML w historii.
 - [ ] Windows CI musi zaliczyć selftest dla wszystkich trzech rzeczywistych tras, trybu CPU 1-wątkowego, mapowania świeżego wyniku i raportowania braku pomiaru.
 - [ ] Na fizycznym Windows potwierdzić temperatury i źródła danych sensorów dla konkretnego CPU/GPU; N/D pozostaje dozwolone przy braku wsparcia sterownika.
+
+
+## Kandydat 4.3.162 — dynamiczny katalog wszystkich testów w jednym centrum
+- [x] Jedno wyszukiwane centrum tworzy kartę dla każdej grupy z _U93_TEST_CATALOG.
+- [x] Skróty do telemetrii, Speed Test, Studio 3D, AI Reader, historii raportów i profili SZYBKI/STANDARD/ROZSZERZONY.
+- [x] Selftest porównuje wszystkie klucze katalogu z kartami, sprawdza unikalne nazwy i handlery; brak pokrycia zatrzymuje wydanie.
+- [ ] Na fizycznym Windows zweryfikować odczyty sterowników/czujników oraz uruchamianie pełnego programu WPF/UAC.

@@ -56,3 +56,9 @@ NOWE: PROFILE RZECZYWISTEGO BENCHMARKU CPU + RAM + GPU
 - Wyniki każdego bezpośredniego uruchomienia są walidowane pod kątem rzeczywistych operacji CPU, zweryfikowanych bajtów RAM lub klatek/FPS/renderer GPU.
 - Bez świeżych danych test kończy się WARN/ERROR. Poprzedni raport nie jest zaliczany jako wynik bieżącego uruchomienia.
 - CPU/RAM/GPU publikują wynik do głównych kluczy aplikacji i historii JSON+HTML wraz z identyfikatorem testu i czasem trwania.
+
+
+ROZSZERZENIE ZINTEGROWANEGO CENTRUM
+- Karta dla każdej grupy w _U93_TEST_CATALOG, tworzone dynamicznie.
+- Skróty do telemetrii live, Speed Test, Studio 3D, AI Reader, historii/CSV i trzech profili sprzętowych.
+- Test CI blokuje wydanie, jeśli grupa katalogu nie ma karty albo karta nie ma handlera.

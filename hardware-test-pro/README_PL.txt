@@ -240,3 +240,10 @@ POPRAWKA 4.3.161 — GŁÓWNE URUCHOMIENIE CPU / RAM / GPU
 - Każde uruchomienie CPU/RAM/GPU otrzymuje nowy test_id, czas rozpoczęcia/zakończenia, stan walidacji pomiaru i ścieżki raportu JSON/HTML.
 - CPU jest GOOD tylko gdy ma dodatnią liczbę operacji i ops/s; RAM tylko gdy ma dodatni bufor i zweryfikowane bajty; GPU tylko gdy ma klatki, FPS i renderer. Brak tych danych oznacza WARN, nigdy sztuczny PASS.
 - Świeży wynik jest umieszczany pod kluczami odczytywanymi przez główny ekran i zapisywany w historii. Stary wynik nie staje się automatycznie wynikiem nowego uruchomienia.
+
+
+ZINTEGROWANE CENTRUM APLIKACJI — PEŁNY KATALOG TESTÓW
+------------------------------------------------------
+Centrum serwisu wystawia osobną kartę dla każdej grupy z prawdziwego katalogu testów. Karta CPU/RAM/GPU/VRAM/dysków/ekranu/bezpieczeństwa/baterii i urządzeń peryferyjnych otwiera istniejący katalog pomiarów z własnymi handlerami, a nie atrapę.
+Wspólne wyszukiwanie obejmuje również Centrum Testów, telemetrię Live, Speed Test, Studio 3D/110 scen, AI Reader, historię raportów i profile sprzętowe SZYBKI / STANDARD / ROZSZERZONY.
+Windows CI sprawdza, czy każda grupa z _U93_TEST_CATALOG ma kartę z działającym handlerem oraz czy nie ma zduplikowanych tytułów.
