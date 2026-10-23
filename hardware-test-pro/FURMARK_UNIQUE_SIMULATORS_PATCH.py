@@ -1,6 +1,7 @@
 # v4.3.151 — dedicated FurMark-style stress page and non-repeating component schematics.
 import math as _u152_math
 import time as _u152_time
+import sys as _u152_sys
 import tkinter as _u152_tk
 from tkinter import ttk as _u152_ttk, messagebox as _u152_messagebox
 
