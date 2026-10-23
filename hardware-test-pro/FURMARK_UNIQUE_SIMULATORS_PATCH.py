@@ -37,7 +37,7 @@ def _u152_normalize_module(value):
   "INTERNET":"SIEĆ","SOUND":"AUDIO","DZWIEK":"AUDIO","KEYBOARD":"KLAWIATURA","WEBCAM":"KAMERA","KAMERA / MIKROFON":"KAMERA"}
  text=aliases.get(text,text)
  if text in _U152_COMPONENTS:return text
- for tokens,key in ((("CPU","PROCESOR"),"CPU"),(("RAM","PAMIE"),"RAM"),(("GPU","GRAFICZN"),"GPU"),(("VRAM",),"VRAM"),
+ for tokens,key in ((("CPU","PROCESOR"),"CPU"),(("VRAM","PAMIEC GRAFICZNA"),"VRAM"),(("RAM","PAMIE"),"RAM"),(("GPU","GRAFICZN"),"GPU"),
   (("DYSK","SSD","HDD","NVME"),"DYSK"),(("EKRAN","MATRYC","MONITOR"),"EKRAN"),(("SECURITY","BEZPIECZ"),"SECURITY"),
   (("BATER","POWER","ZASIL"),"BATERIA"),(("SIEC","SIEĆ","INTERNET"),"SIEĆ"),(("USB",),"USB"),(("AUDIO","DZWIEK"),"AUDIO"),
   (("KLAW","KEYBOARD"),"KLAWIATURA"),(("KAMERA","CAMERA"),"KAMERA")):
