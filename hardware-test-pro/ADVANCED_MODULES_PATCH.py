@@ -2853,7 +2853,7 @@ def _u69_selftest_component_workbenches():
         ("component launch", callable(_u69_launch_component_test)),
         ("disk benchmark", callable(_u69_disk_throughput_benchmark)),
         ("unique safe disk benchmark", callable(_u69_safe_disk_benchmark)),
-        ("simulator original delegate", any(name in _u69_open_component_simulator.__code__.co_names for name in ("_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR", "_U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR", "_U107_ORIGINAL_OPEN_COMPONENT_SIMULATOR"))),
+        ("simulator original delegate", any(name in _u69_open_component_simulator.__code__.co_names for name in ("_U69_ORIGINAL_OPEN_COMPONENT_SIMULATOR", "_U76_ORIGINAL_OPEN_COMPONENT_SIMULATOR", "_U107_ORIGINAL_OPEN_COMPONENT_SIMULATOR", "_U145_ORIGINAL_OPEN_COMPONENT_SIMULATOR"))),
         ("open function", "open" in _u69_safe_disk_benchmark.__code__.co_names),
         ("exclusive create mode", "xb" in _u69_safe_disk_benchmark.__code__.co_consts),
         ("RAM bandwidth", callable(_u69_ram_throughput_benchmark)),
