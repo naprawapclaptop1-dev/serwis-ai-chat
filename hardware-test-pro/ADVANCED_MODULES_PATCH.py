@@ -17095,7 +17095,7 @@ def _u153_selftest_main_hardware_workbenches():
         "opengl_version":"4.6","average_fps":60,"peak_fps_1s":72,"frames":600,"duration_seconds":10,
         "resolution_rendered":"1280x720","geometry_vertices":25000})
     assert any("60.00" in line for line in gpu) and any("1280x720" in line for line in gpu)
-    assert "_u153_cpu_progress_callback" in _u93_cpu_hash_benchmark.__code__.co_names
+    assert "_u153_cpu_progress_callback" in _u93_cpu_hash_benchmark.__code__.co_consts, "CPU benchmark must expose the main-screen progress callback constant"
     assert "ram_pattern_test" in _u153_main_ram_test.__code__.co_names
     assert "_u145_write_component_record" in _u153_main_ram_test.__code__.co_names
     assert "_u153_start_cpu_benchmark" in _u153_module_cpu.__code__.co_names
