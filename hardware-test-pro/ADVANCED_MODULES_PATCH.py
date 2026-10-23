@@ -15867,6 +15867,7 @@ import re as _u145_re
 from pathlib import Path as _u145_Path
 from datetime import datetime as _u145_datetime
 from tkinter import filedialog as _u145_filedialog
+from tkinter import messagebox as _u145_messagebox
 
 _U145_COMPONENT_WORKBENCH_VERSION = "1.0.0"
 _U145_ORIGINAL_COMPONENT_WORKER = _u69_run_component_worker
@@ -16255,6 +16256,23 @@ def _u145_component_worker(app, module, mode):
         "started_at": _U66_datetime.now().astimezone().isoformat(timespec="seconds"),
         "started_monotonic": _u66_time.monotonic()
     }
+    # Remove previous measurement keys first so a failed new run cannot display stale PASS data.
+    try:
+        for key in _U145_ORIGINAL_COMPONENT_KEYS(module, mode):
+            app.results.pop(key, None)
+        app.results.pop("COMPONENT_ERROR_" + module, None)
+        if module == "CPU":
+            app.results.pop("CPU_HASH_BENCHMARK", None)
+            app.results.pop("COMPONENT_SCAN_CPU", None)
+        elif module == "RAM":
+            app.results.pop("RAM_BENCHMARK", None)
+            app.results.pop("RAM", None)
+            app.results.pop("COMPONENT_SCAN_RAM", None)
+        elif module == "GPU" and mode == "scan":
+            app.results.pop("GPU", None)
+            app.results.pop("GPU_WINSAT", None)
+    except Exception:
+        pass
     if module == "GPU":
         try:
             app.results.pop("GPU_REAL_RENDER", None)
@@ -16298,6 +16316,11 @@ _u68_run_component_worker = _u145_component_worker
 
 def _u145_execute_gpu_scene(app, scene_id, seconds=5):
     source_view = str(getattr(app, "current_view", ""))
+    if source_view.startswith("SIM3D_GPU"):
+        try:
+            app.results.pop("GPU_REAL_RENDER", None)
+        except Exception:
+            pass
     result = _U145_ORIGINAL_EXECUTE_GPU_SCENE(app, scene_id, seconds)
     if source_view.startswith("SIM3D_GPU"):
         try:
