@@ -31,7 +31,6 @@ WizardImageOpacity=100
 WizardSmallImageFile=installer-wizard-small.bmp
 WizardSmallImageBackColor=#071323
 DefaultDialogFontName=Segoe UI
-DefaultDialogFontSize=9
 WizardSizePercent=120,120
 AppPublisherURL=https://github.com/naprawapclaptop1-dev/serwis-ai-chat
 AppSupportURL=https://github.com/naprawapclaptop1-dev/serwis-ai-chat/issues
