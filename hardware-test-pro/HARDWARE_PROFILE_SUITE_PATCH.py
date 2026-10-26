@@ -13,7 +13,7 @@ from pathlib import Path as _u154_Path
 import tkinter as _u154_tk
 from tkinter import ttk as _u154_ttk, messagebox as _u154_messagebox
 
-_U154_HARDWARE_PROFILE_VERSION = "1.0.0"
+_U154_HARDWARE_PROFILE_VERSION = "1.0.1"
 _U154_PROFILES = {
     "SZYBKI": {
         "cpu_seconds": 15, "ram_mb": 256, "gpu_scenes": (1,), "gpu_scene_seconds": 10,
@@ -151,11 +151,43 @@ def _u154_stage_state(result):
     if not isinstance(result, dict):
         return "warn"
     state = str(result.get("state", "warn") or "warn").strip().lower()
-    if state in ("good", "pass", "ok", "completed", "success"):
-        return "good"
     if state in ("bad", "fail", "failed", "error"):
         return "bad"
-    return "warn"
+    if state not in ("good", "pass", "ok", "completed", "success"):
+        return "warn"
+    # A legacy handler's GOOD label is insufficient without actual benchmark evidence.
+    if bool(result.get("cancelled") or result.get("stopped") or result.get("stopped_by_user")):
+        return "warn"
+    module = str(result.get("module") or "").strip().upper()
+    if "CPU" in module or "PROCESOR" in module:
+        operations = _u154_num(result.get("operations"))
+        rate = _u154_num(result.get("operations_per_second"))
+        return "good" if operations is not None and operations > 0 and rate is not None and rate > 0 else "warn"
+    if "RAM" in module or "PAMI" in module:
+        tested = _u154_num(result.get("tested_mb", result.get("size_mb", result.get("buffer_mb"))))
+        verified = _u154_num(result.get("bytes_verified"))
+        if tested is None or tested <= 0 or verified is None or verified <= 0:
+            return "warn"
+        mismatches = _u154_num(result.get("mismatch_count", result.get("mismatches", result.get("error_count", 0))))
+        if mismatches is not None and mismatches > 0:
+            return "bad"
+        total_patterns = _u154_num(result.get("patterns_total"))
+        complete_patterns = _u154_num(result.get("patterns_completed"))
+        if total_patterns is not None and total_patterns > 0 and (complete_patterns is None or complete_patterns < total_patterns):
+            return "warn"
+        return "good"
+    if "GPU" in module or "GRAFICZ" in module:
+        if "scenes_requested" in result or "scenes_completed" in result:
+            requested = result.get("scenes_requested")
+            requested_count = len(requested) if isinstance(requested, (list, tuple)) else _u154_num(requested)
+            completed = _u154_num(result.get("scenes_completed"))
+            fps_mean = _u154_num(result.get("average_fps_mean"))
+            return "good" if requested_count and completed is not None and completed >= requested_count and fps_mean is not None and fps_mean > 0 else "warn"
+        frames = _u154_num(result.get("frames"))
+        fps = _u154_num(result.get("average_fps", result.get("mean_fps")))
+        renderer = str(result.get("renderer") or "").strip()
+        return "good" if frames is not None and frames > 0 and fps is not None and fps > 0 and renderer else "warn"
+    return "good"
 
 
 def _u154_stage_summary(module, result):
@@ -229,12 +261,20 @@ def _u154_update_view(app, module, percent, message, report=None):
 def _u154_queue_panel(app, test_id, progress=None, headline=None, metrics=None, sample=None):
     result = _U154_ORIGINAL_QUEUE_PANEL(app, test_id, progress, headline, metrics, sample)
     state = _u154_profile_active(app)
-    if state is not None and str(state.get("phase") or "").upper() == "GPU":
+    if state is None:
+        return result
+    phase = str(state.get("phase") or "").upper()
+    local = max(0.0, min(100.0, float(progress if progress is not None else 0)))
+    label = str(headline or state.get("phase_label") or phase)
+    if phase == "CPU":
+        _u154_profile_status(app, label, 45.0 * local / 100.0)
+    elif phase == "RAM":
+        _u154_profile_status(app, label, 45.0 + 30.0 * local / 100.0)
+    elif phase == "GPU":
         scenes = state.get("gpu_scenes") or ()
         index = max(1, int(state.get("gpu_scene_index", 1) or 1))
-        local = max(0.0, min(100.0, float(progress if progress is not None else 0)))
         overall = 75.0 + 24.0 * ((index - 1) + local / 100.0) / max(1, len(scenes))
-        _u154_profile_status(app, str(headline or state.get("phase_label") or "GPU OpenGL"), overall)
+        _u154_profile_status(app, label, overall)
     return result
 
 
@@ -268,8 +308,17 @@ def _u154_run_profile(app, profile):
         started = _u154_time.perf_counter()
         result = None
         error = None
+        cpu_settings = {
+            "duration": int(plan["cpu_seconds"]), "cpu_mode": "multi",
+            "algorithm": "SHA-256", "profile": plan["profile"],
+        }
         try:
-            result = app._cpu_test(plan["cpu_seconds"])
+            executor = globals().get("_u145_execute_catalog_test")
+            if not callable(executor):
+                raise RuntimeError("Brak nowego silnika CPU SHA-256 z katalogu; stary test nie zostanie użyty jako zamiennik.")
+            result = executor(app, "CPU", "cpu_multi", "cpu_multi", cpu_settings)
+            if not isinstance(result, dict):
+                raise RuntimeError("Silnik CPU nie zwrócił raportu ze zmierzonym wynikiem.")
         except Exception as exc:
             error = type(exc).__name__ + ": " + str(exc)
             try: app.queue_log("PROFIL CPU: " + error)
@@ -279,7 +328,14 @@ def _u154_run_profile(app, profile):
         if error and not result:
             result = {"state": "error", "error": error, "message": error, "duration_seconds": round(elapsed, 2)}
         result.setdefault("duration_seconds", round(elapsed, 2))
-        _u154_stage_record(stages, "CPU", "Benchmark SHA-256", result, elapsed, {"seconds": plan["cpu_seconds"]})
+        cpu_settings.update({"duration": int(plan["cpu_seconds"]), "workers": result.get("workers"),
+                             "cpu_mode": "multi", "algorithm": "SHA-256", "profile": plan["profile"]})
+        ops = _u154_num(result.get("operations"))
+        rate = _u154_num(result.get("operations_per_second"))
+        if ops is None or ops <= 0 or rate is None or rate <= 0:
+            result["state"] = "warn"
+            result["message"] = str(result.get("message") or "") + " Brak dodatniego licznika operacji SHA-256; etap nie może być zaliczony."
+        _u154_stage_record(stages, "CPU", "Benchmark SHA-256 wielowątkowy", result, elapsed, cpu_settings)
         stopped = stopped or _u154_stop_requested(app)
         _u154_profile_status(app, "ETAP 1/3 • CPU • " + _u154_stage_summary("CPU", result), 45 if _u154_stage_state(result) == "good" else 0)
         return result
@@ -295,8 +351,14 @@ def _u154_run_profile(app, profile):
         started = _u154_time.perf_counter()
         result = None
         error = None
+        ram_settings = {"memory_mb": int(plan["ram_mb"]), "profile": plan["profile"], "test": "ram_pattern"}
         try:
-            result = app._ram_test(plan["ram_mb"])
+            executor = globals().get("_u145_execute_catalog_test")
+            if not callable(executor):
+                raise RuntimeError("Brak silnika RAM z katalogu; stary test RAM nie zostanie użyty jako zamiennik.")
+            result = executor(app, "RAM", "ram_512", "ram_pattern", ram_settings)
+            if not isinstance(result, dict):
+                raise RuntimeError("Silnik RAM nie zwrócił raportu z weryfikacji pamięci.")
         except Exception as exc:
             error = type(exc).__name__ + ": " + str(exc)
             try: app.queue_log("PROFIL RAM: " + error)
@@ -306,7 +368,23 @@ def _u154_run_profile(app, profile):
         if error and not result:
             result = {"state": "error", "error": error, "message": error, "duration_seconds": round(elapsed, 2)}
         result.setdefault("duration_seconds", round(elapsed, 2))
-        _u154_stage_record(stages, "RAM", "Wzorce zapisu / odczytu / weryfikacji", result, elapsed, {"requested_mb": plan["ram_mb"]})
+        tested_mb = result.get("tested_mb", result.get("size_mb", result.get("buffer_mb")))
+        ram_settings.update({
+            "memory_mb": tested_mb if tested_mb is not None else int(plan["ram_mb"]),
+            "buffer_mb": tested_mb if tested_mb is not None else int(plan["ram_mb"]),
+            "patterns": result.get("patterns_total"), "duration": result.get("duration_seconds", round(elapsed, 2)),
+            "test": "ram_pattern", "profile": plan["profile"],
+        })
+        verified = _u154_num(result.get("bytes_verified"))
+        tested = _u154_num(tested_mb)
+        if verified is None or verified <= 0 or tested is None or tested <= 0:
+            result["state"] = "warn"
+            result["message"] = str(result.get("message") or "") + " Brak potwierdzonej liczby zweryfikowanych bajtów; etap nie może być zaliczony."
+        mismatches = _u154_num(result.get("mismatch_count", result.get("mismatches", result.get("error_count", 0))))
+        if mismatches is not None and mismatches > 0:
+            result["state"] = "bad"
+            result["message"] = str(result.get("message") or "") + f" Wykryto {int(mismatches)} niezgodności RAM."
+        _u154_stage_record(stages, "RAM", "Wzorce zapisu / odczytu / weryfikacji", result, elapsed, ram_settings)
         stopped = stopped or _u154_stop_requested(app)
         _u154_profile_status(app, "ETAP 2/3 • RAM • " + _u154_stage_summary("RAM", result), 75 if _u154_stage_state(result) == "good" else 45)
         return result
@@ -348,7 +426,7 @@ def _u154_run_profile(app, profile):
                 saver = globals().get("_u149_write_report")
                 if callable(saver):
                     result_path = saver("GPU", "PROFILE_" + plan["profile"] + "_SCENE_" + str(scene_id), result,
-                                        settings={"profile": plan["profile"], "scene_seconds": plan["gpu_scene_seconds"]})
+                                        settings={"profile": plan["profile"], "scene_id": scene_id, "duration_seconds": plan["gpu_scene_seconds"], "resolution": result.get("resolution_rendered") or result.get("resolution")})
             except Exception:
                 result_path = None
             _u154_stage_record(stages, "GPU", "OpenGL scena " + str(scene_id), result, elapsed,
@@ -448,6 +526,8 @@ def _u154_run_profile(app, profile):
 
 def _u154_stage_record(stages, module, test, result, elapsed, settings=None, report_path=None):
     data = dict(result) if isinstance(result, dict) else {"state": "warn", "message": str(result)}
+    data["module"] = str(module or data.get("module") or "")
+    data["test"] = str(test or data.get("test") or "")
     state = _u154_stage_state(data)
     data.update({
         "module": module, "test": test, "state": state,
@@ -654,6 +734,18 @@ def _u154_wrap_show_tests_hub(app):
 
 
 def _u154_selftest_profile_suite():
+    nested = {item.co_name: item for item in _u154_run_profile.__code__.co_consts if hasattr(item, "co_name")}
+    cpu_code = nested.get("run_cpu")
+    ram_code = nested.get("run_ram")
+    assert cpu_code is not None and "_u145_execute_catalog_test" in cpu_code.co_names, "profile CPU must use the current SHA-256 catalog engine"
+    assert ram_code is not None and "_u145_execute_catalog_test" in ram_code.co_names, "profile RAM must use the verified memory-pattern catalog engine"
+    assert "_cpu_test" not in cpu_code.co_names and "_ram_test" not in ram_code.co_names, "legacy CPU/RAM handlers must not silently replace the measured catalog engines"
+    assert _u154_stage_state({"module":"CPU","state":"good","operations":0,"operations_per_second":0}) == "warn"
+    assert _u154_stage_state({"module":"CPU","state":"good","operations":10,"operations_per_second":2}) == "good"
+    assert _u154_stage_state({"module":"RAM","state":"good","tested_mb":256,"bytes_verified":0,"patterns_completed":12,"patterns_total":12}) == "warn"
+    assert _u154_stage_state({"module":"RAM","state":"good","tested_mb":256,"bytes_verified":268435456,"patterns_completed":12,"patterns_total":12,"mismatch_count":1}) == "bad"
+    assert _u154_stage_state({"module":"GPU","state":"good","frames":0,"average_fps":0,"renderer":"test"}) == "warn"
+    assert _u154_stage_state({"module":"GPU","state":"good","frames":120,"average_fps":60,"renderer":"OpenGL"}) == "good"
     quick = _u154_plan("SZYBKI")
     standard = _u154_plan("STANDARD")
     extended = _u154_plan("ROZSZERZONY")
