@@ -737,8 +737,8 @@ def _u154_selftest_profile_suite():
     nested = {item.co_name: item for item in _u154_run_profile.__code__.co_consts if hasattr(item, "co_name")}
     cpu_code = nested.get("run_cpu")
     ram_code = nested.get("run_ram")
-    assert cpu_code is not None and "_u145_execute_catalog_test" in cpu_code.co_names, "profile CPU must use the current SHA-256 catalog engine"
-    assert ram_code is not None and "_u145_execute_catalog_test" in ram_code.co_names, "profile RAM must use the verified memory-pattern catalog engine"
+    assert cpu_code is not None and "_u145_execute_catalog_test" in cpu_code.co_consts, "profile CPU must use the current SHA-256 catalog engine"
+    assert ram_code is not None and "_u145_execute_catalog_test" in ram_code.co_consts, "profile RAM must use the verified memory-pattern catalog engine"
     assert "_cpu_test" not in cpu_code.co_names and "_ram_test" not in ram_code.co_names, "legacy CPU/RAM handlers must not silently replace the measured catalog engines"
     assert _u154_stage_state({"module":"CPU","state":"good","operations":0,"operations_per_second":0}) == "warn"
     assert _u154_stage_state({"module":"CPU","state":"good","operations":10,"operations_per_second":2}) == "good"
