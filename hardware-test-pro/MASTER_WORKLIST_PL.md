@@ -1,8 +1,7 @@
 # MASTER WORKLIST — NAPRAWA PC HARDWARE TEST PRO + SYSTEM REPAIR PRO + SERWIS ULTIMATE
 
-**Stable online:** 4.3.161 — Setup x64 i All-in-One ZIP opublikowane; latest.json wskazuje SHA-256 instalatora.
-**Kandydat 4.3.162:** przebudowa wspólnego centrum, aby automatycznie wystawiało kartę dla każdej grupy z prawdziwego katalogu testów, razem ze skrótami do telemetrii, Speed Test, Studio 3D, AI Reader, historii CSV oraz profili sprzętowych.
-**Weryfikacja Windows CI:** pokrycie grup katalogu, unikalność kart, prawdziwe handlery i obecność głównych modułów CPU/RAM/GPU.
+**Stable online przed kandydatem:** 4.3.162 — Setup x64 i All-in-One ZIP opublikowane; latest.json zawiera SHA-256 instalatora.
+**Kandydat 4.3.163:** analizator rzeczywistych wyników CPU/RAM/GPU, ostrzeżenia o brakujących metrykach, wykrycie niezgodności RAM i porównanie trendu tylko dla zgodnych testów, komputera i ustawień. Raport JSON+HTML pozostaje lokalny.
 
 ## Statusy — jak czytać listę
 - **W kodzie / selftest** — istnieje implementacja i test automatyczny; nie oznacza działania na każdym sprzęcie.
@@ -345,3 +344,11 @@
 - [x] Skróty do telemetrii, Speed Test, Studio 3D, AI Reader, historii raportów i profili SZYBKI/STANDARD/ROZSZERZONY.
 - [x] Selftest porównuje wszystkie klucze katalogu z kartami, sprawdza unikalne nazwy i handlery; brak pokrycia zatrzymuje wydanie.
 - [ ] Na fizycznym Windows zweryfikować odczyty sterowników/czujników oraz uruchamianie pełnego programu WPF/UAC.
+
+
+## Kandydat 4.3.163 — analiza wyniku i trendu pomiarów
+- [x] Walidacja dowodu CPU SHA-256/s, RAM verified bytes/bufora/wzorców oraz GPU FPS/klatek/renderera.
+- [x] Niezgodności RAM kierują do FAIL; brak metryk lub GPU bez klatek pozostaje WARN.
+- [x] Porównanie trendu tylko dla zgodnego komputera, testu i ustawień.
+- [x] Osobny raport analizy JSON+HTML z zabezpieczonym HTML.
+- [ ] Potwierdzić działanie na fizycznym Windows z rzeczywistymi czujnikami i obciążeniem.

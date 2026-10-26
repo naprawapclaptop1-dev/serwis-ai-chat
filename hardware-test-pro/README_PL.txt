@@ -247,3 +247,12 @@ ZINTEGROWANE CENTRUM APLIKACJI — PEŁNY KATALOG TESTÓW
 Centrum serwisu wystawia osobną kartę dla każdej grupy z prawdziwego katalogu testów. Karta CPU/RAM/GPU/VRAM/dysków/ekranu/bezpieczeństwa/baterii i urządzeń peryferyjnych otwiera istniejący katalog pomiarów z własnymi handlerami, a nie atrapę.
 Wspólne wyszukiwanie obejmuje również Centrum Testów, telemetrię Live, Speed Test, Studio 3D/110 scen, AI Reader, historię raportów i profile sprzętowe SZYBKI / STANDARD / ROZSZERZONY.
 Windows CI sprawdza, czy każda grupa z _U93_TEST_CATALOG ma kartę z działającym handlerem oraz czy nie ma zduplikowanych tytułów.
+
+
+ANALIZA WYNIKÓW CPU / RAM / GPU — 4.3.163
+-----------------------------------------
+Na ekranach CPU, RAM i GPU dostępny jest przycisk „ANALIZA WYNIKU + TREND Z POPRZEDNIM TESTEM”.
+- Waliduje mierzalny dowód testu: CPU SHA-256/s, RAM bufor i zweryfikowane bajty/wzorce oraz GPU FPS/klatki/renderer.
+- Niezgodności zapisu/weryfikacji RAM są raportowane jako FAIL; brak metryk lub zerowe klatki GPU pozostają WARN, nawet gdy wcześniejszy status testu był pozytywny.
+- Trend jest porównywany tylko dla tego samego komputera, identyfikatora testu i potwierdzonych ustawień. Spadek ponad 15% sugeruje powtórzenie testu, a nie automatyczne rozpoznanie awarii.
+- Analiza zapisuje lokalny JSON + HTML do %LOCALAPPDATA%\\NaprawaPC\\Raporty\\BenchmarkDiagnostics. Nie wysyła raportów do sieci i nie wykonuje automatycznych napraw.

@@ -2001,6 +2001,17 @@ if (!$src.Contains("_U160_MAIN_COMPONENT_HANDOFF_VERSION") -or !$src.Contains("M
     throw "Main CPU/RAM/GPU execution handoff was not integrated."
 }
 
+$diagnosisPatchPath = Join-Path $PSScriptRoot "HARDWARE_BENCHMARK_DIAGNOSIS_PATCH.py"
+if (!(Test-Path -LiteralPath $diagnosisPatchPath)) { throw "Missing hardware benchmark diagnosis patch." }
+$diagnosisPatch = [IO.File]::ReadAllText($diagnosisPatchPath,[Text.Encoding]::UTF8)
+$src = [regex]::Replace($src,$advancedMainPattern,[System.Text.RegularExpressions.MatchEvaluator]{
+    param($m)
+    return $diagnosisPatch + [Environment]::NewLine + $m.Value
+},1)
+if (!$src.Contains("_U163_BENCHMARK_DIAGNOSIS_VERSION") -or !$src.Contains("HARDWARE_BENCHMARK_DIAGNOSIS_SELFTEST_OK") -or !$src.Contains("ANALIZA WYNIKU + TREND Z POPRZEDNIM TESTEM") -or !$src.Contains("_u163_comparability")) {
+    throw "Evidence-based CPU/RAM/GPU diagnosis was not integrated."
+}
+
 # v4.3.159 — automatic global update after a newer stable release is detected.
 # The file is downloaded by the existing SHA-256/size/PE-verified worker; Windows UAC remains mandatory.
 $autoUpdatePatch = @'
