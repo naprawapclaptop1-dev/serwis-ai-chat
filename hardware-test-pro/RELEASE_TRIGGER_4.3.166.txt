@@ -1,0 +1,6 @@
+NAPRAWA PC HARDWARE TEST PRO — REBUILD STABLE RELEASE
+Requested release target: 4.3.166
+Reason: public stable manifest remained at 4.3.165, so installed clients correctly reported no update.
+This file intentionally triggers the repository's existing Windows CI pipeline.
+The pipeline must derive the next patch version from the current stable manifest, run all source self-tests, build the app and Inno Setup installer, publish both assets, and update updates/hardware-test-pro/latest.json only after successful validation.
+Do not mark the release ready unless both release assets exist and the installer SHA-256 and size are verified.
