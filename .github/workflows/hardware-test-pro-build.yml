@@ -322,7 +322,20 @@ jobs:
           "BUNDLE_SHA256=$bundleHash" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "BUNDLE_SIZE=$bundleSize" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      - name: Publish release assets
+      - name: Ensure release tag exists before publishing
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $tag = "hardware-test-pro-v${{ steps.prepare.outputs.app_version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f $tag "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw "Could not create the release tag." }
+          git push origin "refs/tags/$tag" --force
+          if ($LASTEXITCODE -ne 0) { throw "Could not push the release tag." }
+
+      - name: Publish All-in-One ZIP release asset
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
@@ -332,52 +345,45 @@ jobs:
           body: |
             Wydanie Windows x64.
             - 110 indywidualnych testów w 15 grupach i 110 unikalnych ID scen OpenGL.
-            - 40 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE: po 20 na aplikację w katalogu integracyjnym.
-            - Wszystkie 110 scen używają dedykowanego renderera: 90 scen w 9 rodzinach geometrii po 10 wariantów oraz 20 dodatkowych układów serwisowych; rzeczywiste FPS mierzone z synchronizacją renderowania.
-            - Sensor Bridge zachowuje wykryte sensory bez bieżącej wartości jako N/D oraz oddziela liczbę wykrytych sensorów od liczby bieżących odczytów.
-            - Speed Test: STANDARD dodaje 2 równoległe strumienie HTTPS; MAX/TURBO dodają 4; wynik równoległy jest oddzielony od mediany bazowej, a większy transfer wymaga potwierdzenia.
-            - Serwis Ultimate: zlecenia serwisowe z lokalną historią/HTML, 7 testów zasilania/baterii, menedżer procesów z ochroną procesów krytycznych, odczytowa diagnostyka gier oraz menedżer lokalnych raportów z filtrem/CSV.
-            - System Repair PRO: lokalna baza wiedzy z importem TXT/MD/PDF, SHA-256 i wyszukiwaniem źródeł; skrypty są tylko tekstem.
-            - System Repair PRO: 14 profili problemów z odczytowymi skanami PowerShell, skrótami do narzędzi Windows, analizą błędu i raportem HTML.
+            - 40 odczytowych diagnostyk SYSTEM REPAIR PRO / SERWIS ULTIMATE.
             - 125 motywów UI, indywidualne raporty i aktualizator HTTPS.
-            - Nowy audyt Windows/sterowników: 16 kontroli odczytowych, diagnoza PnP, ochrony i stanu systemu oraz raporty HTML+JSON.
-            - Historia audytów: lista wcześniejszych raportów, porównanie wyników per-kontrola między dwoma ostatnimi skanami i eksport CSV z zabezpieczeniem przed formułami arkusza.
-            - 4.3.151: osobny ekran GPU FurMark-style stress z FPS z renderera OpenGL; 13 różnych schematów podzespołów; FurMark nie jest powtarzany na 109 pozostałych scenach.
-            - 4.3.152: główny benchmark CPU mierzy wielowątkowy SHA-256 throughput (ops/s, MiB/s, wątki, dane i czas); pojedynczy pomiar OpenGL jest przekazywany do głównego raportu GPU.
-            - 4.3.153: główne ekrany CPU/RAM/GPU mają własne uruchomienia rzeczywistych testów, postęp, końcowy raport i lokalną historię JSON/HTML oraz CSV; wszystkie wyniki są jawnie oddzielone od symulacji.
-            - 4.3.156: naprawa braku aktualizacji paska postępu i etykiety CPU podczas pięciu etapów obciążenia; odświeżanie następuje w trakcie próbkowania, nie dopiero po końcowym raporcie, z testem regresyjnym.
-            - Nowe profile rzeczywistego benchmarku CPU+RAM+GPU: SZYBKI (CPU 15 s / RAM 256 MB / 1 scena OpenGL 10 s), STANDARD (CPU 60 s / RAM 512 MB / 3 sceny) oraz ROZSZERZONY (CPU 180 s / RAM do 1024 MB / 6 scen). Każdy etap uruchamia istniejący handler testu; wynik zbiorczy zapisuje się do JSON + HTML + CSV, a STOP przerywa dalsze etapy bez oznaczania ich jako PASS.
-            - 4.3.155: bezpośrednie START CPU 15 s / RAM 256 MB / GPU OpenGL 10 s i STOP TEST na ekranie podzespołu; każde uruchomienie wywołuje rzeczywisty handler testu, odświeża panel wyników i zapisuje raport. Sam przycisk ani animacja nie są wynikiem pomiaru.
-            - 4.3.156: strony szczegółów testów 3D CPU/RAM/GPU mają własny panel rzeczywistego testu, postępu, odczytów na żywo, świeżego raportu i jawnego komunikatu o braku raportu. START wywołuje właściwy test CPU SHA-256, RAM wzorce/weryfikację lub renderer OpenGL; schemat 3D jest tylko podglądem, nie wynikiem.
-            - Poprawka 4.3.161: główne START CPU używa tego samego wielowątkowego/1-wątkowego silnika SHA-256 co katalog testów (zamiast ogólnego starego testu CPU); CPU/RAM/GPU publikują zweryfikowany świeży raport JSON+HTML do głównych kluczy i historii. Brak wymaganych metryk nie może być oznaczony GOOD.
-            - Testy uruchamiane z workbencha zapisują lokalne raporty JSON+HTML; panel udostępnia historię, otwarcie folderu i eksport CSV z ochroną przed formułami.
-            - 4.3.163: analiza wyniku CPU/RAM/GPU na ekranie podzespołu; walidacja metryk, wykrywanie niezgodności RAM i trend tylko dla zgodnego komputera, testu i ustawień. Raport JSON+HTML zostaje lokalny; brak danych to WARN, nie PASS.
-            - Historia 4.3.143: wybór dowolnych dwóch raportów do porównania oraz eksport szczegółowego CSV z osobnym wierszem dla każdej kontroli.
-            - Ekrany CPU/RAM/GPU pokazują bieżące odczyty Windows i ostatni zapisany benchmark, ze skrótami do katalogu testów i historii/CSV; brak sensora pozostaje N/D.
-            - Poprawiono status STOP w teście CPU: przerwany pomiar nie może zostać oznaczony jako pełny sukces.
-            - CPU/RAM/GPU: panele pomiarowe pokazują postęp i rzeczywiste dane; brak sensora pozostaje N/D, a FPS pochodzi z raportu OpenGL.
-            - Jeden instalator dołącza pełny System Repair PRO 5.6.16 i skrót Start; przed uruchomieniem program jest weryfikowany przez SHA-256, UAC obsługuje Windows.
-            - Zintegrowane centrum ma teraz osobną kartę dla każdej grupy z prawdziwego katalogu testów oraz skróty do Live, Speed Test, Studio 3D, AI Reader, historii CSV i profili sprzętowych.
-            - Moduły Serwis Ultimate pozostają dostępne w zintegrowanym centrum; parytet 1:1 ze starszym archiwum 1.15.3 wymaga osobnego porównania.
-            - Poprawka aktualizatora: lokalny instalator ma bezpieczny prefiks NaprawaPC-Update-, aby procedura zamykania starego EXE nie zakończyła procesu Setup.
-            - 4.3.159: po wykryciu nowszej stable aktualizator automatycznie pobiera Setup, weryfikuje rozmiar/SHA-256/PE i uruchamia go przez Windows UAC. Nie ma osobnego pytania przed pobieraniem ani otwierania folderu Explorer.
-            - Workbench CPU/RAM/GPU przyjmuje także start z istniejących przycisków strony, zachowuje baseline sprzed testu i wykrywa świeży raport; test regresyjny sprawdza cykl start → wynik.
-            - Główne ekrany CPU/RAM/GPU mają ten sam panel rzeczywistego testu co katalog 3D: START/STOP, postęp, bieżące odczyty i świeży raport także dla testu uruchomionego pierwotnym przyciskiem strony.
-            - GPU z głównej strony mapuje rzeczywisty raport OpenGL do GPU_3D oraz 3D_SCENE_N, dodaje czas zakończenia i zapisuje JSON/HTML do historii. Workbench i konsola odczytują także dynamiczne klucze 3D_SCENE_N; Windows CI testuje nowy i zaktualizowany raport.
-            - Brak czujnika jest oznaczany N/D. Windows CI nie zastępuje testu fizycznego komputera użytkownika.
-            - Uwaga dotycząca zakresu: 40 sond to integracja diagnostyczna w katalogu; pełna zgodność 1:1 wszystkich wewnętrznych ekranów i funkcji z obydwoma archiwami źródłowymi nie została jeszcze potwierdzona.
-            - Poprawka testów 4.3.145: synchronizacja głównego raportu RAM podczas pomiaru i po jego zakończeniu; usunięty błędny callback etapów CPU; prawidłowa odległość kamery sceny OpenGL i widoczniejsza geometria.
-            - Poprawka 4.3.146: usunięte podwójne przesunięcie kamery GPU (stare -7 plus -10 oddalało scenę do -17); końcowy raport RAM jest przekazywany bezpośrednio do widoku, niezależnie od kolejności aktualizacji wyników.
-            - Kandydat 4.3.148: lokalna historia pomiarów CPU/RAM/GPU z raportami JSON+HTML, porównanie dwóch przebiegów, eksport CSV z ochroną przed formułami i ciaśniejsze kadrowanie scen OpenGL.
-            - Nowy wyglad instalatora Windows: nowoczesny ciemny kreator, granatowo-neonowe grafiki marki, wlasne tlo i pasek boczny, ikona naglowka oraz dopracowane ekrany powitalny, gotowosci i zakonczenia.
+            - Nowy audyt Windows/sterowników i historia audytów z porównaniem oraz CSV.
+            - Rzeczywiste testy CPU/RAM/GPU z raportami i walidacją metryk.
+            - Wydanie zawiera 125 skórek. Brak odczytu sensora pozostaje N/D.
           files: |
-            hardware-test-pro/dist/${{ steps.prepare.outputs.setup_filename }}
             hardware-test-pro/dist/NAPRAWA-PC-HARDWARE-TEST-PRO-ALL-IN-ONE-${{ steps.prepare.outputs.app_version }}.zip
           overwrite_files: true
           fail_on_unmatched_files: true
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload standalone Setup.exe sequentially and verify
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $repo = "naprawapclaptop1-dev/serwis-ai-chat"
+          $tag = "hardware-test-pro-v${{ steps.prepare.outputs.app_version }}"
+          $filename = "$env:SETUP_FILENAME"
+          $installer = Join-Path "$env:GITHUB_WORKSPACE" "hardware-test-pro\dist\$filename"
+          if (!(Test-Path -LiteralPath $installer)) { throw "Setup.exe missing before standalone upload." }
+          $actualHash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne "$env:INSTALLER_SHA256") { throw "Setup.exe SHA-256 changed before upload." }
+          if ((Get-Item -LiteralPath $installer).Length -ne [long]$env:INSTALLER_SIZE) { throw "Setup.exe size changed before upload." }
+          gh release upload $tag $installer --repo $repo --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Sequential Setup.exe upload failed." }
+          $releaseJson = gh release view $tag --repo $repo --json assets,isDraft,tagName
+          if ($LASTEXITCODE -ne 0) { throw "Cannot read release after Setup.exe upload." }
+          $release = $releaseJson | ConvertFrom-Json
+          if ($release.isDraft) { throw "Release is still draft; will not publish the update manifest." }
+          $asset = @($release.assets | Where-Object { $_.name -eq $filename })
+          if ($asset.Count -ne 1 -or [long]$asset[0].size -ne [long]$env:INSTALLER_SIZE) {
+            throw "Published Setup.exe asset is missing or has the wrong size."
+          }
+          Write-Host "SETUP_ASSET_VERIFIED: $filename; size=$($asset[0].size); SHA256=$actualHash"
 
       - name: Remove obsolete separate portable ZIP from release
         if: github.ref == 'refs/heads/main'
